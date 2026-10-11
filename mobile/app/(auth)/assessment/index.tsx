@@ -1,133 +1,56 @@
-import React, {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
-import {
-  ActivityIndicator,
-  Keyboard,
-  Pressable,
-  Text,
-  View,
-} from 'react-native';
-import { Redirect, useLocalSearchParams, usePathname, useRouter } from 'expo-router';
-import { AssessmentCompleteContent } from '@/components/assessment/AssessmentCompleteContent';
-import { AssessmentShell } from '@/components/assessment/AssessmentShell';
-import {
-  AssessmentStepContent,
-  stepCanContinue,
-} from '@/components/assessment/AssessmentStepContent';
-import {
-  ACTIVE_ASSESSMENT_STEPS,
-  ONBOARDING_STEPS,
-  ONBOARDING_TAIL_STEPS,
-  onboardingVisibleIndices,
-  visibleAssessmentIndices,
-  type AssessmentStep,
-} from '@/constants/assessmentSteps';
-import { ka } from '@/i18n/ka';
-import { ApiError, api } from '@/lib/api';
-import { authErrorMessage } from '@/lib/authErrorMessage';
-import {
-  applyFormPatch,
-  extraAnswersPayload,
-  formFromProfile,
-  fullProfilePayload,
-  patchPayloadForStep,
-  type AssessmentFormState,
-} from '@/lib/assessmentForm';
-import { saveOnboardingGoal } from '@/lib/onboardingGoals';
-import { profileCompletion, suggestTargetWeight } from '@/lib/profileCompletion';
-import { leaveProfileComplete, nextProfileSetupHref } from '@/lib/onboarding';
-import {
-  findAssessmentQaStepIndex,
-  onboardingDevHref,
-  useOnboardingDevPreview,
-} from '@/lib/onboardingDevPreview';
-import { needsProfileSetup, useAuth } from '@/store/AuthContext';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
+import { ActivityIndicator, Keyboard, Pressable, Text, TextInput, View } from 'react-native';
+import { Redirect, useRouter } from 'expo-router';
+import { User } from 'lucide-react-native';
+import { AuthShell } from '@/components/AuthShell';
 import { ExistingAccountCheck } from '@/components/auth/ExistingAccountCheck';
 import { OnboardingExitLinks } from '@/components/auth/OnboardingExit';
-import { getPreference, setPreference } from '@/lib/storage';
+import { VelvetAuthHeader } from '@/components/auth/VelvetAuthHeader';
+import { QuestionContent, questionCopy, questionReady } from '@/components/assessment/QuestionContent';
+import { QuestionPage, StepHeader } from '@/components/onboarding/OnboardingKit';
+import { VelvetButton } from '@/components/velvet/VelvetButton';
+import { VelvetInput } from '@/components/velvet/VelvetInput';
+import { VelvetNotice } from '@/components/velvet/VelvetNotice';
+import { ONBOARDING_STEP_KEYS, ONBOARDING_TAIL_STEPS, onboardingResumeQuestion } from '@/constants/assessmentSteps';
 import { tx } from '@/i18n/locale';
+import { ApiError, api } from '@/lib/api';
+import { authErrorMessage } from '@/lib/authErrorMessage';
+import { birthDateFromForm, formFromProfile, fullNameFromForm, type AssessmentFormState } from '@/lib/assessmentForm';
+import { realFullName } from '@/lib/displayName';
+import { nextProfileSetupHref } from '@/lib/onboarding';
+import { onboardingDevHref, useOnboardingDevPreview } from '@/lib/onboardingDevPreview';
+import { getPreference, setPreference } from '@/lib/storage';
+import { useKeyboardMetrics } from '@/lib/useKeyboardHeight';
+import { AUTH_KEYBOARD_OPEN_PX } from '@/lib/authChrome';
+import { needsProfileSetup, useAuth } from '@/store/AuthContext';
+import { useVelvet } from '@/theme/velvet';
+
+type OnboardingQuestion = keyof typeof ONBOARDING_STEP_KEYS;
 
 /** Product funnel: onboarding step keys only (no answers). Lazy so tests and startup never depend on it. */
 function trackOnboardingStep(kind: 'viewed' | 'completed', key: string | undefined) {
   void import('@/lib/funnel').then((funnel) => funnel.trackOnboardingStep(kind, key)).catch(() => undefined);
 }
 
-/** Next/previous visible step in whichever list the flow runs (onboarding or full profile). */
-function resolveNextIndex(from: number, visible: number[]): number {
-  return visible.find((i) => i > from) ?? visible[visible.length - 1] ?? from;
-}
-
-function resolvePrevIndex(from: number, visible: number[]): number {
-  const earlier = visible.filter((i) => i < from);
-  return earlier.length ? earlier[earlier.length - 1] : from;
-}
-
-const PICKER_STEPS = new Set(['birthdate', 'weight', 'height', 'goal-weight', 'goal-cycle']);
-const CENTER_STEPS = new Set([
-  ...PICKER_STEPS,
-  'checkup-frequency',
-  'fitness-level',
-  'sleep-level',
-  'smoking',
-  'diet-habits',
-  'mood',
-  'body-type',
-]);
-const FILL_STEPS = new Set(['medications-gate', 'conditions-gate']);
-
-function stepNeedsScroll(step: AssessmentStep): boolean {
-  if (['intro', 'complete'].includes(step.type)) return false;
-  if (FILL_STEPS.has(step.type)) return false;
-  if (CENTER_STEPS.has(step.type)) return false;
-  return true;
-}
-
-function stepCenterContent(step: AssessmentStep): boolean {
-  return CENTER_STEPS.has(step.type);
-}
-
-function stepFillBody(step: AssessmentStep): boolean {
-  return FILL_STEPS.has(step.type);
-}
-
-function hidePrimaryCta(step: AssessmentStep): boolean {
-  return step.type === 'medications-gate' || step.type === 'conditions-gate';
-}
-
-export default function AssessmentScreen() {
+/**
+ * Registration (owner 2026-10-11): right after the SMS code a new number gets the standard sign-up
+ * page — first and last name — then sex, birth date (18+), height, weight, each on its own velvet
+ * page like sign-in. Accounts that already have a real name (email, Google, Apple with a name) start
+ * at sex. Every answer is saved as it is given; a killed app resumes at the stored step.
+ */
+export default function OnboardingScreen() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ preview?: string; step?: string }>();
-  // /profile/complete reuses this screen for "დაასრულე პროფილი" (the full question list).
-  const profileMode = (usePathname() ?? '').startsWith('/profile');
-  const STEPS = profileMode ? ACTIVE_ASSESSMENT_STEPS : ONBOARDING_STEPS;
-  const visibleFor = useCallback(
-    (f: Partial<AssessmentFormState>) => (profileMode ? visibleAssessmentIndices(f) : onboardingVisibleIndices(f)),
-    [profileMode],
-  );
   const preview = useOnboardingDevPreview();
-  const {
-    user,
-    healthProfile,
-    refreshHealthProfile,
-    setHealthProfile,
-    setUser,
-    ready,
-    signOut,
-    discardNewAccount,
-  } = useAuth();
+  const { palette: p, dark } = useVelvet();
+  const { user, healthProfile, refreshHealthProfile, setHealthProfile, setUser, ready, signOut, discardNewAccount } = useAuth();
 
-  const [stepIndex, setStepIndex] = useState(0);
+  const [steps, setSteps] = useState<OnboardingQuestion[] | null>(null);
+  const [index, setIndex] = useState(0);
   const [form, setForm] = useState<AssessmentFormState | null>(null);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [allowUnauthedRedirect, setAllowUnauthedRedirect] = useState(false);
-  const initialized = useRef(false);
   const sessionDead = useRef(false);
 
   // „MEDICARD უკვე გამოგიყენებია?“ — once, on a just-created account that has not started onboarding.
@@ -137,7 +60,7 @@ export default function AssessmentScreen() {
     if (!user || !existingKey) return;
     const extra = (healthProfile?.extraAnswers ?? {}) as Record<string, unknown>;
     const fresh = Date.now() - new Date(user.createdAt ?? 0).getTime() < 24 * 60 * 60 * 1000;
-    if (preview || profileMode || !fresh || typeof extra.onboardingStepKey === 'string') {
+    if (preview || !fresh || typeof extra.onboardingStepKey === 'string') {
       setExistingCheck('done');
       return;
     }
@@ -152,10 +75,10 @@ export default function AssessmentScreen() {
     };
     // Decided once per account; later profile reads must not bring the question back.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.id, existingKey, preview, profileMode]);
+  }, [user?.id, existingKey, preview]);
 
-  // Sign-up navigates here in the same tick that setUser is scheduled. Wait one
-  // frame so we do not bounce a brand-new session back to sign-in.
+  // Sign-up navigates here in the same tick that setUser is scheduled. Wait one frame so a brand-new
+  // session is not bounced back to sign-in.
   useEffect(() => {
     if (user) {
       setAllowUnauthedRedirect(false);
@@ -169,14 +92,11 @@ export default function AssessmentScreen() {
     let cancelled = false;
     (async () => {
       try {
-        if (!preview) {
-          await api.auth.me();
-        }
+        if (!preview) await api.auth.me();
         await refreshHealthProfile();
       } catch (e) {
         if (!cancelled && e instanceof ApiError && e.isUnauthorized) {
           sessionDead.current = true;
-          initialized.current = false;
           setError(authErrorMessage(e));
         }
       } finally {
@@ -188,199 +108,82 @@ export default function AssessmentScreen() {
     };
   }, [preview, refreshHealthProfile]);
 
+  // The pages are decided once: the name page only when the sign-in brought no real name.
   useEffect(() => {
-    if (!user || loading || initialized.current || sessionDead.current) return;
-    const restored = formFromProfile(healthProfile, user);
-    const visible = visibleFor(restored);
+    if (!user || loading || steps || sessionDead.current) return;
     const extra = (healthProfile?.extraAnswers ?? {}) as Record<string, unknown>;
-    let resume = 0;
-    if (profileMode) {
-      // Start at the first question the completion card counts as missing.
-      const missing = new Set(profileCompletion(healthProfile, user).missing);
-      resume = visible.find((i) => missing.has(STEPS[i].type)) ?? 0;
-    } else if (extra.onboardingVersion === 2 && typeof extra.onboardingStepKey === 'string') {
-      resume = Math.max(0, STEPS.findIndex((st) => st.key === extra.onboardingStepKey));
-    }
-    if (preview && profileMode) {
-      const qa = findAssessmentQaStepIndex(params.step);
-      if (qa >= 0) resume = qa;
-    }
-    setStepIndex(visible.find((index) => index >= resume) ?? visible[visible.length - 1]);
-    setForm(restored);
-    initialized.current = true;
-  }, [user, healthProfile, loading, preview, params.step, profileMode, visibleFor, STEPS]);
+    const list: OnboardingQuestion[] = [...(realFullName(user, extra) ? [] : ['name' as const]), 'gender', 'birthdate', 'height', 'weight'];
+    const resume = onboardingResumeQuestion(extra.onboardingStepKey);
+    setSteps(list);
+    setIndex(resume && list.includes(resume) ? list.indexOf(resume) : 0);
+    setForm(formFromProfile(healthProfile, user));
+  }, [user, healthProfile, loading, steps]);
 
+  const question = steps?.[index];
+  const funnelOn = !preview;
   useEffect(() => {
-    if (!preview || !initialized.current) return;
-    const qa = findAssessmentQaStepIndex(params.step);
-    if (qa >= 0 && profileMode) setStepIndex(qa);
-  }, [preview, params.step, profileMode]);
+    if (funnelOn && question && form) trackOnboardingStep('viewed', ONBOARDING_STEP_KEYS[question]);
+  }, [funnelOn, question, form]);
 
-  const step = STEPS[stepIndex];
-  // Funnel: onboarding step keys only (no answers). Not in profile mode or dev preview.
-  const funnelOnboarding = !profileMode && !preview;
-  const viewedStepKey = form ? step?.key : undefined;
-  useEffect(() => {
-    if (funnelOnboarding) trackOnboardingStep('viewed', viewedStepKey);
-  }, [funnelOnboarding, viewedStepKey]);
-  const visibleIndices = useMemo(
-    () => visibleFor(form ?? {}),
-    [visibleFor, form?.takesMedications, form?.hasConditions, form?.primaryGoal, form?.gender],
-  );
-  const isLastVisible = visibleIndices[visibleIndices.length - 1] === stepIndex;
-  const visiblePosition = Math.max(0, visibleIndices.indexOf(stepIndex));
-  const progress = {
-    visible: true,
-    fraction: visiblePosition / Math.max(1, visibleIndices.length - 1),
-  };
-
-  const title = step
-    ? (ka.assessment.steps as Record<string, string>)[step.titleKey]
-    : '';
-  const body = step?.bodyKey
-    ? (ka.assessment.steps as Record<string, string>)[step.bodyKey]
-    : undefined;
-
-  const patchForm = useCallback((patch: Partial<AssessmentFormState>) => {
-    // applyFormPatch also drops a main goal the new sex is not offered (the cycle goal after „male“).
-    setForm((current) => (current ? applyFormPatch(current, patch) : current));
+  const patch = useCallback((next: Partial<AssessmentFormState>) => {
+    setForm((current) => (current ? { ...current, ...next } : current));
   }, []);
 
   const markSessionDead = (e: unknown) => {
-    if (e instanceof ApiError && e.isUnauthorized) {
-      sessionDead.current = true;
-    }
+    if (e instanceof ApiError && e.isUnauthorized) sessionDead.current = true;
   };
 
-  const persistStep = useCallback(
-    async (nextIndex: number, currentForm: AssessmentFormState) => {
-      if (preview) return;
-      const payload = patchPayloadForStep(currentForm, nextIndex);
-      if (!profileMode) {
-        payload.extraAnswers = {
-          ...(payload.extraAnswers as Record<string, unknown>),
-          onboardingVersion: 2,
-          onboardingStepKey: STEPS[nextIndex]?.key,
-        };
-      }
-      const result = await api.healthProfile.update(payload);
-      setHealthProfile(result.profile);
-      if (result.user) setUser(result.user);
-    },
-    [preview, setHealthProfile, setUser, profileMode, STEPS],
-  );
-
-  const finishAssessmentPhase = useCallback(
-    async (currentForm: AssessmentFormState) => {
-      if (preview) {
-        router.replace(
-          onboardingDevHref('/(auth)/profile-setup/privacy') as never,
-        );
-        return;
-      }
-      if (profileMode) {
-        const result = await api.healthProfile.update(fullProfilePayload(currentForm, stepIndex));
-        setHealthProfile(result.profile);
-        if (result.user) setUser(result.user);
-        // Back where it was opened (the Home card or Profile), not always the Profile tab.
-        leaveProfileComplete(router);
-        return;
-      }
-      // Goal-specific first step (weight goal / last period start): a failure stops here and shows the
-      // error on the step — Finish retries it, Skip goes on without it.
-      await saveOnboardingGoal(currentForm);
-      const result = await api.healthProfile.update({
-        ...fullProfilePayload(currentForm, stepIndex),
-        extraAnswers: {
-          ...extraAnswersPayload(currentForm),
-          assessmentPhaseComplete: true,
-          onboardingVersion: 2,
-          onboardingStepKey: null,
-        },
-      });
-      setHealthProfile(result.profile);
-      if (result.user) setUser(result.user);
-      trackOnboardingStep('completed', STEPS[stepIndex]?.key);
-      router.replace(nextProfileSetupHref(result.profile, result.user ?? user) as never);
-    },
-    [preview, router, setHealthProfile, setUser, stepIndex, profileMode, user],
-  );
-
-  const advanceWithPatch = async (patch: Partial<AssessmentFormState>) => {
-    if (!form || !step || busy) return;
-    Keyboard.dismiss();
-    const nextForm = {
-      ...form,
-      ...patch,
-      confirmedSteps: Array.from(
-        new Set([...(form.confirmedSteps ?? []), step.type, ...(step.type === 'body' ? ['height', 'weight'] : [])]),
-      ),
-    };
-    setForm(nextForm);
-    setError(null);
-
-    const prevIndex = stepIndex;
-    const nextIndex = resolveNextIndex(stepIndex, visibleFor(nextForm));
-    setStepIndex(nextIndex);
-
-    setBusy(true);
-    try {
-      await persistStep(nextIndex, nextForm);
-      if (funnelOnboarding) trackOnboardingStep('completed', step.key);
-    } catch (e) {
-      markSessionDead(e);
-      setStepIndex(prevIndex);
-      setForm(form);
-      setError(authErrorMessage(e));
-    } finally {
-      setBusy(false);
+  /** Saves the answer of `q` and where to resume (`nextKey`; null = the questions are done). */
+  const save = async (q: OnboardingQuestion, current: AssessmentFormState, nextKey: string | null) => {
+    if (preview) return;
+    if (q === 'name') {
+      const fullName = fullNameFromForm(current);
+      if (!fullName) return;
+      const result = await api.auth.updateProfile({ fullName });
+      setUser(result.user);
     }
+    const confirmed = current.confirmedSteps;
+    const result = await api.healthProfile.update({
+      ...(q === 'gender' && current.gender ? { gender: current.gender } : {}),
+      ...(confirmed.includes('birthdate') ? { birthDate: birthDateFromForm(current) } : {}),
+      ...(confirmed.includes('height') ? { heightCm: current.heightCm } : {}),
+      ...(confirmed.includes('weight') ? { weightKg: current.weightKg } : {}),
+      extraAnswers: {
+        confirmedSteps: confirmed,
+        ...(q === 'name' ? { legalName: fullNameFromForm(current) } : {}),
+        ...(q === 'gender' ? { genderOther: current.gender === 'OTHER' ? current.genderOther.trim() : '' } : {}),
+        weightUnit: current.weightUnit,
+        heightUnit: current.heightUnit,
+        onboardingVersion: 2,
+        onboardingStepKey: nextKey,
+        ...(nextKey === null ? { assessmentPhaseComplete: true } : {}),
+      },
+    });
+    setHealthProfile(result.profile);
+    if (result.user) setUser(result.user);
   };
 
   const goNext = async () => {
-    if (!form || !step || busy) return;
-    setError(null);
-
-    if (step.type === 'complete' || (!profileMode && isLastVisible)) {
-      const finalForm = step.type === 'complete' ? form : {
-        ...form,
-        confirmedSteps: Array.from(new Set([...(form.confirmedSteps ?? []), step.type, ...(step.type === 'body' ? ['height', 'weight'] : [])])),
-      };
-      setBusy(true);
-      try {
-        await finishAssessmentPhase(finalForm);
-      } catch (e) {
-        markSessionDead(e);
-        setError(authErrorMessage(e));
-      } finally {
-        setBusy(false);
-      }
-      return;
-    }
-
+    if (!form || !question || !steps || busy) return;
     Keyboard.dismiss();
-    const confirmedForm = {
-      ...form,
-      // Leaving the body step: seed the weight goal from the real weight unless already chosen.
-      ...(step.type === 'body' && !form.confirmedSteps?.includes('goal-weight')
-        ? { targetWeightKg: suggestTargetWeight(form.heightCm, form.weightKg) }
-        : {}),
-      confirmedSteps: Array.from(
-        new Set([...(form.confirmedSteps ?? []), step.type, ...(step.type === 'body' ? ['height', 'weight'] : [])]),
-      ),
-    };
-    setForm(confirmedForm);
-    const prevIndex = stepIndex;
-    const nextIndex = resolveNextIndex(stepIndex, visibleFor(confirmedForm));
-    setStepIndex(nextIndex);
-
+    setError(null);
+    const confirmed = Array.from(new Set([...form.confirmedSteps, question]));
+    const current = { ...form, confirmedSteps: confirmed };
+    setForm(current);
+    const last = index === steps.length - 1;
+    const nextKey = last ? null : ONBOARDING_STEP_KEYS[steps[index + 1]];
     setBusy(true);
     try {
-      await persistStep(nextIndex, confirmedForm);
-      if (funnelOnboarding) trackOnboardingStep('completed', step.key);
+      await save(question, current, nextKey);
+      if (funnelOn) trackOnboardingStep('completed', ONBOARDING_STEP_KEYS[question]);
+      if (last) {
+        if (preview) router.replace(onboardingDevHref('/(auth)/profile-setup/privacy') as never);
+        else router.replace(nextProfileSetupHref(healthProfile, user) as never);
+        return;
+      }
+      setIndex(index + 1);
     } catch (e) {
       markSessionDead(e);
-      setStepIndex(prevIndex);
       setError(authErrorMessage(e));
     } finally {
       setBusy(false);
@@ -388,89 +191,29 @@ export default function AssessmentScreen() {
   };
 
   const goBack = () => {
-    if (!form || stepIndex <= 0 || busy) return;
+    if (busy || index <= 0) return;
     setError(null);
-    setStepIndex(resolvePrevIndex(stepIndex, visibleFor(form)));
+    setIndex(index - 1);
   };
 
-  const goSkip = async (remaining = false) => {
-    if (!form || !step || busy) return;
-    Keyboard.dismiss();
-    setError(null);
-    if (!profileMode && isLastVisible) {
-      // Skipping the optional goal step still finishes onboarding (nothing extra is saved).
-      setBusy(true);
-      try {
-        await finishAssessmentPhase(form);
-      } catch (e) {
-        markSessionDead(e);
-        setError(authErrorMessage(e));
-      } finally {
-        setBusy(false);
-      }
-      return;
-    }
-    const prevIndex = stepIndex;
-    const nextIndex = remaining
-      ? STEPS.length - 1
-      : resolveNextIndex(stepIndex, visibleFor(form));
-    setStepIndex(nextIndex);
-    setBusy(true);
-    try {
-      await persistStep(nextIndex, form);
-    } catch (e) {
-      markSessionDead(e);
-      setStepIndex(prevIndex);
-      setError(authErrorMessage(e));
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  if (!ready) {
-    return (
-      <View className="flex-1 items-center justify-center bg-bg-100">
-        <ActivityIndicator size="large" />
-      </View>
-    );
-  }
+  if (!ready) return <Waiting background={p.surface} />;
 
   if (!loading && sessionDead.current) {
     return (
-      <View className="flex-1 items-center justify-center bg-bg-100 px-6">
-        <Text className="text-center font-sans text-base text-state-danger">
-          {error ?? ka.auth.registerNotConfirmed}
-        </Text>
-        <Pressable
-          accessibilityRole="button"
-          onPress={() => {
-            void signOut().then(() => router.replace('/(auth)/sign-in'));
-          }}
-          style={{ marginTop: 20, paddingVertical: 12, paddingHorizontal: 20 }}
-        >
-          <Text className="font-sans-semibold text-base text-primary-200">
-            {ka.auth.signIn}
-          </Text>
-        </Pressable>
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: p.surface, paddingHorizontal: 24, gap: 16 }}>
+        <VelvetNotice palette={p} text={error ?? tx('სესია დასრულდა. შედი თავიდან.', 'Your session ended. Please sign in again.')} />
+        <VelvetButton palette={p} label={tx('შესვლა', 'Sign in')} onPress={() => void signOut().then(() => router.replace('/(auth)/sign-in'))} />
       </View>
     );
   }
 
   if (!user) {
-    if (!allowUnauthedRedirect) {
-      return (
-        <View className="flex-1 items-center justify-center bg-bg-100">
-          <ActivityIndicator size="large" />
-        </View>
-      );
-    }
+    if (!allowUnauthedRedirect) return <Waiting background={p.surface} />;
     return <Redirect href="/(auth)/sign-in" />;
   }
 
-  if (!preview && !profileMode && needsProfileSetup(healthProfile)) {
-    return (
-      <Redirect href={nextProfileSetupHref(healthProfile, user) as never} />
-    );
+  if (!preview && needsProfileSetup(healthProfile)) {
+    return <Redirect href={nextProfileSetupHref(healthProfile, user) as never} />;
   }
 
   if (existingCheck === 'ask') {
@@ -488,152 +231,139 @@ export default function AssessmentScreen() {
     );
   }
 
-  if (loading || !form || !step || existingCheck === 'unknown') {
-    return (
-      <View className="flex-1 items-center justify-center bg-bg-100">
-        <ActivityIndicator size="large" />
-      </View>
-    );
+  if (loading || !form || !question || !steps || existingCheck === 'unknown') return <Waiting background={p.surface} />;
+
+  if (question === 'name') {
+    return <NameStep form={form} onChange={patch} onContinue={() => void goNext()} busy={busy} error={error} palette={p} dark={dark} />;
   }
 
-  const isIntro = step.type === 'intro';
-  const isComplete = step.type === 'complete';
-  const primaryLabel = isIntro
-    ? ka.assessment.ready
-    : isComplete
-      ? ka.assessment.goToPersonalInfo
-      : !profileMode && isLastVisible
-        ? ka.assessment.finishLabel
-        : ka.assessment.continue;
-  const canContinue = stepCanContinue(step, form);
+  // Progress counts the questions after the name page plus the three setup pages that follow.
+  const counted = steps.filter((s) => s !== 'name');
+  const canContinue = questionReady(question, form);
+  const copy = questionCopy(question, form);
 
   return (
-    <AssessmentShell
-      variant={isIntro ? 'intro' : isComplete ? 'phase-complete' : 'step'}
-      title={title}
-      body={isComplete ? undefined : body || undefined}
-      progress={progress}
-      primaryLabel={primaryLabel}
-      stepLabel={
-        !isIntro && !isComplete
-          ? profileMode
-            ? tx(`კითხვა ${visiblePosition} / ${visibleIndices.length - 2}${step.skippable ? ' · არჩევითი' : ' · აუცილებელი'}`, `Question ${visiblePosition} / ${visibleIndices.length - 2}${step.skippable ? ' · optional' : ' · required'}`)
-            : `${ka.assessment.onboardingStep(visiblePosition + 1, visibleIndices.length + (form.primaryGoal ? 0 : 1) + ONBOARDING_TAIL_STEPS)}${step.skippable ? ' · ' + ka.assessment.optional : ''}`
-          : undefined
+    <QuestionPage
+      palette={p}
+      header={
+        <StepHeader
+          palette={p}
+          step={counted.indexOf(question)}
+          total={counted.length + ONBOARDING_TAIL_STEPS}
+          onBack={index > 0 ? goBack : undefined}
+        />
       }
-      onPrimary={goNext}
-      onBack={goBack}
-      onSkip={step.skippable ? () => void goSkip() : undefined}
-      canBack={stepIndex > 0}
-      skippable={!!step.skippable}
-      loading={busy}
-      primaryDisabled={!canContinue}
-      scrollContent={stepNeedsScroll(step)}
-      centerContent={stepCenterContent(step)}
-      fillBody={stepFillBody(step)}
-      ctaInline={false}
-      largeTitle={
-        step.type === 'health-goals' ||
-        step.type === 'birthdate' ||
-        step.type === 'body-type' ||
-        step.type === 'weight' ||
-        step.type === 'height' ||
-        step.type === 'blood-type' ||
-        step.type === 'fitness-level' ||
-        step.type === 'sleep-level' ||
-        step.type === 'mood' ||
-        step.type === 'smoking' ||
-        step.type === 'diet-habits' ||
-        step.type === 'medications-list' ||
-        step.type === 'allergies' ||
-        step.type === 'checkup-frequency' ||
-        step.type === 'primary-goal' ||
-        step.type === 'body' ||
-        step.type.startsWith('goal-')
-      }
+      title={copy.title}
+      body={copy.body}
+      error={error}
+      center={question === 'birthdate' || question === 'height' || question === 'weight'}
+      primary={{ label: tx('გაგრძელება', 'Continue'), onPress: () => void goNext(), disabled: !canContinue, busy }}
       footerBelow={
-        // Onboarding only: a way out on every step (sign out, or delete the account — the direct
-        // delete shows where the person cannot go on: the birth-date step under 18).
-        !profileMode && !preview ? (
-          <OnboardingExitLinks showDelete={step.type === 'birthdate' && !canContinue} disabled={busy} />
-        ) : step.type === 'weight' && profileMode ? (
-          <Pressable
-            accessibilityRole="button"
-            disabled={busy}
-            onPress={() => void goSkip(true)}
-            style={{ paddingVertical: 12, alignItems: 'center' }}
-          >
-            <Text className="font-sans text-sm text-text-200">
-              {tx('დანარჩენ კითხვებს მოგვიანებით შევავსებ', "I'll answer the rest later")}
-            </Text>
-          </Pressable>
-        ) : step.type === 'allergies' ? (
-          <Pressable
-            accessibilityRole="button"
-            onPress={() => void advanceWithPatch({ allergies: [] })}
-            style={{ alignItems: 'center', paddingTop: 14, paddingBottom: 4 }}
-          >
-            <Text
-              style={{
-                fontFamily: 'NotoSansGeorgian_600SemiBold',
-                fontSize: 15,
-                lineHeight: 22,
-                color: '#14B8A6',
-              }}
-            >
-              {ka.assessment.noAllergies}
-            </Text>
-          </Pressable>
-        ) : step.type === 'checkup-frequency' ? (
-          <Pressable
-            accessibilityRole="button"
-            onPress={() => void advanceWithPatch({ checkupFrequency: 'NEVER' })}
-            style={{
-              alignItems: 'center',
-              justifyContent: 'center',
-              height: 22,
-            }}
-          >
-            <Text
-              style={{
-                fontFamily: 'NotoSansGeorgian_600SemiBold',
-                fontSize: 16,
-                lineHeight: 22,
-                color: '#14B8A6',
-              }}
-            >
-              {ka.assessment.neverCheckup}
-            </Text>
-          </Pressable>
-        ) : null
+        preview ? null : (
+          // A way out on every page; under 18 the account can be deleted right here.
+          <OnboardingExitLinks showDelete={question === 'birthdate' && !canContinue} disabled={busy} color={p.ink2} />
+        )
       }
-      primaryVariant="primary"
-      showPrimary={!hidePrimaryCta(step)}
     >
-      {isComplete ? (
-        <AssessmentCompleteContent
-          form={form}
-          onEdit={(index) => {
-            if (!busy) {
-              setError(null);
-              setStepIndex(index);
-            }
-          }}
-        />
-      ) : null}
-      {!isComplete ? (
-        <AssessmentStepContent
-          step={step}
-          form={form}
-          onChange={patchForm}
-          onAutoAdvance={advanceWithPatch}
-        />
-      ) : null}
-      {error ? (
-        <View className="mt-3 rounded-2xl border border-state-danger/20 bg-state-dangerBg p-3">
-          <Text className="font-sans text-sm text-state-danger">{error}</Text>
+      <QuestionContent palette={p} question={question} form={form} onChange={patch} onHabits={() => undefined} onAnswer={patch} />
+    </QuestionPage>
+  );
+}
+
+function Waiting({ background }: { background: string }) {
+  return (
+    <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: background }}>
+      <ActivityIndicator size="large" />
+    </View>
+  );
+}
+
+/**
+ * The standard sign-up page for a number that just got its account: the heartbeat disc of sign-in,
+ * „როგორ გქვია?“, first and last name. Both are needed (2+ letters each).
+ */
+function NameStep({
+  form,
+  onChange,
+  onContinue,
+  busy,
+  error,
+  palette: p,
+  dark,
+}: {
+  form: AssessmentFormState;
+  onChange: (next: Partial<AssessmentFormState>) => void;
+  onContinue: () => void;
+  busy: boolean;
+  error: string | null;
+  palette: ReturnType<typeof useVelvet>['palette'];
+  dark: boolean;
+}) {
+  const lastRef = useRef<TextInput>(null);
+  const [touched, setTouched] = useState<{ first?: boolean; last?: boolean }>({});
+  const { height: keyboardHeight } = useKeyboardMetrics();
+  const keyboardOpen = keyboardHeight > AUTH_KEYBOARD_OPEN_PX;
+  const copy = questionCopy('name', form);
+  const firstOk = form.firstName.trim().length >= 2;
+  const lastOk = form.lastName.trim().length >= 2;
+
+  return (
+    <AuthShell
+      backgroundColor={p.surface}
+      renderHeader={(compact, durationMs) => (
+        <VelvetAuthHeader palette={p} dark={dark} title={copy.title} titleKind="heading" subtitle={copy.body} compact={compact} durationMs={durationMs} />
+      )}
+      footer={
+        <View style={{ gap: 4 }}>
+          <VelvetButton palette={p} label={tx('გაგრძელება', 'Continue')} busy={busy} disabled={!firstOk || !lastOk} onPress={onContinue} />
+          {keyboardOpen ? null : <OnboardingExitLinks disabled={busy} color={p.ink2} />}
         </View>
-      ) : null}
-    </AssessmentShell>
+      }
+    >
+      <View style={{ gap: 18 }}>
+        <VelvetInput
+          palette={p}
+          label={tx('სახელი', 'First name')}
+          placeholder={tx('მაგ. ნინო', 'e.g. Nino')}
+          icon={User}
+          value={form.firstName}
+          onChangeText={(firstName) => onChange({ firstName })}
+          onBlur={() => setTouched((t) => ({ ...t, first: true }))}
+          error={touched.first && !firstOk ? tx('შეიყვანე სახელი', 'Enter your first name') : null}
+          autoCapitalize="words"
+          autoComplete="given-name"
+          textContentType="givenName"
+          returnKeyType="next"
+          blurOnSubmit={false}
+          onSubmitEditing={() => lastRef.current?.focus()}
+          maxLength={60}
+        />
+        <VelvetInput
+          ref={lastRef}
+          palette={p}
+          label={tx('გვარი', 'Last name')}
+          placeholder={tx('მაგ. ბერიძე', 'e.g. Beridze')}
+          icon={User}
+          value={form.lastName}
+          onChangeText={(lastName) => onChange({ lastName })}
+          onBlur={() => setTouched((t) => ({ ...t, last: true }))}
+          error={touched.last && !lastOk ? tx('შეიყვანე გვარი', 'Enter your last name') : null}
+          autoCapitalize="words"
+          autoComplete="family-name"
+          textContentType="familyName"
+          returnKeyType="done"
+          onSubmitEditing={() => {
+            if (firstOk && lastOk) onContinue();
+          }}
+          maxLength={60}
+        />
+        {error ? <VelvetNotice palette={p} text={error} /> : null}
+        <Pressable accessible={false} onPress={Keyboard.dismiss}>
+          <Text style={{ marginTop: 2, marginHorizontal: 4, fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 13, lineHeight: 19, color: p.inkOff }}>
+            {tx('სახელი და გვარი ჩანს შენს პროფილში და ჯანმრთელობის პასპორტში.', 'Your name shows on your profile and in your health passport.')}
+          </Text>
+        </Pressable>
+      </View>
+    </AuthShell>
   );
 }

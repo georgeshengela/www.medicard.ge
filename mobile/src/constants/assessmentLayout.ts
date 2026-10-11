@@ -1,4 +1,6 @@
+import { createContext, useContext } from 'react';
 import { useIsDark } from '@/theme/colors';
+import type { VelvetPalette } from '@/theme/velvet';
 
 /** Figma Comprehensive Health Assessment — shared spacing & sizing. */
 export const ASSESSMENT = {
@@ -65,7 +67,41 @@ export const ASSESSMENT_DARK = {
   track: '#1F2937',
 } as const;
 
-export function useAssessment() {
+type AssessmentTokens = { [K in keyof typeof ASSESSMENT]: (typeof ASSESSMENT)[K] extends string ? string : (typeof ASSESSMENT)[K] };
+
+/** The question pickers in the velvet registration pages: the page's own colours, teal for the choice. */
+export function velvetAssessmentTokens(p: VelvetPalette): AssessmentTokens {
+  return {
+    ...ASSESSMENT,
+    border: p.shade,
+    borderActive: p.pulse,
+    text: p.text,
+    textPrimary: p.text,
+    textSecondary: p.ink2,
+    muted: p.ink2,
+    faint: p.inkOff,
+    surface: p.field,
+    surfaceMuted: p.field,
+    pageBg: p.surface,
+    selectedSoft: p.field,
+    tint: p.field,
+    tintStrong: p.field,
+    tintBorder: p.pulse,
+    hairline: p.shade,
+    rowLine: p.shade,
+    brand: p.pulse,
+    brandInk: p.ink,
+    onBrand: '#FFFFFF',
+    track: p.field,
+  };
+}
+
+/** Set by a velvet page so every picker inside it follows the page (see `velvetAssessmentTokens`). */
+export const AssessmentTokensContext = createContext<AssessmentTokens | null>(null);
+
+export function useAssessment(): AssessmentTokens {
   const dark = useIsDark();
+  const override = useContext(AssessmentTokensContext);
+  if (override) return override;
   return dark ? { ...ASSESSMENT, ...ASSESSMENT_DARK } : ASSESSMENT;
 }

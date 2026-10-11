@@ -3,24 +3,22 @@ import { Pressable, Text, View } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 import { pickerSelectionTick } from '@/components/assessment/pickerHaptics';
 import { useAssessment } from '@/constants/assessmentLayout';
-import { ka } from '@/i18n/ka';
+import { smokingOptions, type Smoking } from '@/lib/healthHabits';
 
 const ICON = 32;
 const CHECK = 20;
 const CHECK_MARK = 12;
 
-const OPTIONS = [
-  { key: 'CURRENT', Icon: CigaretteIcon },
-  { key: 'FORMER', Icon: CalendarIcon },
-  { key: 'NEVER', Icon: CloseXIcon },
-] as const;
-
-type SmokingKey = (typeof OPTIONS)[number]['key'];
+const ICONS: Record<Smoking, typeof CigaretteIcon> = {
+  CURRENT: CigaretteIcon,
+  OCCASIONAL: CigaretteIcon,
+  FORMER: CalendarIcon,
+  NEVER: CloseXIcon,
+};
 
 type Props = {
   value: string | null;
-  onChange: (value: SmokingKey) => void;
-  titleFor: (key: SmokingKey) => string;
+  onChange: (value: Smoking) => void;
 };
 
 function CigaretteIcon({ color }: { color: string }) {
@@ -82,12 +80,13 @@ function CheckMark() {
   );
 }
 
-/** Figma 11332:64167 — 32pt icons, 14pt list rows, 20pt teal checkbox. */
-export function SmokingChoiceList({ value, onChange, titleFor }: Props) {
+/** Profile → smoking: the same four answers as „დაასრულე პროფილი“ (every day / sometimes / used to / never). */
+export function SmokingChoiceList({ value, onChange }: Props) {
   const ASSESSMENT = useAssessment();
   return (
     <View style={{ width: '100%', gap: 8 }}>
-      {OPTIONS.map(({ key, Icon }) => {
+      {smokingOptions().map(({ key, label, sub }) => {
+        const Icon = ICONS[key];
         const active = value === key;
         return (
           <Pressable
@@ -128,18 +127,20 @@ export function SmokingChoiceList({ value, onChange, titleFor }: Props) {
                   color: ASSESSMENT.textPrimary,
                 }}
               >
-                {titleFor(key)}
+                {label}
               </Text>
-              <Text
-                style={{
-                  fontFamily: 'NotoSansGeorgian_400Regular',
-                  fontSize: 14,
-                  lineHeight: 20,
-                  color: ASSESSMENT.textSecondary,
-                }}
-              >
-                {ka.assessment.smokingSub[key]}
-              </Text>
+              {sub ? (
+                <Text
+                  style={{
+                    fontFamily: 'NotoSansGeorgian_400Regular',
+                    fontSize: 14,
+                    lineHeight: 20,
+                    color: ASSESSMENT.textSecondary,
+                  }}
+                >
+                  {sub}
+                </Text>
+              ) : null}
             </View>
             <View
               style={{

@@ -764,12 +764,12 @@ test('IR3-3: every direct last period write in the app drops a queued start rest
     .filter((file) => /api\.cycle\.setLastPeriod\(/.test(fs.readFileSync(file, 'utf8')))
     .map((file) => file.slice(mobile.length + 1).replace(/\\/g, '/'))
     .sort();
-  // The queue itself (the restore and the undo's follow-up) and the three places where she answers the date.
+  // The queue itself (the restore and the undo's follow-up) and the two places where she answers the date
+  // (registration no longer asks it — the onboarding goal step was removed 2026-10-11).
   assert.deepEqual(writers, [
     'app/cycle/index.tsx',
     'src/components/cycle/settings/CycleProfileSettings.tsx',
     'src/lib/cycleOffline.ts',
-    'src/lib/onboardingGoals.ts',
   ]);
   for (const file of writers.filter((name) => name !== 'src/lib/cycleOffline.ts')) {
     // LF like the source in git, so a CRLF checkout does not stretch the 600-character window.

@@ -51,7 +51,7 @@ test('the card opens the normal MEDIPILL setup with the name filled in — no do
   assert.match(home, /dismissed: setupDismissals\.names/);
   assert.match(home, /<HomeNextDoseSection meds=\{meds\} setupName=\{setupName\} onDismissSetup=\{setupDismissals\.dismiss\} \/>/);
   // Onboarding itself creates no medication (no invented dose or time) and schedules nothing.
-  assert.doesNotMatch(read('src/lib/onboardingGoals.ts'), /medications\.create|syncMedicationReminders/);
+  assert.doesNotMatch(read('app/(auth)/assessment/index.tsx'), /medications\.create|syncMedicationReminders/);
 });
 
 test('„არა ახლა“ hides the card for that medicine only, on this account', () => {

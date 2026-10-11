@@ -4,6 +4,7 @@ import { Linking, Pressable, Text, View } from 'react-native';
 import { ExternalLink, ShieldCheck } from 'lucide-react-native';
 import { disclosureCopy } from '@/lib/aiDisclosureCopy';
 import { useThemeColors } from '@/theme/colors';
+import { velvetLift, type VelvetPalette } from '@/theme/velvet';
 
 type Manifest = Parameters<typeof disclosureCopy>[0];
 
@@ -11,18 +12,21 @@ type Props = {
   manifest: Manifest;
   tone?: 'onboarding' | 'app';
   hideTitle?: boolean;
+  /** Registration velvet: the page's inks and a lightly raised list instead of a bordered card. */
+  palette?: VelvetPalette;
 };
 
 /** Short permission explanation: what leaves the device, and which companies receive it. */
-export function AiPrivacySummary({ manifest, tone = 'app', hideTitle = false }: Props) {
+export function AiPrivacySummary({ manifest, tone = 'app', hideTitle = false, palette: p }: Props) {
   const colors = useThemeColors();
   const copy = disclosureCopy(manifest);
   const [policyOpen, setPolicyOpen] = useState(false);
-  const ink = tone === 'onboarding' ? '#111827' : colors.text100;
-  const body = tone === 'onboarding' ? '#4B5563' : colors.text200;
-  const card = tone === 'onboarding' ? '#FFFFFF' : colors.surface;
+  const ink = p ? p.text : tone === 'onboarding' ? '#111827' : colors.text100;
+  const body = p ? p.ink2 : tone === 'onboarding' ? '#4B5563' : colors.text200;
+  const card = p ? p.surface : tone === 'onboarding' ? '#FFFFFF' : colors.surface;
   const border = tone === 'onboarding' ? '#E5E7EB' : colors.bg300;
-  const accent = brandHex('#0F766E');
+  const accent = p ? p.ink : brandHex('#0F766E');
+  const cardStyle = p ? { backgroundColor: card, boxShadow: velvetLift(p) } : { backgroundColor: card, borderWidth: 1, borderColor: border };
   const text = { color: body, fontFamily: 'NotoSansGeorgian_400Regular' as const, fontSize: 15, lineHeight: 22 };
 
   return (
@@ -37,7 +41,7 @@ export function AiPrivacySummary({ manifest, tone = 'app', hideTitle = false }: 
       )}
       <Text style={text}>{copy.intro}</Text>
       <Text style={text}>{copy.purpose}</Text>
-      <View style={{ gap: 8, padding: 16, borderRadius: 20, backgroundColor: card, borderWidth: 1, borderColor: border }}>
+      <View style={[{ gap: 8, padding: 16, borderRadius: 20 }, cardStyle]}>
         <Text style={[text, { color: ink, fontFamily: 'NotoSansGeorgian_700Bold' }]}>{copy.headings.sent}</Text>
         {(copy.summaryCategories || copy.categories).map((item: string) => (
           <Text key={item} style={text}>• {item}</Text>

@@ -1,11 +1,6 @@
 import type { HealthProfile } from '@/lib/api';
 import { api } from '@/lib/api';
-import {
-  completePayload,
-  extraAnswersPayload,
-  formFromProfile,
-  fullProfilePayload,
-} from '@/lib/assessmentForm';
+import { completePayload, formFromProfile, primaryGoalFromProfile } from '@/lib/assessmentForm';
 import type { User } from '@/lib/api';
 import { getPreference, setPreference } from '@/lib/storage';
 import { trackOnboardingCompleted } from '@/lib/funnel';
@@ -13,22 +8,17 @@ import { omitHomeLayoutKeys } from '@/lib/home/homeLayout';
 
 export const BIOMETRIC_PREF_KEY = 'medicard.biometric.enabled';
 
+/**
+ * One onboarding setup answer (privacy, AI consent, notifications…). The server merges extraAnswers, so
+ * only the patch is sent; answers kept only in memory ride on the final save (finishOnboarding).
+ */
 export async function patchProfileExtra(
-  healthProfile: HealthProfile,
-  user: User,
+  _healthProfile: HealthProfile,
+  _user: User,
   patch: Record<string, unknown>,
 ): Promise<HealthProfile> {
-  const form = formFromProfile(healthProfile, user);
-  const extra = (healthProfile.extraAnswers ?? {}) as Record<string, unknown>;
   const result = await api.healthProfile.update({
-    ...fullProfilePayload(form, healthProfile.currentStepIndex ?? 0),
-    extraAnswers: {
-      ...extraAnswersPayload(form),
-      // The Home layout has its own debounced writer; a stale copy here must not undo a newer choice.
-      ...omitHomeLayoutKeys(extra),
-      assessmentPhaseComplete: true,
-      ...patch,
-    },
+    extraAnswers: { assessmentPhaseComplete: true, ...patch },
   });
   return result.profile;
 }
@@ -50,9 +40,8 @@ export async function finishOnboarding(healthProfile: HealthProfile, user: User)
   const form = formFromProfile(healthProfile, user);
   const extra = (healthProfile.extraAnswers ?? {}) as Record<string, unknown>;
   await api.healthProfile.update({
-    ...fullProfilePayload(form, healthProfile.currentStepIndex ?? 0),
     extraAnswers: {
-      ...extraAnswersPayload(form),
+      // Re-sends what the device holds (a setup answer whose own save failed is only here).
       // The Home layout has its own debounced writer; a stale copy here must not undo a newer choice.
       ...omitHomeLayoutKeys(extra),
       assessmentPhaseComplete: true,
@@ -62,6 +51,6 @@ export async function finishOnboarding(healthProfile: HealthProfile, user: User)
     },
   });
   const result = await api.healthProfile.complete(completePayload(form));
-  trackOnboardingCompleted(form.primaryGoal);
+  trackOnboardingCompleted(primaryGoalFromProfile(healthProfile));
   return result;
 }

@@ -7,17 +7,15 @@ const load = require('./helpers/loadTs.cjs')({
   },
 });
 const { defaultAssessmentForm, fullProfilePayload, completePayload, formFromProfile } = load('src/lib/assessmentForm.ts');
-const { visibleAssessmentIndices, ACTIVE_ASSESSMENT_STEPS } = load('src/constants/assessmentSteps.ts');
 test('untouched display defaults are never sent as health answers', () => {
-  const payload = fullProfilePayload(defaultAssessmentForm(), 1);
-  for (const key of ['heightCm', 'weightKg', 'birthDate', 'bloodType']) assert.equal(payload[key], undefined);
-  assert.equal(payload.extraAnswers.fitnessLevel, undefined);
-  assert.equal(payload.extraAnswers.sleepLevel, undefined);
+  const payload = fullProfilePayload(defaultAssessmentForm());
+  for (const key of ['heightCm', 'weightKg', 'birthDate', 'bloodType', 'activityLevel', 'sleepHours', 'smokingStatus', 'alcoholUse', 'dietType']) assert.equal(payload[key], undefined);
+  for (const key of ['activeDays', 'sleepBand', 'alcoholFreq', 'dietPatterns', 'produce', 'takesMedications', 'hasConditions']) assert.equal(key in payload.extraAnswers, false);
 });
 test('explicit measurement confirmation persists the value', () => {
   const form = { ...defaultAssessmentForm(), weightKg: 82, confirmedSteps: ['weight'] };
-  assert.equal(fullProfilePayload(form, 7).weightKg, 82);
-  assert.equal(fullProfilePayload(form, 7).heightCm, undefined);
+  assert.equal(fullProfilePayload(form).weightKg, 82);
+  assert.equal(fullProfilePayload(form).heightCm, undefined);
 });
 test('completion preserves omitted optional measurements', () => {
   const form = { ...defaultAssessmentForm(), gender: 'FEMALE', confirmedSteps: ['birthdate'] };
@@ -29,25 +27,25 @@ test('completion preserves omitted optional measurements', () => {
 test('completion rejects an unconfirmed date', () => {
   assert.throws(() => completePayload({ ...defaultAssessmentForm(), gender: 'FEMALE' }), /birthdate/);
 });
-test('existing measured answers and diet survive a resumed questionnaire', () => {
-  const form = formFromProfile({ heightCm: 180, weightKg: 80, dietType: 'OMNIVORE', extraAnswers: { fitnessLevel: 4, sleepLevel: 2 } }, { birthDate: '2000-01-01', gender: 'FEMALE' });
-  const payload = fullProfilePayload(form, 8);
+test('stored measurements and way-of-life answers survive a resumed questionnaire', () => {
+  const form = formFromProfile(
+    { heightCm: 180, weightKg: 80, smokingStatus: 'FORMER', extraAnswers: { activeDays: '3-4', sleepBand: '7', dietPatterns: ['vegetarian'] } },
+    { birthDate: '2000-01-01', gender: 'FEMALE' },
+  );
+  const payload = fullProfilePayload(form);
   assert.equal(payload.heightCm, 180);
   assert.equal(payload.weightKg, 80);
-  assert.equal(payload.dietType, 'OMNIVORE');
-  assert.equal(payload.extraAnswers.fitnessLevel, 4);
-  assert.equal(payload.extraAnswers.sleepLevel, 2);
+  assert.equal(payload.smokingStatus, 'FORMER');
+  assert.equal(payload.activityLevel, 'MODERATE');
+  assert.equal(payload.sleepHours, 7);
+  assert.equal(payload.dietType, 'VEGETARIAN');
+  assert.equal(payload.extraAnswers.activeDays, '3-4');
 });
-test('conditional questions appear only after yes and stored indices stay stable', () => {
-  const types = (form) => visibleAssessmentIndices(form).map((i) => ACTIVE_ASSESSMENT_STEPS[i].type);
-  for (const flag of [null, false, undefined]) {
-    assert.equal(types({ takesMedications: flag, hasConditions: flag }).includes('medications-list'), false);
-    assert.equal(types({ takesMedications: flag, hasConditions: flag }).includes('conditions-list'), false);
-  }
-  assert.equal(types({ takesMedications: true, hasConditions: true }).includes('medications-list'), true);
-  assert.equal(types({ takesMedications: true, hasConditions: true }).includes('conditions-list'), true);
-  assert.equal(types({}).includes('body-type'), false);
-  assert.equal(ACTIVE_ASSESSMENT_STEPS[5].type, 'body-type');
+test('old vague answers are asked again, not reused (fitness 1–5, sleep 1–5, „balanced“ diet)', () => {
+  const form = formFromProfile({ dietType: 'OMNIVORE', extraAnswers: { fitnessLevel: 4, sleepLevel: 2, checkupFrequency: 'YEARLY' } }, { birthDate: null, gender: 'MALE' });
+  assert.equal(form.habits.activeDays, null);
+  assert.equal(form.habits.sleepBand, null);
+  assert.equal(form.habits.dietPatterns.length, 0);
 });
 test('the last onboarding step sends nothing to AI and shows no health score (2026-10-08)', () => {
   const { readFileSync, existsSync } = require('node:fs');
@@ -93,7 +91,7 @@ test('onboarding never dead-ends: a way out on every step, on the policy decline
   const path = require('node:path');
   const read = (file) => fs.readFileSync(path.join(__dirname, '..', file), 'utf8');
   const assessment = read('app/(auth)/assessment/index.tsx');
-  assert.match(assessment, /!profileMode && !preview \? \(\s*<OnboardingExitLinks showDelete=\{step\.type === 'birthdate' && !canContinue\}/);
+  assert.match(assessment, /<OnboardingExitLinks showDelete=\{question === 'birthdate' && !canContinue\}/);
   const privacy = read('app/(auth)/profile-setup/privacy.tsx');
   assert.doesNotMatch(privacy, /Alert\.alert/);
   assert.match(privacy, /<OnboardingExitCard/);

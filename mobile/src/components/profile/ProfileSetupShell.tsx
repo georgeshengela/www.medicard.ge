@@ -19,6 +19,9 @@ import { MedicardLogoMark } from '@/components/ui/MedicardLogoMark';
 import { useFigmaAssessmentIntro } from '@/constants/figmaAssessmentIntro';
 import { welcomeTopInset } from '@/constants/figmaWelcomeLayout';
 import { useKeyboardHeight } from '@/lib/useKeyboardHeight';
+import { StepHeader } from '@/components/onboarding/OnboardingKit';
+import { ONBOARDING_COUNTED_QUESTIONS, ONBOARDING_TAIL_STEPS } from '@/constants/assessmentSteps';
+import { useVelvet } from '@/theme/velvet';
 
 type Props = {
   title: string;
@@ -42,6 +45,11 @@ type Props = {
   primaryTone?: 'step' | 'intro';
   /** When false, hides the default primary CTA (use footerSlot instead). */
   hidePrimary?: boolean;
+  /**
+   * Onboarding setup pages in the registration velvet (owner 2026-10-11): progress grooves at this
+   * index after the registration questions, a left-aligned title, the page's own footer.
+   */
+  velvetStep?: number;
 };
 
 /** Profile setup shell — keyboard-safe scroll + pinned footer CTA. */
@@ -64,8 +72,10 @@ export function ProfileSetupShell({
   footerSlot,
   primaryTone = 'step',
   hidePrimary = false,
+  velvetStep,
 }: Props) {
   const FIGMA_ASSESSMENT_INTRO = useFigmaAssessmentIntro();
+  const { palette: p } = useVelvet();
   const insets = useSafeAreaInsets();
   const topInset = welcomeTopInset(insets.top);
   const keyboardHeight = useKeyboardHeight();
@@ -78,6 +88,28 @@ export function ProfileSetupShell({
     Keyboard.dismiss();
     onPrimary();
   };
+
+  if (velvetStep !== undefined) {
+    return (
+      <View style={{ flex: 1, backgroundColor: p.surface }}>
+        <StepHeader palette={p} step={velvetStep} total={ONBOARDING_COUNTED_QUESTIONS + ONBOARDING_TAIL_STEPS} onBack={canBack ? onBack : undefined} />
+        <ScrollView
+          style={{ flex: 1 }}
+          contentContainerStyle={{ flexGrow: 1, paddingHorizontal: 20, paddingTop: 14, paddingBottom: 12 }}
+          showsVerticalScrollIndicator={false}
+        >
+          <Text accessibilityRole="header" style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 26, lineHeight: 35, color: p.text }}>
+            {title}
+          </Text>
+          {body ? (
+            <Text style={{ marginTop: 8, fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 15, lineHeight: 23, color: p.ink2 }}>{body}</Text>
+          ) : null}
+          <View style={{ marginTop: 22 }}>{children}</View>
+        </ScrollView>
+        <View style={{ paddingHorizontal: 20, paddingTop: 10, paddingBottom: Math.max(insets.bottom, 16), gap: 8 }}>{footerSlot}</View>
+      </View>
+    );
+  }
 
   return (
     <KeyboardAvoidingView

@@ -3,6 +3,7 @@ import { NativeScrollEvent, NativeSyntheticEvent, Platform, ScrollView, Text, Vi
 import { ka } from '@/i18n/ka';
 import { pickerScrollTick, pickerSelectionTick } from '@/components/assessment/pickerHaptics';
 import { useIsDark } from '@/theme/colors';
+import { velvetField, type VelvetPalette } from '@/theme/velvet';
 
 /** Figma node 9217:164479 — birthdate picker row. */
 const FIGMA_PICKER = {
@@ -40,6 +41,8 @@ type Props = {
   onChange: (patch: { month?: number; day?: number; year?: number }) => void;
   minYear?: number;
   maxYear?: number;
+  /** Velvet pages: the selection row is a shallow well in the page colour, the numbers use its inks. */
+  palette?: VelvetPalette;
 };
 
 function daysInMonth(month: number, year: number) {
@@ -62,9 +65,10 @@ function clampDayForMonthYear(day: number, month: number, year: number) {
 }
 
 /** Figma birthdate — 3-column wheel with shared teal selection row (9217:164472). */
-export function DateWheelPicker({ month, day, year, onChange, minYear, maxYear }: Props) {
+export function DateWheelPicker({ month, day, year, onChange, minYear, maxYear, palette: p }: Props) {
   const dark = useIsDark();
   const picker = dark ? { ...FIGMA_PICKER, ...FIGMA_PICKER_DARK } : FIGMA_PICKER;
+  const ink = p ? { selectedColor: p.ink, nearColor: p.ink2, farColor: p.inkOff } : {};
   const now = new Date().getFullYear();
   const yearMin = minYear ?? now - 100;
   const yearMax = maxYear ?? now - 13;
@@ -113,9 +117,9 @@ export function DateWheelPicker({ month, day, year, onChange, minYear, maxYear }
             right: 0,
             height: ITEM_HEIGHT,
             borderRadius: FIGMA_PICKER.selectedRadius,
-            borderWidth: 1,
-            borderColor: FIGMA_PICKER.selectedBorder,
-            backgroundColor: picker.selectedBg,
+            ...(p
+              ? { backgroundColor: p.field, boxShadow: `${velvetField(p)}, 0px 0px 0px 1.5px ${p.pulse}` }
+              : { borderWidth: 1, borderColor: FIGMA_PICKER.selectedBorder, backgroundColor: picker.selectedBg }),
             zIndex: 0,
           }}
         />
@@ -127,6 +131,7 @@ export function DateWheelPicker({ month, day, year, onChange, minYear, maxYear }
             selected={month}
             onSelect={onMonthSelect}
             format={(v) => monthLabel(Number(v))}
+            {...ink}
           />
           <ColumnWheel
             flex={0.85}
@@ -134,12 +139,14 @@ export function DateWheelPicker({ month, day, year, onChange, minYear, maxYear }
             selected={safeDay}
             onSelect={onDaySelect}
             format={(v) => String(v).padStart(2, '0')}
+            {...ink}
           />
           <ColumnWheel
             flex={1.1}
             values={years}
             selected={year}
             onSelect={onYearSelect}
+            {...ink}
           />
         </View>
       </View>
@@ -155,6 +162,8 @@ export function ColumnWheel({
   flex,
   format = (v) => String(v),
   selectedColor,
+  nearColor,
+  farColor,
   fontSize = FIGMA_PICKER.fontSize,
 }: {
   values: (string | number)[];
@@ -163,6 +172,8 @@ export function ColumnWheel({
   flex: number;
   format?: (v: string | number) => string;
   selectedColor?: string;
+  nearColor?: string;
+  farColor?: string;
   fontSize?: number;
 }) {
   const dark = useIsDark();
@@ -293,7 +304,7 @@ export function ColumnWheel({
                   fontSize,
                   lineHeight: FIGMA_PICKER.lineHeight,
                   letterSpacing: FIGMA_PICKER.letterSpacing,
-                  color: textColorForDistance(distance, picker.nearText, picker.farText, selectedColor),
+                  color: textColorForDistance(distance, nearColor ?? picker.nearText, farColor ?? picker.farText, selectedColor),
                   textAlign: 'center',
                 }}
               >

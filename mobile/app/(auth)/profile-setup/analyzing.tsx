@@ -1,12 +1,12 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { ActivityIndicator, Animated, Easing, Image, Pressable, Text, View } from 'react-native';
+import { ActivityIndicator, Text, View, useWindowDimensions } from 'react-native';
 import { Redirect, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Svg, { Circle } from 'react-native-svg';
 import { OnboardingExitLinks } from '@/components/auth/OnboardingExit';
-import { AnalyzingBackdrop } from '@/components/profile/AnalyzingBackdrop';
-import { MedicardLogoMark } from '@/components/ui/MedicardLogoMark';
-import { AVATAR_SOURCES, isAvatarId, normalizeAvatarForGender } from '@/constants/avatarAssets';
+import { VelvetButton } from '@/components/velvet/VelvetButton';
+import { VelvetNotice } from '@/components/velvet/VelvetNotice';
+import { HeartbeatDisc } from '@/components/welcome/HeartbeatHero';
+import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
 import { ka } from '@/i18n/ka';
 import { tx } from '@/i18n/locale';
 import { authErrorMessage } from '@/lib/authErrorMessage';
@@ -14,22 +14,15 @@ import { reportError } from '@/lib/errorReporter';
 import { displayFirstName } from '@/lib/displayName';
 import { finishRetryDelay } from '@/lib/onboarding';
 import { useOnboardingDevPreview, onboardingScreenBlocked } from '@/lib/onboardingDevPreview';
-import { useAnimatedProgress } from '@/hooks/useAnimatedProgress';
 import { finishOnboarding } from '@/lib/profileSetupFlow';
 import { useAuth } from '@/store/AuthContext';
+import { useVelvet } from '@/theme/velvet';
 
-const AVATAR = 88;
-const RING = 112;
-const RING_STROKE = 4;
-const RING_R = (RING - RING_STROKE) / 2;
-const RING_C = 2 * Math.PI * RING_R;
 /** A short welcome beat while onboarding is saved — nothing is analysed here. */
 const MIN_HOLD_MS = 1500;
-const LOGO_SIZE = 34;
-const LOGO_GAP = 16;
 
 /**
- * Profile is being prepared — Figma 8846:211832 rings, then home. Only `finishOnboarding` runs here: the
+ * Profile is being prepared — the heartbeat disc for a short beat, then home. Only `finishOnboarding` runs here: the
  * old hidden AI „health score“ call was removed (2026-10-08), so this screen never sends anything to AI.
  */
 export default function ProfileSetupAnalyzingScreen() {
@@ -42,23 +35,9 @@ export default function ProfileSetupAnalyzingScreen() {
   // Bumped by „ხელახლა ცდა“: runs the final save again after it failed (and its retries too).
   const [attempt, setAttempt] = useState(0);
   const [error, setError] = useState<string | null>(null);
-  const progress = useRef(new Animated.Value(0)).current;
-  const pulse = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    Animated.timing(progress, {
-      toValue: 1,
-      duration: MIN_HOLD_MS,
-      easing: Easing.out(Easing.cubic),
-      useNativeDriver: false,
-    }).start();
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulse, { toValue: 1, duration: 1400, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-        Animated.timing(pulse, { toValue: 0, duration: 1400, easing: Easing.inOut(Easing.sin), useNativeDriver: true }),
-      ]),
-    ).start();
-  }, [progress, pulse]);
+  const { palette: p, dark } = useVelvet();
+  const { width } = useWindowDimensions();
+  const reduceMotion = usePrefersReducedMotion();
 
   useEffect(() => {
     alive.current = true;
@@ -117,20 +96,12 @@ export default function ProfileSetupAnalyzingScreen() {
   };
 
   const extra = (healthProfile?.extraAnswers ?? {}) as Record<string, unknown>;
-  const avatarId = normalizeAvatarForGender(
-    typeof extra.avatarId === 'string' ? extra.avatarId : null,
-    user?.gender,
-  );
-  const avatarSource = isAvatarId(avatarId) ? AVATAR_SOURCES[avatarId] : AVATAR_SOURCES['avatar-1'];
   // Never the server's placeholder name: without a real one the line is just „ვამზადებთ პროფილს“.
   const name = useMemo(() => displayFirstName(user, extra), [user, extra]);
-  const scale = pulse.interpolate({ inputRange: [0, 1], outputRange: [1, 1.04] });
-  const fill = useAnimatedProgress(progress, 0);
-  const dashOffset = RING_C * (1 - fill);
 
   if (!ready) {
     return (
-      <View className="flex-1 items-center justify-center bg-bg-100">
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: p.surface }}>
         <ActivityIndicator size="large" />
       </View>
     );
@@ -140,108 +111,27 @@ export default function ProfileSetupAnalyzingScreen() {
   const blocked = onboardingScreenBlocked(preview, user, healthProfile);
   if (blocked === 'assessment') return <Redirect href="/(auth)/assessment" />;
 
+  // The sign-in's heartbeat disc closes registration: the same object the person started with.
   return (
-    <View style={{ flex: 1, backgroundColor: '#14B8A6' }}>
-      <AnalyzingBackdrop />
+    <View style={{ flex: 1, backgroundColor: p.surface }}>
       <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
-        <Animated.View style={{ alignItems: 'center', transform: [{ scale }] }}>
-          <View style={{ width: RING, height: RING, alignItems: 'center', justifyContent: 'center' }}>
-            <Svg width={RING} height={RING} style={{ position: 'absolute' }}>
-              <Circle
-                cx={RING / 2}
-                cy={RING / 2}
-                r={RING_R}
-                stroke="rgba(255,255,255,0.28)"
-                strokeWidth={RING_STROKE}
-                fill="none"
-              />
-              <Circle
-                cx={RING / 2}
-                cy={RING / 2}
-                r={RING_R}
-                stroke="#FFFFFF"
-                strokeWidth={RING_STROKE}
-                strokeLinecap="round"
-                fill="none"
-                strokeDasharray={`${RING_C} ${RING_C}`}
-                strokeDashoffset={dashOffset}
-                transform={`rotate(-90 ${RING / 2} ${RING / 2})`}
-              />
-            </Svg>
-            <View
-              style={{
-                width: AVATAR,
-                height: AVATAR,
-                borderRadius: AVATAR / 2,
-                borderWidth: 3,
-                borderColor: 'rgba(255,255,255,0.7)',
-                overflow: 'hidden',
-                backgroundColor: '#0F766E',
-              }}
-            >
-              <Image source={avatarSource} style={{ width: '100%', height: '100%' }} />
-            </View>
-          </View>
-          <View style={{ marginTop: LOGO_GAP }}>
-            <MedicardLogoMark size={LOGO_SIZE} tone="inverse" />
-          </View>
-        </Animated.View>
-      </View>
-      <View style={{ paddingHorizontal: 24, paddingBottom: Math.max(insets.bottom, 16) + (error ? 12 : 32), alignItems: 'center' }}>
-        {error ? (
-          <>
-            <Text
-              accessibilityRole="header"
-              style={{ fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 20, lineHeight: 28, color: '#FFFFFF', textAlign: 'center' }}
-            >
-              {tx('პროფილი ვერ შევინახეთ', 'We couldn’t save your profile')}
-            </Text>
-            <Text
-              accessibilityRole="alert"
-              style={{
-                marginTop: 8,
-                fontFamily: 'NotoSansGeorgian_400Regular',
-                fontSize: 14,
-                lineHeight: 21,
-                color: 'rgba(255,255,255,0.9)',
-                textAlign: 'center',
-              }}
-            >
-              {error}
-            </Text>
-            <Pressable
-              accessibilityRole="button"
-              onPress={retry}
-              style={{
-                marginTop: 20,
-                alignSelf: 'stretch',
-                height: 52,
-                borderRadius: 16,
-                backgroundColor: '#FFFFFF',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
-            >
-              <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 16, color: '#0F766E' }}>
-                {tx('ხელახლა ცდა', 'Try again')}
-              </Text>
-            </Pressable>
-            <OnboardingExitLinks color="#FFFFFF" />
-          </>
-        ) : (
-          <Text
-            style={{
-              fontFamily: 'NotoSansGeorgian_600SemiBold',
-              fontSize: 22,
-              lineHeight: 32,
-              color: '#FFFFFF',
-              textAlign: 'center',
-            }}
-          >
+        <HeartbeatDisc palette={p} dark={dark} disc={124} width={width} reduceMotion={reduceMotion} />
+        {error ? null : (
+          <Text style={{ marginTop: 34, paddingHorizontal: 32, fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 22, lineHeight: 31, color: p.text, textAlign: 'center' }}>
             {ka.profileSetup.preparingProfile(name)}
           </Text>
         )}
       </View>
+      {error ? (
+        <View style={{ paddingHorizontal: 20, paddingBottom: Math.max(insets.bottom, 16) + 8, gap: 12 }}>
+          <Text accessibilityRole="header" style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 20, lineHeight: 28, color: p.text, textAlign: 'center' }}>
+            {tx('პროფილი ვერ შევინახეთ', 'We couldn’t save your profile')}
+          </Text>
+          <VelvetNotice palette={p} text={error} />
+          <VelvetButton palette={p} label={tx('ხელახლა ცდა', 'Try again')} onPress={retry} />
+          <OnboardingExitLinks color={p.ink2} />
+        </View>
+      ) : null}
     </View>
   );
 }

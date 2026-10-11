@@ -2,10 +2,9 @@ import React, { useState } from 'react';
 import { ActivityIndicator, Text, View } from 'react-native';
 import { Redirect, useRouter } from 'expo-router';
 import { Info } from 'lucide-react-native';
-import {
-  ProfileSetupLinkButton,
-  ProfileSetupPrimaryButton,
-} from '@/components/profile/ProfileSetupButtons';
+import { QuietAction } from '@/components/onboarding/OnboardingKit';
+import { VelvetButton } from '@/components/velvet/VelvetButton';
+import { VelvetNotice } from '@/components/velvet/VelvetNotice';
 import { ProfileSetupShell } from '@/components/profile/ProfileSetupShell';
 import { AiPrivacySummary } from '@/components/privacy/AiPrivacySummary';
 import disclosure from '@/config/aiDisclosure.json';
@@ -15,6 +14,8 @@ import { patchProfileExtra } from '@/lib/profileSetupFlow';
 import { onboardingScreenBlocked, onboardingStepHref, useOnboardingDevPreview } from '@/lib/onboardingDevPreview';
 import { useAuth } from '@/store/AuthContext';
 import { tx } from '@/i18n/locale';
+import { ONBOARDING_COUNTED_QUESTIONS } from '@/constants/assessmentSteps';
+import { useVelvet } from '@/theme/velvet';
 
 /** Explicit AI permission — voluntary, never pre-accepted, before any AI request. */
 export default function ProfileSetupAiPrivacyScreen() {
@@ -24,6 +25,7 @@ export default function ProfileSetupAiPrivacyScreen() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const copy = disclosureCopy(disclosure);
+  const { palette: p } = useVelvet();
 
   if (!ready) {
     return (
@@ -71,27 +73,22 @@ export default function ProfileSetupAiPrivacyScreen() {
       onPrimary={() => {}}
       showStepper={false}
       hidePrimary
+      velvetStep={ONBOARDING_COUNTED_QUESTIONS}
       footerSlot={
-        <View style={{ gap: 12, width: '100%', maxWidth: 640, alignSelf: 'center' }}>
-          {error ? (
-            <Text accessibilityRole="alert" style={{ fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 14, lineHeight: 20, color: '#B91C1C', textAlign: 'center' }}>
-              {error}
-            </Text>
-          ) : null}
-          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingHorizontal: 8 }}>
-            <Info size={18} color="#6B7280" />
-            <Text style={{ flexShrink: 1, fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 13, lineHeight: 18, color: '#4B5563' }}>
+        <View style={{ gap: 4, width: '100%', maxWidth: 640, alignSelf: 'center' }}>
+          {error ? <VelvetNotice palette={p} text={error} /> : null}
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingHorizontal: 8, paddingBottom: 6 }}>
+            <Info size={16} color={p.inkOff} />
+            <Text style={{ flexShrink: 1, fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 13, lineHeight: 18, color: p.inkOff }}>
               {copy.decline === 'Not Now' ? 'You can change this later in Profile.' : 'არჩევანის შეცვლა მოგვიანებით პროფილიდან შეგიძლია.'}
             </Text>
           </View>
-          <ProfileSetupPrimaryButton label={copy.agree} onPress={() => choose(true)} loading={busy} icon="arrow" />
-          <ProfileSetupLinkButton label={copy.decline} onPress={() => choose(false)} />
+          <VelvetButton palette={p} label={copy.agree} onPress={() => choose(true)} busy={busy} />
+          <QuietAction palette={p} label={copy.decline} onPress={() => choose(false)} disabled={busy} />
         </View>
       }
     >
-      <View style={{ paddingHorizontal: 20, paddingBottom: 12 }}>
-        <AiPrivacySummary manifest={disclosure} tone="onboarding" hideTitle />
-      </View>
+      <AiPrivacySummary manifest={disclosure} tone="onboarding" hideTitle palette={p} />
     </ProfileSetupShell>
   );
 }

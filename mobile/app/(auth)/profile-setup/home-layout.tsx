@@ -4,7 +4,7 @@ import { Redirect, useRouter } from 'expo-router';
 import * as Haptics from 'expo-haptics';
 import { Info } from 'lucide-react-native';
 import { HomeLayoutOptions } from '@/components/home/layout/HomeLayoutOptions';
-import { ProfileSetupPrimaryButton } from '@/components/profile/ProfileSetupButtons';
+import { VelvetButton } from '@/components/velvet/VelvetButton';
 import { ProfileSetupShell } from '@/components/profile/ProfileSetupShell';
 import { primaryGoalFromProfile } from '@/lib/assessmentForm';
 import { isFeatureOn, useFeatureState } from '@/lib/featureFlags';
@@ -14,7 +14,8 @@ import { chooseHomeLayout } from '@/lib/home/homeLayoutStore';
 import { onboardingScreenBlocked, onboardingStepHref, useOnboardingDevPreview } from '@/lib/onboardingDevPreview';
 import { useAuth } from '@/store/AuthContext';
 import { tx } from '@/i18n/locale';
-import { useThemeColors } from '@/theme/colors';
+import { ONBOARDING_COUNTED_QUESTIONS } from '@/constants/assessmentSteps';
+import { useVelvet } from '@/theme/velvet';
 
 /**
  * Onboarding step 8 (owner 2026-10-02): before the first Home, pick how Home should look.
@@ -24,7 +25,7 @@ import { useThemeColors } from '@/theme/colors';
 export default function ProfileSetupHomeLayoutScreen() {
   const router = useRouter();
   const preview = useOnboardingDevPreview();
-  const c = useThemeColors();
+  const { palette: p } = useVelvet();
   const { ready, user, healthProfile } = useAuth();
   const features = useFeatureState();
   const layoutsOn = isFeatureOn('homeLayouts', features);
@@ -74,30 +75,31 @@ export default function ProfileSetupHomeLayoutScreen() {
       onPrimary={() => {}}
       showStepper={false}
       hidePrimary
+      velvetStep={ONBOARDING_COUNTED_QUESTIONS + 2}
       footerSlot={
-        <View style={{ gap: 16, width: '100%' }}>
+        <View style={{ gap: 14, width: '100%' }}>
           <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, paddingHorizontal: 8 }}>
-            <Info size={18} color={c.text200} />
-            <Text style={{ flexShrink: 1, fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 13, lineHeight: 19, color: c.text200, textAlign: 'center' }}>
+            <Info size={16} color={p.inkOff} />
+            <Text style={{ flexShrink: 1, fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 13, lineHeight: 18, color: p.inkOff, textAlign: 'center' }}>
               {tx(
                 'მერეც შეგიძლია შეცვალო — მთავარ გვერდზე ან პროფილის პარამეტრებში.',
                 'You can change it later — on Home or in Profile settings.',
               )}
             </Text>
           </View>
-          <ProfileSetupPrimaryButton
+          <VelvetButton
+            palette={p}
             label={tx('გაგრძელება', 'Continue')}
             onPress={() => {
               void Haptics.selectionAsync().catch(() => undefined);
               continueFlow();
             }}
-            loading={busy}
-            icon="arrow"
+            busy={busy}
           />
         </View>
       }
     >
-      <View style={{ paddingHorizontal: 16, paddingTop: 8, paddingBottom: 8 }}>
+      <View style={{ paddingBottom: 8 }}>
         <HomeLayoutOptions
           value={choice}
           onSelect={setSelected}

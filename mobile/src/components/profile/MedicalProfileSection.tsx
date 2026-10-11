@@ -29,6 +29,7 @@ import { ka } from '@/i18n/ka';
 import { tx } from '@/i18n/locale';
 import { api, ApiError, type Gender } from '@/lib/api';
 import { LBS_PER_KG, displayWeightForUnit } from '@/lib/assessmentForm';
+import { smokingOptions } from '@/lib/healthHabits';
 import { MIN_USER_AGE, ageFromBirthDate, isoToDisplay, normalizeIsoDate, parseBirthDate } from '@/lib/birthdate';
 import { BMI_ZONE_COLORS, bmiCategory, bmiFromWeight } from '@/lib/bmi';
 import { useAuth } from '@/store/AuthContext';
@@ -64,8 +65,7 @@ const SHEET_HINTS: Partial<Record<Field, string>> = {
 };
 
 function smokingLabel(key: string): string {
-  const map = ka.assessment.options.smokingStatus as Record<string, string>;
-  return map[key] ?? key;
+  return smokingOptions().find((o) => o.key === key)?.label ?? key;
 }
 
 function cleanList(list: string[] | null | undefined): string[] {
@@ -385,7 +385,7 @@ function MedicalEditSheet({ field, onClose }: { field: Field | null; onClose: ()
       case 'bloodType':
         return <BloodTypeSelector value={draft.bloodType} onChange={(bloodType) => patch({ bloodType })} />;
       case 'smoking':
-        return <SmokingChoiceList value={draft.smoking} onChange={(smoking) => patch({ smoking })} titleFor={smokingLabel} />;
+        return <SmokingChoiceList value={draft.smoking} onChange={(smoking) => patch({ smoking })} />;
       case 'allergies':
         return <AllergyPicker value={draft.allergies} onChange={(allergies) => patch({ allergies })} />;
       case 'conditions':

@@ -3,10 +3,10 @@ import { describe, it } from 'node:test';
 import { profileCompletion } from './profileCompletion.ts';
 
 describe('profileCompletion', () => {
-  it('a fresh 7-step onboarding leaves the long questions for later', () => {
-    const c = profileCompletion({ heightCm: 170, weightKg: 70, extraAnswers: {} }, { gender: 'FEMALE', birthDate: '1990-01-01' });
-    assert.equal(c.answered, 4);
-    assert.equal(c.total, 13);
+  it('registration leaves the profile questions for later', () => {
+    const c = profileCompletion({ heightCm: 170, weightKg: 70, extraAnswers: {} }, { gender: 'FEMALE', birthDate: '1990-01-01', fullName: 'ნინო ბერიძე' });
+    assert.equal(c.answered, 5);
+    assert.equal(c.total, 15);
     assert.ok(c.missing.includes('allergies'));
     assert.ok(c.percent < 50);
   });
@@ -18,11 +18,16 @@ describe('profileCompletion', () => {
     assert.ok(!c.missing.includes('medications-gate'));
   });
 
+  it('the placeholder name counts as missing', () => {
+    const c = profileCompletion({ extraAnswers: {} }, { fullName: 'Medicard მომხმარებელი' });
+    assert.ok(c.missing.includes('name'));
+  });
+
   it('a complete profile is 100%', () => {
     const c = profileCompletion(
-      { heightCm: 180, weightKg: 80, bloodType: 'A+', smokingStatus: 'NEVER', dietType: 'OMNIVORE', allergies: ['penicillin'],
-        extraAnswers: { hasConditions: false, takesMedications: true, fitnessLevel: 3, sleepLevel: 4, checkupFrequency: 'YEARLY' } },
-      { gender: 'MALE', birthDate: '1985-05-05' },
+      { heightCm: 180, weightKg: 80, bloodType: 'A+', smokingStatus: 'NEVER', allergies: ['penicillin'],
+        extraAnswers: { hasConditions: false, takesMedications: true, activeDays: '3-4', sleepBand: '7', alcoholFreq: 'never', dietPatterns: ['none'], produce: '3-4' } },
+      { gender: 'MALE', birthDate: '1985-05-05', fullName: 'გიორგი ბერიძე' },
     );
     assert.equal(c.percent, 100);
     assert.deepEqual(c.missing, []);

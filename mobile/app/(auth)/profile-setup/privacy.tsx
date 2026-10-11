@@ -4,7 +4,9 @@ import { Redirect, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ChevronDown, FileText, ShieldCheck, Utensils } from 'lucide-react-native';
 import { OnboardingExitCard } from '@/components/auth/OnboardingExit';
-import { ProfileSetupPrimaryButton } from '@/components/profile/ProfileSetupButtons';
+import { QuietAction, StepHeader } from '@/components/onboarding/OnboardingKit';
+import { VelvetButton } from '@/components/velvet/VelvetButton';
+import { VelvetNotice } from '@/components/velvet/VelvetNotice';
 import { PRIVACY_POLICY_KA } from '@/constants/privacyPolicyKa';
 import { PRIVACY_POLICY_EN } from '@/constants/privacyPolicyEn';
 import { ka } from '@/i18n/ka';
@@ -13,9 +15,8 @@ import { authErrorMessage } from '@/lib/authErrorMessage';
 import { patchProfileExtra } from '@/lib/profileSetupFlow';
 import { useOnboardingDevPreview, onboardingScreenBlocked, onboardingStepHref } from '@/lib/onboardingDevPreview';
 import { useAuth } from '@/store/AuthContext';
-import { welcomeTopInset } from '@/constants/figmaWelcomeLayout';
-import { useIsDark, useThemeColors } from '@/theme/colors';
-import { HUB, hubInk, hubTint } from '@/theme/hub';
+import { ONBOARDING_COUNTED_QUESTIONS, ONBOARDING_TAIL_STEPS } from '@/constants/assessmentSteps';
+import { velvetField, velvetLift, useVelvet, type VelvetPalette } from '@/theme/velvet';
 
 type Section = (typeof PRIVACY_POLICY_KA)['sections'][number];
 
@@ -31,49 +32,46 @@ function isReviewSummary(section: Section): boolean {
   return /english summary|app review/i.test(section.title);
 }
 
-function PolicySection({ section, open, onToggle }: { section: Section; open: boolean; onToggle: () => void }) {
-  const colors = useThemeColors();
-  const dark = useIsDark();
-  const teal = hubInk('teal', dark);
+function PolicySection({ section, open, onToggle, palette: p }: { section: Section; open: boolean; onToggle: () => void; palette: VelvetPalette }) {
   const { n, title } = splitTitle(section.title);
 
   return (
-    <View style={[styles.card, { backgroundColor: colors.surface }]}>
+    <View style={[styles.card, { backgroundColor: p.surface, boxShadow: velvetLift(p) }]}>
       <Pressable
         accessibilityRole="button"
         accessibilityState={{ expanded: open }}
         onPress={onToggle}
         style={styles.cardHead}
       >
-        <View style={[styles.badge, { backgroundColor: hubTint(teal, dark) }]}>
+        <View style={[styles.badge, { backgroundColor: p.field, boxShadow: velvetField(p) }]}>
           {n ? (
-            <Text style={[styles.badgeText, { color: teal }]}>{n}</Text>
+            <Text style={[styles.badgeText, { color: p.ink }]}>{n}</Text>
           ) : isReviewSummary(section) ? (
-            <FileText size={16} color={teal} strokeWidth={2.2} />
+            <FileText size={16} color={p.ink} strokeWidth={2.2} />
           ) : (
-            <Utensils size={16} color={teal} strokeWidth={2.2} />
+            <Utensils size={16} color={p.ink} strokeWidth={2.2} />
           )}
         </View>
-        <Text style={[styles.cardTitle, { color: colors.text100 }]}>{title}</Text>
+        <Text style={[styles.cardTitle, { color: p.text }]}>{title}</Text>
         <View style={{ transform: [{ rotate: open ? '180deg' : '0deg' }] }}>
-          <ChevronDown size={20} color={colors.text300} strokeWidth={2.2} />
+          <ChevronDown size={20} color={p.inkOff} strokeWidth={2.2} />
         </View>
       </Pressable>
 
       {open ? (
         <View style={styles.cardBody}>
-          {section.intro ? <Text style={[styles.body, { color: colors.text200 }]}>{section.intro}</Text> : null}
-          {section.paragraphs?.map((p) => (
-            <Text key={p} style={[styles.body, { color: colors.text200 }]}>
-              {p}
+          {section.intro ? <Text style={[styles.body, { color: p.ink2 }]}>{section.intro}</Text> : null}
+          {section.paragraphs?.map((para) => (
+            <Text key={para} style={[styles.body, { color: p.ink2 }]}>
+              {para}
             </Text>
           ))}
           {section.bullets?.length ? (
             <View style={{ gap: 8, marginTop: 2 }}>
               {section.bullets.map((b) => (
                 <View key={b} style={styles.bulletRow}>
-                  <View style={[styles.dot, { backgroundColor: teal }]} />
-                  <Text style={[styles.body, { color: colors.text200, flex: 1, marginBottom: 0 }]}>{b}</Text>
+                  <View style={[styles.dot, { backgroundColor: p.pulse }]} />
+                  <Text style={[styles.body, { color: p.ink2, flex: 1, marginBottom: 0 }]}>{b}</Text>
                 </View>
               ))}
             </View>
@@ -88,9 +86,7 @@ function PolicySection({ section, open, onToggle }: { section: Section; open: bo
 export default function ProfileSetupPrivacyScreen() {
   const router = useRouter();
   const insets = useSafeAreaInsets();
-  const colors = useThemeColors();
-  const dark = useIsDark();
-  const teal = hubInk('teal', dark);
+  const { palette: p } = useVelvet();
   const preview = useOnboardingDevPreview();
   const { ready, user, healthProfile, setHealthProfile } = useAuth();
   const [busy, setBusy] = useState(false);
@@ -106,7 +102,7 @@ export default function ProfileSetupPrivacyScreen() {
 
   if (!ready) {
     return (
-      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: colors.bg100 }}>
+      <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: p.surface }}>
         <ActivityIndicator size="large" />
       </View>
     );
@@ -159,80 +155,59 @@ export default function ProfileSetupPrivacyScreen() {
   const decline = () => setDeclineOpen(true);
 
   return (
-    <View style={{ flex: 1, backgroundColor: colors.bg100, paddingTop: welcomeTopInset(insets.top) }}>
-      <ScrollView contentContainerStyle={{ paddingHorizontal: HUB.gutter, paddingBottom: 24 }} showsVerticalScrollIndicator={false}>
-        {/* Header */}
-        <View style={{ alignItems: 'center', paddingTop: 16, paddingBottom: 24 }}>
-          <View style={[styles.heroTile, { backgroundColor: hubTint(teal, dark) }]}>
-            <ShieldCheck size={30} color={teal} strokeWidth={2} />
-          </View>
-          <Text style={[styles.title, { color: colors.text100 }]}>{policy.title}</Text>
-          <View style={[styles.datePill, { backgroundColor: colors.surface }]}>
-            <Text style={[styles.dateText, { color: colors.text200 }]}>{ka.profileSetup.privacyEffective(policy.effectiveDate)}</Text>
-          </View>
-        </View>
+    <View style={{ flex: 1, backgroundColor: p.surface }}>
+      {viewing ? <View style={{ height: insets.top + 10 }} /> : <StepHeader palette={p} step={ONBOARDING_COUNTED_QUESTIONS} total={ONBOARDING_COUNTED_QUESTIONS + ONBOARDING_TAIL_STEPS} />}
+      <ScrollView contentContainerStyle={{ paddingHorizontal: 20, paddingTop: 14, paddingBottom: 24 }} showsVerticalScrollIndicator={false}>
+        <Text accessibilityRole="header" style={[styles.title, { color: p.text }]}>{policy.title}</Text>
+        <Text style={[styles.dateText, { color: p.inkOff }]}>{ka.profileSetup.privacyEffective(policy.effectiveDate)}</Text>
 
         {/* The one thing to know */}
-        <View style={[styles.highlight, { backgroundColor: hubTint(teal, dark) }]}>
-          <Text style={[styles.highlightTitle, { color: teal }]}>{tx('მთავარი', 'The short version')}</Text>
-          <Text style={[styles.highlightBody, { color: colors.text100 }]}>
-            {policy.highlight}
-          </Text>
+        <View style={[styles.highlight, { backgroundColor: p.surface, boxShadow: velvetLift(p) }]}>
+          <View style={[styles.heroTile, { backgroundColor: p.field, boxShadow: velvetField(p) }]}>
+            <ShieldCheck size={24} color={p.pulse} strokeWidth={2.1} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.highlightTitle, { color: p.ink }]}>{tx('მთავარი', 'The short version')}</Text>
+            <Text style={[styles.highlightBody, { color: p.text }]}>{policy.highlight}</Text>
+          </View>
         </View>
 
-        <Text style={[styles.intro, { color: colors.text200 }]}>{policy.intro}</Text>
+        <Text style={[styles.intro, { color: p.ink2 }]}>{policy.intro}</Text>
 
         {/* Sections */}
         <View style={styles.listHead}>
-          <Text style={[styles.listTitle, { color: colors.text100 }]}>{tx('სრული პოლიტიკა', 'Full policy')}</Text>
+          <Text style={[styles.listTitle, { color: p.text }]}>{tx('სრული პოლიტიკა', 'Full policy')}</Text>
           <Pressable accessibilityRole="button" onPress={toggleAll} hitSlop={10}>
-            <Text style={[styles.listLink, { color: teal }]}>
+            <Text style={[styles.listLink, { color: p.ink }]}>
               {allOpen ? tx('ყველას დაკეცვა', 'Collapse all') : tx('ყველას გახსნა', 'Expand all')}
             </Text>
           </Pressable>
         </View>
-        <View style={{ gap: 10 }}>
+        <View style={{ gap: 12 }}>
           {sections.map((section) => (
             <PolicySection
               key={section.title}
               section={section}
               open={openKeys.has(section.title)}
               onToggle={() => toggle(section.title)}
+              palette={p}
             />
           ))}
         </View>
       </ScrollView>
 
-      <View
-        style={[
-          styles.footer,
-          { paddingBottom: Math.max(insets.bottom, 16), backgroundColor: colors.bg100, borderTopColor: colors.bg300 },
-        ]}
-      >
+      <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, 16), backgroundColor: p.surface }]}>
         {viewing ? null : (
-          <Text style={[styles.footNote, { color: colors.text300 }]}>
+          <Text style={[styles.footNote, { color: p.inkOff }]}>
             {tx(
               '„ვეთანხმები“ ნიშნავს, რომ პოლიტიკა წაიკითხე და ეთანხმები.',
               'Tapping “I agree” means you have read and accept this policy.',
             )}
           </Text>
         )}
-        {error ? (
-          <Text accessibilityRole="alert" style={[styles.errorText, { color: colors.danger }]}>
-            {error}
-          </Text>
-        ) : null}
-        <ProfileSetupPrimaryButton
-          label={viewing ? ka.common.done : ka.profileSetup.privacyAccept}
-          onPress={() => void accept()}
-          loading={busy}
-          icon="check"
-        />
-        {viewing ? null : (
-          <Pressable accessibilityRole="button" onPress={decline} hitSlop={8} style={{ alignItems: 'center', paddingVertical: 6 }}>
-            <Text style={[styles.declineText, { color: colors.text300 }]}>{ka.profileSetup.privacyDecline}</Text>
-          </Pressable>
-        )}
+        {error ? <VelvetNotice palette={p} text={error} /> : null}
+        <VelvetButton palette={p} label={viewing ? ka.common.done : ka.profileSetup.privacyAccept} onPress={() => void accept()} busy={busy} />
+        {viewing ? null : <QuietAction palette={p} label={ka.profileSetup.privacyDecline} onPress={decline} disabled={busy} />}
       </View>
       {viewing ? null : (
         <OnboardingExitCard
@@ -252,33 +227,30 @@ export default function ProfileSetupPrivacyScreen() {
 
 const styles = StyleSheet.create({
   heroTile: {
-    width: 64,
-    height: 64,
-    borderRadius: 20,
+    width: 46,
+    height: 46,
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
   },
   title: {
-    marginTop: 16,
     fontFamily: 'NotoSansGeorgian_700Bold',
-    fontSize: 24,
-    lineHeight: 32,
-    textAlign: 'center',
-  },
-  datePill: {
-    marginTop: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 5,
-    borderRadius: 999,
+    fontSize: 26,
+    lineHeight: 35,
   },
   dateText: {
+    marginTop: 6,
     fontFamily: 'NotoSansGeorgian_500Medium',
-    fontSize: 12,
-    lineHeight: 17,
+    fontSize: 13,
+    lineHeight: 18,
   },
   highlight: {
-    borderRadius: HUB.cardRadius,
-    padding: HUB.cardPad,
+    marginTop: 22,
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 14,
+    borderRadius: 22,
+    padding: 18,
   },
   highlightTitle: {
     fontFamily: 'NotoSansGeorgian_700Bold',
@@ -298,8 +270,8 @@ const styles = StyleSheet.create({
     lineHeight: 22,
   },
   listHead: {
-    marginTop: HUB.sectionGap,
-    marginBottom: HUB.headingGap,
+    marginTop: 28,
+    marginBottom: 12,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -315,8 +287,7 @@ const styles = StyleSheet.create({
     lineHeight: 20,
   },
   card: {
-    borderRadius: 18,
-    overflow: 'hidden',
+    borderRadius: 20,
   },
   cardHead: {
     flexDirection: 'row',
@@ -366,10 +337,9 @@ const styles = StyleSheet.create({
     marginTop: 8,
   },
   footer: {
-    paddingHorizontal: HUB.gutter,
+    paddingHorizontal: 20,
     paddingTop: 12,
-    gap: 10,
-    borderTopWidth: StyleSheet.hairlineWidth,
+    gap: 8,
   },
   footNote: {
     fontFamily: 'NotoSansGeorgian_400Regular',

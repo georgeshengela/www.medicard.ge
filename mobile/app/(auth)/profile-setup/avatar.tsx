@@ -7,11 +7,9 @@ import { defaultAvatarForGender, avatarsForGender, normalizeAvatarForGender, typ
 import { ka } from '@/i18n/ka';
 import { ApiError, api } from '@/lib/api';
 import { authErrorMessage } from '@/lib/authErrorMessage';
-import { extraAnswersPayload, formFromProfile, fullProfilePayload } from '@/lib/assessmentForm';
 import { nextProfileSetupHref } from '@/lib/onboarding';
 import { useOnboardingDevPreview } from '@/lib/onboardingDevPreview';
 import { needsHealthAssessment, needsProfileSetup, useAuth } from '@/store/AuthContext';
-import { omitHomeLayoutKeys } from '@/lib/home/homeLayout';
 
 export default function ProfileSetupAvatarScreen() {
   const router = useRouter();
@@ -52,16 +50,8 @@ export default function ProfileSetupAvatarScreen() {
     setBusy(true);
     setError(null);
     try {
-      const form = formFromProfile(healthProfile, user);
-      await api.healthProfile.update({
-        ...fullProfilePayload(form, healthProfile?.currentStepIndex ?? 0),
-        extraAnswers: {
-          ...extraAnswersPayload(form),
-          ...omitHomeLayoutKeys((healthProfile?.extraAnswers ?? {}) as Record<string, unknown>),
-          assessmentPhaseComplete: true,
-          avatarId,
-        },
-      });
+      // The server merges extraAnswers: only the avatar is sent.
+      await api.healthProfile.update({ extraAnswers: { assessmentPhaseComplete: true, avatarId } });
       await refreshHealthProfile();
       router.push('/(auth)/profile-setup/phone');
     } catch (e) {

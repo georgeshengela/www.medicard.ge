@@ -1,6 +1,4 @@
 import { useLocalSearchParams } from 'expo-router';
-import { ACTIVE_ASSESSMENT_STEPS } from '@/constants/assessmentSteps';
-import { ka } from '@/i18n/ka';
 import type { HealthProfile } from '@/lib/api';
 import { needsHealthAssessment, needsProfileSetup } from '@/store/AuthContext';
 
@@ -38,15 +36,10 @@ const AUTH_QA_STEPS: OnboardingQaStep[] = [
   { key: 'forgot-reset', label: 'პაროლი — ახალი', href: '/(auth)/forgot-password/reset?email=qa%40medicard.ge&code=000000', group: 'auth', needsUser: false },
 ];
 
-const ASSESSMENT_QA_STEPS: OnboardingQaStep[] = ACTIVE_ASSESSMENT_STEPS.map((step, index) => {
-  const titles = ka.assessment.steps as Record<string, string>;
-  return {
-    key: `assess-${step.key}`,
-    label: `${String(index + 1).padStart(2, '0')}. ${titles[step.titleKey] || step.type}`,
-    href: `/(auth)/assessment?step=${encodeURIComponent(step.key)}`,
-    group: 'assessment',
-  };
-});
+const ASSESSMENT_QA_STEPS: OnboardingQaStep[] = [
+  { key: 'assess-onboarding', label: 'რეგისტრაციის კითხვები', href: '/(auth)/assessment', group: 'assessment' },
+  { key: 'assess-profile', label: 'დაასრულე პროფილი', href: '/profile/complete', group: 'assessment' },
+];
 
 const SETUP_QA_STEPS: OnboardingQaStep[] = [
   { key: 'setup-intro', label: 'პროფილის შესავალი', href: '/(auth)/profile-setup', group: 'setup' },
@@ -78,13 +71,6 @@ export function onboardingDevHref(path: string) {
 
 export function onboardingStepHref(path: string, preview: boolean) {
   return preview ? onboardingDevHref(path) : path;
-}
-
-export function findAssessmentQaStepIndex(raw?: string | string[]): number {
-  const q = Array.isArray(raw) ? raw[0] : raw;
-  if (!q) return -1;
-  const value = decodeURIComponent(q);
-  return ACTIVE_ASSESSMENT_STEPS.findIndex((step) => step.key === value || step.type === value);
 }
 
 /** Shared guard checks for profile-setup screens; preview mode bypasses completion gates. */
