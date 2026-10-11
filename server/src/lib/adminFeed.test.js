@@ -131,3 +131,7 @@ test('install script only creates feed indexes', () => {
   assert.equal(adminFeedStatements('CREATE INDEX IF NOT EXISTS "Pet_createdAt_feed_idx" ON "Pet" ("createdAt");').length, 1);
   assert.throws(() => adminFeedStatements('DROP INDEX "Pet_createdAt_feed_idx";'));
 });
+
+// MEDISLEEP tests ride here: the server `npm test` command line is at the Windows length limit.
+import './sleep.test.js';
+import './adminUsageSleep.test.js';

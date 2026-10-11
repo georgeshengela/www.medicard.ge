@@ -16,6 +16,8 @@ import { onlyImportedTemperature } from './cycleTemperature.js';
 export const FEED_LIMIT_MAX = 100;
 const SPECIES = { dog: 'ძაღლი', cat: 'კატა', bird: 'ფრინველი', rabbit: 'კურდღელი', rodent: 'მღრღნელი', fish: 'თევზი', reptile: 'ქვეწარმავალი', horse: 'ცხენი', other: 'სხვა' };
 const MEAL_SOURCES = { photo: 'ფოტოთი', text: 'აღწერით', voice: 'ხმით', search: 'ძებნით', saved: 'შენახულიდან', manual: 'ხელით', barcode: 'შტრიხკოდით', label: 'ეტიკეტით', plan: 'რაციონიდან' };
+/** Where a MEDISLEEP night's times came from — how the app was used, never the times themselves. */
+const NIGHT_SOURCES = { mode: 'ძილის რეჟიმით', manual: 'ხელით', health: 'Health-იდან, დილის შეფასებით' };
 const RECORDS = {
   LAB: ['lab', 'ატვირთა ანალიზი'],
   XRAY: ['lab', 'წააკითხა გამოსახულება'],
@@ -70,6 +72,18 @@ const SOURCES = [
     event: () => ({ module: 'cycle', text: 'ვიღაცამ ჩაწერა ციკლის დღე' }) },
   { key: 'meal', col: '"createdAt"', sql: (c) => `SELECT id, "userId", "createdAt" AS at, source FROM "NutritionMeal" WHERE ${c}`,
     event: (r) => ({ module: 'food', text: 'ჩაწერა კვება', meta: MEAL_SOURCES[r.source] || '', href: link('nutrition', { pane: 'usage', focus: r.userId }) }) },
+  // MEDISLEEP: that a night was saved — never its times, length, rating or factors. A night that only arrived from
+  // Apple Health / Health Connect (no morning check-in) is an import, not something she did: a first sync brings weeks.
+  { key: 'sleepNight', col: '"createdAt"', sql: (c) => `SELECT id, "userId", "createdAt" AS at, "timesSource" FROM "SleepNight"
+      WHERE ("timesSource" <> 'health' OR "checkedInAt" IS NOT NULL) AND ${c}`,
+    event: (r) => ({ module: 'sleep', text: 'ჩაწერა ძილის ღამე', meta: NIGHT_SOURCES[r.timesSource] || '', href: link('sleep', { pane: 'usage', focus: r.userId }) }) },
+  { key: 'sleepPlay', col: '"createdAt"', sql: (c) => `SELECT id, "userId", "createdAt" AS at, "sleepMode", cardinality("soundIds") AS layers FROM "SleepPlay" WHERE ${c}`,
+    event: (r) => ({
+      module: 'sleep',
+      text: 'ჩართო ძილის ხმა',
+      meta: [r.sleepMode ? 'ძილის რეჟიმში' : '', Number(r.layers) > 1 ? `${Number(r.layers)} ხმა ერთად` : ''].filter(Boolean).join(' · '),
+      href: link('sleep', { pane: 'usage', focus: r.userId }),
+    }) },
   { key: 'record', col: '"createdAt"', sql: (c) => `SELECT id, "userId", "createdAt" AS at, type FROM "MedicalRecord" WHERE type IN ('LAB','XRAY','CT_MRI','SKIN','SKINCARE','SYMPTOM') AND ${c}`,
     event: (r) => ({
       module: RECORDS[r.type][0],

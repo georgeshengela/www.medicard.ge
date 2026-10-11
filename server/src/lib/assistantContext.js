@@ -4,8 +4,9 @@ import { loadCycleAccountContext } from './cycleAccountContext.js';
 import { OBSERVATION_REGISTRY, observationAiContextAllowed } from './cycleObservationRegistry.js';
 import { publicPetsCatalog } from './petsCatalog.js';
 import { consultationsAllowedNow } from './patientHistoryContext.js';
+import { loadSleepAiContext } from './sleepAiContext.js';
 
-export const ASSISTANT_CONTEXT_DOMAINS = ['profile', 'metrics', 'goals', 'medications', 'visits', 'cycle', 'records', 'consultations', 'activity', 'pets', 'nutrition'];
+export const ASSISTANT_CONTEXT_DOMAINS = ['profile', 'metrics', 'goals', 'medications', 'visits', 'cycle', 'records', 'consultations', 'activity', 'pets', 'nutrition', 'sleep'];
 const pick = (row, keys) => row ? Object.fromEntries(keys.filter(k => row[k] !== undefined).map(k => [k, row[k]])) : null;
 const trim = (value, max = 1800) => typeof value === 'string' ? value.slice(0, max) : value;
 
@@ -63,6 +64,11 @@ export async function loadAssistantContext(user, domains, scope, db = prisma, pe
     // No cycle profile (men, or never opened): no block at all.
     if (cycle) context.cycle = cycle;
     if (cycle?.status === 'available') context.cycle.observationKeys = Object.values(OBSERVATION_REGISTRY).filter(r => observationAiContextAllowed(r.key)).map(r => pick(r, ['key', 'storage', 'category']));
+  }
+  if (requested.has('sleep')) {
+    // MEDISLEEP: plan, last two weeks of nights, the week's summary. Nothing logged = no block.
+    const sleep = await loadSleepAiContext(userId, db, { today });
+    if (sleep) context.sleep = sleep;
   }
   if (requested.has('records')) context.records = (await db.medicalRecord.findMany({ where: { userId }, take: 12, orderBy: { createdAt: 'desc' } }))
     .map(r => ({ id: r.id, type: r.type, createdAt: r.createdAt, analysisExcerpt: trim(r.aiAnalysis) }));

@@ -24,6 +24,7 @@
     pets: ['MEDIVET', 'paw'],
     pills: ['MEDIPILL', 'capsule'],
     cycle: ['MEDICYCLE', 'cycle'],
+    sleep: ['MEDISLEEP', 'sleep'],
     food: ['MEDIFOOD', 'apple'],
     lab: ['MEDILAB', 'microscope'],
     medi: ['Medi', 'spark'],
