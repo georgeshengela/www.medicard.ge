@@ -179,7 +179,10 @@ export function mergeMetricPoints(
   const merged: Partial<Record<HealthMetricKey, HealthMetricPoint[]>> = {};
 
   for (const key of keys) {
-    const combined = [...(stored[key] ?? []), ...(native[key] ?? [])];
+    // A night just read from the phone replaces the server's copy of it (summing both doubled it).
+    const nativeDates = key === 'sleep' ? new Set((native[key] ?? []).map((p) => p.date)) : null;
+    const storedPoints = (stored[key] ?? []).filter((p) => !nativeDates?.has(p.date));
+    const combined = [...storedPoints, ...(native[key] ?? [])];
     const byDate = groupByDate(combined);
     merged[key] = [...byDate.entries()].flatMap(([, points]) => points);
   }

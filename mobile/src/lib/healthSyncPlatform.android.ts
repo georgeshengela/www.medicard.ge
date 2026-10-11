@@ -8,6 +8,7 @@ import {
   ymdToLocalNoon,
 } from '@/lib/healthSync.shared';
 import { weekStart } from '@/lib/healthMetrics.shared';
+import { nightlySleepHours, sleepQueryStart } from '@/lib/sleepNights';
 import type { HealthMetricKey, HealthMetricPoint } from '@/types/healthMetrics';
 import type { StepSample } from '@/types/stepsMetrics';
 
@@ -259,6 +260,9 @@ export async function syncPeriodStartNative(ymd: string): Promise<void> {
   await HC.insertRecords([{ recordType: 'MenstruationPeriod', time }]);
 }
 
+/** SleepStageType: 2 sleeping, 4 light, 5 deep, 6 REM (1 awake, 3 out of bed, 0 unknown). */
+const ASLEEP_STAGES = new Set([2, 4, 5, 6]);
+
 function timeRangeSinceWeekStart() {
   return { operator: 'after' as const, startTime: weekStart().toISOString() };
 }
@@ -279,7 +283,10 @@ export async function fetchHealthMetricsNative(): Promise<
       HC.readRecords('BloodPressure', opts),
       HC.readRecords('HeartRate', opts),
       HC.readRecords('RestingHeartRate', opts),
-      HC.readRecords('SleepSession', opts),
+      HC.readRecords('SleepSession', {
+        ...opts,
+        timeRangeFilter: { operator: 'after' as const, startTime: sleepQueryStart(weekStart()).toISOString() },
+      }),
       HC.readRecords('Nutrition', opts),
       HC.readRecords('Hydration', opts),
     ]);
@@ -323,14 +330,18 @@ export async function fetchHealthMetricsNative(): Promise<
       })
       .filter((p): p is HealthMetricPoint => p != null);
 
-    const sleepPoints: HealthMetricPoint[] = (sleep.records ?? []).map((r) => {
-      const start = new Date('startTime' in r ? r.startTime : new Date());
-      const end = new Date('endTime' in r ? r.endTime : start);
-      return {
-        date: dateToYmd(start),
-        value: Math.max(0, (end.getTime() - start.getTime()) / 3_600_000),
-      };
-    });
+    // A session includes awake time; its sleep stages, when an app writes them, are the real sleep.
+    const sleepPoints: HealthMetricPoint[] = nightlySleepHours(
+      (sleep.records ?? []).flatMap((r) => {
+        if (!('startTime' in r) || !('endTime' in r)) return [];
+        const session = { start: new Date(r.startTime).getTime(), end: new Date(r.endTime).getTime(), asleep: false };
+        const stages = ('stages' in r && Array.isArray(r.stages) ? r.stages : [])
+          .filter((stage) => ASLEEP_STAGES.has(stage.stage))
+          .map((stage) => ({ start: new Date(stage.startTime).getTime(), end: new Date(stage.endTime).getTime(), asleep: true }));
+        return [session, ...stages];
+      }),
+      dateToYmd(weekStart()),
+    );
 
     const nutritionPoints: HealthMetricPoint[] = (nutrition.records ?? []).flatMap((r) => {
       const energy = 'energy' in r ? r.energy : undefined;

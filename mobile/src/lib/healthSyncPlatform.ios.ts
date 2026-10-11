@@ -7,6 +7,7 @@ import {
   ymdToLocalNoon,
 } from '@/lib/healthSync.shared';
 import { weekStart } from '@/lib/healthMetrics.shared';
+import { nightlySleepHours, sleepQueryStart } from '@/lib/sleepNights';
 import type { HealthMetricKey, HealthMetricPoint } from '@/types/healthMetrics';
 import type { StepSample } from '@/types/stepsMetrics';
 
@@ -214,6 +215,10 @@ function pairBloodPressure(
   }));
 }
 
+/** HKCategoryValueSleepAnalysis: 0 in bed, 2 awake; 1, 3, 4, 5 are asleep (unspecified, core, deep, REM). */
+const SLEEP_IN_BED = 0;
+const SLEEP_AWAKE = 2;
+
 export async function fetchHealthMetricsNative(): Promise<
   Partial<Record<HealthMetricKey, HealthMetricPoint[]>>
 > {
@@ -262,10 +267,11 @@ export async function fetchHealthMetricsNative(): Promise<
         unit: 'count/min',
         filter,
       }),
+      // Every piece of the window: one Watch night alone is dozens of stage samples.
       HealthKit.queryCategorySamples('HKCategoryTypeIdentifierSleepAnalysis', {
-        limit: 400,
+        limit: -1,
         ascending: false,
-        filter,
+        filter: { date: { startDate: sleepQueryStart(start) } },
       }),
       HealthKit.queryQuantitySamples('HKQuantityTypeIdentifierDietaryEnergyConsumed', {
         limit: 200,
@@ -281,14 +287,16 @@ export async function fetchHealthMetricsNative(): Promise<
       }),
     ]);
 
-    const sleepPoints: HealthMetricPoint[] = [];
-    const sleepByDay = new Map<string, number>();
-    for (const sample of sleep) {
-      const day = dateToYmd(sample.startDate);
-      const hours = (sample.endDate.getTime() - sample.startDate.getTime()) / 3_600_000;
-      sleepByDay.set(day, (sleepByDay.get(day) ?? 0) + hours);
-    }
-    sleepByDay.forEach((value, date) => sleepPoints.push({ date, value }));
+    const sleepPoints: HealthMetricPoint[] = nightlySleepHours(
+      sleep
+        .filter((sample) => sample.value !== SLEEP_AWAKE)
+        .map((sample) => ({
+          start: sample.startDate.getTime(),
+          end: sample.endDate.getTime(),
+          asleep: sample.value !== SLEEP_IN_BED,
+        })),
+      dateToYmd(start),
+    );
 
     const hrSamples = restingHeartRate.length ? restingHeartRate : heartRate;
 

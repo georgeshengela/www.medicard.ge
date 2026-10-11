@@ -61,12 +61,9 @@ function mergeDaily(existing, incoming) {
     bloodPressureSystolic: pick(incoming.bloodPressureSystolic, existing?.bloodPressureSystolic),
     bloodPressureDiastolic: pick(incoming.bloodPressureDiastolic, existing?.bloodPressureDiastolic),
     heartRate: pick(incoming.heartRate, existing?.heartRate),
-    sleepHours:
-      incoming.sleepHours != null
-        ? existing?.sleepHours != null
-          ? Math.max(incoming.sleepHours, existing.sleepHours)
-          : incoming.sleepHours
-        : (existing?.sleepHours ?? null),
+    // The night's total as last read (or told to Medi). Keeping the larger value froze the old
+    // over-counted nights (in-bed + every stage summed) even after the phone sent the right one.
+    sleepHours: pick(incoming.sleepHours, existing?.sleepHours),
     nutritionKcal:
       incoming.nutritionKcal != null
         ? existing?.nutritionKcal != null
