@@ -7,16 +7,21 @@ import { invalidateAdminAnalyticsPrefix } from './adminAnalytics.js';
 import { ADMIN_SOCKET_ROOM, authorizeSocketHandshake, userSocketRoom } from './socketAuth.js';
 import { registerQuestRealtimeEmitter } from './questRealtime.js';
 import { getOnlineUsers, onlineSignature } from './onlineUsers.js';
+import { createFeedPoller } from './adminFeed.js';
 
 const ROOM = ADMIN_SOCKET_ROOM;
 const LIVE_MS = 90_000;
 const DEBOUNCE_MS = 2000;
 /** People leave without an event (the heartbeat just stops): re-check while an admin is watching. */
 const ONLINE_TICK_MS = 10_000;
+/** The bell's live feed (adminFeed.js): new app events reach a watching admin within this many ms. */
+const FEED_TICK_MS = 4000;
 
 let io = null;
 let flushTimer = null;
 let onlineTicker = null;
+let feedTicker = null;
+const feedPoller = createFeedPoller({ emit: (events) => io?.to(ROOM).emit('ops:feed', { events }) });
 let lastOnlineSignature = null;
 const seen = new Map();
 
@@ -65,6 +70,14 @@ export function attachAdminRealtime(httpServer) {
   if (!onlineTicker) {
     onlineTicker = setInterval(() => { void emitOnlineUsers({ always: true }); }, ONLINE_TICK_MS);
     onlineTicker.unref?.();
+  }
+  if (!feedTicker) {
+    // Only while an admin is connected; with nobody watching the cursor resets (the sheet loads history itself).
+    feedTicker = setInterval(() => {
+      if (!adminsWatching()) { feedPoller.reset(); return; }
+      void feedPoller.poll().catch(() => undefined);
+    }, FEED_TICK_MS);
+    feedTicker.unref?.();
   }
 
   registerQuestRealtimeEmitter((userId, payload) => {

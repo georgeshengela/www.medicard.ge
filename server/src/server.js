@@ -37,6 +37,7 @@ import { adminReferralRouter, referralRouter } from './routes/referral.routes.js
 import { adminTrainerRouter, trainerRouter } from './routes/trainer.routes.js';
 import { adminPetsRouter } from './routes/adminPets.routes.js';
 import { adminUsageRouter } from './routes/adminUsage.routes.js';
+import { adminFeedRouter } from './routes/adminFeed.routes.js';
 import { identityRouter } from './routes/identity.routes.js';
 import { startTrainerReminders } from './lib/trainerPush.js';
 import { startReviewDemoSlots } from './lib/coachReviewDemo.js';
@@ -369,6 +370,7 @@ app.use('/api/trainer', requireFeature('coach'), trainerRouter);
 app.use('/api/admin/trainers', adminTrainerRouter);
 app.use('/api/admin/pets', adminPetsRouter);
 app.use('/api/admin/usage', adminUsageRouter);
+app.use('/api/admin/feed', adminFeedRouter);
 app.use('/api/identity', identityRouter);
 app.use('/api/admin/referrals', adminReferralRouter);
 app.use('/api/funnel', funnelRouter);

@@ -814,6 +814,10 @@ function connectAdminRealtime() {
     }
     if (Number.isFinite(next)) lastLiveNewUsers = next;
   });
+  // The bell's live feed (server adminFeed.js): v4/modules/liveFeed.js listens for this window event.
+  adminSocket.on('ops:feed', (payload) => {
+    window.dispatchEvent(new CustomEvent('admin:feed', { detail: payload }));
+  });
   adminSocket.on('ops:online', (snap) => {
     window.__opsOnline = snap;
     if (typeof window.patchOnlineUsers === 'function') window.patchOnlineUsers(snap);

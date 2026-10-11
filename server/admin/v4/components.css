@@ -2545,3 +2545,62 @@ html body .workspace .v3-brain { grid-template-columns: minmax(0, 1fr); min-widt
   html body .workspace .v3-brain .v3-brain-kpis:has(> :nth-child(7):last-child) { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
   .brain-hero { padding: 16px; }
 }
+
+/* Activity sheet (bell, ⇧A): „აპში“ live module feed (v4/modules/liveFeed.js), „ადმინში“ audit, „სისტემა“ health.
+   Each row carries its module's colour (app moduleBrand ink) on the icon, the same colours as the usage pages. */
+.s-act-tabs { display: flex; width: 100%; margin: 6px 0 4px; }
+.s-act-tabs button { flex: 1; justify-content: center; }
+.s-act-tabs button i:empty { display: none; }
+.s-act-pane { padding-top: 6px; }
+.s-icon-btn[data-count]::after {
+  content: attr(data-count); position: absolute; top: 2px; right: 0;
+  min-width: 16px; height: 16px; padding: 0 4px; box-sizing: border-box; border-radius: 99px;
+  display: grid; place-items: center;
+  background: var(--s-bad); color: #fff; font: 700 10px/16px var(--s-font); font-variant-numeric: tabular-nums;
+  box-shadow: 0 0 0 2px var(--s-bg);
+}
+.s-live-top { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin: 4px 0 10px; }
+.s-live-status { display: inline-flex; align-items: center; gap: 7px; font-size: 12px; color: var(--s-muted); }
+.s-live-status i { width: 7px; height: 7px; border-radius: 99px; background: var(--s-faint); }
+.s-live-status.is-on i { background: var(--s-ok); box-shadow: 0 0 0 0 color-mix(in srgb, var(--s-ok) 55%, transparent); animation: s-live-pulse 2.4s ease-out infinite; }
+@keyframes s-live-pulse { 0% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--s-ok) 55%, transparent); } 70%, 100% { box-shadow: 0 0 0 7px transparent; } }
+.s-live-notify { display: inline-flex; align-items: center; gap: 8px; font-size: 12px; color: var(--s-text-2); cursor: pointer; }
+.s-live-chips { display: flex; gap: 6px; overflow-x: auto; padding: 2px 0 8px; margin: 0 -2px; scrollbar-width: none; }
+.s-live-chips::-webkit-scrollbar { display: none; }
+.s-live-chip { flex: none; display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px; border: 1px solid var(--s-line); border-radius: 99px; background: var(--s-surface); color: var(--s-text-2); font: 500 12px var(--s-font); cursor: pointer; }
+.s-live-chip i { font-style: normal; font-size: 11px; color: var(--s-muted); font-variant-numeric: tabular-nums; }
+.s-live-chip[aria-selected="true"] { border-color: var(--s-ink); background: var(--s-ink); color: var(--s-surface); }
+.s-live-chip[aria-selected="true"] i { color: inherit; opacity: .75; }
+.s-live-chip.is-attn:not([aria-selected="true"]) { border-color: color-mix(in srgb, var(--s-warn) 45%, var(--s-line)); color: var(--s-warn); }
+.s-live-chip:focus-visible { outline: 2px solid var(--s-accent); outline-offset: 1px; }
+.s-live-list { list-style: none; margin: 0; padding: 0; }
+.s-live { --fm: var(--s-muted); border-radius: var(--s-radius); }
+.s-live > a, .s-live > div { display: grid; grid-template-columns: 30px minmax(0, 1fr) auto; align-items: start; gap: 10px; padding: 8px 8px; margin: 0 -8px; border-radius: inherit; color: inherit; text-decoration: none; }
+.s-live > a:hover { background: var(--s-hover); }
+.s-live > a:focus-visible { outline: 2px solid var(--s-accent); outline-offset: -2px; }
+.s-live-ico { display: grid; place-items: center; width: 30px; height: 30px; border-radius: 10px; background: color-mix(in srgb, var(--fm) 12%, var(--s-surface)); color: var(--fm); }
+.s-live-ico .icon { width: 15px; height: 15px; }
+.s-live-text { min-width: 0; }
+.s-live-text p { margin: 0; font-size: 13px; line-height: 1.45; color: var(--s-text); overflow-wrap: anywhere; }
+.s-live-text p b { font-weight: 650; color: var(--s-ink); }
+.s-live-text p .s-badge { margin-left: 6px; vertical-align: 1px; height: 18px; font-size: 11px; }
+.s-live-text small { display: block; margin-top: 1px; overflow: hidden; font-size: 11.5px; color: var(--s-muted); white-space: nowrap; text-overflow: ellipsis; }
+.s-live time { padding-top: 2px; font-size: 11.5px; color: var(--s-faint); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.s-live-x { display: inline-block; margin-left: 6px; padding: 0 6px; border-radius: 99px; background: var(--s-sunken); font-size: 11px; font-weight: 650; color: var(--s-text-2); font-variant-numeric: tabular-nums; }
+.s-live.is-new time { color: var(--s-ink); font-weight: 600; }
+.s-live.is-new .s-live-ico { box-shadow: 0 0 0 2px var(--s-surface), 0 0 0 3.5px color-mix(in srgb, var(--fm) 55%, transparent); }
+.s-live.is-attn .s-live-text p b { color: var(--s-ink); }
+.s-live.is-arrive { animation: s-live-arrive 1.6s var(--s-ease) both; }
+@keyframes s-live-arrive { 0% { background: color-mix(in srgb, var(--fm) 16%, transparent); transform: translateY(-4px); opacity: 0; } 20% { opacity: 1; transform: none; } 100% { background: transparent; } }
+@media (prefers-reduced-motion: reduce) { .s-live.is-arrive, .s-live-status.is-on i { animation: none; } }
+.s-live-more { display: flex; justify-content: center; padding: 12px 0 4px; }
+.s-live.is-m-account { --fm: #0D9488; } .s-live.is-m-medi { --fm: #0D9488; } .s-live.is-m-health { --fm: #0D9488; } .s-live.is-m-run { --fm: #0D9488; }
+.s-live.is-m-pets { --fm: #0369A1; } .s-live.is-m-pills { --fm: #1D4ED8; } .s-live.is-m-cycle { --fm: #C92A55; } .s-live.is-m-food { --fm: #047857; }
+.s-live.is-m-lab { --fm: #4F46E5; } .s-live.is-m-quest { --fm: #6D28D9; } .s-live.is-m-coach { --fm: #475569; }
+.s-live.is-m-community { --fm: #BE185D; } .s-live.is-m-support { --fm: #B45309; }
+html[data-theme="dark"] .s-live.is-m-account, html[data-theme="dark"] .s-live.is-m-medi, html[data-theme="dark"] .s-live.is-m-health, html[data-theme="dark"] .s-live.is-m-run { --fm: #2DD4BF; }
+html[data-theme="dark"] .s-live.is-m-pets { --fm: #7DD3FC; } html[data-theme="dark"] .s-live.is-m-pills { --fm: #93C5FD; }
+html[data-theme="dark"] .s-live.is-m-cycle { --fm: #FF8FA8; } html[data-theme="dark"] .s-live.is-m-food { --fm: #34D399; }
+html[data-theme="dark"] .s-live.is-m-lab { --fm: #A5B4FC; } html[data-theme="dark"] .s-live.is-m-quest { --fm: #C4B5FD; }
+html[data-theme="dark"] .s-live.is-m-coach { --fm: #CBD5E1; } html[data-theme="dark"] .s-live.is-m-community { --fm: #F9A8D4; }
+html[data-theme="dark"] .s-live.is-m-support { --fm: #FCD34D; }

@@ -4,7 +4,7 @@
  * touching module code:
  *   ⌘K / Ctrl+K / "/" command palette (pages, sub-pages, actions, live user search, recents)
  *   keyboard shortcuts (g + letter navigation, ? cheat sheet, [ compact sidebar, ⇧D theme, ⇧A activity, ⇧R reload)
- *   activity + system health sheet (audit feed, unread dot)
+ *   activity sheet: live app feed (modules/liveFeed.js, unread count), admin audit (unread dot), system health
  *   breadcrumbs, per-page header icon, scroll shadow, top progress bar
  *   exit animations for dialogs, confirms, drawers, palette and toasts; dismissible toasts
  *   table density preference
@@ -268,7 +268,7 @@
     status.querySelector('[data-s="palette"]').addEventListener('click', () => openPalette());
     status.querySelector('[data-s="activity"]').addEventListener('click', () => openActivity());
     status.querySelector('[data-s="guide"]').addEventListener('click', () => openGuide());
-    $('live-pill')?.addEventListener('click', () => openActivity());
+    $('live-pill')?.addEventListener('click', () => openActivity('system'));
     if ($('live-pill')) { $('live-pill').style.cursor = 'pointer'; $('live-pill').title = 'სისტემის მდგომარეობა'; }
 
     const side = doc.querySelector('.admin-nav-search');
@@ -695,50 +695,80 @@
     return typeof global.fmtRelative === 'function' ? global.fmtRelative(iso) : new Date(iso).toLocaleTimeString('ka-GE', { hour: '2-digit', minute: '2-digit' });
   }
 
-  async function openActivity() {
+  /** Activity sheet (bell, ⇧A): „აპში“ — the live module feed (v4/modules/liveFeed.js), „ადმინში“ — the audit, „სისტემა“ — health. */
+  async function openActivity(which) {
     if (!loggedIn()) return;
+    const pane = ['app', 'admin', 'system'].includes(which) ? which : 'app';
+    const tabs = [['app', 'აპში'], ['admin', 'ადმინში'], ['system', 'სისტემა']];
     const layer = openSheet({
       key: 'activity',
       title: 'აქტივობა',
-      sub: 'სისტემის მდგომარეობა და ბოლო ადმინისტრაციული ცვლილებები.',
-      body: `<div class="v3-skel" aria-hidden="true">${'<i></i>'.repeat(6)}</div>`,
+      sub: 'რა ხდება აპში ახლა, ადმინის ცვლილებები და სისტემის მდგომარეობა.',
+      body: `<div class="s-segment s-act-tabs" role="tablist" aria-label="აქტივობა">${tabs.map(([k, label]) => `<button type="button" role="tab" data-act-tab="${k}" aria-selected="${k === pane}">${label} <i></i></button>`).join('')}</div>
+        ${tabs.map(([k]) => `<div class="s-act-pane" data-act-pane="${k}" ${k === pane ? '' : 'hidden'}><div class="v3-skel" aria-hidden="true">${'<i></i>'.repeat(6)}</div></div>`).join('')}`,
       foot: '<a class="btn" href="#/audit" data-close-sheet>სრული აუდიტი</a><a class="btn" href="#/quality" data-close-sheet>ხარისხი</a>',
     });
     if (!layer) return;
     layer.querySelectorAll('[data-close-sheet]').forEach((a) => a.addEventListener('click', () => closeSheet()));
-    const seenAt = Number(read(SEEN_KEY, 0)) || 0;
+    const paneEl = (k) => layer.querySelector(`[data-act-pane="${k}"]`);
+    const show = (k) => {
+      layer.querySelectorAll('[data-act-tab]').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.actTab === k)));
+      layer.querySelectorAll('[data-act-pane]').forEach((p) => { p.hidden = p.dataset.actPane !== k; });
+      if (k === 'app') global.AdminLiveFeed?.markSeen();
+      if (k === 'admin') {
+        doc.querySelector('.s-icon-btn[data-s="activity"]')?.removeAttribute('data-dot');
+        const tab = layer.querySelector('[data-act-tab="admin"] i');
+        if (tab) tab.textContent = '';
+      }
+    };
+    layer.querySelectorAll('[data-act-tab]').forEach((b) => b.addEventListener('click', () => show(b.dataset.actTab)));
+    // The sheet closes (Esc, scrim, a link): stop painting the live feed into it.
+    new MutationObserver((_, obs) => { if (!layer.isConnected) { global.AdminLiveFeed?.unmount(); obs.disconnect(); } }).observe(doc.body, { childList: true });
+
+    if (global.AdminLiveFeed) void global.AdminLiveFeed.mount(paneEl('app'), { onNavigate: () => closeSheet() });
+    else paneEl('app').innerHTML = '<p class="muted">აპის აქტივობა ვერ ჩაიტვირთა.</p>';
+
+    const auditSeenAt = Number(read(SEEN_KEY, 0)) || 0;
     const [health, audit] = await Promise.allSettled([global.api('/system/health'), global.api('/audit?limit=30')]);
     if (sheet?.el !== layer) return;
     const h = health.status === 'fulfilled' ? health.value : null;
     const entries = audit.status === 'fulfilled' ? (audit.value.entries || []) : [];
     const cell = (label, value, tone) => `<div class="s-health-cell"><span><i class="s-status-dot ${tone ? `is-${tone}` : ''}"></i>${esc(label)}</span><strong>${value}</strong></div>`;
-    const healthHtml = h ? `<div class="s-health-grid">
+    const attention = h?.attention || [];
+    paneEl('system').innerHTML = h ? `<div class="s-health-grid">
         ${cell('API', h.api?.ok ? 'მუშაობს' : 'შეფერხება', h.api?.ok ? '' : 'bad')}
         ${cell('მონაცემთა ბაზა', h.database?.ok ? `${esc(h.database.latencyMs)} ms` : 'შეცდომა', h.database?.ok ? (h.database.latencyMs > 250 ? 'warn' : '') : 'bad')}
         ${cell('Medi · 24სთ', `${esc(h.ai?.last24h ?? 0)} <small class="s-health-sub">/ ${esc(h.ai?.errors24h ?? 0)} შეცდომა</small>`, h.ai?.errors24h ? 'warn' : '')}
         ${cell('Push · 24სთ', `${esc(h.push?.sent24h ?? 0)} <small class="s-health-sub">/ ${esc(h.push?.failed24h ?? 0)} ვერ მივიდა</small>`, h.push?.failed24h ? 'warn' : '')}
         ${cell('აპის ვერსია', esc(h.appVersion || '—'))}
         ${cell('რეჟიმი', h.settings?.maintenanceMode ? 'ტექ. სამუშაოები' : 'ჩვეულებრივი', h.settings?.maintenanceMode ? 'warn' : '')}
-      </div>${(h.attention || []).map((a) => `<div class="s-attn">${ico('alert')}<span>${esc(a.message || a.title || a)}</span></div>`).join('')}`
+      </div>${attention.map((a) => `<div class="s-attn">${ico('alert')}<span>${esc(a.message || a.title || a)}</span></div>`).join('')}`
       : '<p class="muted">სისტემის მდგომარეობა ვერ ჩაიტვირთა.</p>';
+    const sysTab = layer.querySelector('[data-act-tab="system"] i');
+    if (sysTab) sysTab.textContent = attention.length || (h && (!h.api?.ok || !h.database?.ok)) ? '!' : '';
     let feed = '';
     let lastDay = '';
+    let fresh = 0;
     entries.forEach((entry) => {
       const day = dayLabel(entry.createdAt);
       if (day !== lastDay) { feed += `${lastDay ? '</ul>' : ''}<div class="s-feed-day">${esc(day)}</div><ul class="s-feed">`; lastDay = day; }
       const act = humanAction(entry);
-      const fresh = new Date(entry.createdAt).getTime() > seenAt;
-      feed += `<li class="${fresh ? 'is-new' : ''} ${act.danger ? 'is-danger' : ''}"><span class="s-feed-ico">${ico(act.icon)}</span>
+      const isNew = new Date(entry.createdAt).getTime() > auditSeenAt;
+      if (isNew) fresh += 1;
+      feed += `<li class="${isNew ? 'is-new' : ''} ${act.danger ? 'is-danger' : ''}"><span class="s-feed-ico">${ico(act.icon)}</span>
         <div><b>${esc(act.text)}</b><small>${esc(entry.adminEmail || 'სისტემა')} · ${esc(timeOf(entry.createdAt))}</small></div></li>`;
     });
     if (feed) feed += '</ul>';
-    layer.querySelector('.s-sheet-body').innerHTML = `${healthHtml}${feed || '<div class="v3-empty"><strong>ჯერ აქტივობა არ არის</strong></div>'}`;
+    paneEl('admin').innerHTML = feed || '<div class="v3-empty"><strong>ადმინში ცვლილება ჯერ არ არის</strong></div>';
+    const adminTab = layer.querySelector('[data-act-tab="admin"] i');
+    if (adminTab && fresh && pane !== 'admin') adminTab.textContent = String(fresh);
     if (entries[0]) write(SEEN_KEY, new Date(entries[0].createdAt).getTime());
-    doc.querySelector('.s-icon-btn[data-s="activity"]')?.removeAttribute('data-dot');
+    if (pane === 'admin') doc.querySelector('.s-icon-btn[data-s="activity"]')?.removeAttribute('data-dot');
   }
 
   async function checkUnread() {
     if (!loggedIn() || doc.hidden) return;
+    void global.AdminLiveFeed?.refreshUnread();
     try {
       const data = await global.api('/audit?limit=1');
       const latest = data.entries?.[0];
