@@ -137,3 +137,9 @@ illustrated avatar.
 Rules: never show a trainer data outside the ACTIVE link + scope (`requireClientAccess`); photos and certificates
 only through `servePrivateUpload` with an owner/scope check; no payments in the app; lock-screen push text never
 contains calories, weight or other health values; permission sheets only from a button.
+
+**App Review demo trainer (2026-10-11):** the review notes promise open sessions with the demo trainer (code
+QSPW7W). `lib/coachReviewDemo.js` (hourly, lease `coach-review-demo`) keeps ≥3 bookable open slots ahead by moving
+that trainer's expired, never-booked OPEN slots to 10:00 Tbilisi on the coming days (adds rows only when there are
+too few). Guarded to the VERIFIED profile with that code on a team @medicard.ge account; `APP_REVIEW_TRAINER_CODE`
+overrides the code, `off` disables it. Tests: `coachReviewDemo.test.js`.

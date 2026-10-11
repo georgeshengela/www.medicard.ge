@@ -82,8 +82,13 @@ Distribution → 1.16.1 → **Add for Review** → **Submit to App Review**.
 ## Reference (already done — nothing to do)
 
 - demo.woman@medicard.ge = VERIFIED trainer „ნინო მაისურაძე · დემო", code QSPW7W, gym Aspria Vake,
-  3 open sessions. Created 2026-09-28 by the owner's request, audited.
+  open sessions. Created 2026-09-28 by the owner's request, audited. The seeded slots had all expired
+  by 2 Oct, so since 2026-10-11 an hourly server pass (`server/src/lib/coachReviewDemo.js`, lease
+  `coach-review-demo`) keeps at least 3 bookable open slots ahead (10:00 Tbilisi, next days) by moving
+  this trainer's expired, never-booked open slots forward. It touches only this profile (code QSPW7W,
+  team @medicard.ge account); `APP_REVIEW_TRAINER_CODE=off` on Render stops it.
+- Before submitting: the `coach` switch in admin → module switches must be ON — while it is paused the
+  app shows MEDICOACH as paused and the server refuses connecting/booking (503).
 - App Review phone/OTP stay on Render (APP_REVIEW_PHONE / APP_REVIEW_OTP).
-- Optional: demo.woman is also a client of another trainer; ending that link in its „ჩემი ტრენერი"
-  keeps the review simpler.
+- demo.woman has no trainer of its own any more (checked 2026-10-11).
 - Passwords live only in App Store Connect — never in this repository.
