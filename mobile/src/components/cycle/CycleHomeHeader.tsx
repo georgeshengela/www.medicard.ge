@@ -1,87 +1,33 @@
-import { CyclePressable as Pressable } from '@/components/cycle/CyclePressable';
-import { ModuleWordmark } from '@/components/brand/ModuleWordmark';
 import React from 'react';
-import { Text, View } from 'react-native';
-import * as Haptics from 'expo-haptics';
-import { ChevronLeft, Settings2 } from 'lucide-react-native';
+import { View } from 'react-native';
+import { Settings2 } from 'lucide-react-native';
+import { ModuleHeader, ModuleHeaderButton } from '@/components/brand/ModuleHeader';
 import { ka } from '@/i18n/ka';
-import { useCycleColors } from '@/theme/cycle';
 
 type Props = {
   monthLabel: string;
-  subtitle: string;
+  /** Kept for callers; the status lives in the hero, not twice. */
+  subtitle?: string;
   topInset: number;
   onBack: () => void;
   onSettings: () => void;
 };
 
-function IconBtn({
-  onPress,
-  children,
-  label,
-}: {
-  onPress: () => void;
-  children: React.ReactNode;
-  label: string;
-}) {
-  const c = useCycleColors();
-  return (
-    <Pressable
-      onPress={() => {
-        Haptics.selectionAsync().catch(() => undefined);
-        onPress();
-      }}
-      hitSlop={8}
-      accessibilityLabel={label}
-      accessibilityRole="button"
-      style={{
-        width: 44,
-        height: 44,
-        flexShrink: 0,
-        borderRadius: 22,
-        alignItems: 'center',
-        justifyContent: 'center',
-        backgroundColor: c.card,
-      }}
-    >
-      {children}
-    </Pressable>
-  );
-}
-
 /**
- * Hub-style header: back, the module name with one quiet context line, settings.
- * The month lives here (the strip and calendar below follow it); status lives in the hero, not twice.
+ * MEDICYCLE's page header = the standard MEDI module header (owner 2026-10-12: the old round-button row fell
+ * out of the family): back · wordmark with the month as its line · settings. It scrolls away with the page;
+ * only the week strip below stays pinned (owner 2026-09-28).
  */
-export function CycleHomeHeader({
-  monthLabel,
-  subtitle,
-  topInset,
-  onBack,
-  onSettings,
-}: Props) {
-  const c = useCycleColors();
-
+export function CycleHomeHeader({ monthLabel, topInset, onBack, onSettings }: Props) {
   return (
-    <View style={{ paddingTop: topInset + 6, paddingHorizontal: 20, paddingBottom: 14 }}>
-      <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
-        <IconBtn onPress={onBack} label={ka.common.back}>
-          <ChevronLeft size={21} color={c.ink} strokeWidth={2.1} />
-        </IconBtn>
-        <View style={{ flex: 1, minWidth: 0 }}>
-          <ModuleWordmark module="cycle" color={c.ink} />
-          <Text
-            numberOfLines={1}
-            accessibilityLabel={subtitle ? `${monthLabel}. ${subtitle}` : monthLabel}
-            style={{ color: c.mutedSoft, fontFamily: 'NotoSansGeorgian_500Medium', fontSize: 12, lineHeight: 17 }}
-          >
-            {monthLabel}
-          </Text>
-        </View>
-        <IconBtn onPress={onSettings} label={ka.cycle.settings}>
-          <Settings2 size={19} color={c.ink} strokeWidth={2} />
-        </IconBtn>
-      </View>
+    <View style={{ paddingTop: topInset + 12, paddingHorizontal: 20, paddingBottom: 14 }}>
+      <ModuleHeader
+        module="cycle"
+        subtitle={monthLabel}
+        onBack={onBack}
+        backLabel={ka.common.back}
+        right={<ModuleHeaderButton label={ka.cycle.settings} icon={Settings2} onPress={onSettings} />}
+      />
     </View>
   );
 }
