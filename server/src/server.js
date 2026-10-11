@@ -35,6 +35,7 @@ import { startPushCampaignWorker } from './lib/pushCampaigns.js';
 import { objectStorageConfigured, objectStoragePublicHint } from './lib/objectStorage.js';
 import { adminReferralRouter, referralRouter } from './routes/referral.routes.js';
 import { adminTrainerRouter, trainerRouter } from './routes/trainer.routes.js';
+import { adminPetsRouter } from './routes/adminPets.routes.js';
 import { identityRouter } from './routes/identity.routes.js';
 import { startTrainerReminders } from './lib/trainerPush.js';
 import { adminFunnelRouter, funnelRouter } from './routes/funnel.routes.js';
@@ -363,6 +364,7 @@ app.use('/api/rewards', requireFeature('rewardsStore', { match: (req) => /\/rede
 app.use('/api/referrals', requireFeature('invites'), referralRouter);
 app.use('/api/trainer', requireFeature('coach'), trainerRouter);
 app.use('/api/admin/trainers', adminTrainerRouter);
+app.use('/api/admin/pets', adminPetsRouter);
 app.use('/api/identity', identityRouter);
 app.use('/api/admin/referrals', adminReferralRouter);
 app.use('/api/funnel', funnelRouter);

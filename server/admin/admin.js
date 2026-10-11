@@ -5,7 +5,7 @@ const EMAIL_KEY = 'medicard.admin.email';
 const TAB_KEY = 'medicard.admin.tab';
 const USERS_PAGE_SIZE = 15;
 const PAGE_SIZE = 25;
-const ADMIN_TABS = ['overview', 'orders', 'users', 'push', 'sms', 'pharmacy', 'rewards', 'ai', 'health', 'audit', 'quality', 'testing', 'nutrition', 'community', 'medipulsi', 'poster-studio', 'settings', 'features', 'quests', 'funnel', 'director', 'email', 'support', 'trainers', 'capacity', 'news', 'errors', 'social', 'campaigns', 'medirun-boxes'];
+const ADMIN_TABS = ['overview', 'orders', 'users', 'push', 'sms', 'pharmacy', 'rewards', 'ai', 'health', 'audit', 'quality', 'testing', 'nutrition', 'community', 'medipulsi', 'poster-studio', 'settings', 'features', 'quests', 'funnel', 'director', 'email', 'support', 'trainers', 'capacity', 'news', 'errors', 'social', 'campaigns', 'medirun-boxes', 'pets'];
 
 const state = {
   token: localStorage.getItem(TOKEN_KEY) || '',
@@ -658,6 +658,7 @@ async function switchTab(tab, opts = {}) {
     audit: ['Production', 'აუდიტი', 'ვინ რა შეცვალა ადმინში და როდის.', 'audit.page'],
     quality: ['Production', 'ხარისხი', 'აპის ვერსიები, ტელემეტრია და მონაცემების მთლიანობა.', 'quality.page'],
     nutrition: ['Health', 'კვების დღიური', 'დღიურის გამოყენება, AI კალორიის შეფასება და კერძების კატალოგი.', ''],
+    pets: ['Health', 'MEDIVET', 'ვინ იყენებს ცხოველების მოდულს და როგორ.', ''],
     community: ['Engagement', 'ქალების სივრცე', 'მოდერაცია, საჩივრები და წევრების უსაფრთხოება.', ''],
     testing: ['Production', 'ტესტირება', 'ტესტირების სესიები, ეტაპები, შედეგები და ხარვეზები.', 'quality.page'],
     'poster-studio': ['MEDICARD Studio', 'პოსტერების სტუდია', 'შეცვალე წარწერები და მოამზადე პოსტები სოციალური ქსელებისთვის.', ''],
@@ -722,6 +723,7 @@ async function switchTab(tab, opts = {}) {
     if (tab === 'email' && typeof renderEmailAdmin === 'function') await renderEmailAdmin();
     if (tab === 'support' && typeof renderSupportAdmin === 'function') await renderSupportAdmin();
     if (tab === 'trainers' && typeof renderTrainersAdmin === 'function') await renderTrainersAdmin();
+    if (tab === 'pets' && typeof renderPetsAdmin === 'function') await renderPetsAdmin();
   }
   startAdminLive();
 }

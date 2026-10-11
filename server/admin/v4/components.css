@@ -2400,3 +2400,67 @@ html[data-theme="dark"] .s-users-ava.is-f { color: #FDA4AF; }
 @keyframes s-ava-out { to { opacity: 0; } }
 @keyframes s-ava-pop { from { opacity: 0; transform: scale(.85); } to { opacity: 1; transform: none; } }
 @media (prefers-reduced-motion: reduce) { .s-ava-lightbox, .s-ava-lightbox img { animation: none; } }
+
+/* MEDIVET (#/pets): the pet wall is the page's one bold element, in the MEDIVET sky (app moduleBrand `vet`). */
+#tab-pets { --pv: #0369A1; --pv-soft: color-mix(in srgb, #0369A1 10%, var(--s-surface)); }
+html[data-theme="dark"] #tab-pets { --pv: #7DD3FC; --pv-soft: color-mix(in srgb, #7DD3FC 13%, var(--s-surface)); }
+#tab-pets :is(.s-pets-ladder .s-funnel-bar, .s-meter) > i { background: var(--pv); }
+@media (min-width: 761px) { #tab-pets .s-pets-ladder .s-funnel-step { grid-template-rows: auto 120px auto; } }
+.s-pets-insights { list-style: none; display: grid; gap: 10px; margin: 0; }
+.s-pets-insights li { display: flex; align-items: flex-start; gap: 10px; font-size: 13.5px; line-height: 1.55; color: var(--s-text); }
+.s-pets-insights li > .icon { flex: none; width: 16px; height: 16px; margin-top: 3px; color: var(--s-muted); }
+.s-pets-insights li.is-warn > .icon { color: var(--s-warn); }
+.s-pets-insights li.is-ok > .icon { color: var(--s-ok); }
+.s-pets-insights li.is-muted { color: var(--s-muted); font-size: 12.5px; }
+.s-pets-insights p { margin: 0; max-width: 96ch; }
+.s-pets-insights b { font-weight: 650; color: var(--s-ink); }
+
+.s-pets-wallcard .s-card-head { align-items: flex-end; }
+.s-pet-tools { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 14px; padding: 0 18px 14px; }
+.s-pet-tools .s-segment { max-width: 100%; overflow-x: auto; }
+.s-pet-legend { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 4px; width: min(440px, 100%); }
+.s-pet-legend span { display: grid; gap: 5px; min-width: 0; overflow: hidden; font-size: 11px; color: var(--s-muted); white-space: nowrap; text-overflow: ellipsis; }
+.s-pet-legend span::before { content: ""; height: 5px; border-radius: 99px; background: var(--pv); }
+.s-pet-wall { display: grid; grid-template-columns: repeat(auto-fill, minmax(272px, 1fr)); gap: 12px; padding: 0 18px 18px; }
+.s-pet { display: grid; gap: 11px; align-content: start; min-width: 0; padding: 14px 14px 12px; border: 1px solid var(--s-line); border-radius: var(--s-radius); background: var(--s-surface); }
+.s-pet.is-archived { background: var(--s-raised); }
+.s-pet.is-archived :is(.s-pet-glyph, .s-pet-id, .s-pet-track) { opacity: .5; }
+.s-pet-head { display: flex; align-items: center; gap: 11px; min-width: 0; }
+.s-pet-glyph { flex: none; display: grid; place-items: center; width: 42px; height: 42px; border-radius: 13px; background: var(--pv-soft); color: var(--pv); }
+.s-pet-glyph .icon { width: 24px; height: 24px; }
+.s-pet-id { display: grid; gap: 2px; flex: 1; min-width: 0; }
+.s-pet-id b { overflow: hidden; font-size: 15px; font-weight: 650; color: var(--s-ink); white-space: nowrap; text-overflow: ellipsis; letter-spacing: -.005em; }
+.s-pet-id small { overflow: hidden; font-size: 12.5px; color: var(--s-muted); white-space: nowrap; text-overflow: ellipsis; }
+.s-pet-head .s-badge { flex: none; }
+.s-pet-track { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 4px; }
+.s-pet-track i { position: relative; height: 7px; overflow: hidden; border-radius: 99px; background: var(--s-sunken); }
+.s-pet-track i::after { content: ""; position: absolute; inset: 0 auto 0 0; width: var(--fill, 0%); border-radius: inherit; background: var(--pv); }
+.s-pet-use { margin: -3px 0 0; overflow: hidden; font-size: 12.5px; color: var(--s-text-2); white-space: nowrap; text-overflow: ellipsis; font-variant-numeric: tabular-nums; }
+.s-pet-use.is-idle { color: var(--s-faint); }
+.s-pet-owner { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-width: 0; padding-top: 10px; border-top: 1px solid var(--s-line-soft); }
+.s-pet-person { display: flex; align-items: center; gap: 8px; min-width: 0; color: inherit; text-decoration: none; border-radius: 8px; }
+.s-pet-person:hover b { text-decoration: underline; text-underline-offset: 2px; }
+.s-pet-person:focus-visible { outline: 2px solid var(--s-accent); outline-offset: 2px; }
+.s-pet-ava { flex: none; display: grid; place-items: center; width: 28px; height: 28px; border-radius: 99px; background: var(--s-sunken); font-size: 11px; font-weight: 650; color: var(--s-text-2); }
+.s-pet-person > span:last-child { display: grid; min-width: 0; }
+.s-pet-person b { overflow: hidden; font-size: 12.5px; font-weight: 600; color: var(--s-ink); white-space: nowrap; text-overflow: ellipsis; }
+.s-pet-person small { overflow: hidden; font-size: 11.5px; color: var(--s-muted); white-space: nowrap; text-overflow: ellipsis; }
+.s-pet-when { flex: none; font-size: 11.5px; line-height: 1.45; color: var(--s-muted); text-align: right; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.s-pet-more { display: flex; justify-content: center; padding: 0 18px 18px; }
+
+.s-pets-split > .s-card { align-self: stretch; }
+.s-pets-gap { margin-top: 18px; }
+.s-pets-chips { margin-top: 10px; }
+.s-pets-kinds { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.s-pets-note { margin: 12px 0 0; }
+.s-pets-warn { font-weight: 650; color: var(--s-warn); }
+.s-pets-flag { margin-bottom: 14px; }
+.s-pets-flag a { color: inherit; font-weight: 600; }
+.s-pets-defs { border-top: 0; }
+#tab-pets .p3-facts dd small { font-size: 12px; font-weight: 500; }
+@media (max-width: 760px) {
+  .s-pets-wallcard .s-card-head { align-items: flex-start; }
+  .s-pet-legend { display: none; }
+  .s-pet-tools .p2-search { flex: 1 1 100%; min-width: 0; }
+  .s-pet-wall { padding: 0 12px 12px; }
+}

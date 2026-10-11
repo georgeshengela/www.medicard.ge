@@ -73,3 +73,6 @@ export const TRAINER_CAPABILITIES = Object.freeze(['TRAINER_VIEW', 'TRAINER_MANA
 
 /** Home news cards (#/news): everyone may read the list; MANAGE creates, edits, publishes and archives. */
 export const NEWS_CAPABILITIES = Object.freeze(['NEWS_MANAGE']);
+
+/** MEDIVET usage (#/pets): VIEW reads the counts, the pet list (names, species, owner contact) and Medi Vet topic counts. */
+export const PETS_CAPABILITIES = Object.freeze(['PETS_VIEW']);
