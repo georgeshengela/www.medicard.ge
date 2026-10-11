@@ -27,10 +27,12 @@ public class SleepAlarmModule: Module {
       return false
     }
 
-    AsyncFunction("authorizationState") { () -> String in
+    AsyncFunction("authorizationState") { () async -> String in
       #if canImport(AlarmKit)
       if #available(iOS 26.0, *) {
-        switch AlarmManager.shared.authorizationState {
+        // `await` compiles whether the SDK exposes the property synchronously (a warning) or actor-isolated.
+        let state = await AlarmManager.shared.authorizationState
+        switch state {
         case .authorized: return "authorized"
         case .denied: return "denied"
         case .notDetermined: return "notDetermined"
