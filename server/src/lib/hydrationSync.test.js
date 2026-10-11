@@ -7,6 +7,9 @@ import {
   sanitizeHydrationEvent,
 } from './hydrationSync.js';
 import { createQuestFakeDb } from './questFakeDb.js';
+// Calories share the health-sync route; listed through here because `npm test` is at the Windows
+// command-line limit (8 191 characters).
+import './nutritionKcalSync.test.js';
 
 describe('hydration snapshot merge', () => {
   it('uses max so a retried daily total cannot double', () => {

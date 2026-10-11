@@ -32,7 +32,10 @@ export type HealthMetricsSyncPayload = {
     bloodPressureDiastolic?: number;
     heartRate?: number;
     sleepHours?: number;
+    /** Calories to ADD to the day (manual entry). The server adds it; Medi uses it the same way. */
     nutritionKcal?: number;
+    /** The day's calories as read from Apple Health / Health Connect: replaces the phone's part. */
+    nutritionKcalTotal?: number;
     hydrationMl?: number;
     activeMinutes?: number;
     distanceKm?: number;
@@ -121,8 +124,9 @@ export function buildSyncPayloadFromNative(
     const sl = sumOnDay(sleep);
     if (sl != null) row.sleepHours = Math.round(sl * 10) / 10;
 
+    // A total, never an addition: every later read sends the whole day again.
     const nu = sumOnDay(nutrition);
-    if (nu != null) row.nutritionKcal = Math.round(nu);
+    if (nu != null) row.nutritionKcalTotal = Math.round(nu);
 
     const hy = sumOnDay(hydration);
     if (hy != null) row.hydrationMl = Math.round(hy);
@@ -171,6 +175,28 @@ export function storedStepLogsToSamples(logs: StoredStepLog[]): StepSample[] {
   return logs.map((l) => ({ at: l.at, count: l.count }));
 }
 
+/**
+ * Calories and water: one value per day, the larger of the phone's total and the server's copy.
+ * Summing both doubled the day; the server's copy can also hold entries made by hand, by Medi or
+ * on another device, and the phone's can be newer than its last sync.
+ */
+function mergeDayTotals(native: HealthMetricPoint[], stored: HealthMetricPoint[]): HealthMetricPoint[] {
+  const byDate = new Map<string, { phone: number | null; server: number | null }>();
+  for (const p of stored) {
+    const day = byDate.get(p.date) ?? { phone: null, server: null };
+    day.server = (day.server ?? 0) + p.value;
+    byDate.set(p.date, day);
+  }
+  for (const p of native) {
+    const day = byDate.get(p.date) ?? { phone: null, server: null };
+    day.phone = (day.phone ?? 0) + p.value;
+    byDate.set(p.date, day);
+  }
+  return [...byDate.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([date, { phone, server }]) => ({ date, value: Math.max(phone ?? 0, server ?? 0) }));
+}
+
 export function mergeMetricPoints(
   native: Partial<Record<HealthMetricKey, HealthMetricPoint[]>>,
   stored: Partial<Record<HealthMetricKey, HealthMetricPoint[]>>,
@@ -179,6 +205,10 @@ export function mergeMetricPoints(
   const merged: Partial<Record<HealthMetricKey, HealthMetricPoint[]>> = {};
 
   for (const key of keys) {
+    if (key === 'nutrition' || key === 'hydration') {
+      merged[key] = mergeDayTotals(native[key] ?? [], stored[key] ?? []);
+      continue;
+    }
     // A night just read from the phone replaces the server's copy of it (summing both doubled it).
     const nativeDates = key === 'sleep' ? new Set((native[key] ?? []).map((p) => p.date)) : null;
     const storedPoints = (stored[key] ?? []).filter((p) => !nativeDates?.has(p.date));
@@ -215,6 +245,14 @@ export function emptyStoredDaily(date: string, syncedAt = new Date().toISOString
   };
 }
 
+/** Mirrors the server: an entry adds; a phone total never lowers the cached day (it may include entries). */
+function cachedNutritionKcal(prev: number | null, patch: HealthMetricsSyncPayload['daily'][number]): number | null {
+  let next = prev;
+  if (patch.nutritionKcalTotal != null) next = Math.max(next ?? 0, patch.nutritionKcalTotal);
+  if (patch.nutritionKcal != null) next = (next ?? 0) + patch.nutritionKcal;
+  return next;
+}
+
 export function mergeHealthDailyRows(
   existing: StoredHealthDaily[],
   incoming: HealthMetricsSyncPayload['daily'],
@@ -232,7 +270,7 @@ export function mergeHealthDailyRows(
       bloodPressureDiastolic: patch.bloodPressureDiastolic ?? prev.bloodPressureDiastolic,
       heartRate: patch.heartRate ?? prev.heartRate,
       sleepHours: patch.sleepHours ?? prev.sleepHours,
-      nutritionKcal: patch.nutritionKcal ?? prev.nutritionKcal,
+      nutritionKcal: cachedNutritionKcal(prev.nutritionKcal, patch),
       hydrationMl: patch.hydrationMl ?? prev.hydrationMl,
       activeMinutes: patch.activeMinutes ?? prev.activeMinutes,
       distanceKm: patch.distanceKm ?? prev.distanceKm,

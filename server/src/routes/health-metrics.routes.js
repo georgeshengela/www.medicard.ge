@@ -7,6 +7,14 @@ import { requireAuth } from '../middleware/auth.js';
 import { asyncHandler } from '../middleware/error.js';
 import { QuestSignal, refreshQuestProgressForUser, validateHydrationGoalMl } from '../lib/quest.js';
 import { applyHydrationEvents, mergeHydrationSnapshot } from '../lib/hydrationSync.js';
+import {
+  legacyDeviceTotals,
+  mergeNutritionKcal,
+  nutritionInput,
+  readNutritionAdded,
+  touchesNutrition,
+  writeNutritionAdded,
+} from '../lib/nutritionKcalSync.js';
 import { normalizeStepCapability } from '../lib/stepCapability.js';
 import { t } from '../lib/i18n.js';
 
@@ -24,7 +32,10 @@ const dailyRowSchema = z.object({
   bloodPressureDiastolic: z.number().int().min(40).max(150).optional(),
   heartRate: z.number().min(30).max(220).optional(),
   sleepHours: z.number().min(0).max(24).optional(),
+  /** Calories to ADD to the day (manual entry, Medi). See nutritionKcalSync.js. */
   nutritionKcal: z.number().min(0).max(20_000).optional(),
+  /** The day's calories as read from Apple Health / Health Connect — replaces the device part. */
+  nutritionKcalTotal: z.number().min(0).max(20_000).optional(),
   hydrationMl: z.number().min(-20_000).max(20_000).optional(),
   activeMinutes: z.number().int().min(0).max(1_440).optional(),
   distanceKm: z.number().min(0).max(500).optional(),
@@ -47,7 +58,8 @@ const syncSchema = z.object({
   hydrationEvents: z.array(hydrationEventSchema).max(400).default([]),
 });
 
-function mergeDaily(existing, incoming) {
+/** `nutritionKcal` is already resolved by mergeNutritionKcal (device total + additions). */
+function mergeDaily(existing, incoming, nutritionKcal) {
   const pick = (next, prev) => (next != null ? next : prev ?? null);
   const maxInt = (next, prev) => {
     if (next == null) return prev ?? null;
@@ -64,12 +76,7 @@ function mergeDaily(existing, incoming) {
     // The night's total as last read (or told to Medi). Keeping the larger value froze the old
     // over-counted nights (in-bed + every stage summed) even after the phone sent the right one.
     sleepHours: pick(incoming.sleepHours, existing?.sleepHours),
-    nutritionKcal:
-      incoming.nutritionKcal != null
-        ? existing?.nutritionKcal != null
-          ? existing.nutritionKcal + incoming.nutritionKcal
-          : incoming.nutritionKcal
-        : (existing?.nutritionKcal ?? null),
+    nutritionKcal,
     hydrationMl: mergeHydrationSnapshot(existing?.hydrationMl, incoming.hydrationMl),
     activeMinutes: maxInt(incoming.activeMinutes, existing?.activeMinutes),
     distanceKm: pick(incoming.distanceKm, existing?.distanceKm),
@@ -125,12 +132,20 @@ healthMetricsRouter.post(
     let changedHydration = false;
 
     let dailyUpserted = 0;
+    const legacyTotals = legacyDeviceTotals({ daily, stepLogs });
     for (const row of daily) {
       const { date, ...metrics } = row;
       const existing = await prisma.healthMetricDaily.findUnique({
         where: { userId_date: { userId, date } },
       });
-      const merged = mergeDaily(existing, metrics);
+      const kcal = nutritionInput(row, legacyTotals);
+      const added = touchesNutrition(kcal) ? await readNutritionAdded(prisma, userId, date) : null;
+      const nutrition = mergeNutritionKcal({
+        existingKcal: existing?.nutritionKcal ?? null,
+        existingAdded: added?.value ?? null,
+        ...kcal,
+      });
+      const merged = mergeDaily(existing, metrics, nutrition.nutritionKcal);
       const changed = HEALTH_FIELDS.filter((field) => !sameValue(merged[field], existing?.[field]));
       if (!existing || changed.length) {
         if (changed.includes('hydrationMl')) changedHydration = true;
@@ -152,6 +167,9 @@ healthMetricsRouter.post(
           syncedAt: now,
         },
       });
+      if (kcal.addition != null && added?.known) {
+        await writeNutritionAdded(prisma, userId, date, nutrition.nutritionKcalAdded);
+      }
       dailyUpserted += 1;
     }
 

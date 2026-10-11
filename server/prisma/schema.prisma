@@ -328,6 +328,9 @@ model HealthMetricDaily {
   heartRate              Float?
   sleepHours             Float?
   nutritionKcal          Float?
+  /// Calories added by hand / Medi (part of nutritionKcal). Raw SQL only (src/lib/nutritionKcalSync.js);
+  /// ignored by the client so reads keep working before db:install adds the column.
+  nutritionKcalAdded     Float?   @ignore
   hydrationMl            Float?
   activeMinutes          Int?
   distanceKm             Float?
