@@ -17,6 +17,9 @@ web-build/
 # Native
 android/
 ios/
+# Local Expo modules keep their native sources (same exception as .gitignore).
+!mobile/modules/*/ios/
+!mobile/modules/*/android/
 
 
 # Server
