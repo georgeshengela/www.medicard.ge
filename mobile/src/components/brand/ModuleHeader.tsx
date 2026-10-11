@@ -80,11 +80,17 @@ export function ModuleHeaderButton({ label, icon: Icon, onPress, color }: {
  * The same header, pinned above a screen (stack `header`, chats, forms with a pinned footer): the
  * safe area, the canvas behind it and the 20 px gutter, so it looks exactly like the scrolling one.
  */
-export function ModuleStackHeader(props: React.ComponentProps<typeof ModuleHeader>) {
+export function ModuleStackHeader({
+  background,
+  ...props
+}: React.ComponentProps<typeof ModuleHeader> & {
+  /** The page canvas behind the pinned header when the module paints its own (MEDICYCLE's cream); default bg100. */
+  background?: string;
+}) {
   const c = useThemeColors();
   const insets = useSafeAreaInsets();
   return (
-    <View style={{ paddingTop: insets.top + 12, paddingBottom: 12, paddingHorizontal: 20, backgroundColor: c.bg100 }}>
+    <View style={{ paddingTop: insets.top + 12, paddingBottom: 12, paddingHorizontal: 20, backgroundColor: background ?? c.bg100 }}>
       <ModuleHeader {...props} />
     </View>
   );

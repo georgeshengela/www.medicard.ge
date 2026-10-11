@@ -21,7 +21,7 @@ import {
   ScanSearch,
   Trophy,
 } from 'lucide-react-native';
-import { Disclaimer } from '@/components/Disclaimer';
+import { HomeCareNote } from '@/components/home/HomeCareNote';
 import { HomeAskMedi } from '@/components/home/HomeAskMedi';
 import { HomeCyclePreviewCard } from '@/components/home/HomeCyclePreviewCard';
 import { MedicalSourcesLink } from '@/components/health/MedicalSourcesLink';
@@ -462,7 +462,7 @@ export default function Home() {
     ) : null,
     disclaimer: (
       <View style={s.section}>
-        <Disclaimer />
+        <HomeCareNote />
       </View>
     ),
     // ---- shared by the layouts ----

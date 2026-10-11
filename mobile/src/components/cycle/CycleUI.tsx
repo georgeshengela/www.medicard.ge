@@ -13,6 +13,7 @@ import Animated, { FadeInDown, FadeInUp } from 'react-native-reanimated';
 import * as Haptics from 'expo-haptics';
 import { Plus, type LucideIcon } from 'lucide-react-native';
 import { HomeSectionTitle } from '@/components/home/HomeSectionTitle';
+import { ModuleStackHeader } from '@/components/brand/ModuleHeader';
 import { CyclePageSkeleton } from '@/components/ui/Skeleton';
 import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
 import { useIsDark } from '@/theme/colors';
@@ -715,17 +716,16 @@ function withAlpha(hex: string, alpha: number) {
 
 export { formatCycleDateKa } from '@/lib/cycleCivilDateKa';
 
+/**
+ * Every MEDICYCLE sub-screen's header: the standard MEDI module header (owner 2026-10-12, „სტანდარტული
+ * მოდულების ჰედერი“), pinned over the cycle canvas, with the screen's name as its line; back falls
+ * back to /cycle on a cold start.
+ */
 export function cycleNavHeader(c: CyclePalette, title: string) {
   return {
     title,
-    headerStyle: { backgroundColor: c.cream },
-    headerShadowVisible: false,
-    headerTintColor: c.brand,
-    headerTitleStyle: {
-      color: c.ink,
-      fontFamily: 'NotoSansGeorgian_700Bold',
-      fontSize: 17,
-    },
+    headerShown: true,
+    header: () => <ModuleStackHeader module="cycle" subtitle={title} background={c.cream} fallbackHref="/cycle" />,
   };
 }
 
