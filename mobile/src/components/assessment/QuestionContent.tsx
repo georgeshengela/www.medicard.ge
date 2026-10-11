@@ -19,7 +19,6 @@ import { ageFromForm, type AssessmentFormState } from '@/lib/assessmentForm';
 import { MIN_USER_AGE, MIN_USER_AGE_MESSAGE } from '@/lib/birthdate';
 import {
   activeDaysOptions,
-  alcoholBingeOptions,
   alcoholOptions,
   dietPatternOptions,
   eatingHabitOptions,
@@ -86,7 +85,7 @@ export function questionCopy(key: QuestionKey, form: AssessmentFormState): { tit
     case 'smoking':
       return {
         title: tx('ეწევი?', 'Do you smoke?'),
-        body: tx('სიგარეტი, IQOS, ელექტრონული სიგარეტი თუ კალიანი — ყველა ითვლება.', 'Cigarettes, IQOS, e-cigarettes or hookah — they all count.'),
+        body: tx('სიგარეტი, IQOS, ელექტრონული სიგარეტი თუ ჩილიმი — ყველა ითვლება.', 'Cigarettes, IQOS, e-cigarettes or hookah — they all count.'),
       };
     case 'alcohol':
       return { title: tx('რამდენად ხშირად სვამ ალკოჰოლს?', 'How often do you drink alcohol?'), body: tx('ღვინო, ლუდი, ჭაჭა, არაყი — სახლისაც ითვლება.', 'Wine, beer, chacha, vodka — homemade counts too.') };
@@ -282,6 +281,43 @@ function GenderTiles({ palette: p, value, onPick }: { palette: VelvetPalette; va
   );
 }
 
+/**
+ * The blood-group guide under the choices, as the old page had it (owner 2026-10-11): Georgian I–IV next
+ * to the international O / A / B / AB, the Rh sign, examples and the „მეორე დადებითი = A+“ takeaway.
+ */
+function BloodGuide({ palette: p }: { palette: VelvetPalette }) {
+  const help = ka.assessment.bloodTypeHelp;
+  const small = { fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 13, lineHeight: 20, color: p.ink2 } as const;
+  return (
+    <View style={{ marginTop: 22, borderRadius: 22, padding: 16, gap: 14, backgroundColor: p.surface, boxShadow: velvetLift(p) }}>
+      <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 16, lineHeight: 22, color: p.text }}>{help.title}</Text>
+      <Text style={small}>{help.intro}</Text>
+      <View style={{ flexDirection: 'row', gap: 8 }}>
+        {help.maps.map((row) => (
+          <View key={row.geo} style={{ flex: 1, alignItems: 'center', paddingVertical: 10, borderRadius: 14, backgroundColor: p.field, boxShadow: velvetField(p) }}>
+            <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 15, lineHeight: 20, color: p.ink }}>{row.geo}</Text>
+            <Text style={{ fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 12, lineHeight: 16, color: p.inkOff }}>=</Text>
+            <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 15, lineHeight: 20, color: p.text }}>{row.abo}</Text>
+          </View>
+        ))}
+      </View>
+      <Text style={small}>{help.rh}</Text>
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+        {help.examples.map((ex) => (
+          <View key={ex.abo} style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingVertical: 7, paddingHorizontal: 12, borderRadius: 999, backgroundColor: p.field, boxShadow: velvetField(p) }}>
+            <Text style={{ fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 12, lineHeight: 17, color: p.ink2 }}>{ex.geo}</Text>
+            <Text style={{ fontSize: 12, lineHeight: 17, color: p.pulse }}>=</Text>
+            <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 13, lineHeight: 17, color: p.ink }}>{ex.abo}</Text>
+          </View>
+        ))}
+      </View>
+      <View style={{ borderRadius: 14, paddingVertical: 12, paddingHorizontal: 14, backgroundColor: p.field, boxShadow: `${velvetField(p)}, 0px 0px 0px 1.5px ${p.pulse}` }}>
+        <Text style={{ fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 13, lineHeight: 20, color: p.ink }}>{help.takeaway}</Text>
+      </View>
+    </View>
+  );
+}
+
 type Props = {
   palette: VelvetPalette;
   question: QuestionKey;
@@ -370,7 +406,7 @@ export function QuestionContent({ palette: p, question, form, onChange, onHabits
             selected={form.bloodType && form.bloodType !== 'UNKNOWN' ? form.bloodType : null}
             onPress={(bloodType) => onChange({ bloodType })}
           />
-          <Text style={{ marginTop: 16, fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 13, lineHeight: 19, color: p.inkOff }}>{ka.assessment.bloodTypeHelp.takeaway}</Text>
+          <BloodGuide palette={p} />
         </View>
       );
 
@@ -465,24 +501,7 @@ export function QuestionContent({ palette: p, question, form, onChange, onHabits
       );
 
     case 'alcohol':
-      return (
-        <View>
-          <ChoiceList palette={p} items={alcoholOptions()} selected={h.alcoholFreq ? [h.alcoholFreq] : []} onPress={(key) => onHabits({ alcoholFreq: key as HabitAnswers['alcoholFreq'] })} />
-          {h.alcoholFreq && h.alcoholFreq !== 'never' ? (
-            <>
-              <GroupLabel
-                palette={p}
-                text={tx('რამდენად ხშირად სვამ ერთ ჯდომაზე 6 სასმისს ან მეტს?', 'How often do you have 6 or more drinks at once?')}
-                hint={tx(
-                  'მაგ. სუფრაზე. 1 სასმისი = ერთი ჭიქა ღვინო, ერთი ბოთლი ლუდი ან ერთი სირჩა არაყი.',
-                  'For example at a supra. 1 drink = a glass of wine, a bottle of beer or a shot of spirits.',
-                )}
-              />
-              <ChipGroup palette={p} multi={false} items={alcoholBingeOptions()} selected={h.alcoholBinge ? [h.alcoholBinge] : []} onPress={(key) => onHabits({ alcoholBinge: key as HabitAnswers['alcoholBinge'] })} />
-            </>
-          ) : null}
-        </View>
-      );
+      return <ChoiceList palette={p} items={alcoholOptions()} selected={h.alcoholFreq ? [h.alcoholFreq] : []} onPress={(key) => onHabits({ alcoholFreq: key as HabitAnswers['alcoholFreq'] })} />;
 
     case 'diet':
       return (

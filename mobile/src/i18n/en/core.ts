@@ -301,7 +301,7 @@ export const enCore: Pick<Strings, 'app' | 'common' | 'auth' | 'assessment' | 'o
       nameBody: 'Enter the name you’d like Medi to use.',
       goalsTitle: 'What’s your health goal in the app?',
       goalsBody: 'You can pick several — this helps us suggest features that are useful to you.',
-      birthdateTitle: 'When were you born?',
+      birthdateTitle: 'Date of birth',
       birthdateBody: 'Your age lets us show age-appropriate information. Double-check the date you chose.',
       genderTitle: 'What’s your sex?',
       genderBody: 'We use this to tailor your profile and the relevant health features.',

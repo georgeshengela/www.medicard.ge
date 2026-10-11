@@ -17,7 +17,6 @@ describe('healthHabits', () => {
       smoking: 'OCCASIONAL',
       smokingProducts: ['ecig'],
       alcoholFreq: '2-3-week',
-      alcoholBinge: 'weekly',
       dietPatterns: ['none', 'fasting'],
       produce: '0',
       eatingHabits: ['sugary-drinks'],
@@ -33,14 +32,12 @@ describe('healthHabits', () => {
     });
     assert.equal(extra.activeDays, '5+');
     assert.deepEqual(extra.smokingProducts, ['ecig']);
-    assert.equal(extra.alcoholBinge, 'weekly');
     assert.deepEqual(extra.eatingHabits, ['sugary-drinks']);
   });
 
-  it('a non-smoker or non-drinker keeps no stale follow-up answers', () => {
-    const { extra } = habitsPayload({ ...emptyHabits(), smoking: 'NEVER', smokingProducts: ['cigarettes'], alcoholFreq: 'never', alcoholBinge: 'daily' });
+  it('a non-smoker keeps no stale products', () => {
+    const { extra } = habitsPayload({ ...emptyHabits(), smoking: 'NEVER', smokingProducts: ['cigarettes'] });
     assert.deepEqual(extra.smokingProducts, []);
-    assert.equal(extra.alcoholBinge, null);
   });
 
   it('sometimes is its own smoking answer (e.g. two cigarettes a month)', () => {

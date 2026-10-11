@@ -6,7 +6,7 @@
  *  - exercise: how often sport / training on top of that (the owner's „რამდენად ხშირად ვარჯიშობ?“).
  *  - sleep: hours in 24 h (CDC BRFSS) + overall quality (PSQI item 9), never mixed in one scale.
  *  - tobacco: every day / some days / former / never (CDC NHIS) + which products (IQOS and vapes are common).
- *  - alcohol: AUDIT-C questions 1 and 3 (6+ drinks at once = the STEPS heavy-drinking threshold).
+ *  - alcohol: how often (AUDIT-C question 1). The „6+ drinks at once“ follow-up was dropped (owner: too much).
  *  - diet: eating pattern incl. church fasting (multi-select) + fruit/veg portions and the habits that
  *    matter most for advice (salt, sugary drinks, sweets, fast food, skipped meals, late eating).
  * The exact answers live in `extraAnswers`; the coarse server columns Medi and MEDIFOOD already read
@@ -31,8 +31,6 @@ export const SMOKING_PRODUCTS = ['cigarettes', 'heated', 'ecig', 'hookah'] as co
 export type SmokingProduct = (typeof SMOKING_PRODUCTS)[number];
 export const ALCOHOL_FREQ = ['never', 'monthly', '2-4-month', '2-3-week', '4-week'] as const;
 export type AlcoholFreq = (typeof ALCOHOL_FREQ)[number];
-export const ALCOHOL_BINGE = ['never', 'less-monthly', 'monthly', 'weekly', 'daily'] as const;
-export type AlcoholBinge = (typeof ALCOHOL_BINGE)[number];
 export const DIET_PATTERNS = [
   'none',
   'fasting',
@@ -61,7 +59,6 @@ export type HabitAnswers = {
   smoking: Smoking | null;
   smokingProducts: SmokingProduct[];
   alcoholFreq: AlcoholFreq | null;
-  alcoholBinge: AlcoholBinge | null;
   dietPatterns: DietPattern[];
   produce: Produce | null;
   eatingHabits: EatingHabit[];
@@ -76,7 +73,6 @@ export function emptyHabits(): HabitAnswers {
     smoking: null,
     smokingProducts: [],
     alcoholFreq: null,
-    alcoholBinge: null,
     dietPatterns: [],
     produce: null,
     eatingHabits: [],
@@ -136,7 +132,7 @@ export function smokingProductOptions(): Option<SmokingProduct>[] {
     { key: 'cigarettes', label: tx('სიგარეტი', 'Cigarettes') },
     { key: 'heated', label: 'IQOS / glo' },
     { key: 'ecig', label: tx('ელექტრონული სიგარეტი', 'E-cigarette / vape') },
-    { key: 'hookah', label: tx('კალიანი', 'Hookah') },
+    { key: 'hookah', label: tx('ჩილიმი', 'Hookah') },
   ];
 }
 
@@ -147,16 +143,6 @@ export function alcoholOptions(): Option<AlcoholFreq>[] {
     { key: '2-4-month', label: tx('თვეში 2–4-ჯერ', '2–4 times a month') },
     { key: '2-3-week', label: tx('კვირაში 2–3-ჯერ', '2–3 times a week') },
     { key: '4-week', label: tx('კვირაში 4-ჯერ ან უფრო ხშირად', '4 or more times a week') },
-  ];
-}
-
-export function alcoholBingeOptions(): Option<AlcoholBinge>[] {
-  return [
-    { key: 'never', label: tx('არასოდეს', 'Never') },
-    { key: 'less-monthly', label: tx('თვეში ერთხელზე იშვიათად', 'Less than monthly') },
-    { key: 'monthly', label: tx('თვეში ერთხელ', 'Monthly') },
-    { key: 'weekly', label: tx('კვირაში ერთხელ', 'Weekly') },
-    { key: 'daily', label: tx('თითქმის ყოველდღე', 'Almost daily') },
   ];
 }
 
@@ -243,7 +229,6 @@ export function habitsFromProfile(profile: StoredProfile): HabitAnswers {
     smoking: oneOf(SMOKING, profile?.smokingStatus),
     smokingProducts: listOf(SMOKING_PRODUCTS, extra.smokingProducts),
     alcoholFreq: oneOf(ALCOHOL_FREQ, extra.alcoholFreq),
-    alcoholBinge: oneOf(ALCOHOL_BINGE, extra.alcoholBinge),
     dietPatterns: listOf(DIET_PATTERNS, extra.dietPatterns),
     produce: oneOf(PRODUCE, extra.produce),
     eatingHabits: listOf(EATING_HABITS, extra.eatingHabits),
@@ -295,7 +280,6 @@ export function habitsPayload(h: HabitAnswers): { columns: Record<string, unknow
   }
   if (h.alcoholFreq) {
     extra.alcoholFreq = h.alcoholFreq;
-    extra.alcoholBinge = h.alcoholFreq === 'never' ? null : h.alcoholBinge;
     columns.alcoholUse = ALCOHOL_USE[h.alcoholFreq];
   }
   if (h.dietPatterns.length) {
