@@ -51,7 +51,7 @@ export function questionCopy(key: QuestionKey, form: AssessmentFormState): { tit
   const s = ka.assessment.steps;
   switch (key) {
     case 'name':
-      return { title: tx('როგორ გქვია?', 'What’s your name?'), body: tx('სახელი და გვარი — Medi სახელით მოგმართავს.', 'First and last name — Medi will call you by your first name.') };
+      return { title: tx('როგორ მოგმართოთ?', 'What should we call you?'), body: tx('სახელი და გვარი — Medi სახელით მოგმართავს.', 'First and last name — Medi will call you by your first name.') };
     case 'gender':
       return { title: s.genderTitle, body: s.genderBody };
     case 'birthdate':

@@ -20,7 +20,7 @@ const deviceKey = (userId: string) => `medicard.namePrompt.v1.${userId}`;
 
 /**
  * Accounts made before registration asked the name (phone, Apple without a name, one-word names): Home
- * asks „როგორ გქვია?“ ONCE (owner 2026-10-11: „კითხე სახელი და გვარი ერთხელ“). The ask is stored on the
+ * asks „როგორ მოგმართოთ?“ ONCE (owner 2026-10-11: „კითხე სახელი და გვარი ერთხელ“). The ask is stored on the
  * account (`extraAnswers.namePromptAt`, and on this device in case that write fails) the moment it opens,
  * so „მოგვიანებით“, closing or killing the app never brings it back. Nothing else of an existing account
  * changes. It waits for Home to settle and never opens over another sheet or the update card.

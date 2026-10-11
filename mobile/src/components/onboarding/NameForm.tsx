@@ -27,7 +27,7 @@ type Props = {
 };
 
 /**
- * „როგორ გქვია?“ — the standard sign-up page: sign-in's heartbeat disc, first and last name (2+ letters
+ * „როგორ მოგმართოთ?“ — the standard sign-up page: sign-in's heartbeat disc, first and last name (2+ letters
  * each). Used right after the SMS code for a new number and once for older accounts without a full name.
  */
 export function NameForm({ palette: p, dark, firstName, lastName, onChange, onSubmit, busy, error, subtitle, submitLabel, below }: Props) {
@@ -42,7 +42,7 @@ export function NameForm({ palette: p, dark, firstName, lastName, onChange, onSu
     <AuthShell
       backgroundColor={p.surface}
       renderHeader={(compact, durationMs) => (
-        <VelvetAuthHeader palette={p} dark={dark} title={tx('როგორ გქვია?', 'What’s your name?')} titleKind="heading" subtitle={subtitle} compact={compact} durationMs={durationMs} />
+        <VelvetAuthHeader palette={p} dark={dark} title={tx('როგორ მოგმართოთ?', 'What should we call you?')} titleKind="heading" subtitle={subtitle} compact={compact} durationMs={durationMs} />
       )}
       footer={
         <View style={{ gap: 4 }}>
