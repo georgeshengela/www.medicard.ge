@@ -572,12 +572,13 @@ function ClassicCycleCard({
             : periodWindowLine(periodWindow.from, periodWindow.to)
           : centerText.bottom;
 
-  // The leaf carries the date, so the line under the number keeps only the estimate word.
+  // The date written above the wave's drop (or window) — whenever the wave draws one, so the mark always
+  // explains itself (a period day too); the line under the number keeps only the estimate word.
   const leaf: WaveLeaf | null =
-    center.kind === 'countdown' && next
-      ? { kind: 'day', weekday: WEEKDAYS_KA[weekdayIndex(next)], day: Number(next.slice(8, 10)), month: shortDate(next).split(' ').slice(1).join(' ') }
-      : center.kind === 'countdownRange' && periodWindow
-        ? { kind: 'range', from: shortDate(periodWindow.from), to: shortDate(periodWindow.to) }
+    forecastOn && !late && periodWindow
+      ? { kind: 'range', from: shortDate(periodWindow.from), to: shortDate(periodWindow.to) }
+      : forecastOn && !late && next && inDays != null && inDays > 0
+        ? { kind: 'day', weekday: WEEKDAYS_KA[weekdayIndex(next)], day: Number(next.slice(8, 10)), month: shortDate(next).split(' ').slice(1).join(' ') }
         : null;
   const waveAnswer: WaveAnswer = {
     top: centerText.top,
@@ -612,28 +613,42 @@ function ClassicCycleCard({
       <WeekTray days={strip} compact={false} bleedLabel={cycleLoggedBleedLabel(bundle.profile.mode, ka.cycle)} onPress={onOpen} />
       {/* The wave owns its touches (finger preview), so it sits outside the card's open-the-calendar press. */}
       {wave ? (
-        <CycleWaveStage model={wave} tone={todayColor} answer={waveAnswer} leaf={leaf} title={title} detail={detail} describeDay={describeDay} a11yLabel={summary} onOpen={onOpen} />
-      ) : null}
-      <Pressable accessibilityRole="button" accessibilityLabel={summary} onPress={onOpen} style={[s.stage, wave ? { marginTop: -6 } : null]}>
-        {wave ? null : (
-          <GlowAnswer tone={todayColor} caption={centerText.top} value={centerText.value} unit={unit} sub={sub} valueTone={centerText.tone === 'period' ? c.period : c.ink} />
-        )}
-        <StatusStack
+        <CycleWaveStage
+          model={wave}
+          tone={todayColor}
+          answer={waveAnswer}
+          leaf={leaf}
           title={title}
-          dot={todayColor}
           detail={detail}
-          pill={!wave}
-          badge={badge?.calm ? badge.text : null}
-          badgeCalm
-          note={caps.showTtcOverview ? ka.cycle.homeTtcLabel : null}
-          offline={offline}
+          note={expectation}
+          describeDay={describeDay}
+          a11yLabel={summary}
+          onOpen={onOpen}
         />
-        {expectation ? (
-          <View style={s.expectation}>
-            <CycleExpectationLine text={expectation} color={theme.text200} />
-          </View>
-        ) : null}
-      </Pressable>
+      ) : null}
+      {/* Under the wave only what it does not say itself (calm badge, TTC, offline) — no empty gap otherwise. */}
+      {!wave || badge?.calm || caps.showTtcOverview || offline ? (
+        <Pressable accessibilityRole="button" accessibilityLabel={summary} onPress={onOpen} style={[s.stage, wave ? { marginTop: -6 } : null]}>
+          {wave ? null : (
+            <GlowAnswer tone={todayColor} caption={centerText.top} value={centerText.value} unit={unit} sub={sub} valueTone={centerText.tone === 'period' ? c.period : c.ink} />
+          )}
+          <StatusStack
+            title={title}
+            dot={todayColor}
+            detail={detail}
+            pill={!wave}
+            badge={badge?.calm ? badge.text : null}
+            badgeCalm
+            note={caps.showTtcOverview ? ka.cycle.homeTtcLabel : null}
+            offline={offline}
+          />
+          {expectation && !wave ? (
+            <View style={s.expectation}>
+              <CycleExpectationLine text={expectation} color={theme.text200} />
+            </View>
+          ) : null}
+        </Pressable>
+      ) : null}
       {periodState.askStill ? <CycleStillBleedingRow onYes={onStillBleeding} onEnded={onEnd} disabled={busy} /> : null}
       {/* The cycle screen's pattern: the leading action full width, then the other one beside „♥ სექსი“. */}
       <View style={s.actions}>
@@ -873,6 +888,7 @@ function HeroButton({
 }) {
   const accent = useHomeAccent();
   const c = useCycleColors();
+  const tonalBg = useHeroTraySurface();
   const fg = filled ? accent.onCta : c.ink;
   return (
     <Pressable
@@ -883,7 +899,7 @@ function HeroButton({
       onPress={onPress}
       style={[
         filled ? s.button : s.buttonTonal,
-        { backgroundColor: filled ? accent.cta : c.cardSoft, opacity: disabled ? 0.6 : 1 },
+        { backgroundColor: filled ? accent.cta : tonalBg, opacity: disabled ? 0.6 : 1 },
         flex != null ? { flex } : null,
       ]}
     >
@@ -898,6 +914,18 @@ function HeroButton({
       </Text>
     </Pressable>
   );
+}
+
+/**
+ * The week tray and the tonal buttons sit right on the page: in light mode the blush `cardSoft` is the
+ * page's own grey-white (#F8F1F4 on #F5F7F7) and the buttons read as loose text, so they take the hub's
+ * white surface there; dark keeps the soft plum that already stands off the page.
+ */
+function useHeroTraySurface(): string {
+  const theme = useThemeColors();
+  const dark = useIsDark();
+  const c = useCycleColors();
+  return dark ? c.cardSoft : theme.surface;
 }
 
 /** „♥ სექსი“ — one tap logs it for today; logged, it shows a tick and opens the private details sheet. */
@@ -942,6 +970,7 @@ function WeekTray({
   onPress: () => void;
 }) {
   const c = useCycleColors();
+  const trayBg = useHeroTraySurface();
   const circle = compact ? 30 : 34;
   const outer = circle + 6;
   // Only the marks this week draws — never sex or symptoms (Home shows neither).
@@ -968,7 +997,7 @@ function WeekTray({
     .join(', ');
 
   return (
-    <Pressable accessibilityRole="button" accessibilityLabel={a11y} onPress={onPress} style={[s.tray, { backgroundColor: c.cardSoft }]}>
+    <Pressable accessibilityRole="button" accessibilityLabel={a11y} onPress={onPress} style={[s.tray, { backgroundColor: trayBg }]}>
       <View style={s.strip}>
         {days.map((d) => {
           const marked = d.loggedPeriod || d.predictedPeriod || d.fertile || d.ovulation;

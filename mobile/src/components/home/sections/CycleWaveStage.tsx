@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { AccessibilityInfo, PanResponder, Pressable, StyleSheet, Text, View, type LayoutChangeEvent } from 'react-native';
 import { useIsFocused } from 'expo-router';
-import Svg, { Circle, ClipPath, Defs, G, LinearGradient as SvgGradient, Path, Rect, Stop } from 'react-native-svg';
+import Svg, { Circle, ClipPath, Defs, G, LinearGradient as SvgGradient, Mask, Path, RadialGradient, Rect, Stop } from 'react-native-svg';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useScrollLock } from '@/components/ui/LockableScrollView';
 import { scrubHaptics } from '@/lib/scrubHaptics';
@@ -40,11 +40,14 @@ const DOT_STAGGER = 26;
 /** The words of the answer: one caption, one number (or word) with its unit, one line under it. */
 export type WaveAnswer = { top: string | null; value: string; unit: string | null; sub: string | null; tone?: 'period' | 'ink' };
 
-/** The expected start as a small calendar leaf, dashed like an estimated day in the calendar. */
+/** The expected start's date, written on the wave right above its drop (or above a variable cycle's window). */
 export type WaveLeaf = { kind: 'day'; weekday: string; day: number; month: string } | { kind: 'range'; from: string; to: string };
 
-const H = 108;
-const PAD_X = 12;
+const H = 124;
+/** Today's light: a soft radial glow in the phase colour, centred on the pearl. */
+const GLOW_R = 150;
+/** Room at both ends, so the pearl and its bloom never touch the card's edge on the first or last day. */
+const PAD_X = 18;
 const TOP = 18;
 const BASE = H - 24;
 const DOTS_Y = BASE + 12;
@@ -56,11 +59,11 @@ const SLOP = 8;
 
 /**
  * „ციკლის ტალღა“ — the women's Home answer (owner 2026-10-03, replacing the plain centred glow):
- * the countdown left-aligned in a light large numeral with the expected start as a dashed calendar
- * leaf, then the whole cycle as one wave in the dial's phase colours (lived = full, ahead = dashed
- * and pale, the calendar's estimate grammar), today a breathing pearl, the expected period a dashed
- * rose drop (or the whole window for a variable cycle), and one dot per day underneath (logged
- * bleeding rose). Sliding a finger along the wave previews that day's date and phase.
+ * the countdown left-aligned in a light large numeral, then the whole cycle as one wave in the dial's
+ * phase colours (lived = full silk thread, ahead = dashed and pale, the calendar's estimate grammar),
+ * today a breathing pearl that lights the card in its phase colour, the expected period a dashed rose
+ * drop with its date written above it (or the whole window for a variable cycle), and the dial's day
+ * scale underneath (logged bleeding rose). Sliding a finger along the wave previews that day.
  */
 export function CycleWaveStage({
   model,
@@ -69,6 +72,7 @@ export function CycleWaveStage({
   leaf,
   title,
   detail,
+  note = null,
   describeDay,
   a11yLabel,
   onOpen,
@@ -79,6 +83,8 @@ export function CycleWaveStage({
   leaf: WaveLeaf | null;
   title: string;
   detail: string | null;
+  /** Her own pattern („სპაზმები დღეს სავარაუდოა — …“), under the day line with the estimate's dashed ring. */
+  note?: string | null;
   describeDay: (day: number) => WaveAnswer | null;
   /** The whole answer for screen readers (the wave itself is hidden from them). */
   a11yLabel: string;
@@ -231,13 +237,15 @@ export function CycleWaveStage({
     if (!width) return null;
     const line = model.points.map((p, i) => `${i ? 'L' : 'M'}${xOf(p.t).toFixed(1)},${yOf(p.t).toFixed(1)}`).join(' ');
     const area = `${line} L${xOf(model.span).toFixed(1)},${BASE} L${xOf(0).toFixed(1)},${BASE} Z`;
-    // Soft blends at each phase edge, a solid run in between.
+    // Phases melt into each other over ~1.5 days (a hard edge read as a stripe), a solid run in between;
+    // a short phase blends over at most half its own length, so the stops never cross.
     const stops: { offset: number; color: string }[] = [];
-    const blend = Math.min(0.6, model.span / 60);
+    const blend = Math.min(1.5, model.span / 20);
     for (const p of model.phases) {
       const color = phaseColor(p.kind);
-      stops.push({ offset: Math.min(p.from + blend, p.to) / model.span, color });
-      stops.push({ offset: Math.max(p.to - blend, p.from) / model.span, color });
+      const half = Math.min(blend, (p.to - p.from) / 2);
+      stops.push({ offset: (p.from + half) / model.span, color });
+      stops.push({ offset: (p.to - half) / model.span, color });
     }
     // The lived run as its own polyline (day 0 → today) with cumulative lengths: the line draws itself
     // along it and the pearl rides it (anime.js `createDrawable` + `createMotionPath`, done natively).
@@ -318,9 +326,10 @@ export function CycleWaveStage({
   const CUM = geometry?.cum ?? EMPTY;
   const LEN = geometry?.livedLen ?? 0;
   const lineProps = useAnimatedProps(() => ({ strokeDashoffset: (1 - draw.value) * (LEN + 2) }), [LEN]);
-  const fillProps = useAnimatedProps(() => ({ fillOpacity: fill.value * (dark ? 0.42 : 0.38) }), [dark]);
+  // The fills fade towards the floor (mask `cwFade`), so they start a little richer under the line.
+  const fillProps = useAnimatedProps(() => ({ fillOpacity: fill.value * (dark ? 0.5 : 0.46) }), [dark]);
   const aheadLineProps = useAnimatedProps(() => ({ opacity: ahead.value }));
-  const aheadFillProps = useAnimatedProps(() => ({ fillOpacity: ahead.value * (dark ? 0.09 : 0.1) }), [dark]);
+  const aheadFillProps = useAnimatedProps(() => ({ fillOpacity: ahead.value * (dark ? 0.12 : 0.13) }), [dark]);
   const pearlProps = useAnimatedProps(() => {
     const at = pointAlong(LX, LY, CUM, draw.value * LEN);
     return { cx: at.x, cy: at.y };
@@ -338,25 +347,100 @@ export function CycleWaveStage({
   }, [LX, LY, CUM, LEN]);
 
   const todayX = model.todayT != null && width ? xOf(model.todayT) : null;
+  const todayY = model.todayT != null ? yOf(model.todayT) : null;
   const enter = enterRef.current;
   const scrubX = scrub != null && width ? xOf(scrub - 0.5) : null;
 
+  // The card's light comes from today (no corner wash): the stage's size and the wave's offset in it.
+  const [stageSize, setStageSize] = useState({ w: 0, h: 0 });
+  const [waveY, setWaveY] = useState(0);
+  const onStageLayout = (e: LayoutChangeEvent) => {
+    const w = Math.round(e.nativeEvent.layout.width);
+    const h = Math.round(e.nativeEvent.layout.height);
+    if (w !== stageSize.w || h !== stageSize.h) setStageSize({ w, h });
+  };
   const onLayout = (e: LayoutChangeEvent) => {
     const w = Math.round(e.nativeEvent.layout.width);
     widthRef.current = w;
     if (w !== width) setWidth(w);
+    const y = Math.round(e.nativeEvent.layout.y);
+    if (y !== waveY) setWaveY(y);
   };
 
+  // „აბრეშუმი“ (owner's pick 2026-10-11, the card felt empty on the right): six faint echoes of the wave,
+  // each a little later in the cycle and higher, fanning up behind the header's quiet right side and
+  // fading out towards the words on the left. Texture only — they carry no data.
+  const silk = useMemo(() => {
+    if (!stageSize.w || !width) return null;
+    const floor = waveY + BASE;
+    return [0, 1, 2, 3, 4, 5].map((k) => {
+      const top = waveY + TOP - 18 - k * 17;
+      const shift = 0.03 * (k + 1) * model.span;
+      return `M${model.points
+        .map((p) => {
+          const v = waveHeightAt(model, Math.min(model.span, Math.max(0, p.t + shift)));
+          return `${xOf(p.t).toFixed(1)},${(floor - v * (floor - top)).toFixed(1)}`;
+        })
+        .join(' L')}`;
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stageSize.w, width, waveY, model]);
+
+  // The expected start explains itself: its date sits right above the drop (or the window).
+  const [labelW, setLabelW] = useState(0);
+  const nextText = leaf ? (leaf.kind === 'day' ? `${leaf.weekday}, ${leaf.day} ${leaf.month}` : `${leaf.from} – ${leaf.to}`) : null;
+  const nextX = model.windowT
+    ? (xOf(model.windowT.from) + xOf(model.windowT.to)) / 2
+    : model.dropT != null
+      ? xOf(model.dropT)
+      : null;
+  // Written at the top of the wave's free right side (the wave is low there), a dashed leader down to the mark.
+  const NEXT_TOP = 0;
+  const leaderTo = model.windowT ? BASE - 9 : BASE - 4 - 18 - 3;
+
   return (
-    <View style={[s.stage, { backgroundColor: c.cardSoft }]}>
-      <LinearGradient
-        pointerEvents="none"
-        colors={[cycleHexAlpha(tone, dark ? 0.26 : 0.2), cycleHexAlpha(tone, dark ? 0.08 : 0.05), cycleHexAlpha(tone, 0)]}
-        locations={[0, 0.55, 1]}
-        start={{ x: 1, y: 0 }}
-        end={{ x: 0.1, y: 1 }}
-        style={StyleSheet.absoluteFill}
-      />
+    <View onLayout={onStageLayout} style={[s.stage, { backgroundColor: dark ? c.cardSoft : theme.surface }]}>
+      {stageSize.w && todayX != null && todayY != null ? (
+        <Animated.View
+          pointerEvents="none"
+          style={StyleSheet.absoluteFill}
+          entering={enter ? FadeIn.delay(DRAW_DELAY + DRAW_MS * 0.7).duration(900) : undefined}
+        >
+          <Svg width={stageSize.w} height={stageSize.h}>
+            <Defs>
+              <RadialGradient id="cwToday" cx={todayX} cy={waveY + todayY} r={GLOW_R} gradientUnits="userSpaceOnUse">
+                <Stop offset={0} stopColor={tone} stopOpacity={dark ? 0.32 : 0.3} />
+                <Stop offset={0.45} stopColor={tone} stopOpacity={dark ? 0.11 : 0.1} />
+                <Stop offset={1} stopColor={tone} stopOpacity={0} />
+              </RadialGradient>
+            </Defs>
+            <Rect x={0} y={0} width={stageSize.w} height={stageSize.h} fill="url(#cwToday)" />
+            {silk && geometry ? (
+              <>
+                <Defs>
+                  <SvgGradient id="cwSilkInk" x1={xOf(0)} y1={0} x2={xOf(model.span)} y2={0} gradientUnits="userSpaceOnUse">
+                    {geometry.stops.map((st, i) => (
+                      <Stop key={i} offset={st.offset} stopColor={st.color} />
+                    ))}
+                  </SvgGradient>
+                  <SvgGradient id="cwSilkSide" x1={stageSize.w * 0.3} y1={0} x2={stageSize.w * 0.75} y2={0} gradientUnits="userSpaceOnUse">
+                    <Stop offset={0} stopColor="#FFFFFF" stopOpacity={0} />
+                    <Stop offset={1} stopColor="#FFFFFF" stopOpacity={1} />
+                  </SvgGradient>
+                  <Mask id="cwSilkMask" maskUnits="userSpaceOnUse" x={0} y={0} width={stageSize.w} height={stageSize.h}>
+                    <Rect x={0} y={0} width={stageSize.w} height={stageSize.h} fill="url(#cwSilkSide)" />
+                  </Mask>
+                </Defs>
+                <G mask="url(#cwSilkMask)">
+                  {silk.map((d, k) => (
+                    <Path key={k} d={d} stroke="url(#cwSilkInk)" strokeOpacity={(dark ? 0.3 : 0.26) - k * 0.035} strokeWidth={1} fill="none" />
+                  ))}
+                </G>
+              </>
+            ) : null}
+          </Svg>
+        </Animated.View>
+      ) : null}
       <Pressable accessibilityRole="button" accessibilityLabel={a11yLabel} onPress={onOpen} style={s.head}>
         <View style={s.answer}>
           {shown.top ? (
@@ -394,11 +478,6 @@ export function CycleWaveStage({
             </Animated.Text>
           ) : null}
         </View>
-        {leaf && scrub == null ? (
-          <Animated.View entering={enter ? FadeIn.delay(DRAW_DELAY + DRAW_MS * 0.75).duration(600) : FadeIn.duration(200)}>
-            <Leaf leaf={leaf} />
-          </Animated.View>
-        ) : null}
       </Pressable>
 
       <View
@@ -417,8 +496,16 @@ export function CycleWaveStage({
                 ))}
               </SvgGradient>
               <ClipPath id="cwAhead">
-                <Rect x={todayX ?? 0} y={0} width={width} height={H} />
+                <Rect x={(todayX ?? 0) - 0.75} y={0} width={width} height={H} />
               </ClipPath>
+              {/* Full under the crest, a breath at the floor: no flat colour blocks. */}
+              <SvgGradient id="cwFadeInk" x1={0} y1={TOP} x2={0} y2={BASE} gradientUnits="userSpaceOnUse">
+                <Stop offset={0} stopColor="#FFFFFF" stopOpacity={1} />
+                <Stop offset={1} stopColor="#FFFFFF" stopOpacity={0.22} />
+              </SvgGradient>
+              <Mask id="cwFade" maskUnits="userSpaceOnUse" x={0} y={0} width={width} height={H}>
+                <Rect x={0} y={0} width={width} height={H} fill="url(#cwFadeInk)" />
+              </Mask>
             </Defs>
 
             {/* A variable cycle's whole start window, as a dashed rose run on the floor. */}
@@ -426,10 +513,10 @@ export function CycleWaveStage({
               <AnimatedRect
                 animatedProps={aheadLineProps}
                 x={xOf(model.windowT.from)}
-                y={BASE - 9}
+                y={BASE - 7}
                 width={Math.max(8, xOf(model.windowT.to) - xOf(model.windowT.from))}
-                height={18}
-                rx={9}
+                height={14}
+                rx={7}
                 fill={cycleHexAlpha(c.period, dark ? 0.18 : 0.1)}
                 stroke={c.period}
                 strokeWidth={1.4}
@@ -438,7 +525,9 @@ export function CycleWaveStage({
             ) : null}
 
             <G clipPath="url(#cwAhead)">
-              <AnimatedPath d={geometry.area} fill="url(#cwPhase)" animatedProps={aheadFillProps} />
+              <G mask="url(#cwFade)">
+                <AnimatedPath d={geometry.area} fill="url(#cwPhase)" animatedProps={aheadFillProps} />
+              </G>
               <AnimatedPath
                 d={geometry.line}
                 stroke="url(#cwPhase)"
@@ -450,7 +539,11 @@ export function CycleWaveStage({
               />
             </G>
             {/* The lived part draws itself from day 1 to today like a silk thread; its fill follows softly. */}
-            {geometry.livedArea ? <AnimatedPath d={geometry.livedArea} fill="url(#cwPhase)" animatedProps={fillProps} /> : null}
+            {geometry.livedArea ? (
+              <G mask="url(#cwFade)">
+                <AnimatedPath d={geometry.livedArea} fill="url(#cwPhase)" animatedProps={fillProps} />
+              </G>
+            ) : null}
             {geometry.livedLine ? (
               <AnimatedPath
                 d={geometry.livedLine}
@@ -463,19 +556,30 @@ export function CycleWaveStage({
               />
             ) : null}
 
-            {/* One dot per cycle day: lived filled, ahead hollow, logged bleeding rose. */}
-            {/* The day dots ripple out from today (anime.js `stagger(…, { from })`). */}
+            {/* One fine tick per cycle day — the dial's watch scale: logged bleeding rose, today taller, ahead faint. */}
+            {/* The ticks ripple out from today (anime.js `stagger(…, { from })`). */}
             {model.dots.map((d) => {
               const x = xOf(d.day - 0.5);
               const dist = Math.abs(d.day - todayDay);
-              if (d.bleed) return <DayDot key={d.day} t={dotsT} dist={dist} cx={x} r={2.6} fill={c.period} />;
-              if (d.state === 'ahead')
-                return <DayDot key={d.day} t={dotsT} dist={dist} cx={x} r={1.9} fill="none" stroke={c.mutedSoft} opacity={0.7} />;
+              if (d.state === 'today')
+                return <DayTick key={d.day} t={dotsT} dist={dist} cx={x} w={2.4} h={12} fill={d.bleed ? c.period : c.ink} />;
+              if (d.bleed) return <DayTick key={d.day} t={dotsT} dist={dist} cx={x} w={2.4} h={9} fill={c.period} />;
               return (
-                <DayDot key={d.day} t={dotsT} dist={dist} cx={x} r={d.state === 'today' ? 2.6 : 1.9} fill={d.state === 'today' ? c.ink : c.mutedSoft} />
+                <DayTick key={d.day} t={dotsT} dist={dist} cx={x} w={1.6} h={6} fill={c.mutedSoft} opacity={d.state === 'ahead' ? 0.45 : 0.9} />
               );
             })}
 
+            {nextText && nextX != null && leaderTo > NEXT_TOP + 26 ? (
+              <AnimatedPath
+                d={`M${nextX.toFixed(1)},${NEXT_TOP + 21} L${nextX.toFixed(1)},${leaderTo}`}
+                stroke={c.period}
+                strokeOpacity={0.55}
+                strokeWidth={1}
+                strokeDasharray="2 3"
+                strokeLinecap="round"
+                animatedProps={aheadLineProps}
+              />
+            ) : null}
             {model.dropT != null && !model.windowT ? <Drop x={xOf(model.dropT)} y={BASE - 4} color={c.period} dark={dark} t={ahead} /> : null}
 
             {scrubX != null && scrub != null ? (
@@ -496,6 +600,21 @@ export function CycleWaveStage({
         ) : (
           <View style={{ height: H }} />
         )}
+        {geometry && nextText && nextX != null ? (
+          <Animated.View
+            pointerEvents="none"
+            entering={enter ? FadeIn.delay(DRAW_DELAY + DRAW_MS * 0.75).duration(600) : FadeIn.duration(200)}
+            style={[s.next, { top: NEXT_TOP, left: Math.max(6, Math.min(width - labelW - 6, nextX - labelW / 2)) }]}
+          >
+            <Text
+              numberOfLines={1}
+              onLayout={(e) => setLabelW(Math.ceil(e.nativeEvent.layout.width))}
+              style={[s.nextText, { color: c.period, opacity: labelW ? 1 : 0 }]}
+            >
+              {nextText}
+            </Text>
+          </Animated.View>
+        ) : null}
       </View>
 
       <Pressable accessible={false} onPress={onOpen} style={s.foot}>
@@ -506,6 +625,12 @@ export function CycleWaveStage({
           </Text>
         </View>
         {detail ? <Text style={[s.detail, { color: theme.text200 }]}>{detail}</Text> : null}
+        {note ? (
+          <View style={s.noteRow}>
+            <View style={[s.noteRing, { borderColor: theme.text200 }]} />
+            <Text style={[s.note, { color: theme.text200 }]}>{note}</Text>
+          </View>
+        ) : null}
         <Text style={[s.hint, { color: c.mutedSoft }]}>{tx('გადაატარე თითი — ნახე ნებისმიერი დღე', 'Slide to see any day')}</Text>
       </Pressable>
     </View>
@@ -536,33 +661,32 @@ function dropPath(x: number, y: number): string {
   return `M${x},${top} C${x + w * 0.2},${top + h * 0.3} ${x + w / 2},${top + h * 0.5} ${x + w / 2},${top + h * 0.7} A${w / 2},${w / 2} 0 1 1 ${x - w / 2},${top + h * 0.7} C${x - w / 2},${top + h * 0.5} ${x - w * 0.2},${top + h * 0.3} ${x},${top} Z`;
 }
 
-/** One day dot that pops in when the ripple from today reaches it (a soft back-out, like anime.js `outBack`). */
-function DayDot({
+/** One day tick that grows when the ripple from today reaches it (a soft back-out, like anime.js `outBack`). */
+function DayTick({
   t,
   dist,
   cx,
-  r,
+  w,
+  h,
   fill,
-  stroke,
   opacity,
 }: {
   t: SharedValue<number>;
   dist: number;
   cx: number;
-  r: number;
+  w: number;
+  h: number;
   fill: string;
-  stroke?: string;
   opacity?: number;
 }) {
   const props = useAnimatedProps(() => {
     const k = Math.min(1, Math.max(0, (t.value - dist) / 2.2));
     const b = k - 1;
     const eased = k >= 1 ? 1 : 1 + 2.4 * b * b * b + 1.4 * b * b;
-    return { r: r * Math.max(0, eased) };
-  }, [dist, r]);
-  return (
-    <AnimatedCircle cx={cx} cy={DOTS_Y} fill={fill} stroke={stroke} strokeWidth={stroke ? 1 : 0} opacity={opacity} animatedProps={props} />
-  );
+    const now = h * Math.max(0, eased);
+    return { y: DOTS_Y - now / 2, height: now };
+  }, [dist, h]);
+  return <AnimatedRect x={cx - w / 2} width={w} rx={w / 2} fill={fill} opacity={opacity} animatedProps={props} />;
 }
 
 /** A small rose drop, dashed and pale: the expected start, not a logged one. It drips into place once. */
@@ -580,30 +704,9 @@ function Drop({ x, y, color, dark, t }: { x: number; y: number; color: string; d
   );
 }
 
-function Leaf({ leaf }: { leaf: WaveLeaf }) {
-  const c = useCycleColors();
-  const dark = useIsDark();
-  return (
-    <View style={[s.leaf, { borderColor: c.period, backgroundColor: cycleHexAlpha(c.period, dark ? 0.12 : 0.06) }]}>
-      {leaf.kind === 'day' ? (
-        <>
-          <Text style={[s.leafSmall, { color: c.muted }]}>{leaf.weekday}</Text>
-          <Text style={[s.leafDay, { color: c.period }]}>{leaf.day}</Text>
-          <Text style={[s.leafSmall, { color: c.muted }]}>{leaf.month}</Text>
-        </>
-      ) : (
-        <>
-          <Text style={[s.leafRange, { color: c.period }]}>{leaf.from}</Text>
-          <Text style={[s.leafSmall, { color: c.muted }]}>–</Text>
-          <Text style={[s.leafRange, { color: c.period }]}>{leaf.to}</Text>
-        </>
-      )}
-    </View>
-  );
-}
 
 /** Loader height: about the wave stage's own, so nothing jumps when the cycle arrives. */
-const LOADER_H = 236;
+const LOADER_H = 252;
 const LOADER_WAVE_H = 96;
 
 /**
@@ -721,23 +824,17 @@ const s = StyleSheet.create({
   value: { fontFamily: 'NotoSansGeorgian_400Regular', letterSpacing: -2, fontVariant: ['tabular-nums'], flexShrink: 1 },
   unit: { fontFamily: 'NotoSansGeorgian_500Medium', fontSize: 20, lineHeight: 26 },
   sub: { fontFamily: 'NotoSansGeorgian_500Medium', fontSize: 13, lineHeight: 18, marginTop: 2 },
-  leaf: {
-    width: 62,
-    borderRadius: 14,
-    borderWidth: 1.5,
-    borderStyle: 'dashed',
-    alignItems: 'center',
-    paddingVertical: 7,
-    marginTop: 4,
-  },
-  leafSmall: { fontFamily: 'NotoSansGeorgian_500Medium', fontSize: 11, lineHeight: 15 },
-  leafDay: { fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 24, lineHeight: 30, fontVariant: ['tabular-nums'] },
-  leafRange: { fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 13, lineHeight: 18, fontVariant: ['tabular-nums'] },
   wave: { marginTop: 6, alignSelf: 'stretch' },
+  next: { position: 'absolute' },
+  nextText: { fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 12, lineHeight: 16, fontVariant: ['tabular-nums'] },
   foot: { paddingHorizontal: 18, gap: 3, marginTop: 2 },
   phaseRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   phaseDot: { width: 9, height: 9, borderRadius: 5 },
   phaseText: { fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 14, lineHeight: 20, flexShrink: 1 },
   detail: { fontFamily: 'NotoSansGeorgian_500Medium', fontSize: 13, lineHeight: 18, paddingLeft: 17 },
-  hint: { fontFamily: 'NotoSansGeorgian_500Medium', fontSize: 11, lineHeight: 15, paddingLeft: 17, marginTop: 4 },
+  /** The estimate's dashed ring sits in the phase dot's column, the words on the day line's indent. */
+  noteRow: { flexDirection: 'row', alignItems: 'flex-start', gap: 8, marginTop: 6 },
+  noteRing: { width: 9, height: 9, borderRadius: 5, borderWidth: 1.4, borderStyle: 'dashed', marginTop: 4 },
+  note: { flex: 1, fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 12, lineHeight: 17 },
+  hint: { fontFamily: 'NotoSansGeorgian_500Medium', fontSize: 11, lineHeight: 15, paddingLeft: 17, marginTop: 6 },
 });

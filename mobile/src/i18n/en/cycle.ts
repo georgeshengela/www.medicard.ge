@@ -386,7 +386,7 @@ export const enCycle: Pick<Strings, 'cycle'> = {
     heroBleedingDay: 'Bleeding day',
     heroLikely: 'Likely',
     heroToday: 'Today',
-    heroCycleDayOf: (d: number, n: number) => `Cycle day ${d} · of ${n}`,
+    heroCycleDayOf: (d: number, n: number) => `Cycle day ${d} of ${n}`,
     heroLateBy: (n: number) => `${n} ${days(n)} past the estimate`,
     heroUsualLength: (n: number) => `Your cycle is usually ${n} ${days(n)}`,
     heroPeriodStarted: 'Period started',
