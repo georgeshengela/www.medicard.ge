@@ -276,7 +276,7 @@ export default function Profile() {
         </View>
       ) : null}
 
-      {/* MEDIFAMILY (store train 23+, admin switch 'family') */}
+      {/* MEDIFAMILY (store train 24+, admin switch 'family') */}
       {familyShipped() && isFeatureOn('family', features) ? (
         <View style={s.section}>
           <HomeSectionHeading title="MEDIFAMILY" brand="family" linkLabel={tx('გახსნა', 'Open')} onLink={() => router.push('/family')} />

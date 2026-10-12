@@ -72,8 +72,8 @@ development, pediatric AI safety + law).
 ## გამოშვება
 
 ახალი მოდული = **store build** (App Review 2.5.2, OTA-თ ახალ ფუნქციას არ ვამატებთ). კოდი main-ზე ჩადის დამალული:
-აპში ჩანს მხოლოდ `__DEV__`-ში (Expo-ზე ტესტი) ან native train ≥ 23-ზე და `family` ჩამრთველი ჩართულია.
-შემდეგი store build-ით (train 23) იხსნება. მანამდე: owner ამოწმებს Expo-ში, სქრინები light/dark.
+აპში ჩანს მხოლოდ `__DEV__`-ში (Expo-ზე ტესტი) ან native train ≥ 24-ზე და `family` ჩამრთველი ჩართულია (train 23 — build 36 — MEDISLEEP-ით უკვე აიტვირთა).
+შემდეგი store build-ით (train 24) იხსნება. მანამდე: owner ამოწმებს Expo-ში, სქრინები light/dark.
 
 ## Technical design (for agents)
 
@@ -94,7 +94,7 @@ development, pediatric AI safety + law).
   reminder family `family`, route root `family` (server `announcements.js` + app `ROUTE_ROOTS` +
   `NOTIFICATION_ROUTE_ROOTS`). Visibility gate `src/lib/familyAvailability.ts`.
 
-## Status (2026-10-12, v1 built — hidden until store train 23)
+## Status (2026-10-12, v1 built — hidden until store train 24)
 
 Built: everything in „v1“ above except caregiver invites (the `FamilyAccess` table is ready for them). Server tables
 were installed on the main DB (additive, `install-family.mjs`); every SQL statement was exercised in a rolled-back
@@ -103,7 +103,7 @@ vaccine card, growth chart, feeding, guide, health diary, add child, Medi chat (
 
 Rules for agents working here:
 
-- **Release gate:** `src/lib/family/familyAvailability.ts` — entries show in `__DEV__` and on native train ≥ 23 only,
+- **Release gate:** `src/lib/family/familyAvailability.ts` — entries show in `__DEV__` and on native train ≥ 24 only (train 23 = build 36, MEDISLEEP, shipped without it),
   and only while the admin switch `family` is on. Never lower the train in an OTA (App Review 2.5.2).
 - **Calendar = code + source:** `server/src/lib/family/vaccinesGe.js` mirrors order №01-60/ნ (table №52/ნ 2023).
   When the Ministry changes it, edit the file (server deploy, no app build) and update `GE_CALENDAR_SOURCE.checkedOn`.
@@ -125,7 +125,7 @@ Rules for agents working here:
   Windows limit); app — `featureRoutes.test.ts`, `en.test.ts`, `modal-chrome`.
 - **QA harness:** mock fixture `webqa/fixtures/family.mjs` (session 27e360b4 scratchpad) runs the real engines.
 
-Open decisions for the owner (before the train-23 store build):
+Open decisions for the owner (before the train-24 store build):
 
 1. **AI disclosure:** add a MEDIFAMILY line to `mobile/src/config/aiDisclosure.json` (child profile, growth, vaccines,
    allergies, recent temperature/symptoms/medicines). It changes the consent version → every user sees the AI

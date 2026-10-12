@@ -1,12 +1,13 @@
 /**
  * MEDIFAMILY is a new module, so it reaches people with a store build, never an OTA (App Review 2.5.2):
- * its entries show in development (the owner's Expo) and on binaries from store train 23, and only while
- * the admin switch `family` is on. An OTA into train 22 carries the code but shows nothing.
+ * its entries show in development (the owner's Expo) and on binaries from store train 24, and only while
+ * the admin switch `family` is on. Train 23 (build 36, MEDISLEEP) was uploaded without it, so an OTA into
+ * trains 22–23 carries the code but shows nothing.
  */
 import { requireOptionalNativeModule } from 'expo';
 import { isFeatureOn } from '@/lib/featureFlags';
 
-export const FAMILY_FIRST_TRAIN = 23;
+export const FAMILY_FIRST_TRAIN = 24;
 
 function binaryTrain(): number | null {
   if (!requireOptionalNativeModule('ExpoUpdates')) return null;
