@@ -96,11 +96,18 @@ async function cacheWrap(key, producer) {
  */
 const rowMemo = new Map();
 
+/** Lets other people's requests run between the heavy synchronous steps of a dashboard load. */
+const yieldToLoop = () => new Promise((resolve) => setImmediate(resolve));
+
 function sharedRows(kind, loader, fromDt, toExclusiveDt) {
   const key = `${kind}:${new Date(fromDt).getTime()}:${new Date(toExclusiveDt).getTime()}`;
   const hit = rowMemo.get(key);
   if (hit && Date.now() - hit.at <= CACHE_MS) return hit.rows;
-  const rows = loader(fromDt, toExclusiveDt);
+  // Parsing a big result and collapsing it would otherwise run as one block.
+  const rows = loader(fromDt, toExclusiveDt).then(async (list) => {
+    await yieldToLoop();
+    return list;
+  });
   rowMemo.set(key, { at: Date.now(), rows });
   rows.catch(() => {
     if (rowMemo.get(key)?.rows === rows) rowMemo.delete(key);
@@ -1034,6 +1041,7 @@ export async function getNotificationAnalytics(query) {
   const deliveredEvents = events.length + campaigns.reduce((sum, c) => sum + (c.sentCount || 0), 0);
   const funnel = buildNotificationFunnel(decisions, outcomes);
   const { plans } = collapseDecisionPlans(decisions);
+  await yieldToLoop();
   const prevPlans = collapseDecisionPlans(prevDecisions).plans;
 
   // Outcomes of plans made before the period (a re-engagement planned two weeks ago firing today).

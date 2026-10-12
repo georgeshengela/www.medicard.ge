@@ -78,8 +78,23 @@ function msOf(value) {
  * rows with new ids: one water plan arrived dozens of times. A plan = person + template + result + reason
  * + planned time (or day, for a skip). A planned notification that a later run replaced before its time
  * is `superseded` — it never fired. `aliasOf` maps every row id to its plan's id so outcomes find it.
+ *
+ * One dashboard load collapses the same shared rows four or five times (funnel, plans, types; 27 800 rows
+ * a week on 2026-10-12), so the result is reused for the same array within a minute. Callers only read it.
  */
+const collapsedByRows = new WeakMap();
+const COLLAPSE_REUSE_MS = 60_000;
+
 export function collapseDecisionPlans(rows, now = Date.now()) {
+  if (!rows || typeof rows !== 'object') return collapseFresh(rows, now);
+  const memo = collapsedByRows.get(rows);
+  if (memo && memo.length === rows.length && Math.abs(memo.now - now) <= COLLAPSE_REUSE_MS) return memo.result;
+  const result = collapseFresh(rows, now);
+  collapsedByRows.set(rows, { now, length: rows.length, result });
+  return result;
+}
+
+function collapseFresh(rows, now) {
   const plans = new Map();
   const aliasOf = new Map();
   for (const row of rows || []) {

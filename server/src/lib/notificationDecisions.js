@@ -240,13 +240,17 @@ export async function getNotificationDecision(decisionId) {
   }
 }
 
+/**
+ * Admin analytics only (funnel, plans, types, fatigue). Tens of thousands of rows a week are parsed on
+ * the single web CPU, so only the columns those read are selected (2026-10-12 stalls).
+ */
 export async function loadDecisionRows(fromDt, toExclusiveDt) {
   await ensureNotificationDecisionTable();
   try {
     return await prisma.$queryRaw`
-      SELECT "decisionId", "userId", "candidate", "family", "score", "result", "reason",
-             "templateKey", "route", "selectedFrequency", "baseDailyCap", "adaptiveDailyCap",
-             "ewma", "createdAt", "scheduledAt", "revalidatedAt", "syncedAt"
+      SELECT "decisionId", "userId", "family", "result", "reason", "templateKey",
+             "selectedFrequency", "baseDailyCap", "adaptiveDailyCap", "ewma",
+             "createdAt", "scheduledAt", "syncedAt"
       FROM "NotificationDecision"
       WHERE "createdAt" >= ${fromDt} AND "createdAt" < ${toExclusiveDt}
     `;
