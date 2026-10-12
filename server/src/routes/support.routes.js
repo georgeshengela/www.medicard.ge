@@ -5,6 +5,8 @@
  * downloads are audited — without message text. Inbound bodies are sanitized before storage and
  * the admin renders HTML only inside a sandboxed iframe. No health data is exposed: a linked
  * account shows name, status and sign-up date plus a link to #/users/:id.
+ * The Director's pending reply drafts show inside their thread and can be sent or dropped there;
+ * an admin reply retires the draft. /stats gives counts and reply times only.
  */
 import { randomUUID } from 'node:crypto';
 import { Router } from 'express';
@@ -21,6 +23,9 @@ import { ATTACHMENT_MAX_BYTES, createInboundClient } from '../lib/support/resend
 import { previewText } from '../lib/support/quote.js';
 import { SUPPORT_STATUSES, inboundHealth, isMissingSupportTable, kickSupportInbound, supportConfig, SUPPORT_RETENTION_DAYS } from '../lib/support/inbound.js';
 import { addSupportNote, letterSchema, noteSchema, renderSupportLetter, renderSupportReply, replySchema, sendSupportLetter, sendSupportReply, senderForMailbox, snippetSchema, supportSender, supportSenders, threadPatchSchema } from '../lib/support/reply.js';
+import { SUPPORT_STATS_DAYS, loadSupportStats, pendingDrafts, threadTriage } from '../lib/support/stats.js';
+import { completeProposal, getProposal } from '../lib/director/store.js';
+import { decideFromAdmin } from '../lib/director/service.js';
 
 export const adminSupportRouter = Router();
 adminSupportRouter.use(requireAdmin);
@@ -79,6 +84,23 @@ const messageView = (m, admins) => ({
   createdAt: m.createdAt,
 });
 
+/**
+ * A pending Director reply draft (DirectorProposal, payload.action support_reply). Its body is
+ * „summary\nრატომ შენ: reason\n\nპასუხის პროექტი:\n…“; the reply text itself is payload.body.
+ */
+function draftView(p) {
+  if (!p) return null;
+  const lines = String(p.body || '').split('\n');
+  const why = lines.find((l) => /^რატომ შენ:/.test(l)) || '';
+  return {
+    id: p.id,
+    summary: (lines[0] || '').trim(),
+    reason: why.replace(/^რატომ შენ:\s*/, '').replace(/^[a-z][a-z0-9_]*\s+—\s+/i, '').trim(),
+    body: String(p.payload?.body || ''),
+    createdAt: p.createdAt,
+  };
+}
+
 /* ───────── Summary (sidebar badge, polled every 60 s) ───────── */
 adminSupportRouter.get('/summary', view, asyncHandler(async (_req, res) => {
   res.set('Cache-Control', 'no-store');
@@ -127,9 +149,11 @@ adminSupportRouter.post('/letters', manage, guarded(async (req, res) => {
 
 /* ───────── Threads ───────── */
 const listQuery = z.object({
-  status: z.enum(['active', 'all', ...SUPPORT_STATUSES]).default('active'),
+  // todo = new + open (someone waits for our answer); active = every thread that is not closed.
+  status: z.enum(['active', 'todo', 'all', ...SUPPORT_STATUSES]).default('active'),
   mine: z.enum(['0', '1']).optional(),
   unread: z.enum(['0', '1']).optional(),
+  draft: z.enum(['0', '1']).optional(),
   q: z.string().trim().max(120).optional(),
   offset: z.coerce.number().int().min(0).max(100000).default(0),
   limit: z.coerce.number().int().min(1).max(100).default(40),
@@ -137,10 +161,12 @@ const listQuery = z.object({
 
 adminSupportRouter.get('/threads', view, guarded(async (req, res) => {
   const q = listQuery.parse(req.query ?? {});
+  const drafts = await pendingDrafts();
   const where = {
-    ...(q.status === 'active' ? { status: { in: ['new', 'open', 'waiting'] } } : q.status === 'all' ? {} : { status: q.status }),
+    ...(q.status === 'active' ? { status: { in: ['new', 'open', 'waiting'] } } : q.status === 'todo' ? { status: { in: ['new', 'open'] } } : q.status === 'all' ? {} : { status: q.status }),
     ...(q.mine === '1' ? { assignedAdminId: req.admin.id } : {}),
     ...(q.unread === '1' ? { unread: true } : {}),
+    ...(q.draft === '1' ? { id: { in: Object.keys(drafts) } } : {}),
     ...(q.q ? { OR: [
       { counterpartEmail: { contains: q.q, mode: 'insensitive' } },
       { counterpartName: { contains: q.q, mode: 'insensitive' } },
@@ -155,21 +181,35 @@ adminSupportRouter.get('/threads', view, guarded(async (req, res) => {
   ]);
   const counts = Object.fromEntries(SUPPORT_STATUSES.map((s) => [s, 0]));
   for (const g of grouped) counts[g.status] = g._count._all;
-  // One-line preview of each thread's latest mail or reply (internal notes are not previews).
-  const latest = rows.length
-    ? await prisma.supportMessage.findMany({
-      where: { threadId: { in: rows.map((r) => r.id) }, direction: { in: ['inbound', 'outbound'] } },
-      orderBy: { createdAt: 'desc' },
-      distinct: ['threadId'],
-      select: { threadId: true, direction: true, textBody: true, bodyStatus: true },
-    })
-    : [];
+  // One-line preview of each thread's latest mail or reply (internal notes are not previews), who
+  // wrote our last reply („director“ = no admin author), the Director's topic and pending draft.
+  const ids = rows.map((r) => r.id);
+  const [latest, triage] = await Promise.all([
+    ids.length
+      ? prisma.supportMessage.findMany({
+        where: { threadId: { in: ids }, direction: { in: ['inbound', 'outbound'] } },
+        orderBy: { createdAt: 'desc' },
+        distinct: ['threadId'],
+        select: { threadId: true, direction: true, textBody: true, bodyStatus: true, authorAdminId: true },
+      })
+      : [],
+    threadTriage(ids),
+  ]);
+  const nameOf = (id) => admins.find((a) => a.id === id)?.name || 'ადმინი';
   const previewOf = Object.fromEntries(latest.map((m) => [m.threadId, {
     direction: m.direction,
     text: previewText(m.textBody),
     pending: !m.textBody && m.bodyStatus !== 'ok',
+    author: m.direction === 'outbound' ? (m.authorAdminId ? nameOf(m.authorAdminId) : 'director') : null,
   }]));
-  res.json({ total, threads: rows.map((r) => ({ ...threadView(r), preview: previewOf[r.id] || null })), counts, admins, me: req.admin.id });
+  res.json({
+    total,
+    threads: rows.map((r) => ({ ...threadView(r), preview: previewOf[r.id] || null, draft: Boolean(drafts[r.id]), topic: triage[r.id]?.category || null })),
+    counts,
+    drafts: Object.keys(drafts).length,
+    admins,
+    me: req.admin.id,
+  });
 }));
 
 async function loadThread(id) {
@@ -180,7 +220,7 @@ async function loadThread(id) {
 
 adminSupportRouter.get('/threads/:id', view, guarded(async (req, res) => {
   const thread = await loadThread(req.params.id);
-  const [messages, admins, user, suppressed, history] = await Promise.all([
+  const [messages, admins, user, suppressed, history, drafts, triage] = await Promise.all([
     prisma.supportMessage.findMany({ where: { threadId: thread.id }, orderBy: { createdAt: 'asc' }, take: 500 }),
     adminDirectory(),
     // Basic account facts only — never health data.
@@ -193,9 +233,46 @@ adminSupportRouter.get('/threads/:id', view, guarded(async (req, res) => {
       take: 10,
       select: { id: true, subject: true, status: true, lastMessageAt: true, messageCount: true },
     }),
+    pendingDrafts(),
+    threadTriage([thread.id]),
   ]);
   if (thread.unread) await prisma.supportThread.update({ where: { id: thread.id }, data: { unread: false } });
-  res.json({ thread: { ...threadView(thread), unread: false }, messages: messages.map((m) => messageView(m, admins)), user, admins, suppressed, history, me: req.admin.id });
+  res.json({
+    thread: { ...threadView(thread), unread: false, topic: triage[thread.id]?.category || null, directorStatus: triage[thread.id]?.status || null },
+    messages: messages.map((m) => messageView(m, admins)),
+    user,
+    admins,
+    suppressed,
+    history,
+    draft: draftView(drafts[thread.id]),
+    me: req.admin.id,
+  });
+}));
+
+/* ───────── Numbers („რიცხვები“ strip) ───────── */
+adminSupportRouter.get('/stats', view, guarded(async (req, res) => {
+  const days = Number(req.query?.days);
+  res.json(await loadSupportStats(SUPPORT_STATS_DAYS.includes(days) ? days : 7));
+}));
+
+/* ───────── Director drafts ───────── */
+/**
+ * The Director's reply draft for a thread, decided from the conversation: approve sends it exactly
+ * as the Telegram ✅ would (as the Director, approved by an admin), reject drops it. Both go through
+ * decideFromAdmin, so the Director's journal and the owner's Telegram stay in step.
+ */
+adminSupportRouter.post('/threads/:id/draft/:proposalId/:decision', manage, guarded(async (req, res) => {
+  const decision = z.enum(['approve', 'reject']).parse(req.params.decision);
+  const thread = await loadThread(req.params.id);
+  const draft = (await pendingDrafts())[thread.id];
+  if (!draft || draft.id !== req.params.proposalId) throw httpError('პროექტი უკვე გადაწყვეტილია.', 409, 'DRAFT_DECIDED');
+  if (decision === 'approve' && await isSuppressed(hashEmail(thread.counterpartEmail)).catch(() => false)) throw httpError('მისამართი დაბლოკილია — პასუხი არ გაიგზავნება.', 409, 'SUPPRESSED');
+  const p = await decideFromAdmin(draft.id, decision === 'approve', req.admin.email, null);
+  if (!p) throw httpError('პროექტი უკვე გადაწყვეტილია.', 409, 'DRAFT_DECIDED');
+  await writeAdminAudit({ admin: req.admin, action: decision === 'approve' ? 'director.approve' : 'director.reject', targetType: 'director_proposal', targetId: p.id, newValue: { title: p.title, threadId: thread.id, via: 'support' } });
+  // decideFromAdmin reports a failed send to Telegram and leaves the proposal approved, not done.
+  if (decision === 'approve' && (await getProposal(p.id))?.status !== 'done') throw httpError('დადასტურდა, მაგრამ წერილი ვერ გაიგზავნა. სცადე პასუხის ველიდან.', 502, 'DRAFT_SEND_FAILED');
+  res.json({ ok: true });
 }));
 
 adminSupportRouter.patch('/threads/:id', manage, guarded(async (req, res) => {
@@ -237,6 +314,9 @@ adminSupportRouter.post('/threads/:id/preview', manage, guarded(async (req, res)
 adminSupportRouter.post('/threads/:id/reply', manage, guarded(async (req, res) => {
   const body = replySchema.parse(req.body ?? {});
   const out = await sendSupportReply({ threadId: req.params.id, body: body.body, status: body.status, admin: req.admin });
+  // An admin answered: the Director's draft for this thread is no longer needed.
+  const draft = (await pendingDrafts())[req.params.id];
+  if (draft) await completeProposal(draft.id, { result: 'ადმინიდან უპასუხეს.', status: 'expired' }).catch(() => {});
   await writeAdminAudit({
     admin: req.admin,
     action: 'support.reply',

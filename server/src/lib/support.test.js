@@ -722,3 +722,40 @@ it('splitQuoted folds Gmail quoted history (English and Georgian) and keeps plai
   assert.equal(splitQuoted('> only quoted').main, '> only quoted');
   assert.equal(previewText('new line\n> old one'), 'new line');
 });
+
+it('buildSupportStats counts Tbilisi days, splits Director and team replies and measures the first reply', async () => {
+  const { buildSupportStats, statsSince, tbilisiDay } = await import('./support/stats.js');
+  const now = new Date('2026-10-12T08:00:00Z'); // 12:00 Tbilisi
+  assert.equal(tbilisiDay('2026-10-11T21:30:00Z'), '2026-10-12'); // 01:30 Tbilisi is already the 12th
+  assert.equal(statsSince(7, now).toISOString(), '2026-10-05T20:00:00.000Z');
+  const s = buildSupportStats({
+    days: 7,
+    now,
+    started: ['a', 'b', 'letter'],
+    messages: [
+      { threadId: 'a', direction: 'inbound', createdAt: '2026-10-11T06:00:00Z' },
+      { threadId: 'a', direction: 'outbound', createdAt: '2026-10-11T08:00:00Z', authorAdminId: null },
+      { threadId: 'a', direction: 'outbound', createdAt: '2026-10-11T09:00:00Z', authorAdminId: 'a1' },
+      { threadId: 'b', direction: 'inbound', createdAt: '2026-10-12T07:00:00Z' },
+      { threadId: 'letter', direction: 'outbound', createdAt: '2026-10-10T07:00:00Z', authorAdminId: 'a1' },
+      { threadId: 'letter', direction: 'inbound', createdAt: '2026-10-10T09:00:00Z' },
+      { threadId: 'old', direction: 'inbound', createdAt: '2026-09-01T09:00:00Z' },
+    ],
+    open: [
+      { status: 'new', lastInboundAt: '2026-10-12T07:00:00Z' },
+      { status: 'open', lastInboundAt: '2026-10-09T07:00:00Z' },
+      { status: 'waiting', lastInboundAt: '2026-10-11T06:00:00Z' },
+    ],
+    triage: [{ status: 'answered', category: 'help' }, { status: 'escalated', category: 'account' }, { status: 'escalated', category: 'account' }, { status: 'spam', category: 'weird' }],
+    drafts: 2,
+  });
+  assert.equal(s.byDay.length, 7);
+  assert.equal(s.byDay.at(-1).day, '2026-10-12');
+  assert.equal(s.inbound, 3); // the September mail is outside the period
+  assert.deepEqual([s.replies, s.repliesDirector, s.repliesTeam], [3, 1, 2]);
+  assert.equal(s.firstReplyMedianH, 2); // thread a: 2 h; b unanswered; the letter we started is skipped
+  assert.equal(s.unanswered, 1);
+  assert.deepEqual(s.now, { todo: 2, waiting: 1, oldestTodoAt: '2026-10-09T07:00:00.000Z', drafts: 2 });
+  assert.deepEqual(s.director, { answered: 1, escalated: 2, deferred: 0, spam: 1, human: 0 });
+  assert.deepEqual(s.topics, [{ key: 'account', count: 2 }, { key: 'help', count: 1 }, { key: 'other', count: 1 }]);
+});
