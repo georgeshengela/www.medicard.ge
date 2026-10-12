@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import {
+  Baby,
   CalendarCheck,
   ChevronRight,
   Droplet,
@@ -32,6 +33,7 @@ import { OutlineRings as Rings, withAlpha as alpha } from '@/components/brand/Ou
 import { MediOrb } from '@/components/medi/MediOrb';
 import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
 import { isHrefAvailable, useFeatureState } from '@/lib/featureFlags';
+import { familyShipped } from '@/lib/family/familyAvailability';
 import { mediRoute } from '@/lib/mediModes';
 import { useAuth } from '@/store/AuthContext';
 import { tx } from '@/i18n/locale';
@@ -52,6 +54,7 @@ const MODULES: ModuleTile[] = [
   { id: 'sleep', href: '/sleep', line: tx('ძილი', 'Sleep'), icon: MoonStar },
   { id: 'run', href: '/run', line: tx('გაანათე ქალაქი', 'Light up the city'), icon: Footprints },
   { id: 'quest', href: '/medi-quest', line: tx('მისიები', 'Missions'), icon: Trophy },
+  { id: 'family', href: '/family', line: tx('შვილები', 'Children'), icon: Baby },
   { id: 'vet', href: '/pets', line: tx('ცხოველები', 'Pets'), icon: PawPrint },
   { id: 'coach', href: '/trainer', line: tx('ტრენერი', 'Trainer'), icon: Dumbbell },
 ];
@@ -89,7 +92,7 @@ export function ModulesSheet({ visible, onClose, onCustomize }: {
   const female = user?.gender === 'FEMALE';
 
   const mediOn = isHrefAvailable(mediRoute(), features);
-  const modules = MODULES.filter((m) => (!m.female || female) && isHrefAvailable(m.href, features));
+  const modules = MODULES.filter((m) => (!m.female || female) && (m.id !== 'family' || familyShipped()) && isHrefAvailable(m.href, features));
   const utilities = UTILITIES.filter((u) => isHrefAvailable(u.href, features));
 
   const go = (href: string) => {

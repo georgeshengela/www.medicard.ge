@@ -8,6 +8,7 @@
     "ანალიზისთვის არჩეული ფოტოები და დოკუმენტებიდან ამოღებული ტექსტი. ატვირთვამდე დაფარე არასაჭირო სახელი და პირადი ნომერი.",
     "შესაბამის მოთხოვნაში — ნებადართული ციკლის ჩანაწერები. დაცული ციკლი და ინტიმური ველები ზოგად კონტექსტში არ შედის. სიმპტომების შემოწმებაში პროფილის დამატება ცალკე არჩევანია.",
     "Medi Vet-სა და ცხოველის ასისტენტში — ცხოველის პროფილი და მოვლის ინფორმაცია; ადამიანის ჯანმრთელობის პროფილის გარეშე.",
+    "MEDIFAMILY-ში Medi-სთვის, როცა შვილზე კითხვას სვამ — ბავშვის პროფილი (სახელი, ასაკი, სქესი), ზრდა, აცრები, ალერგიები, მდგომარეობები, ბოლო ტემპერატურა, სიმპტომები, მიცემული წამლები და კვება; შენი ჯანმრთელობის პროფილის გარეშე.",
     "ხმოვანი ასისტენტი: ჩაწერილი ხმა — OpenRouter-ის გავლით Google Vertex AI-ს ტექსტად გარდასაქმნელად; ხმოვანი პასუხის ჩართვისას პასუხის ტექსტი — Microsoft Azure Speech-ს გასახმოვანებლად.",
     "კვების ფოტოს შეფასება: მხოლოდ არჩეული საკვების ფოტო და შენ მიერ დამატებული პორციის აღწერა — OpenRouter-ის გავლით Google Vertex AI-ს. ჯანმრთელობის პროფილი არ იგზავნება; ფოტო მუდმივად არ ინახება.",
     "Medi-სთან კვების შესახებ საუბრისას — შენახული კვების ჯამები და ბოლო 7 დღის პროგრესი, დღის სამიზნეები, წონის მიზანი, რაციონი და კვების არჩევანი. დაცული ციკლის დეტალები არ იგზავნება."
@@ -58,6 +59,7 @@
     "ანალიზისთვის არჩეული ფოტოები და დოკუმენტებიდან ამოღებული ტექსტი",
     "ციკლის ან ორსულობის ინფორმაცია, როცა ამ ფუნქციას იყენებ",
     "ცხოველის პროფილი და მოვლა Medi Vet-ში — ადამიანის ჯანმრთელობის პროფილის გარეშე",
+    "შვილის პროფილი და ჯანმრთელობის ჩანაწერები MEDIFAMILY-ში, როცა მასზე Medi-ს ეკითხები",
     "ხმოვანი ჩანაწერი ტექსტად გარდასაქმნელად და, თუ ჩართულია, პასუხის ტექსტი გასახმოვანებლად",
     "კვების ფოტო, პორციის აღწერა და კვების ჯამები, როცა ამ ფუნქციას იყენებ"
   ],
@@ -71,6 +73,7 @@
       "Photos you choose for analysis and text extracted from documents. Cover names and ID numbers you do not want sent.",
       "When relevant: cycle records you have permitted. Locked cycle data and intimate fields are not included in general context. Adding your health profile to symptom check is a separate choice.",
       "In Medi Vet and the pet assistant: the pet profile and care information, without the human health profile.",
+      "In MEDIFAMILY, when you ask Medi about your child: the child's profile (name, age, sex), growth, vaccines, allergies, conditions, latest temperature, symptoms, medicines given and feeding — without your own health profile.",
       "Voice assistant: recorded audio is sent through OpenRouter to Google Cloud Vertex AI for transcription. If spoken replies are on, the reply text is sent to Microsoft Azure Speech to generate speech.",
       "Food estimates: only the selected food photo and your portion description go through OpenRouter to Google Vertex AI. No health profile is sent; the photo is not stored permanently.",
       "When discussing nutrition with Medi: saved meal totals and the last 7 days of progress, daily targets, weight goal, planned meals and dietary preferences. Protected cycle details are not sent."
@@ -109,6 +112,7 @@
       "Photos you choose for analysis and text extracted from documents",
       "Cycle or pregnancy information when you use those features",
       "Pet profile and care details in Medi Vet, without the human health profile",
+      "Your child's profile and health records in MEDIFAMILY, when you ask Medi about them",
       "Recorded audio for transcription, and reply text for spoken answers when that is on",
       "A food photo, portion note, and nutrition totals when you use those features"
     ],

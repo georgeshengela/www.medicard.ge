@@ -3,7 +3,7 @@
  * ROUTE_ROOTS mirrors `server/src/lib/announcements.js` — a test keeps the two identical.
  */
 export const ROUTE_ROOTS = [
-  '(tabs)', 'assistant', 'cycle', 'nutrition', 'pets', 'medipulsi', 'run', 'medi-quest', 'community',
+  '(tabs)', 'assistant', 'cycle', 'nutrition', 'pets', 'family', 'medipulsi', 'run', 'medi-quest', 'community',
   'pharmacy', 'trainer', 'visits', 'lab', 'symptoms', 'health-metrics', 'medications', 'record',
   'profile', 'explore', 'weather', 'week', 'module', 'news',
 ] as const;

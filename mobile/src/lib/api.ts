@@ -2386,6 +2386,11 @@ export async function nutritionProgramRequest<T>(path:string, method:'GET'|'POST
   return result;
 }
 
+/** MEDIFAMILY (/api/family): typed calls live in src/lib/family/familyApi.ts. */
+export function familyRequest<T>(path: string, method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE' = 'GET', body?: unknown): Promise<T> {
+  return request<T>('/api/family' + path, { method, body, timeoutMs: 30000 });
+}
+
 export async function communityRequest<T = any>(path: string, method: 'GET'|'POST'|'PUT'|'PATCH'|'DELETE' = 'GET', body?: unknown): Promise<T> {
   const { localAccountId } = await import('@/lib/localAccount');
   const owner = localAccountId(), token = await getToken();

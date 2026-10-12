@@ -1,7 +1,7 @@
 import React, { useCallback, useState } from 'react';
 import { View } from 'react-native';
 import { useFocusEffect } from 'expo-router';
-import { CalendarCheck, FlaskConical } from 'lucide-react-native';
+import { CalendarCheck, FlaskConical, Syringe } from 'lucide-react-native';
 import { HomeSectionHeading } from '@/components/home/HomeSectionHeading';
 import { HubLinkRow } from '@/components/home/HubTiles';
 import { doctorTypeLabel } from '@/constants/visits';
@@ -14,6 +14,8 @@ import { loadCanonicalLabPanels } from '@/lib/labStore';
 import { FRESH } from '@/lib/queryClient';
 import { todayYmd } from '@/lib/hydration';
 import { tx } from '@/i18n/locale';
+import { familyApi } from '@/lib/family/familyApi';
+import { familyShipped } from '@/lib/family/familyAvailability';
 import { useAuth } from '@/store/AuthContext';
 import { HUB } from '@/theme/hub';
 import type { LabPanel } from '@/types/lab';
@@ -53,9 +55,14 @@ export function HomeAttention() {
     }, [labsOn, user?.id]),
   );
 
+  // MEDIFAMILY: a child's vaccine that is overdue or due within a week (the list is cached app-wide).
+  const familyOn = familyShipped() && isHrefAvailable('/family', features);
+  const family = useAccountQuery({ key: ['family', 'list'], fetch: familyApi.list, staleTime: FRESH.SHORT, enabled: familyOn });
+  const vaccines = familyOn ? (family.data?.members ?? []).filter((m) => m.vaccines.next && (m.vaccines.next.status === 'overdue' || daysUntil(m.vaccines.next.dueOn, today) <= 7)).slice(0, 2) : [];
+
   const visit = visitsOn ? upcomingVisit(visits.data ?? [], today) : null;
   const lab = labsOn ? recentLab(panels, today) : null;
-  if (!visit && !lab) return null;
+  if (!visit && !lab && !vaccines.length) return null;
 
   const when = (ymd: string) => {
     const days = daysUntil(ymd, today);
@@ -75,6 +82,20 @@ export function HomeAttention() {
             href="/visits"
           />
         ) : null}
+        {vaccines.map((m) => {
+          const next = m.vaccines.next!;
+          const overdue = next.status === 'overdue';
+          return (
+            <HubLinkRow
+              key={m.id}
+              icon={Syringe}
+              ink={overdue ? 'amber' : 'teal'}
+              title={overdue ? tx(`${m.name}: აცრა გადაცილებულია`, `${m.name}: a vaccine is overdue`) : tx(`${m.name}: აცრის დრო ახლოვდება`, `${m.name}: vaccines coming up`)}
+              detail={overdue ? tx('დაგეგმე პედიატრთან — სერია თავიდან არ იწყება', 'Plan it with your pediatrician — the series never restarts') : when(next.dueOn)}
+              href={`/family/${m.id}/vaccines`}
+            />
+          );
+        })}
         {lab ? (
           <HubLinkRow
             icon={FlaskConical}

@@ -43,6 +43,8 @@ export const FEATURE_LABELS: Record<FeatureKey, string> = {
   voice: tx('ხმოვანი Medi', 'Voice Medi'),
   pets: tx('ჩემი ცხოველები', 'My pets'),
   mediVet: 'MEDIVET',
+  family: 'MEDIFAMILY',
+  familyMedi: tx('Medi ბავშვისთვის', 'Medi for children'),
   medirun: 'MEDIRUN',
   quest: 'MEDIQUEST',
   rewardsStore: tx('ჯილდოები', 'Rewards'),

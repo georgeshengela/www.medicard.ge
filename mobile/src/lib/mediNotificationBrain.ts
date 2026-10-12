@@ -759,6 +759,10 @@ export async function shouldDeliverNotification(data: Record<string, unknown> | 
   if (data.type === 'pet_care' || data.family === 'petCareReminder') {
     return deliverPetCareReminder(data);
   }
+  if (data.type === 'family_reminder' || data.family === 'familyReminder') {
+    const { deliverFamilyReminder } = await import('@/lib/family/familyReminders');
+    return deliverFamilyReminder(data);
+  }
   if (data.type === 'cycle_reminder' || data.family === 'cycleReminder' || data.type === 'cycle_tip') {
     return deliverCycleReminder(data);
   }

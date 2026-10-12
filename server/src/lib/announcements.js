@@ -25,7 +25,7 @@ export const MAX_LIVE = 5;
  * a stock "unmatched route" screen. The app checks the same list before navigating.
  */
 export const ROUTE_ROOTS = Object.freeze([
-  '(tabs)', 'assistant', 'cycle', 'nutrition', 'pets', 'medipulsi', 'run', 'medi-quest', 'community',
+  '(tabs)', 'assistant', 'cycle', 'nutrition', 'pets', 'family', 'medipulsi', 'run', 'medi-quest', 'community',
   'pharmacy', 'trainer', 'visits', 'lab', 'symptoms', 'health-metrics', 'medications', 'record',
   'profile', 'explore', 'weather', 'week', 'module', 'news',
 ]);

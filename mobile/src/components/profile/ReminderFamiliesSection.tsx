@@ -5,6 +5,7 @@ import { Baby, CalendarHeart, Footprints, MoonStar, PawPrint, Pill, Scale, Steth
 import { PermissionGroup, PermissionSectionLabel, PermissionToggleRow } from '@/components/profile/PermissionToggleRow';
 import { tx } from '@/i18n/locale';
 import { isFeatureOn, useFeatureState } from '@/lib/featureFlags';
+import { familyVisible } from '@/lib/family/familyAvailability';
 import { loadReminderFamilies, setReminderFamily, type ReminderFamily } from '@/lib/reminderPrefs';
 import { useAuth } from '@/store/AuthContext';
 import { useThemeColors } from '@/theme/colors';
@@ -52,6 +53,12 @@ async function applyFamily(key: RowKey, on: boolean, userId: string | undefined)
       await setReminderFamily('pets', on);
       const { reconcilePetCareReminders } = await import('@/lib/petCareReminders');
       await reconcilePetCareReminders({ reason: 'settings' });
+      return;
+    }
+    case 'family': {
+      await setReminderFamily('family', on);
+      const { reconcileFamilyReminders } = await import('@/lib/family/familyReminders');
+      await reconcileFamilyReminders({ force: true });
       return;
     }
     case 'nutrition': {
@@ -116,6 +123,7 @@ export function ReminderFamiliesSection() {
   const allRows: Row[] = [
     { key: 'meds', icon: Pill, label: tx('წამლის მიღება', 'Medications'), hint: tx('ყოველი მიღების დროს', 'At every dose time'), show: isFeatureOn('medications', features) },
     { key: 'visits', icon: Stethoscope, label: tx('ექიმთან ვიზიტი', 'Doctor visits'), hint: tx('დღით და საათით ადრე', 'A day and an hour before'), show: isFeatureOn('visits', features) },
+    { key: 'family', icon: Baby, label: tx('შვილები (MEDIFAMILY)', 'Children (MEDIFAMILY)'), hint: tx('აცრამდე 2 კვირით ადრე, იმ დღეს და თვის დაბადების დღეები', 'Vaccines two weeks before and on the day, month birthdays'), show: familyVisible() },
     { key: 'pets', icon: PawPrint, label: tx('ცხოველის მოვლა', 'Pet care'), hint: tx('წინა დღეს, იმ დღეს და ვადაზე', 'Day before, on the day, overdue'), show: isFeatureOn('pets', features) },
     { key: 'cycle', icon: CalendarHeart, label: tx('ციკლი', 'Cycle'), hint: tx('მენსტრუაცია, ოვულაცია, PMS', 'Period, ovulation, PMS'), show: female && isFeatureOn('cycle', features) },
     { key: 'pregnancy', icon: Baby, label: tx('ორსულობის მოვლა', 'Pregnancy care'), hint: tx('ვიზიტები და კვლევები გეგმიდან', 'Visits and tests from your plan'), show: female && isFeatureOn('cycle', features) },

@@ -12,7 +12,7 @@
  * header `ModuleHeader` (components/brand/ModuleHeader.tsx) — the MEDIRUN hub header.
  * The site (`server/public/js/module-brand.js`) mirrors these values — keep them in sync.
  */
-export type ModuleBrandId = 'run' | 'cycle' | 'food' | 'pill' | 'quest' | 'vet' | 'coach' | 'scan' | 'lab' | 'sleep' | 'profile' | 'medi';
+export type ModuleBrandId = 'run' | 'cycle' | 'food' | 'pill' | 'quest' | 'vet' | 'coach' | 'scan' | 'lab' | 'sleep' | 'family' | 'profile' | 'medi';
 
 export type ModuleBrand = {
   id: ModuleBrandId;
@@ -87,6 +87,13 @@ export const MODULE_BRANDS: Record<ModuleBrandId, ModuleBrand> = {
     id: 'sleep', suffix: 'SLEEP', name: 'MEDISLEEP',
     ink: { light: '#8A35C2', dark: '#D9A8FF' },
     gradient: ['#1B1145', '#4B2A9E', '#9A4FD6'], glow: 'rgba(217,168,255,0.35)', onHero: '#F1DEFF',
+  },
+  // MEDIFAMILY (owner 2026-10-12): the family's health, starting with children. Warm coral = the sunrise of a
+  // family morning; distinct from MEDICYCLE rose and the women's tone.
+  family: {
+    id: 'family', suffix: 'FAMILY', name: 'MEDIFAMILY',
+    ink: { light: '#C2410C', dark: '#FDBA74' },
+    gradient: ['#7C2D12', '#EA580C', '#FB923C'], glow: 'rgba(253,186,116,0.40)', onHero: '#FFEDD5',
   },
   // MEDIPROFILE (owner 2026-10-04): the Profile tab's title. It is the person's own page, not a module,
   // so it keeps the brand teal instead of a signature colour.

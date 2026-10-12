@@ -2,7 +2,7 @@
 
 This is an English translation. If it differs from the Georgian version, the Georgian version prevails.
 
-**Last updated:** October 6, 2026
+**Last updated:** October 12, 2026
 **Effective date:** September 20, 2026
 
 This policy explains how account, health and activity information is processed in MEDICARD. The amount of data depends on the features you use and the permissions you grant. Reading this policy does not mean you consent to sharing with AI — the app offers you a separate choice for that.
@@ -54,6 +54,7 @@ AI is used to prepare answers to your requests, explanations of health informati
 * images or documents you select for analysis, or text extracted from them;
 * the relevant cycle context for cycle AI tips;
 * for MEDIVET, the pet's profile, care information and the conversation;
+* in MEDIFAMILY, for Medi — only when the parent asks — the child's profile (name, age, sex, weeks at birth), growth measurements, vaccine status, allergies, conditions, the latest temperature, symptoms, medicines given, feeding and the conversation; without the parent's own health profile;
 * for voice Medi, audio recorded with the button — sent through OpenRouter to Google Vertex AI for conversion to text; for spoken replies, the text of the reply — sent to Microsoft Azure Speech for real-time voicing.
 
 Adding your health profile to the symptom check is a separate choice. A person's health profile is not included in a MEDIVET request. The user's name is not added automatically from the account context to what is sent to AI, although a name you write or one contained in a document may be part of the request itself. Before uploading, you can cover identifying details that are not needed.
@@ -100,7 +101,7 @@ Authorized administrators may process information needed for account, support an
 
 Account records and AI responses are kept for history and synchronization until you delete them or your account. In this version there is no promise of a single automatic expiry period for all records. Individual local caches may be changed or deleted sooner.
 
-You can delete your account from the profile settings in the app. The main records linked to the account, the health profile, conversations, pet data and AI consent records are deleted. The texts of notifications linked to the account are deleted or redacted; deletion of uploaded files is also processed in the relevant storage. Financial or security history that must be kept may remain within the scope of the relevant obligation.
+You can delete your account from the profile settings in the app. The main records linked to the account, the health profile, conversations, pet data, every record of children added in MEDIFAMILY and AI consent records are deleted. The texts of notifications linked to the account are deleted or redacted; deletion of uploaded files is also processed in the relevant storage. Financial or security history that must be kept may remain within the scope of the relevant obligation.
 
 Step-by-step instructions, deletion without the app and an exact list of what is deleted and what remains: https://medicard.ge/delete-account
 
@@ -163,3 +164,13 @@ Without consent nothing is loaded from Meta. The Google Analytics tag is on the 
 # 16. Measuring app installs (Meta SDK)
 
 The iPhone app includes the Facebook SDK of Meta Platforms, Inc. only so we can count how many people installed and opened the app after seeing our ads on Facebook and Instagram. The SDK starts only after you accept this policy and sends Meta only its automatic events — app install and app open — with technical data (app version, device model and iOS version, language, time zone, IP address). The advertising identifier (IDFA) is not collected and the app does not ask for tracking permission (App Tracking Transparency); installs are attributed through Apple's SKAdNetwork and Meta's Aggregated Event Measurement. Health data, cycle records, account data, your name, email and phone number are never sent to Meta, and the app logs no events of its own for Meta. Meta processes this data under its own policy (facebook.com/privacy/policy), possibly outside Georgia.
+
+# 17. MEDIFAMILY — children's data
+
+In MEDIFAMILY a parent (or legal guardian) can add a child under 18 and keep their vaccines, growth measurements, feeding, a sick-day diary (temperature, symptoms, medicines given), allergies, conditions and developmental milestones. The child is not a user of the app — the account belongs to the parent (18+).
+
+When adding a child, the parent confirms that they are the child's parent or legal guardian and agrees that MEDICARD stores and processes the child's health data (Law of Georgia on Personal Data Protection, Article 7). The consent version and time are stored with the child's profile.
+
+Only the account that added the child can see the data. It is used only to show it to the parent, for vaccine and age reminders (scheduled locally on the phone) and for Medi's answer when the parent asks about the child (the recipients in sections 5 and 6, with separate consent to AI processing). The child's conversations with Medi are kept separately and are not part of the parent's own consultation context. A child's data is never used for advertising, never sold and never passed to third parties; admin analytics show counts only (no names, dates or health values).
+
+The parent can permanently delete the child's profile and every record at any time in the app (child profile → Edit → Delete); deleting the account deletes the children's data too. MEDIFAMILY and Medi do not replace a pediatrician: for danger signs, call 112.
