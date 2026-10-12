@@ -3,7 +3,8 @@
  * layout (category 'support': no marketing / account footer), sent from SUPPORT_FROM through the
  * shared mailer (kill switch `email`, EmailSuppression, masked EmailLog, idempotency) with
  * In-Reply-To / References / "Re:" so it threads in Gmail and Outlook, then stored as an
- * outbound SupportMessage. Internal notes are stored only and never emailed.
+ * outbound SupportMessage (its real Message-ID arrives later from Resend — sentIds.js).
+ * Internal notes are stored only and never emailed.
  */
 import { randomUUID } from 'node:crypto';
 import { z } from 'zod';
@@ -95,9 +96,10 @@ export async function sendSupportReply({ threadId, body, status = 'waiting', adm
   // Loop protection: never answer our own domain (noreply bounces, notices, test mail from support@).
   if (isOwnDomain(to)) throw httpError('საკუთარ დომენზე (@medicard.ge) პასუხი არ იგზავნება.', 422, 'OWN_DOMAIN');
 
-  // Thread onto their last mail; a follow-up before any answer threads onto our own first letter.
+  // Thread onto their last mail; a follow-up before any answer threads onto our last sent mail
+  // (by the Message-ID it really went out with, once Resend told us — sentIds.js).
   const lastInbound = await db.supportMessage.findFirst({ where: { threadId, direction: 'inbound' }, orderBy: { createdAt: 'desc' } })
-    || await db.supportMessage.findFirst({ where: { threadId, direction: 'outbound', messageId: { not: null } }, orderBy: { createdAt: 'desc' } });
+    || await db.supportMessage.findFirst({ where: { threadId, direction: 'outbound', OR: [{ smtpMessageId: { not: null } }, { messageId: { not: null } }] }, orderBy: { createdAt: 'desc' } });
   const headers = buildReplyHeaders(lastInbound);
   const sender = senderForMailbox(thread.mailbox);
   const id = randomUUID();
@@ -156,8 +158,9 @@ export const letterSchema = z.object({
 
 /**
  * „ახალი წერილი“ — an admin starts a conversation (e.g. the owner writing to a supplier from
- * ceo@). Sent first, then stored as a 'waiting' thread in that mailbox with our own Message-ID,
- * so the answer (References / same subject) lands in the same thread.
+ * ceo@). Sent first, then stored as a 'waiting' thread in that mailbox with our own Message-ID.
+ * Resend/SES replaces that header, so the answer threads back by the id the letter really went
+ * out with (`smtpMessageId`, from Resend — sentIds.js) or by the same subject.
  */
 export async function sendSupportLetter({ from, to: rawTo, toName = '', subject, body, admin }, { db = prisma, send = sendEmail, now = new Date() } = {}) {
   // Inbound counterparts are lowercase; the answer must find this thread.

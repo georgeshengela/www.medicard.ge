@@ -2730,10 +2730,13 @@ model SupportMessage {
   authorAdminId String?
   providerId    String?
   sendStatus    String?
+  /// outbound: the Message-ID the recipient got (Resend/SES replaces ours) — 20261012-support-smtp-id.sql
+  smtpMessageId String?
   createdAt     DateTime      @default(now())
 
   @@index([threadId, createdAt], map: "SupportMessage_thread_time_idx")
   @@index([messageId], map: "SupportMessage_messageId_idx")
+  @@index([smtpMessageId], map: "SupportMessage_smtpMessageId_idx")
   @@index([bodyStatus, bodyNextAt], map: "SupportMessage_body_idx")
 }
 

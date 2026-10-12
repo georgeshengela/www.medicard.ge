@@ -2,6 +2,7 @@
  * Resend Inbound (receiving) REST calls — https://resend.com/docs/dashboard/receiving/introduction
  *   GET /emails/receiving/{id}                        body (html, text), headers, attachments
  *   GET /emails/receiving/{email_id}/attachments/{id} attachment metadata + download_url (1 hour)
+ *   GET /emails/{id}                                  a sent email's message_id (support threading)
  * The `email.received` webhook carries metadata only. A "Sending access" API key "can only send
  * emails" (https://resend.com/docs/api-reference/api-keys/create-api-key), so reading needs a
  * "Full access" key: RESEND_INBOUND_API_KEY. 401/403 → code RESTRICTED (metadata-only mode).
@@ -58,6 +59,8 @@ export function createInboundClient({ apiKey = inboundApiKey(), fetchImpl = fetc
     configured: Boolean(apiKey),
     getReceived: (id) => get(`/emails/receiving/${encodeURIComponent(id)}`),
     getAttachment: (emailId, attachmentId) => get(`/emails/receiving/${encodeURIComponent(emailId)}/attachments/${encodeURIComponent(attachmentId)}`),
+    /** One of our sent emails; `message_id` is the Message-ID the recipient got (sentIds.js). */
+    getSent: (id) => get(`/emails/${encodeURIComponent(id)}`),
     /** Streams the file with a hard size cap; never written to disk. */
     async download(url, { maxBytes = ATTACHMENT_MAX_BYTES } = {}) {
       if (!isAllowedDownloadUrl(url)) throw new InboundError('unexpected download host', { code: 'BAD_URL' });

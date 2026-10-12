@@ -75,6 +75,14 @@ export function parseMessageIds(value) {
   return [...new Set(src.match(/<[^<>\s]{3,250}>/g) || [])].slice(0, 50);
 }
 
+/** One Message-ID as `<id@host>` — Resend's `message_id` with or without angle brackets — or null. */
+export function messageIdOf(value) {
+  const [id] = parseMessageIds(value);
+  if (id) return id;
+  const bare = String(value ?? '').trim();
+  return /^[^<>\s@]{1,200}@[^<>\s@]{1,200}$/.test(bare) ? `<${bare}>` : null;
+}
+
 /** Case-insensitive header lookup over Resend's headers object (values may be arrays). */
 export function headerValue(headers, name) {
   if (!headers || typeof headers !== 'object') return '';
@@ -106,11 +114,11 @@ const HEADER_SAFE = (v) => String(v ?? '').replace(/[\r\n]+/g, ' ').trim();
 /**
  * Threading headers for a reply to the latest inbound message (RFC 5322 §3.6.4): In-Reply-To is
  * its Message-ID; References is its References (or In-Reply-To) plus its Message-ID. Long chains
- * keep the root and the 19 most recent ids.
+ * keep the root and the 19 most recent ids. For one of our own sent messages the Message-ID is
+ * the one the recipient got (`smtpMessageId` — Resend/SES replaces ours), once known.
  */
 export function buildReplyHeaders(lastInbound) {
-  if (!lastInbound?.messageId) return {};
-  const own = parseMessageIds(lastInbound.messageId)[0];
+  const own = parseMessageIds(lastInbound?.smtpMessageId || lastInbound?.messageId)[0];
   if (!own) return {};
   let refs = parseMessageIds(lastInbound.references);
   if (!refs.length) refs = parseMessageIds(lastInbound.inReplyTo);

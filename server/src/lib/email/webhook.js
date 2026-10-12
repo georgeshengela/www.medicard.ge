@@ -14,7 +14,8 @@
 import crypto from 'node:crypto';
 import { prisma } from '../prisma.js';
 import { hashEmail } from './address.js';
-import { applyInboundEmailEvent } from '../support/inbound.js';
+import { applyInboundEmailEvent, isMissingSupportTable } from '../support/inbound.js';
+import { recordSentMessageId } from '../support/sentIds.js';
 
 export const WEBHOOK_TOLERANCE_SEC = 5 * 60;
 
@@ -111,5 +112,12 @@ export async function applyEmailWebhookEvent(event, { db = prisma } = {}) {
 /** One verified webhook event → inbound support mail or outbound delivery status. */
 export async function dispatchEmailWebhookEvent(event, deps = {}) {
   if (event?.type === 'email.received') return applyInboundEmailEvent(event, deps);
-  return applyEmailWebhookEvent(event, deps);
+  const result = await applyEmailWebhookEvent(event, deps);
+  try {
+    // The Message-ID our support mail went out with, so the answer finds its thread.
+    await recordSentMessageId(event, deps);
+  } catch (error) {
+    if (!isMissingSupportTable(error)) console.warn('[support] sent Message-ID not stored', error?.message);
+  }
+  return result;
 }

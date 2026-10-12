@@ -22,6 +22,7 @@ import { isDeliverableEmail, SYNTHETIC_EMAIL_DOMAIN } from '../email/address.js'
 import { sendEmail } from '../email/mailer.js';
 import { capText, htmlToText, sanitizeEmailHtml } from './sanitize.js';
 import { createInboundClient } from './resendInbound.js';
+import { resolveSentMessageIds } from './sentIds.js';
 import {
   headerValue,
   isAutoMessage,
@@ -87,14 +88,19 @@ export async function linkUserId(db, email) {
 }
 
 /**
- * Existing thread for this message, or null. References/In-Reply-To win, but only inside threads
- * with the same counterpart — a third party who knows a Message-ID cannot inject into another
- * person's conversation. Fallback: same counterpart + normalized subject within 90 days.
+ * Existing thread for this message, or null. References/In-Reply-To win (their Message-IDs, ours
+ * as set or as Resend actually sent it), but only inside threads with the same counterpart — a
+ * third party who knows a Message-ID cannot inject into another person's conversation.
+ * Fallback: same counterpart + normalized subject within 90 days.
  */
 export async function findThread(db, { counterpart, key, refs = [], now = new Date(), excludeThreadId = null }) {
   if (refs.length) {
     const hit = await db.supportMessage.findFirst({
-      where: { messageId: { in: refs }, thread: { counterpartEmail: counterpart }, ...(excludeThreadId ? { threadId: { not: excludeThreadId } } : {}) },
+      where: {
+        OR: [{ messageId: { in: refs } }, { smtpMessageId: { in: refs } }],
+        thread: { counterpartEmail: counterpart },
+        ...(excludeThreadId ? { threadId: { not: excludeThreadId } } : {}),
+      },
       orderBy: { createdAt: 'desc' },
       select: { threadId: true },
     });
@@ -234,14 +240,20 @@ export function bodyFieldsFromResend(data, message) {
 
 /**
  * Once headers are known: if References/In-Reply-To point into another thread with the same
- * counterpart and this message sits alone in a thread created for it, move it there.
+ * counterpart and this message sits alone in a thread created for it, move it there. When nothing
+ * matches, the id Resend gave one of our sends to this counterpart may still be unknown — ask
+ * Resend for those (sentIds.js) and match once more.
  */
-export async function rethreadMessage(db, message, { now = new Date() } = {}) {
+export async function rethreadMessage(db, message, { now = new Date(), client = null } = {}) {
   const refs = [...parseMessageIds(message.references), ...parseMessageIds(message.inReplyTo)];
   if (!refs.length) return null;
   const current = await db.supportThread.findUnique({ where: { id: message.threadId } });
   if (!current || current.messageCount > 1) return null;
-  const target = await findThread(db, { counterpart: current.counterpartEmail, key: null, refs, now, excludeThreadId: current.id });
+  const match = () => findThread(db, { counterpart: current.counterpartEmail, key: null, refs, now, excludeThreadId: current.id });
+  let target = await match();
+  if (!target && await resolveSentMessageIds(db, { counterpart: current.counterpartEmail, since: new Date(now.getTime() - THREAD_MATCH_DAYS * DAY), client })) {
+    target = await match();
+  }
   if (!target) return null;
   await inTx(db, async (tx) => {
     await tx.supportMessage.update({ where: { id: message.id }, data: { threadId: target.id } });
@@ -256,7 +268,7 @@ export async function fetchMessageBody(message, { db = prisma, client = createIn
     const data = await client.getReceived(message.resendId);
     const fields = bodyFieldsFromResend(data, message);
     const updated = await db.supportMessage.update({ where: { id: message.id }, data: { ...fields, bodyAttempts: (message.bodyAttempts || 0) + 1 } });
-    await rethreadMessage(db, { ...message, ...updated }, { now });
+    await rethreadMessage(db, { ...message, ...updated }, { now, client });
     return 'ok';
   } catch (error) {
     if (error?.code === 'RESTRICTED' || error?.code === 'NO_KEY') {

@@ -8,6 +8,7 @@ import {
   buildReplyHeaders,
   isAutoMessage,
   isOwnDomain,
+  messageIdOf,
   normalizeSubject,
   parseAddress,
   parseAddressList,
@@ -27,8 +28,11 @@ import {
 } from './support/inbound.js';
 import { renderSupportLetter, renderSupportReply, sendSupportLetter, sendSupportReply, senderForMailbox, snippetSchema, supportSenders, threadPatchSchema, replySchema } from './support/reply.js';
 import { isAllowedDownloadUrl } from './support/resendInbound.js';
+import { recordSentMessageId, resolveSentMessageIds } from './support/sentIds.js';
 import { renderEmail, signSvixPayload } from './email/index.js';
+import { dispatchEmailWebhookEvent } from './email/webhook.js';
 import { supportStatements } from '../../scripts/install-support.mjs';
+import { supportSmtpIdStatements } from '../../scripts/install-support-smtp-id.mjs';
 
 const read = (rel) => readFileSync(new URL(rel, import.meta.url), 'utf8');
 
@@ -59,7 +63,7 @@ const sortBy = (rows, orderBy) => {
 };
 
 function fakeDb({ users = [] } = {}) {
-  const tables = { threads: [], messages: [] };
+  const tables = { threads: [], messages: [], emailLogs: [] };
   const table = (rows, { unique = [] } = {}) => ({
     findUnique: async ({ where }) => rows.find((r) => matches(r, where, tables)) || null,
     findFirst: async ({ where, orderBy } = {}) => sortBy(rows.filter((r) => matches(r, where, tables)), orderBy)[0] || null,
@@ -88,6 +92,7 @@ function fakeDb({ users = [] } = {}) {
     supportThread: table(tables.threads),
     supportMessage: table(tables.messages, { unique: ['resendId'] }),
     user: table(users),
+    emailLog: table(tables.emailLogs),
   };
   db.$transaction = async (fn) => fn(db);
   return db;
@@ -186,6 +191,16 @@ describe('support threading helpers', () => {
     assert.equal(ids[0], '<0@x>');
     assert.equal(ids.at(-1), '<last@x>');
     assert.doesNotMatch(buildReplyHeaders({ messageId: '<1@x>\r\nBcc: evil@x' }).References, /\r|\n/);
+    // Our own sent mail: the id the recipient got wins over the one we set.
+    assert.deepEqual(buildReplyHeaders({ messageId: '<ours@medicard.ge>', smtpMessageId: '<0102-a@eu-west-1.amazonses.com>' }), { 'In-Reply-To': '<0102-a@eu-west-1.amazonses.com>', References: '<0102-a@eu-west-1.amazonses.com>' });
+  });
+
+  it('reads Resend message_id with or without angle brackets', () => {
+    assert.equal(messageIdOf('<0102-a@eu-west-1.amazonses.com>'), '<0102-a@eu-west-1.amazonses.com>');
+    assert.equal(messageIdOf(' 0102-a@eu-west-1.amazonses.com '), '<0102-a@eu-west-1.amazonses.com>');
+    assert.equal(messageIdOf('no id here'), null);
+    assert.equal(messageIdOf('a@b\r\nBcc: x@y'), null);
+    assert.equal(messageIdOf(null), null);
   });
 });
 
@@ -504,6 +519,107 @@ describe('support letters', () => {
   });
 });
 
+/* ───────── Answers to our sent mail (2026-10-12: Tasso's answer opened a second thread) ───────── */
+describe('support: answers to our sent mail thread by the Message-ID Resend sent', () => {
+  // Resend/SES replaced our <uuid@medicard.ge>; the helpdesk answered this id with a new subject.
+  const SES = '<010201a121ab11b2-07ab85c0-533b-4e08-874e-2e3a775cfaf8-000000@eu-west-1.amazonses.com>';
+  const LATER = new Date(NOW.getTime() + 3_600_000);
+  const kick = () => {};
+  const answer = (id, over = {}) => received(id, {
+    from: 'Customer Service <customerservice@tasso.example>',
+    to: ['ceo@medicard.ge'],
+    subject: 'RE: Partnership inquiry [ thread::gX4UxLCRKkaa6LQfABBh_VA:: ]',
+    attachments: [],
+    ...over,
+  });
+  const sendLetter = async (db, to = 'customerservice@tasso.example') => {
+    const out = await sendSupportLetter({ from: 'ceo@medicard.ge', to, subject: 'Partnership inquiry', body: 'Hello' }, { db, send: async () => ({ status: 'sent', providerId: `re_${to}` }), now: NOW });
+    return { thread: out.thread, letter: db.tables.messages.find((m) => m.threadId === out.thread.id) };
+  };
+  const bodyClient = (inReplyTo, getSent) => ({ getReceived: async () => ({ text: 'Thank you for reaching out.', headers: { 'In-Reply-To': inReplyTo, References: inReplyTo } }), ...(getSent ? { getSent } : {}) });
+  const arrive = async (db, event, client) => {
+    const r = await applyInboundEmailEvent(event, { db, now: LATER, kick });
+    const msg = db.tables.messages.find((m) => m.resendId === event.data.email_id);
+    await fetchMessageBody(msg, { db, now: LATER, client });
+    return { first: r, msg };
+  };
+
+  it('email.sent stores the id; the answer with a rewritten subject moves into the letter thread', async () => {
+    const db = fakeDb();
+    const { thread, letter } = await sendLetter(db);
+    await dispatchEmailWebhookEvent({ type: 'email.sent', data: { email_id: letter.providerId, message_id: SES } }, { db });
+    assert.equal(letter.smtpMessageId, SES);
+    assert.match(letter.messageId, /^<[0-9a-f-]+@medicard\.ge>$/, 'our own id stays');
+    const { first, msg } = await arrive(db, answer('t1'), bodyClient(SES));
+    assert.notEqual(first.threadId, thread.id, 'subject alone does not match (helpdesk token)');
+    assert.equal(msg.threadId, thread.id);
+    assert.equal(db.tables.threads.length, 1, 'the one-message thread is gone');
+    const t = db.tables.threads[0];
+    assert.equal(t.status, 'open');
+    assert.equal(t.unread, true);
+    assert.equal(t.messageCount, 2);
+  });
+
+  it('webhook lost: Resend is asked about this counterpart\'s sends only, then the answer threads', async () => {
+    const db = fakeDb();
+    const { thread, letter } = await sendLetter(db);
+    const other = await sendLetter(db, 'someone@else.example');
+    const asked = [];
+    const getSent = async (id) => { asked.push(id); return { id, message_id: SES.slice(1, -1) }; };
+    const { msg } = await arrive(db, answer('t1'), bodyClient(SES, getSent));
+    assert.deepEqual(asked, [letter.providerId]);
+    assert.equal(letter.smtpMessageId, SES);
+    assert.equal(other.letter.smtpMessageId ?? null, null);
+    assert.equal(msg.threadId, thread.id);
+  });
+
+  it('a failed lookup leaves the answer in its own thread', async () => {
+    const db = fakeDb();
+    const { thread } = await sendLetter(db);
+    const getSent = async () => { throw Object.assign(new Error('not found'), { code: 'NOT_FOUND' }); };
+    const { first, msg } = await arrive(db, answer('t1'), bodyClient(SES, getSent));
+    assert.equal(msg.bodyStatus, 'ok');
+    assert.equal(msg.threadId, first.threadId);
+    assert.notEqual(msg.threadId, thread.id);
+  });
+
+  it('someone else quoting our letter\'s id stays in their own thread and starts no lookup', async () => {
+    const db = fakeDb();
+    const { thread, letter } = await sendLetter(db);
+    letter.smtpMessageId = SES;
+    const asked = [];
+    const getSent = async (id) => { asked.push(id); return { message_id: SES }; };
+    const { first, msg } = await arrive(db, answer('x1', { from: 'intruder@evil.example', subject: 'RE: Partnership inquiry' }), bodyClient(SES, getSent));
+    assert.equal(msg.threadId, first.threadId);
+    assert.notEqual(msg.threadId, thread.id);
+    assert.deepEqual(asked, []);
+    assert.equal(await resolveSentMessageIds(db, { counterpart: 'intruder@evil.example', since: NOW, client: { getSent } }), 0);
+  });
+
+  it('a follow-up before any answer points at the id the letter really went out with', async () => {
+    const db = fakeDb();
+    const { thread, letter } = await sendLetter(db);
+    await recordSentMessageId({ type: 'email.delivered', data: { email_id: letter.providerId, message_id: SES } }, { db });
+    const calls = [];
+    await sendSupportReply({ threadId: thread.id, body: 'Following up.' }, { db, send: async (m) => { calls.push(m); return { status: 'sent', providerId: 're_2' }; }, now: LATER });
+    assert.deepEqual(calls[0].extraHeaders, { 'In-Reply-To': SES, References: SES });
+    assert.match(calls[0].from, /ceo@medicard\.ge/);
+  });
+
+  it('records only email.sent / email.delivered of our outbound support mail, once; webhook survives a missing table', async () => {
+    const db = fakeDb();
+    const { letter } = await sendLetter(db);
+    assert.equal(await recordSentMessageId({ type: 'email.opened', data: { email_id: letter.providerId, message_id: SES } }, { db }), 0);
+    assert.equal(await recordSentMessageId({ type: 'email.sent', data: { email_id: 're_welcome', message_id: '<w@eu-west-1.amazonses.com>' } }, { db }), 0);
+    assert.equal(await recordSentMessageId({ type: 'email.sent', data: { email_id: letter.providerId } }, { db }), 0);
+    assert.equal(await recordSentMessageId({ type: 'email.sent', data: { email_id: letter.providerId, message_id: SES } }, { db }), 1);
+    assert.equal(await recordSentMessageId({ type: 'email.delivered', data: { email_id: letter.providerId, message_id: '<later@x>' } }, { db }), 0);
+    assert.equal(letter.smtpMessageId, SES);
+    const missing = { ...db, supportMessage: { updateMany: async () => { throw Object.assign(new Error('column "smtpMessageId" does not exist'), { code: 'P2022' }); } } };
+    assert.deepEqual(await dispatchEmailWebhookEvent({ type: 'email.sent', data: { email_id: 'x', message_id: SES } }, { db: missing }), { status: 'sent', updated: 0, suppressed: 0 });
+  });
+});
+
 /* ───────── Validation, retention, install, webhook route ───────── */
 describe('support validation, retention and install', () => {
   it('validates snippets, replies and thread patches', () => {
@@ -541,6 +657,14 @@ describe('support validation, retention and install', () => {
     assert.match(pkg.scripts['db:install'], /install-support\.mjs/);
     const schema = read('../../prisma/schema.prisma');
     for (const model of ['SupportThread', 'SupportMessage', 'SupportSnippet']) assert.match(schema, new RegExp(`^model ${model} \\{`, 'm'));
+    // Sent Message-ID column (2026-10-12): one nullable column + its index, installed right after the tables.
+    assert.equal(supportSmtpIdStatements(read('../../prisma/20261012-support-smtp-id.sql')).length, 2);
+    assert.throws(() => supportSmtpIdStatements('ALTER TABLE "SupportMessage" DROP COLUMN "messageId";'));
+    assert.throws(() => supportSmtpIdStatements('ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "smtpMessageId" TEXT;'));
+    assert.throws(() => supportSmtpIdStatements('UPDATE "SupportMessage" SET "smtpMessageId" = NULL;'));
+    assert.throws(() => supportSmtpIdStatements(''));
+    assert.match(pkg.scripts['db:install'], /install-support\.mjs && node server\/scripts\/install-support-smtp-id\.mjs/);
+    assert.match(schema, /^\s+smtpMessageId\s+String\?$/m);
     assert.equal(isAllowedDownloadUrl('https://inbound-cdn.resend.com/a/b?sig=1'), true);
     assert.equal(isAllowedDownloadUrl('http://inbound-cdn.resend.com/a'), false);
     assert.equal(isAllowedDownloadUrl('https://169.254.169.254/latest'), false);
