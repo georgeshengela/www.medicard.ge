@@ -36,7 +36,16 @@ export function operationBody(plan) {
   const { petId, ...body } = a;
   return petId ? { ...body, clientRequestId: `medi:${plan.id}` } : body;
 }
-export function nativeAction(plan) {
+/**
+ * App JS that shows Medi's food estimate in the diary before saving says so in `X-Medicard-Caps`. Older
+ * JS (and the web) keep the one-step quick-log until their update arrives.
+ */
+export const NUTRITION_REVIEW_CAP = 'nutrition-review';
+const hasCap = (caps, cap) => String(caps || '').split(',').map(c => c.trim().toLowerCase()).includes(cap);
+export function nativeAction(plan, caps = '') {
+  // Medi never saves numbers the person has not seen: the diary estimates the words and shows the review.
+  if (plan.tool === 'nutrition_log' && hasCap(caps, NUTRITION_REVIEW_CAP))
+    return { route: '/nutrition/diary', nutritionLog: { description: plan.args.description, ...(plan.args.mealType ? { mealType: plan.args.mealType } : {}), ...(plan.args.date ? { date: plan.args.date } : {}) } };
   if (plan.tool === 'nutrition_goal' || plan.tool === 'weight_goal') return { route:'/nutrition/goal', nutritionGoal:{...(plan.args.targetKg != null ? {targetKg:plan.args.targetKg}:{}),...(plan.args.loseKg != null ? {loseKg:plan.args.loseKg}:{})} };
   if (plan.tool === 'record_open') return { route: `/record/${plan.args.recordId}` };
   if (plan.tool === 'medication_open') return { route: `/medications/${plan.args.medicationId}` };
@@ -99,7 +108,7 @@ export async function dispatchAssistantOperation(plan, { userId, authorization, 
 export async function executeAssistantPlan(plan, options, db = prisma, dispatch = dispatchAssistantOperation) {
   const { userId } = options;
   await assertAssistantActionContext(userId, plan, db);
-  const native = nativeAction(plan);
+  const native = nativeAction(plan, options.caps);
   // Deep links must not bypass the cycle entry screen's local unlock gate.
   if (native?.route.startsWith('/cycle/')) {
     const cycle = await db.cycleProfile.findUnique({ where: { userId }, select: { privacyEnabled: true } });

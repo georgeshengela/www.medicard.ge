@@ -2,6 +2,8 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import {
   assessNutritionProgram,
+  CALORIE_FLOOR,
+  LOSE_NO_ROOM_REASON,
   buildWeek,
   recipeAllowed,
   summarizeNutritionDays,
@@ -10,8 +12,9 @@ import {
 } from "./nutritionProgram.js";
 import { defaultNutritionRecipes } from "./nutritionRecipes.js";
 import { totals } from "./nutrition.js";
-import { programState, publicNutritionFacts } from "./nutritionProgramStore.js";
+import { programState, publicNutritionFacts, PROGRAM_REVIEW_NOTE } from "./nutritionProgramStore.js";
 import { nativeAction } from "./assistantExecution.js";
+import { estimateDailyTarget, CALORIE_FLOOR as APP_FLOOR } from "../../../mobile/src/lib/nutritionTarget.js";
 import { assistantContextSelection } from "./assistantFlow.js";
 import {
   profileNutritionAllergies,
@@ -183,13 +186,7 @@ test("unsafe or unknown screening cannot create an automatic target", () => {
     { birthDate: "1930-05-01" },
     { weightKg: 50, heightCm: 180 },
     { weightKg: 150, heightCm: 160 },
-    {
-      weightKg: 60,
-      heightCm: 160,
-      sex: "female",
-      activity: "sedentary",
-      targetKg: 55,
-    },
+    { birthDate: "2008-09-25" },
   ])
     assert.equal(
       assessNutritionProgram({ ...nutritionFixture, ...patch }, {}, day)
@@ -269,7 +266,71 @@ test("missing days are not zero intake and historical targets retain pause", () 
   assert.equal(days[0].target.calories, 2000);
   assert.equal(days[2].target, null);
 });
-test("changed goal, weight or review date suspends recommendations, protected facts stay private", () => {
+const woman = {
+  ...nutritionFixture,
+  sex: "female",
+  weightKg: 60,
+  heightCm: 160,
+  targetKg: 55,
+  activity: "sedentary",
+};
+test("women of average height get a target: 1 200 floor, a slower pace instead of a refusal", () => {
+  const gentle = assessNutritionProgram(woman, {}, day);
+  assert.equal(gentle.eligible, true);
+  assert.equal(gentle.targets.calories, 1260);
+  assert.equal(gentle.targets.paceLimited, false);
+  const steady = assessNutritionProgram({ ...woman, pace: "steady" }, {}, day);
+  assert.equal(steady.eligible, true);
+  assert.equal(steady.targets.calories, 1200);
+  assert.equal(steady.targets.paceLimited, true);
+  assert.ok(steady.targets.weeklyKg < 0 && steady.targets.weeklyKg > -0.4);
+  // Men keep the 1 500 floor.
+  assert.equal(CALORIE_FLOOR.male, 1500);
+  const man = assessNutritionProgram(
+    { ...nutritionFixture, weightKg: 62, heightCm: 168, targetKg: 58, activity: "sedentary", pace: "steady" },
+    {},
+    day,
+  );
+  assert.ok(!man.eligible || man.targets.calories >= 1500);
+});
+test("no room to lose offers keeping the weight; health screening refusals offer nothing", () => {
+  const small = { ...woman, weightKg: 48, heightCm: 152, targetKg: 46, birthDate: "1956-01-01" };
+  const r = assessNutritionProgram(small, {}, day);
+  assert.equal(r.eligible, false);
+  assert.deepEqual(r.reasons, [LOSE_NO_ROOM_REASON]);
+  assert.equal(r.fallback.mode, "maintain");
+  assert.ok(r.fallback.calories >= 1200);
+  const keep = assessNutritionProgram({ ...small, mode: "maintain", targetKg: 48 }, {}, day);
+  assert.equal(keep.eligible, true);
+  assert.equal(keep.targets.calories, 1200);
+  const screened = assessNutritionProgram(
+    { ...small, screening: { ...small.screening, eatingDisorder: true } },
+    {},
+    day,
+  );
+  assert.equal(screened.fallback, null);
+});
+test("the wizard's live estimate (mobile nutritionTarget.js) gives the server's numbers", () => {
+  assert.deepEqual(APP_FLOOR, CALORIE_FLOOR);
+  for (const sex of ["female", "male"])
+    for (const activity of ["sedentary", "light", "moderate", "active"])
+      for (const [mode, pace] of [["lose", "gentle"], ["lose", "steady"], ["maintain", "gentle"], ["gain", "gentle"]])
+        for (const [weightKg, heightCm] of [[48, 152], [60, 160], [70, 165], [85, 178], [110, 185]]) {
+          const targetKg = mode === "lose" ? weightKg - 3 : mode === "gain" ? weightKg + 3 : weightKg;
+          const server = assessNutritionProgram({ ...nutritionFixture, sex, activity, mode, pace, weightKg, heightCm, targetKg, birthDate: "1980-01-01" }, {}, day);
+          const app = estimateDailyTarget({ sex, activity, mode, pace, weightKg, heightCm, age: 46 });
+          const label = `${sex} ${activity} ${mode}/${pace} ${weightKg}/${heightCm}`;
+          if (server.targets) {
+            assert.equal(app.calories, server.targets.calories, label);
+            assert.equal(app.paceLimited, server.targets.paceLimited, label);
+            assert.equal(app.weeklyKg, server.targets.weeklyKg, label);
+          } else if (server.fallback) assert.equal(app.noRoom, true, label);
+        }
+});
+test("accounts are 18+: an 18-year-old gets a target", () => {
+  assert.equal(assessNutritionProgram({ ...nutritionFixture, birthDate: "2008-09-24" }, {}, day).eligible, true);
+});
+test("a new weight or goal recalculates the target instead of switching it off", () => {
   const p = {
     active: true,
     config: nutritionFixture,
@@ -278,14 +339,27 @@ test("changed goal, weight or review date suspends recommendations, protected fa
     startedOn: day,
   };
   const f = { weightGoal: { id: "g", targetKg: 80 }, current: { kg: 90 } };
-  assert.equal(programState(p, f, day).needsReview, false);
-  for (const facts of [
-    { ...f, weightGoal: { id: "g", targetKg: 79 } },
-    { ...f, current: { kg: 92 } },
-    { ...f, sensitiveRestriction: true },
-  ])
-    assert.equal(programState(p, facts, day).targets, null);
-  assert.equal(programState(p, f, "2026-10-24").needsReview, true);
+  const same = programState(p, f, day);
+  assert.equal(same.needsReview, false);
+  assert.equal(same.adjusted, null);
+  assert.equal(same.targets.calories, 2290);
+  const lighter = programState(p, { ...f, current: { kg: 86 } }, day);
+  assert.equal(lighter.needsReview, false);
+  assert.equal(lighter.adjusted, "weight");
+  assert.ok(lighter.targets.calories < 2290);
+  assert.equal(lighter.currentConfig.weightKg, 86);
+  const newGoal = programState(p, { ...f, weightGoal: { id: "g", targetKg: 75 } }, day);
+  assert.equal(newGoal.adjusted, "goal");
+  assert.equal(newGoal.currentConfig.targetKg, 75);
+  const reached = programState(p, { ...f, current: { kg: 79.5 } }, day);
+  assert.equal(reached.adjusted, "goal_reached");
+  assert.equal(reached.currentConfig.mode, "maintain");
+  assert.ok(reached.targets.calories >= reached.targets.maintenance);
+  assert.equal(programState(p, { ...f, sensitiveRestriction: true }, day).targets, null);
+  const later = programState(p, f, "2026-10-24");
+  assert.equal(later.needsReview, false);
+  assert.equal(later.reviewNote, PROGRAM_REVIEW_NOTE);
+  assert.equal(later.targets.calories, 2290);
   assert.deepEqual(
     publicNutritionFacts({
       sensitiveRestriction: true,
@@ -294,6 +368,15 @@ test("changed goal, weight or review date suspends recommendations, protected fa
     }),
     { heightCm: 180, professionalReviewNeeded: true },
   );
+});
+test("Medi's food log opens the diary review on capable apps; older apps keep the one-step save", () => {
+  const plan = { tool: "nutrition_log", args: { description: "ორი ხინკალი", mealType: "lunch" } };
+  assert.equal(nativeAction(plan), null);
+  assert.equal(nativeAction(plan, "weekly-medi"), null);
+  assert.deepEqual(nativeAction(plan, "weekly-medi, nutrition-review"), {
+    route: "/nutrition/diary",
+    nutritionLog: { description: "ორი ხინკალი", mealType: "lunch" },
+  });
 });
 test("Medi goal is a reviewed native handoff, weight delta is not a target", () => {
   assert.deepEqual(

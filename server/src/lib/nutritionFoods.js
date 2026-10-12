@@ -59,6 +59,24 @@ const fold = (s) =>
     .replace(/[·,.()]/g, " ")
     .replace(/\s+/g, " ")
     .trim();
+/** Georgian case / plural endings, longest first („ხინკლებს“ → „ხინკლ“). */
+const KA_ENDINGS = ["ებისთვის", "ისთვის", "ებით", "ებში", "ებზე", "ების", "ებს", "ები", "ით", "ის", "ში", "ზე", "ად", "ს", "ი"];
+const KA_VOWELS = /[აეიოუ]/g;
+/**
+ * A Georgian word's consonant skeleton without its ending. Vowels go because stems lose one when a
+ * suffix is added („ხინკალი“ → „ხინკლები“): both become „ხნკლ“.
+ */
+export function kaStem(word) {
+  if (!/[ა-ჰ]/.test(word)) return "";
+  const ending = KA_ENDINGS.find((e) => word.endsWith(e) && word.length - e.length >= 3);
+  return (ending ? word.slice(0, -ending.length) : word).replace(KA_VOWELS, "");
+}
+/** 2 = found as written, 1 = (Georgian) a word with the same stem: ხაჭაპურები, ხინკალს, ქაბაბს; 0 = no. */
+function tokenHit(token, hay, words) {
+  if (hay.includes(token)) return 2;
+  const stem = kaStem(token);
+  return stem.length >= 3 && words.some((w) => kaStem(w) === stem) ? 1 : 0;
+}
 export function searchCatalog(query, limit = 12) {
   const q = fold(query);
   if (q.length < 2) return [];
@@ -66,9 +84,13 @@ export function searchCatalog(query, limit = 12) {
   return nutritionCatalog
     .map((food, index) => {
       const hay = fold([food.name, ...(food.aliases || [])].join(" "));
+      const words = hay.split(" ");
       const first = fold(food.name).startsWith(q) ? 2 : 0;
-      const hits = tokens.filter((t) => hay.includes(t)).length;
-      return { food, index, score: hits === tokens.length ? 3 + first : hits > 0 && tokens.length > 1 ? 1 : 0 };
+      const found = tokens.map((t) => tokenHit(t, hay, words));
+      const hits = found.filter(Boolean).length;
+      // Matches as written rank above stem-only matches, which rank above partial ones.
+      const score = hits === tokens.length ? (found.every((v) => v === 2) ? 3 + first : 2) : hits > 0 && tokens.length > 1 ? 1 : 0;
+      return { food, index, score };
     })
     .filter((v) => v.score > 0)
     // Ties keep catalog order, so the common form of a dish comes first.
@@ -156,6 +178,47 @@ export async function searchUsda(query, fetchImpl = fetch, limit = 8) {
     })
     .filter(Boolean);
 }
+function referenceRow(f, names) {
+  const p = f.per100;
+  const name = names === "en" ? f.nameEn : `${f.name} (${f.nameEn})`;
+  const serving = f.serving ? `; serving ≈ ${f.serving.grams} g` : "";
+  return `${name}: ${p.calories} kcal, P ${p.protein} g, C ${p.carbs} g, F ${p.fat} g${serving}`;
+}
+const DESCRIPTION_FILLERS = new Set(
+  "ერთი სამი ოთხი ხუთი ექვსი ნახევარი ჭიქა ჭიქით ნაჭერი ნაჭრები ცალი თეფში თეფშით პორცია ცოტა ცოტაც ბევრი დიდი პატარა ჩემი ვჭამე ვჭამეთ შევჭამე მივირთვი დავლიე ერთად ქართული ქართულად დილით შუადღით საღამოს სადილად ვახშმად საუზმედ with some the and half small large ate had".split(" "),
+);
+let referenceCache = null;
+/**
+ * Photo estimates: the catalogue's Georgian dishes (`ge`) as one compact block, so a photo of იმერული
+ * ხაჭაპური starts from the same per-100 g values as the food search. English names only — Georgian
+ * script costs many more tokens, and the model knows these dishes by their English names.
+ */
+export function georgianReference(catalog = nutritionCatalog) {
+  if (catalog === nutritionCatalog && referenceCache != null) return referenceCache;
+  const rows = catalog.filter((f) => f.ge && f.nameEn).map((f) => referenceRow(f, "en"));
+  const text = rows.length ? `Reference foods — Georgian dishes (per 100 g):\n${rows.join("\n")}` : "";
+  if (catalog === nutritionCatalog) referenceCache = text;
+  return text;
+}
+/**
+ * Text and fix estimates: only the catalogue foods the words name („ორი ხინკალი და სალათი“ → khinkali and
+ * the salads), with their Georgian and English names, at most `limit` rows.
+ */
+export function describedReference(text, limit = 12) {
+  const found = new Map();
+  // Food words only: amounts and fillers („ორი“ is inside „ღორის“) would pull in unrelated dishes.
+  const words = fold(text).split(" ").filter((w) => w.length >= 4 && !DESCRIPTION_FILLERS.has(w));
+  for (const word of words)
+    for (const f of searchCatalog(word, 3)) if (found.size < limit && !found.has(f.id)) found.set(f.id, f);
+  const rows = [...found.values()].map((f) => referenceRow(f, "both"));
+  return rows.length ? `Reference foods named in the description (per 100 g):\n${rows.join("\n")}` : "";
+}
+export const EXTERNAL_WAIT_WITH_LOCAL_MS = 1500;
+/** Resolves like `promise`, or with [] once `ms` passed (the late answer is dropped). */
+export function withDeadline(promise, ms) {
+  let timer;
+  return Promise.race([promise, new Promise((resolve) => { timer = setTimeout(() => resolve([]), ms); })]).finally(() => clearTimeout(timer));
+}
 /** Saved-first search: the person's foods, then the curated catalog, then external products. */
 export async function searchFoods(userId, query, db, fetchImpl = fetch) {
   const q = String(query || "").trim().slice(0, 80);
@@ -165,8 +228,12 @@ export async function searchFoods(userId, query, db, fetchImpl = fetch) {
   const saved = savedRows.map((r) => ({ ...r, kind: "saved" }));
   const catalog = searchCatalog(q);
   let products = [];
-  if (q.length >= 3 && env.NODE_ENV !== "test")
-    products = (await Promise.allSettled([searchOff(q, fetchImpl), searchUsda(q, fetchImpl)])).flatMap((r) => (r.status === "fulfilled" ? r.value : []));
+  if (q.length >= 3 && env.NODE_ENV !== "test") {
+    // Local answers come first: with enough of them, foreign product databases get a short wait,
+    // not their full 6 s timeouts (a „ხაჭაპური“ search used to wait for Open Food Facts).
+    const wait = saved.length + catalog.length >= 3 ? EXTERNAL_WAIT_WITH_LOCAL_MS : null;
+    products = (await Promise.allSettled([searchOff(q, fetchImpl), searchUsda(q, fetchImpl)].map((p) => (wait ? withDeadline(p, wait) : p)))).flatMap((r) => (r.status === "fulfilled" ? r.value : []));
+  }
   return { saved, catalog, products: products.slice(0, 12) };
 }
 export async function listSavedFoods(userId, db, { favorite = null, limit = 60 } = {}) {

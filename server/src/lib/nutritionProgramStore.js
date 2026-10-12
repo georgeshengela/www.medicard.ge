@@ -133,28 +133,69 @@ export async function readNutritionProgram(userId, db = prisma) {
     )[0] || null
   );
 }
+export const PROGRAM_REVIEW_NOTE =
+  "გეგმას 4 კვირა შესრულდა — როცა მოიცლი, გადაამოწმე აქტივობა და ჯანმრთელობის ინფორმაცია.";
+/**
+ * The saved plan's config with today's weight and weight goal. A new weight (±2 kg) or a changed goal
+ * no longer switches the target off until the wizard is redone (that hid the budget exactly when the
+ * person was succeeding): the target is recalculated with the same safety rules. A reached goal turns
+ * into keeping the weight.
+ */
+export function currentProgramConfig(program, facts) {
+  const config = program.config;
+  const goalChanged = programGoalChanged(program, facts.weightGoal);
+  const current = facts.current?.kg;
+  const moved =
+    Number.isFinite(current) && Math.abs(current - config.weightKg) >= 2;
+  const goalKg =
+    goalChanged && Number.isFinite(facts.weightGoal?.targetKg)
+      ? facts.weightGoal.targetKg
+      : null;
+  if (!moved && goalKg == null) return { config, adjusted: null };
+  const weightKg = moved ? Math.round(current * 10) / 10 : config.weightKg;
+  let targetKg = goalKg ?? config.targetKg;
+  let mode =
+    goalKg == null
+      ? config.mode
+      : targetKg < weightKg - 0.1
+        ? "lose"
+        : targetKg > weightKg + 0.1
+          ? "gain"
+          : "maintain";
+  let adjusted = goalKg != null ? "goal" : "weight";
+  if (
+    (mode === "lose" && targetKg >= weightKg) ||
+    (mode === "gain" && targetKg <= weightKg)
+  ) {
+    mode = "maintain";
+    adjusted = "goal_reached";
+  }
+  if (mode === "maintain") targetKg = weightKg;
+  return { config: { ...config, weightKg, targetKg, mode }, adjusted };
+}
 export function programState(program, facts, today) {
   if (!program)
     return { program: null, needsReview: false, reasons: [], targets: null };
-  const review = assessNutritionProgram(program.config, facts, today);
+  const { config, adjusted } = currentProgramConfig(program, facts);
+  const review = assessNutritionProgram(config, facts, today);
   const reasons = [...review.reasons];
-  if (programGoalChanged(program, facts.weightGoal))
-    reasons.push("წონის მიზანი შეიცვალა. კვების გეგმა ხელახლა გადაამოწმე.");
-  if (
-    facts.current &&
-    Math.abs(facts.current.kg - program.config.weightKg) >= 2
-  )
-    reasons.push("მიმდინარე წონა შეიცვალა. დღის სამიზნე ხელახლა გადაამოწმე.");
-  if (today > shiftCivil(program.startedOn, 28))
-    reasons.push(
-      "გეგმის განახლების დროა — გადაამოწმე წონა, აქტივობა და ჯანმრთელობის ინფორმაცია.",
-    );
+  const reviewNote =
+    today > shiftCivil(program.startedOn, 28) ? PROGRAM_REVIEW_NOTE : null;
   return {
     program,
-    mealPlanning: nutritionMealPlanning(program.config, facts),
+    mealPlanning: nutritionMealPlanning(config, facts),
     needsReview: reasons.length > 0,
     reasons,
-    targets: program.active && !reasons.length ? program.targets : null,
+    adjusted: reasons.length ? null : adjusted,
+    // The plan as it stands today (new weight / goal); `program.config` stays what was saved.
+    currentConfig: config,
+    reviewNote,
+    targets:
+      program.active && !reasons.length
+        ? adjusted
+          ? review.targets
+          : program.targets
+        : null,
   };
 }
 export async function readNutritionPreferences(userId, db = prisma) {
@@ -200,7 +241,9 @@ export async function nutritionDashboard(user, day, db = prisma) {
     burned: burned.total,
     yesterday: yesterdayDay ? { target: yesterdayDay.target?.calories || null, eaten: yesterdayDay.totals.calories, recorded: yesterdayDay.recorded } : null,
   });
-  const pace = program?.config?.mode === "gain" ? 0.2 : program?.config?.pace === "gentle" ? 0.25 : 0.4;
+  // Weekly pace of the target in force (a floor-limited loss is slower than the chosen pace).
+  const cfg = plan.currentConfig || program?.config;
+  const pace = Math.abs(state.targets?.weeklyKg ?? 0) || (cfg?.mode === "maintain" ? 0 : cfg?.mode === "gain" ? 0.2 : cfg?.pace === "gentle" ? 0.25 : 0.4);
   return {
     ...state,
     facts: publicNutritionFacts(facts),

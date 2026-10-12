@@ -185,5 +185,401 @@
       "carbs": 3.63,
       "calories": 23.0
     }
+  },
+  "kidney_bean": {
+    "name": "წითელი ლობიო · მოხარშული",
+    "nameEn": "Red kidney beans · boiled",
+    "fdcId": 175194,
+    "per100g": {
+      "calories": 127,
+      "protein": 8.67,
+      "carbs": 22.8,
+      "fat": 0.5
+    }
+  },
+  "hazelnut": {
+    "name": "თხილი · გარჩეული",
+    "nameEn": "Hazelnuts · shelled",
+    "fdcId": 170581,
+    "per100g": {
+      "calories": 628,
+      "protein": 15,
+      "carbs": 16.7,
+      "fat": 60.8
+    }
+  },
+  "chicken_thigh": {
+    "name": "ქათმის ბარკალი · უტყავო, მოხარშული",
+    "nameEn": "Chicken thigh · skinless, simmered",
+    "fdcId": 172389,
+    "per100g": {
+      "calories": 195,
+      "protein": 25,
+      "carbs": 0,
+      "fat": 9.79
+    }
+  },
+  "beef": {
+    "name": "საქონლის ხორცი · მჭლე, ჩაშუშული",
+    "nameEn": "Beef stew meat · lean, braised",
+    "fdcId": 171204,
+    "per100g": {
+      "calories": 186,
+      "protein": 32.3,
+      "carbs": 0,
+      "fat": 6.34
+    }
+  },
+  "pork": {
+    "name": "ღორის ფილე · შემწვარი",
+    "nameEn": "Pork tenderloin · roasted",
+    "fdcId": 168250,
+    "per100g": {
+      "calories": 143,
+      "protein": 26.2,
+      "carbs": 0,
+      "fat": 3.51
+    }
+  },
+  "trout": {
+    "name": "კალმახი · მომზადებული",
+    "nameEn": "Rainbow trout (farmed) · cooked",
+    "fdcId": 173718,
+    "per100g": {
+      "calories": 168,
+      "protein": 23.8,
+      "carbs": 0,
+      "fat": 7.38
+    }
+  },
+  "eggplant": {
+    "name": "ბადრიჯანი · მოხარშული",
+    "nameEn": "Eggplant · boiled",
+    "fdcId": 169229,
+    "per100g": {
+      "calories": 35,
+      "protein": 0.83,
+      "carbs": 8.73,
+      "fat": 0.23
+    }
+  },
+  "spinach_cooked": {
+    "name": "ისპანახი · მოხარშული, გაწურული",
+    "nameEn": "Spinach · boiled, drained",
+    "fdcId": 168463,
+    "per100g": {
+      "calories": 23,
+      "protein": 2.97,
+      "carbs": 3.75,
+      "fat": 0.26
+    }
+  },
+  "beet": {
+    "name": "ჭარხალი · მოხარშული",
+    "nameEn": "Beets · boiled",
+    "fdcId": 169146,
+    "per100g": {
+      "calories": 44,
+      "protein": 1.68,
+      "carbs": 9.96,
+      "fat": 0.18
+    }
+  },
+  "green_bean": {
+    "name": "მწვანე ლობიო · მოხარშული",
+    "nameEn": "Green beans · boiled",
+    "fdcId": 169141,
+    "per100g": {
+      "calories": 35,
+      "protein": 1.89,
+      "carbs": 7.88,
+      "fat": 0.28
+    }
+  },
+  "cucumber": {
+    "name": "კიტრი · კანით, უმი",
+    "nameEn": "Cucumber · with peel, raw",
+    "fdcId": 168409,
+    "per100g": {
+      "calories": 15,
+      "protein": 0.65,
+      "carbs": 3.63,
+      "fat": 0.11
+    }
+  },
+  "onion": {
+    "name": "ხახვი · უმი",
+    "nameEn": "Onion · raw",
+    "fdcId": 170000,
+    "per100g": {
+      "calories": 40,
+      "protein": 1.1,
+      "carbs": 9.34,
+      "fat": 0.1
+    }
+  },
+  "pepper": {
+    "name": "წითელი ბულგარული წიწაკა · უმი",
+    "nameEn": "Red bell pepper · raw",
+    "fdcId": 170108,
+    "per100g": {
+      "calories": 26,
+      "protein": 0.99,
+      "carbs": 6.03,
+      "fat": 0.3
+    }
+  },
+  "potato": {
+    "name": "კარტოფილი · მოხარშული, გაფცქვნილი",
+    "nameEn": "Potatoes · boiled, peeled",
+    "fdcId": 170440,
+    "per100g": {
+      "calories": 86,
+      "protein": 1.71,
+      "carbs": 20,
+      "fat": 0.1
+    }
+  },
+  "cornmeal": {
+    "name": "სიმინდის ფქვილი · მშრალი",
+    "nameEn": "Cornmeal (whole-grain) · dry",
+    "fdcId": 169697,
+    "per100g": {
+      "calories": 362,
+      "protein": 8.12,
+      "carbs": 76.9,
+      "fat": 3.59
+    }
+  },
+  "rice_white": {
+    "name": "თეთრი ბრინჯი · მოხარშული",
+    "nameEn": "White rice · cooked",
+    "fdcId": 168878,
+    "per100g": {
+      "calories": 130,
+      "protein": 2.69,
+      "carbs": 28.2,
+      "fat": 0.28
+    }
+  },
+  "bread": {
+    "name": "თეთრი პური · ხორბლის",
+    "nameEn": "White wheat bread · proxy for shoti",
+    "fdcId": 174924,
+    "per100g": {
+      "calories": 266,
+      "protein": 8.85,
+      "carbs": 49.4,
+      "fat": 3.33
+    }
+  },
+  "flour": {
+    "name": "ხორბლის ფქვილი · თეთრი",
+    "nameEn": "Wheat flour · white",
+    "fdcId": 168894,
+    "per100g": {
+      "calories": 364,
+      "protein": 10.3,
+      "carbs": 76.3,
+      "fat": 0.98
+    }
+  },
+  "imeruli": {
+    "name": "იმერული ყველი · მარილწყალში",
+    "nameEn": "Brined cheese (feta) · proxy for Imeruli",
+    "fdcId": 173420,
+    "per100g": {
+      "calories": 265,
+      "protein": 14.2,
+      "carbs": 3.88,
+      "fat": 21.5
+    }
+  },
+  "sulguni": {
+    "name": "სულგუნი · ახალი",
+    "nameEn": "Fresh cheese (whole-milk mozzarella) · proxy for sulguni",
+    "fdcId": 170845,
+    "per100g": {
+      "calories": 299,
+      "protein": 22.2,
+      "carbs": 2.4,
+      "fat": 22.1
+    }
+  },
+  "matsoni": {
+    "name": "მაწონი · ნატურალური",
+    "nameEn": "Plain whole-milk yogurt · proxy for matsoni",
+    "fdcId": 171284,
+    "per100g": {
+      "calories": 61,
+      "protein": 3.47,
+      "carbs": 4.66,
+      "fat": 3.25
+    }
+  },
+  "cottage": {
+    "name": "ხაჭო · დაბალცხიმიანი",
+    "nameEn": "Cottage cheese · low-fat (1%)",
+    "fdcId": 173417,
+    "per100g": {
+      "calories": 72,
+      "protein": 12.4,
+      "carbs": 2.72,
+      "fat": 1.02
+    }
+  },
+  "egg_raw": {
+    "name": "კვერცხი · უმი, ნაჭუჭის გარეშე",
+    "nameEn": "Egg · raw, without shell",
+    "fdcId": 171287,
+    "per100g": {
+      "calories": 143,
+      "protein": 12.6,
+      "carbs": 0.72,
+      "fat": 9.51
+    }
+  },
+  "butter": {
+    "name": "კარაქი · უმარილო",
+    "nameEn": "Butter · unsalted",
+    "fdcId": 173430,
+    "per100g": {
+      "calories": 717,
+      "protein": 0.85,
+      "carbs": 0.06,
+      "fat": 81.1
+    }
+  },
+  "sunflower_oil": {
+    "name": "მზესუმზირის ზეთი",
+    "nameEn": "Sunflower oil",
+    "fdcId": 172338,
+    "per100g": {
+      "calories": 884,
+      "protein": 0,
+      "carbs": 0,
+      "fat": 100
+    }
+  },
+  "cilantro": {
+    "name": "ქინძი · ახალი",
+    "nameEn": "Cilantro · fresh",
+    "fdcId": 169997,
+    "per100g": {
+      "calories": 23,
+      "protein": 2.13,
+      "carbs": 3.67,
+      "fat": 0.52
+    }
+  },
+  "parsley": {
+    "name": "ოხრახუში · ახალი",
+    "nameEn": "Parsley · fresh",
+    "fdcId": 170416,
+    "per100g": {
+      "calories": 36,
+      "protein": 2.97,
+      "carbs": 6.33,
+      "fat": 0.79
+    }
+  },
+  "garlic": {
+    "name": "ნიორი · უმი",
+    "nameEn": "Garlic · raw",
+    "fdcId": 169230,
+    "per100g": {
+      "calories": 149,
+      "protein": 6.36,
+      "carbs": 33.1,
+      "fat": 0.5
+    }
+  },
+  "pomegranate": {
+    "name": "ბროწეულის მარცვალი",
+    "nameEn": "Pomegranate · seeds",
+    "fdcId": 169134,
+    "per100g": {
+      "calories": 83,
+      "protein": 1.67,
+      "carbs": 18.7,
+      "fat": 1.17
+    }
+  },
+  "pear": {
+    "name": "მსხალი · კანით",
+    "nameEn": "Pear · with skin",
+    "fdcId": 169118,
+    "per100g": {
+      "calories": 57,
+      "protein": 0.36,
+      "carbs": 15.2,
+      "fat": 0.14
+    }
+  },
+  "plum": {
+    "name": "ქლიავი · კურკის გარეშე",
+    "nameEn": "Plums · pitted",
+    "fdcId": 169949,
+    "per100g": {
+      "calories": 46,
+      "protein": 0.7,
+      "carbs": 11.4,
+      "fat": 0.28
+    }
+  },
+  "raspberry": {
+    "name": "ჟოლო · ახალი",
+    "nameEn": "Raspberries · fresh",
+    "fdcId": 167755,
+    "per100g": {
+      "calories": 52,
+      "protein": 1.2,
+      "carbs": 11.9,
+      "fat": 0.65
+    }
+  },
+  "strawberry": {
+    "name": "მარწყვი · ახალი",
+    "nameEn": "Strawberries · fresh",
+    "fdcId": 167762,
+    "per100g": {
+      "calories": 32,
+      "protein": 0.67,
+      "carbs": 7.68,
+      "fat": 0.3
+    }
+  },
+  "honey": {
+    "name": "თაფლი",
+    "nameEn": "Honey",
+    "fdcId": 169640,
+    "per100g": {
+      "calories": 304,
+      "protein": 0.3,
+      "carbs": 82.4,
+      "fat": 0
+    }
+  },
+  "carrot": {
+    "name": "სტაფილო · უმი",
+    "nameEn": "Carrot · raw",
+    "fdcId": 170393,
+    "per100g": {
+      "calories": 41,
+      "protein": 0.93,
+      "carbs": 9.58,
+      "fat": 0.24
+    }
+  },
+  "mushroom": {
+    "name": "შამპინიონი · უმი წონით",
+    "nameEn": "White mushrooms · raw weight",
+    "fdcId": 169251,
+    "per100g": {
+      "calories": 22,
+      "protein": 3.09,
+      "carbs": 3.26,
+      "fat": 0.34
+    }
   }
 }

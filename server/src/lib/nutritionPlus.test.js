@@ -11,7 +11,7 @@ import {
   preferenceInput,
   measurementInput,
 } from "./nutritionPlus.js";
-import { normalizeOffProduct, searchCatalog, foodToItem, itemToFood, foodInput } from "./nutritionFoods.js";
+import { normalizeOffProduct, searchCatalog, foodToItem, itemToFood, foodInput, kaStem, withDeadline, georgianReference, describedReference } from "./nutritionFoods.js";
 
 const salad = { name: "სალათი", grams: 200, calories: 90, protein: 4, carbs: 10, fat: 4, fiber: 4, sugar: 3, sodium: 200 };
 const cake = { name: "ნამცხვარი", grams: 120, calories: 420, protein: 5, carbs: 60, fat: 18, fiber: 1, sugar: 40, sodium: 300 };
@@ -157,6 +157,51 @@ test("catalog search matches Georgian names and Latin aliases, saved-first order
   assert.equal(searchCatalog("ხინკალი")[0].id, "khinkali_meat");
   assert.equal(searchCatalog("x").length, 0);
   assert.ok(searchCatalog("ყველი").some((f) => f.id === "sulguni"));
+});
+
+test("Georgian endings and plurals still find the dish (ხინკლები, ხაჭაპურები, ხინკალს)", () => {
+  assert.equal(kaStem("ხინკლები"), kaStem("ხინკალი"));
+  assert.equal(kaStem("ხაჭაპურები"), kaStem("ხაჭაპური"));
+  assert.equal(kaStem("khinkali"), "");
+  for (const query of ["ხინკლები", "ხინკალს", "ხინკლით"]) assert.ok(searchCatalog(query).some((f) => f.id === "khinkali_meat"), query);
+  assert.ok(searchCatalog("ხაჭაპურები").some((f) => f.id.startsWith("khachapuri")));
+  // Short stems never match loosely: „პური“ keeps its plain substring behaviour only.
+  assert.ok(searchCatalog("პური").length > 0);
+  // Same stem only, never a longer word that starts like it (ფხალი ≠ ფახლავა); as-written matches first.
+  assert.ok(!searchCatalog("ფხალი").some((f) => /ფახლავა/.test(f.name)));
+  assert.match(searchCatalog("ხინკლები")[0].name, /ხინკალ/);
+});
+
+test("photo, text and fix estimates are grounded on the Georgian reference; a label is read as printed", () => {
+  const reference = georgianReference([
+    { name: "ხაჭაპური · იმერული", nameEn: "Imeruli khachapuri", ge: true, per100: { calories: 290, protein: 12, carbs: 30, fat: 14 }, serving: { grams: 150, label: "ნაჭერი" } },
+    { name: "ვაშლი", nameEn: "Apple", per100: { calories: 52, protein: 0.3, carbs: 14, fat: 0.2 } },
+  ]);
+  assert.match(reference, /^Reference foods — Georgian dishes/);
+  assert.match(reference, /Imeruli khachapuri: 290 kcal, P 12 g, C 30 g, F 14 g; serving ≈ 150 g/);
+  assert.doesNotMatch(reference, /Apple|ხაჭაპური/, "photo reference: Georgian dishes only, English names only");
+  const photo = estimateMessages(estimateRequest.parse({ mode: "photo" }), "AAAA", reference);
+  assert.match(photo[0].content, /Imeruli khachapuri/);
+  assert.match(photo[0].content, /do not underestimate fat/);
+  const label = estimateMessages(estimateRequest.parse({ mode: "label" }), "AAAA", reference);
+  assert.doesNotMatch(label[0].content, /Reference foods/);
+  assert.equal(georgianReference([]), "");
+  // A description gets only the foods it names, in both languages.
+  const named = describedReference("ორი ხინკალი და ქართული სალათი");
+  assert.match(named, /ხინკალი · ხორცით \(/);
+  assert.match(named, /სალათი/);
+  assert.ok(named.split("\n").length <= 13);
+  assert.equal(describedReference("ok"), "");
+  const text = estimateMessages(estimateRequest.parse({ mode: "text", description: "ხინკალი" }), null, named);
+  assert.match(text[0].content, /Reference foods named in the description/);
+});
+
+test("a slow product database cannot hold local results for its whole timeout", async () => {
+  const started = Date.now();
+  const late = new Promise((resolve) => setTimeout(() => resolve(["late"]), 3000));
+  assert.deepEqual(await withDeadline(late, 50), []);
+  assert.ok(Date.now() - started < 1000);
+  assert.deepEqual(await withDeadline(Promise.resolve(["fast"]), 50), ["fast"]);
 });
 
 test("portion maths round-trips between per-100 g facts and a diary item", () => {

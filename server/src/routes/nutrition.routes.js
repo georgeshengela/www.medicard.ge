@@ -30,6 +30,14 @@ import {
   estimateMessages,
   foodItem,
 } from "../lib/nutrition.js";
+import { georgianReference, describedReference } from "../lib/nutritionFoods.js";
+/** Photo: every Georgian dish; words (text / fix): the foods they name. A label is read as printed. */
+function estimateReference(request) {
+  if (request.mode === "label") return "";
+  if (request.mode === "photo") return georgianReference();
+  const words = [request.description, request.correction, ...request.previous.map((i) => i.name)].filter(Boolean).join(" ");
+  return describedReference(words);
+}
 
 export const nutritionRouter = Router(),
   adminNutritionRouter = Router();
@@ -162,8 +170,11 @@ async function runEstimate(req, request, photoBuffer) {
         model: "google/gemini-3.8-flash",
         temperature: 0.1,
         max_tokens: 2600,
+        // Low thinking: a food estimate should come back in seconds (default dynamic thinking made the
+        // photo wait long); the reference table carries the Georgian specifics instead.
+        reasoning: { effort: "low", exclude: true },
         response_format: { type: "json_object" },
-        messages: estimateMessages(request, bytes ? bytes.toString("base64") : null),
+        messages: estimateMessages(request, bytes ? bytes.toString("base64") : null, estimateReference(request)),
       },
       { timeout: 45000, maxRetries: 0 },
     ), req.lang);

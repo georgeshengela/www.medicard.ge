@@ -82,6 +82,8 @@ const MESSAGES_EN = {
   "წონის მიზანი შეიცვალა. კვების გეგმა ხელახლა გადაამოწმე.": "Your weight goal has changed. Review your nutrition plan again.",
   "მიმდინარე წონა შეიცვალა. დღის სამიზნე ხელახლა გადაამოწმე.": "Your current weight has changed. Review your daily target again.",
   "გეგმის განახლების დროა — გადაამოწმე წონა, აქტივობა და ჯანმრთელობის ინფორმაცია.": "It's time to update your plan: check your weight, activity and health information.",
+  "ამ მონაცემებით დაკლებისთვის უსაფრთხო კალორიული ადგილი თითქმის არ რჩება. აირჩიე „შენარჩუნება“, მეტი მოძრაობა ან სამიზნე სპეციალისტთან შეარჩიე.": "With these numbers there is almost no safe calorie room to lose weight. Choose “Maintain”, more movement, or set a target with a specialist.",
+  "გეგმას 4 კვირა შესრულდა — როცა მოიცლი, გადაამოწმე აქტივობა და ჯანმრთელობის ინფორმაცია.": "Your plan is 4 weeks old. When you have a moment, check your activity and health information.",
   "გეგმა სხვა ეკრანზე შეიცვალა. განაახლე გვერდი და გადაამოწმე.": "The plan was changed on another screen. Refresh the page and check it.",
   "ჯერ მოქმედი კვების გეგმა გადაამოწმე.": "First review your active nutrition plan.",
   "კვება ვერ მოიძებნა.": "Meal not found.",

@@ -38,9 +38,10 @@ const MACRO = {
   carbs: { name: t('ნახშირწყალი', 'Carbs'), short: t('ნ', 'C'), color: 'var(--c3)', kcal: 4 },
   fat: { name: t('ცხიმი', 'Fat'), short: t('ცხ', 'F'), color: 'var(--c4)', kcal: 9 },
 };
+// Never „accurate“: no estimate has been checked against weighed Georgian meals (same as the app).
 const UNCERTAINTY = {
-  low: t('შეფასება საკმაოდ ზუსტია', 'The estimate is fairly precise'),
-  medium: t('შეფასება მიახლოებითია', 'The estimate is approximate'),
+  low: t('მიახლოებითი შეფასება', 'An approximate estimate'),
+  medium: t('შეფასება მიახლოებითია — პორცია გადაამოწმე', 'The estimate is approximate — check the portion'),
   high: t('პორცია განსაკუთრებით ყურადღებით გადაამოწმე', 'Check the portion especially carefully'),
 };
 const AI_NOTE = t('AI შეფასებას შენახვამდე ყოველთვის გადაამოწმებ — არაფერი ინახება შენ გარეშე.', 'You always review the AI estimate before saving — nothing is saved without you.');

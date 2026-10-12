@@ -215,7 +215,7 @@ assistantRouter.post('/prepare', asyncHandler(async (req, res) => {
 assistantRouter.post('/execute', asyncHandler(async (req, res) => {
   const { token } = z.object({ token: z.string().max(16000), confirmed: z.literal(true) }).strict().parse(req.body);
   const plan = verifyAssistantPlan(req.user.id, token);
-  res.json(await executeAssistantPlan(plan, { userId: req.user.id, authorization: req.headers.authorization, timezone: clock(req).timezone, lang: req.lang }));
+  res.json(await executeAssistantPlan(plan, { userId: req.user.id, authorization: req.headers.authorization, timezone: clock(req).timezone, lang: req.lang, caps: req.get('x-medicard-caps') }));
 }));
 assistantRouter.post('/transcribe', rateLimit({ windowMs: 60000, limit: 12, keyGenerator: req => req.user.id, standardHeaders: 'draft-7', legacyHeaders: false, message: req => ({ error: t(req, 'მცირე შესვენება გავაკეთოთ — ერთ წუთში ისევ სცადე.', 'Let’s take a short break — try again in a minute.') }) }), aiDailyCap('assistantTranscribe'), requireAiConsent, asyncHandler(async (req, res) => {
   const { data, format } = z.object({ data: z.string().min(100).max(1750000).regex(/^[A-Za-z0-9+/]+={0,2}$/), format: z.enum(['m4a', 'wav', 'webm', 'mp3', 'ogg']) }).strict().parse(req.body);

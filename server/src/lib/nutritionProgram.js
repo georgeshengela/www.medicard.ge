@@ -2,7 +2,19 @@ import { z } from "zod";
 import { civilDate, foodItem, totals } from "./nutrition.js";
 import { nutritionMealPlanning } from "./nutritionAllergies.js";
 
-export const NUTRITION_METHOD_VERSION = "2026-09-24.1";
+export const NUTRITION_METHOD_VERSION = "2026-10-12.1";
+/**
+ * Lowest daily target the app sets on its own: 1 200 kcal for women, 1 500 for men (NHLBI 2013 adult
+ * obesity guideline; the old single 1 500 floor refused most women of average height who wanted to lose
+ * a few kilos). A clinician should confirm these numbers before they are lowered further.
+ */
+export const CALORIE_FLOOR = Object.freeze({ female: 1200, male: 1500 });
+const CALORIE_CEILING = 3500;
+/** A loss plan clamped to the floor must still leave at least this much under maintenance. */
+const MIN_LOSS_ROOM = 100;
+export const LOSE_NO_ROOM_REASON =
+  "ამ მონაცემებით დაკლებისთვის უსაფრთხო კალორიული ადგილი თითქმის არ რჩება. აირჩიე „შენარჩუნება“, მეტი მოძრაობა ან სამიზნე სპეციალისტთან შეარჩიე.";
+const KCAL_PER_KG = 7700;
 export const ALLERGENS = [
   "milk",
   "eggs",
@@ -111,9 +123,9 @@ export function assessNutritionProgram(raw, facts = {}, day) {
   if (
     age == null ||
     profileAge == null ||
-    age < 19 ||
+    age < 18 ||
     age > 78 ||
-    profileAge < 19 ||
+    profileAge < 18 ||
     profileAge > 78
   )
     reasons.push("ამ ასაკში კვების მიზანი სპეციალისტთან ერთად შეარჩიე.");
@@ -152,21 +164,38 @@ export function assessNutritionProgram(raw, facts = {}, day) {
     active: 1.725,
   }[input.activity];
   const maintenance = Math.round((bmr * multiplier) / 10) * 10;
-  const adjustment =
+  const requested =
     input.mode === "lose"
       ? -(input.pace === "gentle" ? 250 : 400)
       : input.mode === "gain"
         ? 200
         : 0;
-  // Universal conservative floor; do not silently clamp a requested deficit into a surplus.
-  const calories = Math.round((maintenance + adjustment) / 10) * 10;
-  if (calories < 1500 || calories > 3500)
+  const floor = CALORIE_FLOOR[input.sex];
+  let calories = Math.round((maintenance + requested) / 10) * 10;
+  let paceLimited = false;
+  let fallback = null;
+  if (calories < floor) {
+    if (input.mode !== "lose") calories = floor;
+    // A deficit is kept only while the floor still leaves real room under maintenance; it is never
+    // clamped into maintenance or a surplus. Without room the person is offered „შენარჩუნება“.
+    else if (maintenance - floor >= MIN_LOSS_ROOM) {
+      calories = floor;
+      paceLimited = true;
+    } else {
+      reasons.push(LOSE_NO_ROOM_REASON);
+      fallback = { mode: "maintain", calories: Math.max(floor, maintenance) };
+    }
+  }
+  if (calories > CALORIE_CEILING)
     reasons.push(
       "გამოთვლილი საჭიროება აპის ავტომატური გეგმის ფარგლებს სცდება — შეარჩიე სპეციალისტთან.",
     );
+  const adjustment = calories - maintenance;
   return {
     eligible: reasons.length === 0,
     reasons,
+    // Offered only when the sole problem is no room to lose (health screening refusals offer nothing).
+    fallback: reasons.length === 1 && fallback ? fallback : null,
     mealPlanning: nutritionMealPlanning(input, facts),
     methodVersion: NUTRITION_METHOD_VERSION,
     targets: reasons.length
@@ -178,6 +207,9 @@ export function assessNutritionProgram(raw, facts = {}, day) {
           fat: Math.round((calories * 0.3) / 9),
           maintenance,
           adjustment,
+          floor,
+          paceLimited,
+          weeklyKg: Math.round(((adjustment * 7) / KCAL_PER_KG) * 100) / 100,
           method: "Mifflin–St Jeor",
         },
     explanation:

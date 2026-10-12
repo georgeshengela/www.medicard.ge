@@ -58,6 +58,7 @@ import {
   mealEditSnapshot,
   foodEditSnapshot,
   foodFields,
+  rescaleFoodFields,
   itemFromFields,
   healthScore,
   newUuid,
@@ -65,6 +66,7 @@ import {
   upsertDayMeals,
   withoutMeal,
   type FoodItem,
+  type FoodFields,
   type Meal,
   type MealSource,
   type SavedFood,
@@ -81,6 +83,7 @@ import { useAuth } from "@/store/AuthContext";
 import { useAccountQuery } from "@/hooks/useAccountQuery";
 import { accountKey, FRESH, queryClient } from "@/lib/queryClient";
 import { aiConsentDeclinedText, isAiConsentDeclined } from "@/lib/aiConsentDecline";
+import { consumeAssistantPayload } from "@/lib/assistant";
 import { AiConsentDeclinedNote } from "@/components/ui/AiConsentDeclinedNote";
 
 type DayMeals = { meals: Meal[]; truncated: boolean };
@@ -163,6 +166,12 @@ function NutritionScreen({ owner }: { owner: string }) {
   const [copying, setCopying] = useState<Meal[] | null>(null);
   const [copyError, setCopyError] = useState("");
   const scroll = useRef<ScrollView>(null);
+  // Latest draft / AI availability for work started from an older render (the camera opens after a
+  // MODAL_HANDOFF_MS delay, so its closure predates the new meal).
+  const draftRef = useRef<Meal | null>(null);
+  draftRef.current = draft;
+  const enabledRef = useRef(enabled);
+  enabledRef.current = enabled;
   const mealBaseline = useRef("");
   const itemBaseline = useRef("");
   const openMeal = (meal: Meal) => {
@@ -206,11 +215,11 @@ function NutritionScreen({ owner }: { owner: string }) {
     setCorrection("");
     setSavedItems({});
   };
-  const newMeal = (openMethods = true, type?: Meal["type"]) => {
+  const newMeal = (openMethods = true, type?: Meal["type"], date = day) => {
     openMeal({
       id: newUuid(),
-      date: day,
-      type: type ?? (day === localDay() ? mealTypeForHour(new Date().getHours()) : "lunch"),
+      date,
+      type: type ?? (date === localDay() ? mealTypeForHour(new Date().getHours()) : "lunch"),
       items: [],
       note: "",
       title: "",
@@ -303,46 +312,53 @@ function NutritionScreen({ owner }: { owner: string }) {
         setPhoto(file);
         setPhotoMode(mode);
         scroll.current?.scrollTo({ y: 0, animated: true });
-        void Haptics.selectionAsync().catch(() => {});
+        // The estimate starts with the photo — no separate „შეფასების დაწყება“ tap.
+        if (enabledRef.current) await estimatePhoto(file, mode);
+        else void Haptics.selectionAsync().catch(() => {});
       }
     });
-  const applyEstimate = (result: Awaited<ReturnType<typeof api.nutrition.estimate>>, source: MealSource, replace: boolean) => {
+  /** `replace`: the estimate replaces the draft's foods; by default only when the draft has none yet. */
+  const applyEstimate = (result: Awaited<ReturnType<typeof api.nutrition.estimate>>, source: MealSource, replace?: boolean) => {
     if (!result.foodDetected || !result.items.length)
       throw new Error(source === "label" ? tx("ეტიკეტი მკაფიოდ ვერ წავიკითხე. სცადე უფრო ახლოდან ან შეიყვანე ხელით.", "I couldn't read the label clearly. Try closer up or enter it by hand.") : source === "text" || source === "voice" ? tx("აღწერიდან საკვები ვერ ამოვიცანი. სცადე უფრო კონკრეტულად.", "I couldn't recognize the food from your description. Try being more specific.") : tx("საკვები მკაფიოდ ვერ ამოვიცანი. გადაიღე სხვა ფოტო ან დაამატე ხელით.", "I couldn't clearly recognize the food. Take another photo or add it by hand."));
-    setDraft((current) =>
-      current
-        ? {
-            ...current,
-            source: replace ? source : current.items.length ? current.source : source,
-            items: replace ? result.items : [...current.items, ...result.items].slice(0, 25),
-            title: replace ? result.dishName || current.title || "" : current.title || result.dishName || "",
-          }
-        : current,
-    );
+    setDraft((current) => {
+      if (!current) return current;
+      const fresh = replace ?? !current.items.length;
+      return {
+        ...current,
+        source: fresh ? source : current.items.length ? current.source : source,
+        items: fresh ? result.items : [...current.items, ...result.items].slice(0, 25),
+        title: fresh ? result.dishName || current.title || "" : current.title || result.dishName || "",
+      };
+    });
     setExplanation(result.explanation);
     setUncertainty(result.uncertainty);
     setSavedItems({});
     scroll.current?.scrollTo({ y: 0, animated: true });
     void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {});
   };
+  /** One photo or label estimate (inside `run`): started by the photo itself, or by „ხელახლა ცდა“. */
+  const estimatePhoto = async (file: Photo, mode: "photo" | "label") => {
+    Keyboard.dismiss();
+    scroll.current?.scrollTo({ y: 0, animated: true });
+    setScanning(true);
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
+    try {
+      const result = await api.nutrition.estimate(file, { mode, description: draftRef.current?.note || "" });
+      if (!alive.current) return;
+      applyEstimate(result, mode === "label" ? "label" : "photo");
+    } catch (e) {
+      if (isAiConsentDeclined(e)) { if (alive.current) setAiDeclined("analyze"); return; }
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {});
+      throw e;
+    } finally {
+      if (alive.current) setScanning(false);
+    }
+  };
   const analyze = () =>
     run(async () => {
-      if (!photo || !draft || !alive.current) return;
-      Keyboard.dismiss();
-      scroll.current?.scrollTo({ y: 0, animated: true });
-      setScanning(true);
-      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {});
-      try {
-        const result = await api.nutrition.estimate(photo, { mode: photoMode, description: draft.note });
-        if (!alive.current) return;
-        applyEstimate(result, photoMode === "label" ? "label" : "photo", !draft.items.length);
-      } catch (e) {
-        if (isAiConsentDeclined(e)) { if (alive.current) setAiDeclined("analyze"); return; }
-        void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error).catch(() => {});
-        throw e;
-      } finally {
-        if (alive.current) setScanning(false);
-      }
+      if (!photo || !draftRef.current || !alive.current) return;
+      await estimatePhoto(photo, photoMode);
     });
   const describe = (text: string, voice: boolean) =>
     run(async () => {
@@ -352,7 +368,7 @@ function NutritionScreen({ owner }: { owner: string }) {
       try {
         const result = await api.nutrition.estimate(null, { mode: "text", description: text });
         if (!alive.current) return;
-        applyEstimate(result, voice ? "voice" : "text", !draft.items.length);
+        applyEstimate(result, voice ? "voice" : "text");
         setDraft((current) => (current ? { ...current, note: current.note || text } : current));
         setSheet(null);
       } catch (e) {
@@ -437,16 +453,51 @@ function NutritionScreen({ owner }: { owner: string }) {
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [params.method, params.type]),
   );
+  // Medi's „ჩაწერე, რაც ვჭამე“ (nutrition_log): the words wait in memory (never in the route); here they
+  // are estimated and shown for review like any description — Medi never saves numbers she has not seen.
+  const pendingDescribe = useRef<string | null>(null);
+  useFocusEffect(
+    useCallback(() => {
+      const log = consumeAssistantPayload(owner, "/nutrition/diary")?.nutritionLog;
+      if (!log?.description) return;
+      const type = log.mealType && log.mealType in mealLabels ? (log.mealType as Meal["type"]) : undefined;
+      const date = log.date && /^\d{4}-\d{2}-\d{2}$/.test(log.date) && log.date <= localDay() ? log.date : localDay();
+      setDay(date);
+      launched.current = true;
+      pendingDescribe.current = log.description;
+      newMeal(false, type, date);
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [owner]),
+  );
+  useEffect(() => {
+    const text = pendingDescribe.current;
+    if (!text || !draft || draft.items.length || busy) return;
+    pendingDescribe.current = null;
+    void describe(text, false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [draft, busy]);
   const onFoodPick = (pickResult: FoodPick) => {
     setSheet(null);
     addItems(pickResult.items, pickResult.source, pickResult.title);
     if (pickResult.foodIds.length) void api.nutrition.foods.used(pickResult.foodIds).catch(() => {});
+  };
+  /** Grams rescale every nutrient of the food being edited, from the values typed before them. */
+  const scaleBase = useRef<FoodFields | null>(null);
+  const changeField = (key: keyof FoodFields, value: string) => {
+    if (key === "grams" && scaleBase.current) {
+      setFields({ ...rescaleFoodFields(scaleBase.current, value), name: fields.name });
+      return;
+    }
+    const next = { ...fields, [key]: value };
+    scaleBase.current = next;
+    setFields(next);
   };
   const editItem = (index: number) => {
     const i = draft?.items[index];
     setEditing(index);
     const nextFields = foodFields(i);
     itemBaseline.current = foodEditSnapshot(nextFields);
+    scaleBase.current = nextFields;
     setFields(nextFields);
     setError("");
     scroll.current?.scrollTo({ y: 0, animated: false });
@@ -555,6 +606,8 @@ function NutritionScreen({ owner }: { owner: string }) {
   const shown = held ? meals.filter((m) => m.id !== held.id) : meals;
   const sum = foodTotals(draft?.items || shown.flatMap((m) => m.items));
   const score = draft?.items.length ? healthScore(draft.items) : null;
+  // AI photo/description estimates miss hidden fat most (butter, cheese, oil): say so on rich dishes.
+  const fatHeavy = !!draft?.items.length && ["photo", "text", "voice"].includes(draft.source) && sum.calories > 0 && (sum.fat * 9) / sum.calories > 0.4;
   // Today's budget, macro targets and planned dishes come from the shared dashboard; past days use the
   // target that was in force then (dashboard `days`, last 7 days).
   const { data: dash } = useNutritionDashboard();
@@ -857,8 +910,14 @@ function NutritionScreen({ owner }: { owner: string }) {
                   <View style={[s.row, { alignItems: "flex-start", padding: 14, borderRadius: 18, backgroundColor: M.inkSoft }]}>
                     <Info size={18} color={M.ink} />
                     <View style={{ flex: 1, gap: 4 }}>
-                      <Text style={[txt, { fontSize: 13, fontFamily: "NotoSansGeorgian_600SemiBold" }]}>{uncertainty === "high" ? tx("პორცია განსაკუთრებით ყურადღებით გადაამოწმე", "Check the portion especially carefully") : uncertainty === "low" ? tx("შეფასება საკმაოდ ზუსტია", "The estimate is fairly accurate") : tx("შეფასება მიახლოებითია", "The estimate is approximate")}</Text>
+                      {/* Never „accurate“: no estimate has been checked against weighed Georgian meals. */}
+                      <Text style={[txt, { fontSize: 13, fontFamily: "NotoSansGeorgian_600SemiBold" }]}>{uncertainty === "high" ? tx("პორცია განსაკუთრებით ყურადღებით გადაამოწმე", "Check the portion especially carefully") : uncertainty === "low" ? tx("მიახლოებითი შეფასება", "An approximate estimate") : tx("შეფასება მიახლოებითია — პორცია გადაამოწმე", "The estimate is approximate — check the portion")}</Text>
                       <Text style={[hubText.caption, { color: c.text200 }]}>{explanation}</Text>
+                      {fatHeavy ? (
+                        <Text style={[hubText.caption, { color: c.text200 }]}>
+                          {tx("ცხიმიან და ყველიან კერძებს AI ხშირად ნაკლებად აფასებს. თუ კარაქი, ზეთი ან ყველი ბევრი იყო, პორცია მოუმატე ან Medi-ს უთხარი.", "AI often underestimates rich, cheesy dishes. If there was a lot of butter, oil or cheese, increase the portion or tell Medi.")}
+                        </Text>
+                      ) : null}
                     </View>
                   </View>
                 )}
@@ -937,7 +996,7 @@ function NutritionScreen({ owner }: { owner: string }) {
             )}
             {draft && editing !== null && (
               <View style={{ gap: 12 }}>
-                <Text style={[hubText.body, { color: c.text200 }]}>{tx("მიუთითე მთლიანი პორციის მნიშვნელობები, არა 100 გრამის. ეტიკეტიდან შეგიძლია გადაიტანო.", "Enter values for the whole portion, not per 100 g. You can copy them from the label.")}</Text>
+                <Text style={[hubText.body, { color: c.text200 }]}>{tx("მიუთითე მთლიანი პორციის მნიშვნელობები, არა 100 გრამის. გრამებს რომ შეცვლი, დანარჩენი თავად გადაითვლება.", "Enter values for the whole portion, not per 100 g. Change the grams and the rest is recalculated.")}</Text>
                 {(
                   [
                     [["name", tx("საკვების სახელი", "Food name")]],
@@ -968,7 +1027,7 @@ function NutritionScreen({ owner }: { owner: string }) {
                             testID={`nutrition-field-${key}`}
                             value={fields[key]}
                             maxLength={key === "name" ? 120 : 8}
-                            onChangeText={(value) => setFields({ ...fields, [key]: value })}
+                            onChangeText={(value) => changeField(key, value)}
                             keyboardType={key === "name" ? "default" : "decimal-pad"}
                             style={[fieldStyle(false), key !== "name" && { textAlign: "center", paddingHorizontal: 8 }]}
                           />
