@@ -25,7 +25,7 @@ test('memory keeps objects as JSON, not "[object Object]"', () => {
 });
 import { isWorkingHours } from './director/hours.js';
 import { faqText } from './director/knowledge.js';
-import { canAutoSend, linksAreSafe, AUTO_REPLIES_PER_THREAD } from './director/supportAgent.js';
+import { canAutoSend, linksAreSafe, AUTO_REPLIES_PER_THREAD, ACK_TEXT, ACK_TEXT_EN, afterHoursAck, writesGeorgian } from './director/supportAgent.js';
 import { giftFromPayload } from './director/actions.js';
 
 test('working hours are Mon–Fri 10:00–19:00 Tbilisi (UTC+4)', () => {
@@ -48,6 +48,46 @@ test('automatic support replies only for answerable help questions with safe lin
   assert.equal(canAutoSend(ok, AUTO_REPLIES_PER_THREAD), false, 'long threads go to the owner');
   assert.equal(linksAreSafe('see https://www.medicard.ge/privacy and https://medicard.ge'), true);
   assert.equal(linksAreSafe('https://medicard.ge.evil.com'), false);
+});
+
+test('after-hours ACK only for mail that reached support@, never in a conversation we started (2026-10-09)', () => {
+  const support = { mailbox: 'support@medicard.ge', weStarted: false, subject: 'აპი', text: 'გამარჯობა, ვერ შევდივარ' };
+  assert.deepEqual(afterHoursAck(support, 'support@medicard.ge'), { send: true, lang: 'ka', body: ACK_TEXT });
+  // Tasso: an English answer to the owner's letter from ceo@ — both rules forbid the ACK, also
+  // when the reply did not thread onto the letter (it did not: the provider swapped our Message-ID).
+  const tasso = { mailbox: 'ceo@medicard.ge', weStarted: true, subject: 'Re: Partnership', text: 'Hi George, thanks for reaching out.' };
+  assert.deepEqual(afterHoursAck(tasso, 'support@medicard.ge'), { send: false, reason: 'ours' });
+  assert.deepEqual(afterHoursAck({ ...tasso, weStarted: false }, 'support@medicard.ge'), { send: false, reason: 'mailbox' });
+  assert.deepEqual(afterHoursAck({ ...support, weStarted: true }, 'support@medicard.ge'), { send: false, reason: 'ours' }, 'a letter sent from support@');
+  assert.deepEqual(afterHoursAck({ ...support, mailbox: 'ceo@medicard.ge' }, 'support@medicard.ge'), { send: false, reason: 'mailbox' }, 'mail sent straight to ceo@');
+  assert.equal(afterHoursAck({ ...support, mailbox: null }, 'support@medicard.ge').send, false, 'unknown mailbox');
+  assert.equal(afterHoursAck({ ...support, mailbox: 'Support@Medicard.ge' }, 'support@medicard.ge').send, true, 'case-insensitive');
+  assert.equal(afterHoursAck(support).send, true, 'defaults to SUPPORT_FROM (support@)');
+});
+
+test('after-hours ACK is English for a sender who does not write Georgian', () => {
+  const at = (subject, text) => afterHoursAck({ mailbox: 'support@medicard.ge', weStarted: false, subject, text }, 'support@medicard.ge');
+  const en = at('Question about the app', 'Hello, how do I export my lab results?');
+  assert.deepEqual(en, { send: true, lang: 'en', body: ACK_TEXT_EN });
+  assert.match(ACK_TEXT_EN, /MEDICARD team$/);
+  assert.doesNotMatch(ACK_TEXT_EN, /[\u10A0-\u10FF]/, 'no Georgian letters in the English ACK');
+  assert.equal(at('Вопрос', 'Здравствуйте, не могу войти').lang, 'en', 'Russian → English');
+  assert.equal(at('', 'MEDICARD app-ში login არ მუშაობს, error 500').lang, 'ka', 'Georgian with English product words');
+});
+
+test('writesGeorgian reads the sender\'s own words, not quotes or a signature', () => {
+  assert.equal(writesGeorgian({ text: 'გამარჯობა!\n\nSent from my iPhone' }), true);
+  assert.equal(writesGeorgian({ text: 'Thank you, we will send the price list tomorrow.\n\nBest regards,\nნინო ბერიძე' }), false, 'Georgian name in the signature');
+  assert.equal(writesGeorgian({ text: 'Sure, Monday works.\n\nOn Fri, Oct 9, 2026 at 18:00 George <ceo@medicard.ge> wrote:\n> გამარჯობა, თანამშრომლობა გვინდა' }), false, 'our quoted Georgian letter');
+  assert.equal(writesGeorgian({ text: 'Sure.\n> გამარჯობა\n> როგორ ხარ' }), false);
+  assert.equal(writesGeorgian({ text: 'Noted, thanks.\n\n________________________________\nFrom: George Shengelia <ceo@medicard.ge>\nSent: Friday\n\nგამარჯობა, თანამშრომლობის შესახებ გწერთ' }), false, 'Outlook history');
+  assert.equal(writesGeorgian({ text: 'Will do.\n-- \nნინო ბერიძე\nშპს „ფარმა“, თბილისი' }), false, '"-- " signature');
+  assert.equal(writesGeorgian({ text: 'ვერ შევდივარ\n\nОтправлено с iPhone' }), true);
+  assert.equal(writesGeorgian({ text: 'MEDICARD-ში ვერ ვხედავ ჩემს lab results, iPhone 15, iOS 18' }), true);
+  assert.equal(writesGeorgian({ subject: 'Re: შეკითხვა', text: '' }), true, 'empty body → subject');
+  assert.equal(writesGeorgian({ subject: 'Re: Invoice', text: '   ' }), false);
+  assert.equal(writesGeorgian({ subject: '', text: '' }), true, 'nothing to judge → Georgian');
+  assert.equal(writesGeorgian({ subject: '', text: '12345 !!!' }), true);
 });
 
 test('MEDIRUN gift payload is bounded and must be in Georgia', () => {

@@ -86,7 +86,7 @@ const REASONS = {
   undeliverable: 'მისამართი არასწორია.',
 };
 
-export async function sendSupportReply({ threadId, body, status = 'waiting', admin }, { db = prisma, send = sendEmail, now = new Date() } = {}) {
+export async function sendSupportReply({ threadId, body, status = 'waiting', admin, lang }, { db = prisma, send = sendEmail, now = new Date() } = {}) {
   const thread = await db.supportThread.findUnique({ where: { id: threadId } });
   if (!thread) throw httpError('საუბარი ვერ მოიძებნა.', 404);
   const to = thread.counterpartEmail;
@@ -113,6 +113,7 @@ export async function sendSupportReply({ threadId, body, status = 'waiting', adm
     from: sender.from,
     replyTo: sender.email,
     extraHeaders: headers,
+    lang, // email chrome language; omitted = the linked account's language (Georgian when none)
   }, { db });
   if (result?.status !== 'sent') {
     throw httpError(REASONS[result?.reason] || `გაგზავნა ვერ მოხერხდა: ${result?.reason || ''}`, result?.reason === 'disabled' ? 503 : 422, 'REPLY_NOT_SENT');

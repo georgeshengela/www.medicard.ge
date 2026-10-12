@@ -1,6 +1,9 @@
 /**
  * Support on autopilot while the Director is on shift (owner-delegated, 2026-09-28).
- *   outside working hours → one fixed acknowledgement per thread, answered in the morning
+ *   outside working hours → one fixed acknowledgement per thread (Georgian, or English for a sender
+ *     who does not write Georgian), answered in the morning. Only mail that came in to the public
+ *     support mailbox is acknowledged — never a reply to a letter we started (the owner's
+ *     „ახალი წერილი“) and never the owner's own mailbox (ceo@); those only notify the owner.
  *   inside working hours  → the model classifies the latest inbound message against the support
  *     knowledge base; plain "how does the app work" questions it can answer from the knowledge are
  *     answered directly (max AUTO_REPLIES_PER_THREAD per thread, links only to medicard.ge);
@@ -10,7 +13,9 @@
  */
 import { prisma } from '../prisma.js';
 import { withJobLease } from '../jobLease.js';
-import { isOwnDomain } from '../support/threading.js';
+import { isOwnDomain, normalizeSubject } from '../support/threading.js';
+import { splitQuoted } from '../support/quote.js';
+import { supportSender } from '../support/reply.js';
 import * as store from './store.js';
 import { askJson, BudgetError, llmConfigured } from './llm.js';
 import { isWorkingHours } from './hours.js';
@@ -24,6 +29,11 @@ export const ACK_TEXT = `გამარჯობა!
 მადლობა, რომ მოგვწერე — წერილი მივიღეთ. ახლა არასამუშაო დროა; გიპასუხებთ სამუშაო საათებში (ორშაბათი–პარასკევი, 10:00–19:00).
 
 MEDICARD-ის გუნდი`;
+export const ACK_TEXT_EN = `Hello,
+
+Thank you for writing to us — we have received your message. It is outside our working hours right now; we will reply during working hours (Monday–Friday, 10:00–19:00 Tbilisi time, GMT+4).
+
+MEDICARD team`;
 const LEASE = 'director-support';
 const INTERVAL_MS = 60 * 1000;
 
@@ -63,6 +73,48 @@ export function canAutoSend(verdict, autoCount) {
     && autoCount < AUTO_REPLIES_PER_THREAD;
 }
 
+const GEORGIAN = /[\u10A0-\u10FF\u1C90-\u1CBF\u2D00-\u2D2F]/u;
+const WORD = /\p{L}+/gu;
+// Where the sender's own words end: a "-- " signature or Outlook-style history ("____" / "From: x@y").
+const OWN_END = /^(?:--|_{8,}|from\s*:.*@.*)$/i;
+const CLIENT_FOOTER = /^(?:sent from|sent via|get outlook for|отправлено (?:с|из))\b/i;
+/** Share of Georgian words from which a mail counts as Georgian: a Georgian name in an English letter does not. */
+export const GEORGIAN_SHARE = 0.25;
+
+/**
+ * Does the sender write Georgian? Judged from their own words in the body (quoted history,
+ * signature and "Sent from my iPhone" aside), or from the subject when the body has none.
+ * Nothing to judge → Georgian.
+ */
+export function writesGeorgian({ subject = '', text = '' } = {}) {
+  const lines = splitQuoted(text).main.split('\n').map((l) => l.trim());
+  const end = lines.findIndex((l) => OWN_END.test(l));
+  const own = (end >= 0 ? lines.slice(0, end) : lines).filter((l) => !l.startsWith('>') && !CLIENT_FOOTER.test(l)).join('\n');
+  for (const s of [own, normalizeSubject(subject)]) {
+    const words = s.match(WORD) || [];
+    if (words.length) return words.filter((w) => GEORGIAN.test(w)).length / words.length >= GEORGIAN_SHARE;
+  }
+  return true;
+}
+
+/**
+ * The after-hours acknowledgement for a thread, or why none may go out. Only mail that reached the
+ * public support mailbox is acknowledged, and never a conversation we started: a partner answering
+ * the owner's letter is not a support ticket (2026-10-09, Tasso got the Georgian ACK from ceo@).
+ * `weStarted`: this sender's thread, or another recent one with them, opens with our letter —
+ * replies do not always thread (the provider swaps our Message-ID, helpdesks rewrite subjects).
+ */
+export function afterHoursAck({ mailbox, weStarted, subject, text }, publicMailbox = supportSender().email) {
+  if (weStarted) return { send: false, reason: 'ours' };
+  if (String(mailbox || '').trim().toLowerCase() !== String(publicMailbox).toLowerCase()) return { send: false, reason: 'mailbox' };
+  return writesGeorgian({ subject, text }) ? { send: true, lang: 'ka', body: ACK_TEXT } : { send: true, lang: 'en', body: ACK_TEXT_EN };
+}
+
+const NO_ACK_WHY = {
+  ours: () => 'ეს საუბარი ჩვენ დავიწყეთ',
+  mailbox: (msg) => `ყუთი: ${msg.mailbox || 'უცნობი'}`,
+};
+
 export const TRIAGE_SYSTEM = `You triage emails sent to support@medicard.ge for MEDICARD, a free Georgian health app.
 Return ONLY JSON: {"category": "help|account|data_request|medical|billing|complaint|business|spam|other", "answerable": true|false, "reply": "...", "summary": "...", "reason": "..."}
 - category help = a general question about how the app works / where something is.
@@ -83,12 +135,19 @@ async function handleThread(msg, thread, db) {
   if (later) return mark(msg.id, msg.threadId, 'human', {}, db); // a person already answered
 
   if (!isWorkingHours()) {
-    const [acked] = await db.$queryRaw`SELECT 1 FROM "DirectorSupportTriage" WHERE "threadId" = ${msg.threadId} AND "acked" AND "updatedAt" > NOW() - INTERVAL '12 hours' LIMIT 1`;
-    if (!acked) {
-      await sendDirectorSupportReply({ threadId: msg.threadId, body: ACK_TEXT, status: 'open' });
-      await notifyOwner(`📩 ახალი წერილი (არასამუშაო დრო): „${thread.subject || 'უსათაურო'}“. „მივიღეთ“ გავუგზავნე, სამუშაო დროს ვუპასუხებ.`, { direction: 'system' });
+    // One ACK (or one owner notice) per thread per quiet spell.
+    const [handled] = await db.$queryRaw`SELECT 1 FROM "DirectorSupportTriage" WHERE "threadId" = ${msg.threadId}
+      AND ("acked" OR "note" LIKE 'no-ack:%') AND "updatedAt" > NOW() - INTERVAL '12 hours' LIMIT 1`;
+    if (handled) return mark(msg.id, msg.threadId, 'deferred', {}, db);
+    const subject = thread.subject || 'უსათაურო';
+    const ack = afterHoursAck({ ...msg, subject: msg.messageSubject ?? msg.subject });
+    if (!ack.send) {
+      await notifyOwner(`📩 ახალი წერილი (არასამუშაო დრო): „${subject}“. ავტომატური „მივიღეთ“ არ გავუგზავნე (${NO_ACK_WHY[ack.reason](msg)}), სამუშაო დროს გადავხედავ.`, { direction: 'system' });
+      return mark(msg.id, msg.threadId, 'deferred', { note: `no-ack: ${ack.reason}` }, db);
     }
-    return mark(msg.id, msg.threadId, 'deferred', { acked: !acked }, db);
+    await sendDirectorSupportReply({ threadId: msg.threadId, body: ack.body, status: 'open', lang: ack.lang });
+    await notifyOwner(`📩 ახალი წერილი (არასამუშაო დრო): „${subject}“. „მივიღეთ“ გავუგზავნე${ack.lang === 'en' ? ' ინგლისურად' : ''}, სამუშაო დროს ვუპასუხებ.`, { direction: 'system' });
+    return mark(msg.id, msg.threadId, 'deferred', { acked: true }, db);
   }
 
   const view = await readSupportThread(msg.threadId, { db });
@@ -124,7 +183,13 @@ export async function runSupportAgentTick({ db = prisma } = {}) {
   if (!state.active || !llmConfigured()) return { skipped: 'off' };
   await ensureTable(db);
   const rows = await db.$queryRaw`
-    SELECT m."id", m."threadId", m."createdAt", t."counterpartEmail", t."subject", d."status" AS "triage"
+    SELECT m."id", m."threadId", m."createdAt", t."counterpartEmail", t."subject", t."mailbox", d."status" AS "triage",
+      COALESCE(NULLIF(m."subject", ''), t."subject") AS "messageSubject", LEFT(m."textBody", 4000) AS "text",
+      -- a letter of ours to this sender (a thread that opens outbound) within the thread-match window
+      EXISTS (SELECT 1 FROM "SupportThread" lt
+        WHERE lt."counterpartEmail" = t."counterpartEmail" AND lt."createdAt" <= m."createdAt" AND lt."createdAt" > m."createdAt" - INTERVAL '90 days'
+          AND (SELECT f."direction" FROM "SupportMessage" f WHERE f."threadId" = lt."id" AND f."direction" <> 'note'
+            ORDER BY f."createdAt" ASC, f."id" ASC LIMIT 1) = 'outbound') AS "weStarted"
     FROM "SupportMessage" m
     JOIN "SupportThread" t ON t."id" = m."threadId"
     LEFT JOIN "DirectorSupportTriage" d ON d."messageId" = m."id"

@@ -77,8 +77,8 @@ export async function readSupportThread(threadId, { db = prisma } = {}) {
   };
 }
 
-export async function sendDirectorSupportReply({ threadId, body, status = 'waiting', approvedByOwner = false }) {
-  const res = await sendSupportReply({ threadId, body, status, admin: DIRECTOR_ADMIN });
+export async function sendDirectorSupportReply({ threadId, body, status = 'waiting', approvedByOwner = false, lang }) {
+  const res = await sendSupportReply({ threadId, body, status, admin: DIRECTOR_ADMIN, lang });
   await writeAdminAudit({ admin: DIRECTOR_ADMIN, action: 'support.reply', targetType: 'supportThread', targetId: threadId, newValue: { chars: body.length, approvedByOwner } });
   return res;
 }
