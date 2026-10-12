@@ -25,7 +25,8 @@ test('memory keeps objects as JSON, not "[object Object]"', () => {
 });
 import { isWorkingHours } from './director/hours.js';
 import { faqText } from './director/knowledge.js';
-import { canAutoSend, linksAreSafe, AUTO_REPLIES_PER_THREAD, ACK_TEXT, ACK_TEXT_EN, afterHoursAck, writesGeorgian } from './director/supportAgent.js';
+import { canAutoSend, linksAreSafe, AUTO_REPLIES_PER_THREAD, ACK_TEXT, ACK_TEXT_EN, afterHoursAck, autopilotBlock, replyLanguageMatches, senderLang, TRIAGE_SYSTEM } from './director/supportAgent.js';
+import { writesGeorgian, mailLang } from './support/language.js';
 import { giftFromPayload } from './director/actions.js';
 
 test('working hours are Mon–Fri 10:00–19:00 Tbilisi (UTC+4)', () => {
@@ -73,6 +74,23 @@ test('after-hours ACK is English for a sender who does not write Georgian', () =
   assert.doesNotMatch(ACK_TEXT_EN, /[\u10A0-\u10FF]/, 'no Georgian letters in the English ACK');
   assert.equal(at('Вопрос', 'Здравствуйте, не могу войти').lang, 'en', 'Russian → English');
   assert.equal(at('', 'MEDICARD app-ში login არ მუშაობს, error 500').lang, 'ka', 'Georgian with English product words');
+  assert.equal(senderLang({ subject: 'თემა', messageSubject: 'Question', text: '' }), 'en', 'the message subject, not the thread subject');
+});
+
+test('daytime auto-replies: same rule as the ACK, and only in the sender\'s language', () => {
+  assert.equal(autopilotBlock({ mailbox: 'support@medicard.ge', weStarted: false }, 'support@medicard.ge'), null);
+  assert.equal(autopilotBlock({ mailbox: 'support@medicard.ge', weStarted: true }, 'support@medicard.ge'), 'ours');
+  assert.equal(autopilotBlock({ mailbox: 'ceo@medicard.ge', weStarted: false }, 'support@medicard.ge'), 'mailbox');
+  const ka = { category: 'help', answerable: true, reply: 'გამარჯობა! ანგარიშის წაშლა პროფილშია: https://medicard.ge/delete-account\n\nMEDICARD-ის გუნდი' };
+  const en = { ...ka, reply: 'Hello! You can delete your account in Profile: https://medicard.ge/delete-account\n\nMEDICARD team' };
+  assert.equal(canAutoSend(ka, 0, 'ka'), true);
+  assert.equal(canAutoSend(en, 0, 'en'), true);
+  assert.equal(canAutoSend(ka, 0, 'en'), false, 'never a Georgian answer to an English sender');
+  assert.equal(canAutoSend(en, 0, 'ka'), false, 'never an English answer to a Georgian sender');
+  assert.equal(canAutoSend(ka, 0), true, 'no language given → no language check');
+  assert.equal(replyLanguageMatches('Здравствуйте! Удалить аккаунт можно в профиле.\n\nMEDICARD team', 'en'), true, 'Russian answer to a Russian sender');
+  assert.match(TRIAGE_SYSTEM, /replyLanguage/);
+  assert.match(TRIAGE_SYSTEM, /MEDICARD team/);
 });
 
 test('writesGeorgian reads the sender\'s own words, not quotes or a signature', () => {
@@ -88,6 +106,8 @@ test('writesGeorgian reads the sender\'s own words, not quotes or a signature', 
   assert.equal(writesGeorgian({ subject: 'Re: Invoice', text: '   ' }), false);
   assert.equal(writesGeorgian({ subject: '', text: '' }), true, 'nothing to judge → Georgian');
   assert.equal(writesGeorgian({ subject: '', text: '12345 !!!' }), true);
+  assert.equal(mailLang('Hello,\n\nMEDICARD team'), 'en');
+  assert.equal(mailLang('გამარჯობა!\n\nMEDICARD-ის გუნდი'), 'ka');
 });
 
 test('MEDIRUN gift payload is bounded and must be in Georgia', () => {

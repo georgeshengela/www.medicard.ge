@@ -1,20 +1,21 @@
 /**
  * Support on autopilot while the Director is on shift (owner-delegated, 2026-09-28).
- *   outside working hours → one fixed acknowledgement per thread (Georgian, or English for a sender
- *     who does not write Georgian), answered in the morning. Only mail that came in to the public
- *     support mailbox is acknowledged — never a reply to a letter we started (the owner's
- *     „ახალი წერილი“) and never the owner's own mailbox (ceo@); those only notify the owner.
+ *   outside working hours → one fixed acknowledgement per thread, answered in the morning
  *   inside working hours  → the model classifies the latest inbound message against the support
  *     knowledge base; plain "how does the app work" questions it can answer from the knowledge are
  *     answered directly (max AUTO_REPLIES_PER_THREAD per thread, links only to medicard.ge);
  *     everything else (account, data, medical, money, complaints, business, unclear) goes to the
  *     owner as a ready draft with ✅.
+ * The autopilot writes on its own only in the public support mailbox and never in a conversation
+ * we started (`autopilotBlock`) — there the owner gets the notice / draft instead. Everything it
+ * writes is in the sender's language: Georgian, or (for anyone who does not write Georgian) their
+ * language with an English ACK, „MEDICARD team“ and English email chrome.
  * Each inbound message is decided once (table "DirectorSupportTriage").
  */
 import { prisma } from '../prisma.js';
 import { withJobLease } from '../jobLease.js';
-import { isOwnDomain, normalizeSubject } from '../support/threading.js';
-import { splitQuoted } from '../support/quote.js';
+import { isOwnDomain } from '../support/threading.js';
+import { writesGeorgian } from '../support/language.js';
 import { supportSender } from '../support/reply.js';
 import * as store from './store.js';
 import { askJson, BudgetError, llmConfigured } from './llm.js';
@@ -67,50 +68,41 @@ export function linksAreSafe(text) {
   return urls.every((u) => { try { return /(^|\.)medicard\.ge$/i.test(new URL(u).hostname); } catch { return false; } });
 }
 
-export function canAutoSend(verdict, autoCount) {
+/** A Georgian reply to a Georgian sender, a reply without Georgian to anyone else. No `lang` → no check. */
+export function replyLanguageMatches(reply, lang) {
+  return !lang || writesGeorgian({ text: reply }) === (lang === 'ka');
+}
+
+export function canAutoSend(verdict, autoCount, lang = null) {
   return verdict?.category === 'help' && verdict.answerable === true && typeof verdict.reply === 'string'
     && verdict.reply.trim().length >= 20 && verdict.reply.length <= 3000 && linksAreSafe(verdict.reply)
-    && autoCount < AUTO_REPLIES_PER_THREAD;
+    && replyLanguageMatches(verdict.reply, lang) && autoCount < AUTO_REPLIES_PER_THREAD;
 }
 
-const GEORGIAN = /[\u10A0-\u10FF\u1C90-\u1CBF\u2D00-\u2D2F]/u;
-const WORD = /\p{L}+/gu;
-// Where the sender's own words end: a "-- " signature or Outlook-style history ("____" / "From: x@y").
-const OWN_END = /^(?:--|_{8,}|from\s*:.*@.*)$/i;
-const CLIENT_FOOTER = /^(?:sent from|sent via|get outlook for|отправлено (?:с|из))\b/i;
-/** Share of Georgian words from which a mail counts as Georgian: a Georgian name in an English letter does not. */
-export const GEORGIAN_SHARE = 0.25;
+/** 'ka' when the sender of this inbound message writes Georgian, else 'en'. */
+export const senderLang = (msg) => (writesGeorgian({ subject: msg.messageSubject ?? msg.subject, text: msg.text }) ? 'ka' : 'en');
 
 /**
- * Does the sender write Georgian? Judged from their own words in the body (quoted history,
- * signature and "Sent from my iPhone" aside), or from the subject when the body has none.
- * Nothing to judge → Georgian.
- */
-export function writesGeorgian({ subject = '', text = '' } = {}) {
-  const lines = splitQuoted(text).main.split('\n').map((l) => l.trim());
-  const end = lines.findIndex((l) => OWN_END.test(l));
-  const own = (end >= 0 ? lines.slice(0, end) : lines).filter((l) => !l.startsWith('>') && !CLIENT_FOOTER.test(l)).join('\n');
-  for (const s of [own, normalizeSubject(subject)]) {
-    const words = s.match(WORD) || [];
-    if (words.length) return words.filter((w) => GEORGIAN.test(w)).length / words.length >= GEORGIAN_SHARE;
-  }
-  return true;
-}
-
-/**
- * The after-hours acknowledgement for a thread, or why none may go out. Only mail that reached the
- * public support mailbox is acknowledged, and never a conversation we started: a partner answering
- * the owner's letter is not a support ticket (2026-10-09, Tasso got the Georgian ACK from ceo@).
+ * Why the autopilot may not write to this sender on its own (null = it may). It writes only in the
+ * public support mailbox, and never in a conversation we started: a partner answering the owner's
+ * letter is not a support ticket (2026-10-09, Tasso got the Georgian ACK from ceo@).
  * `weStarted`: this sender's thread, or another recent one with them, opens with our letter —
  * replies do not always thread (the provider swaps our Message-ID, helpdesks rewrite subjects).
  */
-export function afterHoursAck({ mailbox, weStarted, subject, text }, publicMailbox = supportSender().email) {
-  if (weStarted) return { send: false, reason: 'ours' };
-  if (String(mailbox || '').trim().toLowerCase() !== String(publicMailbox).toLowerCase()) return { send: false, reason: 'mailbox' };
-  return writesGeorgian({ subject, text }) ? { send: true, lang: 'ka', body: ACK_TEXT } : { send: true, lang: 'en', body: ACK_TEXT_EN };
+export function autopilotBlock({ mailbox, weStarted }, publicMailbox = supportSender().email) {
+  if (weStarted) return 'ours';
+  if (String(mailbox || '').trim().toLowerCase() !== String(publicMailbox).toLowerCase()) return 'mailbox';
+  return null;
 }
 
-const NO_ACK_WHY = {
+/** The after-hours acknowledgement in the sender's language, or why none may go out. */
+export function afterHoursAck(msg, publicMailbox = supportSender().email) {
+  const reason = autopilotBlock(msg, publicMailbox);
+  if (reason) return { send: false, reason };
+  return senderLang(msg) === 'ka' ? { send: true, lang: 'ka', body: ACK_TEXT } : { send: true, lang: 'en', body: ACK_TEXT_EN };
+}
+
+const BLOCK_WHY = {
   ours: () => 'ეს საუბარი ჩვენ დავიწყეთ',
   mailbox: (msg) => `ყუთი: ${msg.mailbox || 'უცნობი'}`,
 };
@@ -121,7 +113,7 @@ Return ONLY JSON: {"category": "help|account|data_request|medical|billing|compla
 - If the sender asks for a human / a person / not a bot, answerable=false (the owner answers).
 - answerable = true ONLY if the knowledge below fully answers it. Never guess, never promise features, dates or actions on their account.
 - account (login, deletion, bugs on their account), data_request, medical, billing/money, complaint, business (partnership, ads, investment, press) → answerable=false, but still write a helpful draft reply for the owner to approve (for business: a polite reply that the owner will get back to them).
-- reply: plain text email, same language as the sender (default Georgian), warm and short. Always write the product name as MEDICARD (Latin letters) and sign exactly: MEDICARD-ის გუნდი No medical advice. Links only to https://medicard.ge pages from the knowledge.
+- reply: plain text email in replyLanguage (given with the thread), warm and short. Always write the product name as MEDICARD (Latin letters). Sign exactly MEDICARD-ის გუნდი under a Georgian reply and MEDICARD team under a reply in any other language. No medical advice. Links only to https://medicard.ge pages from the knowledge.
 - summary: one Georgian line for the owner. reason: why answerable or not.
 
 KNOWLEDGE:
@@ -140,9 +132,9 @@ async function handleThread(msg, thread, db) {
       AND ("acked" OR "note" LIKE 'no-ack:%') AND "updatedAt" > NOW() - INTERVAL '12 hours' LIMIT 1`;
     if (handled) return mark(msg.id, msg.threadId, 'deferred', {}, db);
     const subject = thread.subject || 'უსათაურო';
-    const ack = afterHoursAck({ ...msg, subject: msg.messageSubject ?? msg.subject });
+    const ack = afterHoursAck(msg);
     if (!ack.send) {
-      await notifyOwner(`📩 ახალი წერილი (არასამუშაო დრო): „${subject}“. ავტომატური „მივიღეთ“ არ გავუგზავნე (${NO_ACK_WHY[ack.reason](msg)}), სამუშაო დროს გადავხედავ.`, { direction: 'system' });
+      await notifyOwner(`📩 ახალი წერილი (არასამუშაო დრო): „${subject}“. ავტომატური „მივიღეთ“ არ გავუგზავნე (${BLOCK_WHY[ack.reason](msg)}), სამუშაო დროს გადავხედავ.`, { direction: 'system' });
       return mark(msg.id, msg.threadId, 'deferred', { note: `no-ack: ${ack.reason}` }, db);
     }
     await sendDirectorSupportReply({ threadId: msg.threadId, body: ack.body, status: 'open', lang: ack.lang });
@@ -150,23 +142,29 @@ async function handleThread(msg, thread, db) {
     return mark(msg.id, msg.threadId, 'deferred', { acked: true }, db);
   }
 
+  const lang = senderLang(msg);
+  const block = autopilotBlock(msg);
   const view = await readSupportThread(msg.threadId, { db });
-  const verdict = await askJson({ system: TRIAGE_SYSTEM + supportKnowledge(), user: JSON.stringify(view) });
+  const replyLanguage = lang === 'ka' ? 'Georgian' : "the sender's language (they do not write Georgian; English when unsure)";
+  const verdict = await askJson({ system: TRIAGE_SYSTEM + supportKnowledge(), user: JSON.stringify({ ...view, replyLanguage }) });
   const [{ n: autoCount }] = await db.$queryRaw`SELECT COUNT(*)::int AS n FROM "DirectorSupportTriage"
     WHERE "threadId" = ${msg.threadId} AND "status" = 'answered' AND "createdAt" > NOW() - INTERVAL '30 days'`;
 
-  if (verdict.category === 'spam') {
+  if (verdict.category === 'spam' && block !== 'ours') { // an answer to our own letter is never spam
     await store.addJournal({ kind: 'note', summary: `სპამი გამოვტოვე: ${String(thread.subject || '').slice(0, 80)}` });
     return mark(msg.id, msg.threadId, 'spam', { category: 'spam' }, db);
   }
-  if (canAutoSend(verdict, autoCount)) {
-    await sendDirectorSupportReply({ threadId: msg.threadId, body: verdict.reply.trim(), status: 'waiting' });
+  if (!block && canAutoSend(verdict, autoCount, lang)) {
+    await sendDirectorSupportReply({ threadId: msg.threadId, body: verdict.reply.trim(), status: 'waiting', lang });
     await notifyOwner(`✉️ ვუპასუხე: „${thread.subject || 'უსათაურო'}“ — ${verdict.summary || ''}\n\nპასუხი:\n${verdict.reply.trim()}`, { direction: 'system' });
     await store.addJournal({ kind: 'note', summary: `support: ვუპასუხე — ${String(verdict.summary || thread.subject || '').slice(0, 120)}` });
     return mark(msg.id, msg.threadId, 'answered', { category: verdict.category }, db);
   }
 
-  const why = autoCount >= AUTO_REPLIES_PER_THREAD ? 'საუბარი გაიწელა — შენი ჩართვა სჭირდება' : (verdict.reason || verdict.category);
+  const why = block ? `${BLOCK_WHY[block](msg)} — ავტომატურად არ ვპასუხობ`
+    : autoCount >= AUTO_REPLIES_PER_THREAD ? 'საუბარი გაიწელა — შენი ჩართვა სჭირდება'
+      : verdict.reply && !replyLanguageMatches(verdict.reply, lang) ? 'პროექტი გამგზავნის ენაზე არ დაიწერა — შეამოწმე'
+        : (verdict.reason || verdict.category);
   const body = `${verdict.summary || ''}\nრატომ შენ: ${why}\n\nპასუხის პროექტი:\n${verdict.reply || '(პროექტი ვერ შევადგინე — უპასუხე ადმინიდან)'}`;
   const p = await store.createProposal({
     kind: 'email',

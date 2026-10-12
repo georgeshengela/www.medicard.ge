@@ -414,7 +414,7 @@ describe('support replies', () => {
     assert.equal(c.content.subject, 'Re: აპი არ იხსნება');
     assert.deepEqual(c.extraHeaders, { 'In-Reply-To': '<r1@mail.example.com>', References: '<root@mail.example.com> <r1@mail.example.com>' });
     assert.match(c.idempotencyKey, /^support:/);
-    assert.equal(c.lang, undefined, 'no language given → the mailer decides (account language, else Georgian)');
+    assert.equal(c.lang, 'ka', 'email chrome follows the language of the answer');
     assert.equal(out.message.direction, 'outbound');
     assert.equal(out.message.providerId, 're_out_1');
     const t = db.tables.threads[0];
@@ -423,6 +423,8 @@ describe('support replies', () => {
     assert.equal(t.messageCount, 2);
     await sendSupportReply({ threadId: a.threadId, body: 'Hello,\n\nWe got it.', lang: 'en' }, { db, send, now: NOW });
     assert.equal(calls[1].lang, 'en', 'an English answer gets English email chrome');
+    await sendSupportReply({ threadId: a.threadId, body: 'Hello', lang: 'ka' }, { db, send, now: NOW });
+    assert.equal(calls[2].lang, 'ka', 'an explicit language wins');
   });
 
   it('refuses our own domain and reports suppressed / disabled sends without storing', async () => {
@@ -442,6 +444,9 @@ describe('support replies', () => {
     assert.doesNotMatch(r.html, /unsubscribe|გამოწერის გაუქმება|სერვისული წერილია|<script/i);
     assert.doesNotMatch(r.html, /href="javascript/);
     assert.match(renderEmail({ content: { subject: 's', body: 'b' }, category: 'transactional' }).html, /სერვისული წერილია/);
+    const en = renderSupportReply({ subject: 'Hello' }, 'Hello Nino,\n\nWe fixed it.\n\nMEDICARD team');
+    assert.match(en.html, /This is Medicard support replying/);
+    assert.doesNotMatch(en.html, /მხარდაჭერის პასუხი/, 'the preview shows the English chrome the answer will get');
   });
 });
 

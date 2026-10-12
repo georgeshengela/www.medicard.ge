@@ -13,6 +13,7 @@ import { isDeliverableEmail } from '../email/address.js';
 import { commonVars, sendEmail } from '../email/mailer.js';
 import { renderEmail } from '../email/templates.js';
 import { buildReplyHeaders, isOwnDomain, parseAddress, replySubject, subjectKey } from './threading.js';
+import { mailLang } from './language.js';
 import { SUPPORT_STATUSES } from './inbound.js';
 
 export const REPLY_MAX_CHARS = 20_000;
@@ -68,7 +69,7 @@ export function replyContent(thread, body) {
 /** Same render the mailer performs — for the composer preview. */
 export function renderSupportReply(thread, body) {
   const sender = senderForMailbox(thread.mailbox);
-  return renderEmail({ content: replyContent(thread, body), vars: { ...commonVars(), supportEmail: sender.email }, allowed: [], category: sender.category });
+  return renderEmail({ content: replyContent(thread, body), vars: { ...commonVars(), supportEmail: sender.email }, allowed: [], category: sender.category, lang: mailLang(body) });
 }
 
 const letterContent = (subject, body) => ({ subject, preheader: '', heading: '', body, ctaLabel: '', ctaUrl: '' });
@@ -76,7 +77,7 @@ const letterContent = (subject, body) => ({ subject, preheader: '', heading: '',
 /** Preview of a new letter („ახალი წერილი“) before it is sent. */
 export function renderSupportLetter({ from, subject, body }) {
   const sender = supportSenders().find((s) => s.email === String(from || '').toLowerCase()) || supportSender();
-  return { ...renderEmail({ content: letterContent(subject, body), vars: { ...commonVars(), supportEmail: sender.email }, allowed: [], category: sender.category }), from: sender.email };
+  return { ...renderEmail({ content: letterContent(subject, body), vars: { ...commonVars(), supportEmail: sender.email }, allowed: [], category: sender.category, lang: mailLang(body) }), from: sender.email };
 }
 
 const REASONS = {
@@ -113,7 +114,7 @@ export async function sendSupportReply({ threadId, body, status = 'waiting', adm
     from: sender.from,
     replyTo: sender.email,
     extraHeaders: headers,
-    lang, // email chrome language; omitted = the linked account's language (Georgian when none)
+    lang: lang || mailLang(body), // email chrome (footer, links) in the language the answer is written in
   }, { db });
   if (result?.status !== 'sent') {
     throw httpError(REASONS[result?.reason] || `გაგზავნა ვერ მოხერხდა: ${result?.reason || ''}`, result?.reason === 'disabled' ? 503 : 422, 'REPLY_NOT_SENT');
@@ -180,6 +181,7 @@ export async function sendSupportLetter({ from, to: rawTo, toName = '', subject,
     from: sender.from,
     replyTo: sender.email,
     extraHeaders: { 'Message-ID': messageId },
+    lang: mailLang(body),
   }, { db });
   if (result?.status !== 'sent') {
     throw httpError(REASONS[result?.reason] || `გაგზავნა ვერ მოხერხდა: ${result?.reason || ''}`, result?.reason === 'disabled' ? 503 : 422, 'LETTER_NOT_SENT');
