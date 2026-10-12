@@ -237,6 +237,23 @@ export function foodEditSnapshot(fields: FoodFields): string {
       }),
   );
 }
+/**
+ * Edit form: a new portion in grams rescales every nutrient that was filled in, from `base` (the values
+ * before the grams changed), so typing „150“ → „15“ → „1“ on the way never loses precision.
+ */
+export function rescaleFoodFields(base: FoodFields, grams: string): FoodFields {
+  const from = Number(base.grams.replace(",", "."));
+  const to = Number(grams.replace(",", "."));
+  const next = { ...base, grams };
+  if (!(from > 0) || !(to > 0) || !Number.isFinite(to)) return next;
+  const ratio = to / from;
+  for (const key of ["calories", "protein", "carbs", "fat", "fiber", "sugar", "sodium"] as const) {
+    const raw = base[key].trim();
+    const value = Number(raw.replace(",", "."));
+    if (raw && Number.isFinite(value)) next[key] = String(Math.round(value * ratio * 10) / 10);
+  }
+  return next;
+}
 /** Fields → item; returns null with a message when a required value is missing. */
 export function itemFromFields(fields: FoodFields): { item: FoodItem | null; error: string } {
   const number = (key: keyof FoodFields) => Number(fields[key].replace(",", "."));

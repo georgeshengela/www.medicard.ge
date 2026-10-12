@@ -2186,9 +2186,10 @@ export function guardRequest(method: string, path: string) {
 /**
  * What this app JS can show that older JS could not (server `X-Medicard-Caps`). Version numbers
  * cannot tell, because OTAs from other branches reuse them. weekly-medi: the weekly, XP-only Medi
- * mission (server quest.js WEEKLY_MEDI_CAP).
+ * mission (server quest.js WEEKLY_MEDI_CAP). nutrition-review: Medi's food log opens the diary review
+ * instead of saving unseen numbers (server assistantExecution.js NUTRITION_REVIEW_CAP).
  */
-const CLIENT_CAPS = 'weekly-medi';
+const CLIENT_CAPS = 'weekly-medi,nutrition-review';
 
 async function request<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const { method = 'GET', body, formData, timeoutMs = 180_000, cache } = options;

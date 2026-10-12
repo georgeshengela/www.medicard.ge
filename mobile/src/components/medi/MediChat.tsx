@@ -42,7 +42,8 @@ import { MediWelcome } from './MediWelcome';
 
 type Busy = null | 'plan' | 'answer' | 'deep' | 'save' | 'open' | 'check' | 'history';
 type Retry = { value: string; route: 'plan' | ClinicalMode; fromVoice: boolean; petId?: string };
-const HANDOFF_TOOLS = ['open', 'consult', 'pet_consult', 'pet_open', 'record_open', 'visit_open', 'medication_open'];
+// nutrition_log: the diary estimates the words and shows the numbers before anything is saved.
+const HANDOFF_TOOLS = ['open', 'consult', 'pet_consult', 'pet_open', 'record_open', 'visit_open', 'medication_open', 'nutrition_log'];
 // The question held when she closed Medi mid-answer belongs to one account: sign-out or a switch drops it.
 onLocalAccountChange(() => clearMediDraft());
 

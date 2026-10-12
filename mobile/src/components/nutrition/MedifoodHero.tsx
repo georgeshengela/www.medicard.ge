@@ -1,9 +1,12 @@
 import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
+import { useRouter } from "expo-router";
 import { LinearGradient } from "expo-linear-gradient";
 import Svg, { Circle, Path } from "react-native-svg";
-import { ChevronRight } from "lucide-react-native";
+import { ArrowRight, Camera, ChevronRight, Keyboard as KeyboardIcon, MessageSquareText, Mic, Search } from "lucide-react-native";
 import { tx } from "@/i18n/locale";
+import { isFeatureOn, useFeatureState } from "@/lib/featureFlags";
+import { diaryHref } from "./NutritionUi";
 import type { NutritionDashboard } from "@/lib/nutritionProgram";
 import { MODULE_BRANDS } from "@/theme/moduleBrand";
 import { HUB } from "@/theme/hub";
@@ -35,6 +38,91 @@ function arc(cx: number, cy: number, r: number, from: number, to: number) {
  * The whole card opens the diary.
  */
 export function MedifoodHero({ d, onOpen }: { d: NutritionDashboard; onOpen: () => void }) {
+  // Nothing logged today: the hero is the way in, not an empty „0 კკალ“ gauge.
+  if (d.mealCount === 0) return <FirstMealHero d={d} onOpen={onOpen} />;
+  return <BalanceHero d={d} onOpen={onOpen} />;
+}
+
+/**
+ * „რა ჭამე?“ — today's first meal in one tap: the photo and „say it“ (where 86 % of meals come from),
+ * with a Georgian example of what comes back. Without AI (admin `nutritionAi` off) search and manual
+ * entry take the two buttons. The example is illustrative and says so.
+ */
+function FirstMealHero({ d, onOpen }: { d: NutritionDashboard; onOpen: () => void }) {
+  const router = useRouter();
+  const features = useFeatureState();
+  const ai = isFeatureOn("nutritionAi", features);
+  const voice = isFeatureOn("voice", features);
+  const budget = d.budget ?? d.targets?.calories ?? null;
+  const primary = ai
+    ? { method: "camera" as const, label: tx("გადაიღე", "Snap it"), icon: Camera }
+    : { method: "search" as const, label: tx("მოძებნე", "Search"), icon: Search };
+  const secondary = ai
+    ? voice
+      ? { method: "describe" as const, label: tx("თქვი", "Say it"), icon: Mic }
+      : { method: "describe" as const, label: tx("დაწერე", "Type it"), icon: MessageSquareText }
+    : { method: "manual" as const, label: tx("ხელით", "Manually"), icon: KeyboardIcon };
+  const PrimaryIcon = primary.icon;
+  const SecondaryIcon = secondary.icon;
+  return (
+    <View style={s.wrap}>
+      <LinearGradient colors={BRAND.gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.card}>
+        <View pointerEvents="none" style={[s.glow, { backgroundColor: BRAND.glow }]} />
+        <View pointerEvents="none" style={[s.ring, s.ringOuter]} />
+        <View pointerEvents="none" style={[s.ring, s.ringInner]} />
+
+        <View style={s.head}>
+          <Text numberOfLines={1} style={[s.sub, { flex: 1, minWidth: 0 }]}>
+            {budget
+              ? tx(`დღის სამიზნე ${group(budget)} კკალ`, `Daily target ${group(budget)} kcal`)
+              : tx("დღეს ჯერ არაფერი ჩაგიწერია", "Nothing logged today yet")}
+          </Text>
+          <Pressable accessibilityRole="button" accessibilityLabel={tx("დღიურის გახსნა", "Open diary")} onPress={onOpen} hitSlop={6} style={s.more}>
+            <Text style={s.moreText}>{tx("დღიური", "Diary")}</Text>
+            <ChevronRight size={15} color="#FFFFFF" strokeWidth={2.4} />
+          </Pressable>
+        </View>
+
+        <View style={{ gap: 4 }}>
+          <Text accessibilityRole="header" style={s.ask}>{tx("რა ჭამე?", "What did you eat?")}</Text>
+          <Text style={s.askSub}>
+            {ai
+              ? tx("გადაიღე ან თქვი ჩვეულებრივად — კალორიებს, ცილას და დანარჩენს მე დავითვლი.", "Snap it or just say it — I'll count the calories, protein and the rest.")
+              : tx("მოძებნე საკვები ან ჩაწერე ხელით.", "Search for a food or enter it by hand.")}
+          </Text>
+        </View>
+
+        <View style={s.actions}>
+          <Pressable accessibilityRole="button" accessibilityLabel={primary.label} onPress={() => router.push(diaryHref(primary.method))} style={s.primary}>
+            <PrimaryIcon size={20} color={BRAND.gradient[1]} strokeWidth={2.3} />
+            <Text style={s.primaryText}>{primary.label}</Text>
+          </Pressable>
+          <Pressable accessibilityRole="button" accessibilityLabel={secondary.label} onPress={() => router.push(diaryHref(secondary.method))} style={s.secondary}>
+            <SecondaryIcon size={20} color="#FFFFFF" strokeWidth={2.3} />
+            <Text style={s.secondaryText}>{secondary.label}</Text>
+          </Pressable>
+        </View>
+
+        {ai ? (
+          <View accessible accessibilityLabel={tx("მაგალითი: ორი ხინკალი და ქართული სალათი — დაახლოებით 350 კილოკალორია", "Example: two khinkali and a Georgian salad — about 350 kilocalories")} style={s.example}>
+            <Text numberOfLines={1} style={s.exampleQuote}>{tx("„ორი ხინკალი და ქართული სალათი“", "“Two khinkali and a Georgian salad”")}</Text>
+            <View style={s.exampleRow}>
+              <View style={s.exampleItems}>
+                <Text numberOfLines={1} style={s.exampleItem}>{tx("ხინკალი ×2 · 266", "Khinkali ×2 · 266")}</Text>
+                <Text numberOfLines={1} style={s.exampleItem}>{tx("სალათი · 80", "Salad · 80")}</Text>
+              </View>
+              <ArrowRight size={14} color={BRAND.onHero} strokeWidth={2.2} />
+              <Text numberOfLines={1} style={s.exampleTotal}>{tx("≈ 350 კკალ", "≈ 350 kcal")}</Text>
+            </View>
+            <Text style={s.exampleNote}>{tx("მაგალითია · შეფასება მიახლოებითია და შენახვამდე გაჩვენებ", "An example · estimates are approximate and you check them before saving")}</Text>
+          </View>
+        ) : null}
+      </LinearGradient>
+    </View>
+  );
+}
+
+function BalanceHero({ d, onOpen }: { d: NutritionDashboard; onOpen: () => void }) {
   const eaten = d.today.calories;
   const budget = d.budget ?? d.targets?.calories ?? null;
   const ratio = budget && budget > 0 ? Math.min(1, Math.max(0, eaten / budget)) : 0;
@@ -156,4 +244,24 @@ const s = StyleSheet.create({
   track: { height: 5, borderRadius: 3, backgroundColor: "rgba(255,255,255,0.18)", overflow: "hidden" },
   fill: { height: 5, borderRadius: 3 },
   note: { fontFamily: "NotoSansGeorgian_500Medium", fontSize: 12, lineHeight: 17, color: BRAND.onHero },
+  ask: { fontFamily: "NotoSansGeorgian_700Bold", fontSize: 30, lineHeight: 40, color: "#FFFFFF", letterSpacing: -0.4 },
+  askSub: { fontFamily: "NotoSansGeorgian_500Medium", fontSize: 13.5, lineHeight: 20, color: BRAND.onHero },
+  actions: { flexDirection: "row", gap: 10 },
+  primary: { flex: 1, minHeight: 54, borderRadius: 18, backgroundColor: "#FFFFFF", flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8 },
+  primaryText: { fontFamily: "NotoSansGeorgian_700Bold", fontSize: 15.5, lineHeight: 21, color: BRAND.gradient[1] },
+  secondary: {
+    flex: 1, minHeight: 54, borderRadius: 18, flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8,
+    backgroundColor: "rgba(2,44,34,0.32)", borderWidth: 1, borderColor: "rgba(167,243,208,0.35)",
+  },
+  secondaryText: { fontFamily: "NotoSansGeorgian_700Bold", fontSize: 15.5, lineHeight: 21, color: "#FFFFFF" },
+  example: { borderRadius: 16, paddingHorizontal: 12, paddingVertical: 10, gap: 6, backgroundColor: "rgba(2,44,34,0.28)" },
+  exampleQuote: { fontFamily: "NotoSansGeorgian_600SemiBold", fontSize: 13, lineHeight: 18, color: "#FFFFFF" },
+  exampleRow: { flexDirection: "row", alignItems: "center", gap: 8 },
+  exampleItems: { flex: 1, minWidth: 0, flexDirection: "row", flexWrap: "wrap", gap: 6 },
+  exampleItem: {
+    fontFamily: "NotoSansGeorgian_500Medium", fontSize: 12, lineHeight: 16, color: "#FFFFFF", fontVariant: ["tabular-nums"],
+    paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8, backgroundColor: "rgba(255,255,255,0.14)", overflow: "hidden",
+  },
+  exampleTotal: { fontFamily: "NotoSansGeorgian_700Bold", fontSize: 13, lineHeight: 18, color: "#FFFFFF", fontVariant: ["tabular-nums"] },
+  exampleNote: { fontFamily: "NotoSansGeorgian_400Regular", fontSize: 11, lineHeight: 15, color: BRAND.onHero },
 });

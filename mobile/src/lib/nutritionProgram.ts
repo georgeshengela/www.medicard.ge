@@ -12,6 +12,11 @@ export type NutritionTargets = NutritionTotals & {
   maintenance: number;
   adjustment: number;
   method: string;
+  /** Since 2026-10-12 (older saved plans lack them): the safety floor, and whether it slowed the chosen pace. */
+  floor?: number;
+  paceLimited?: boolean;
+  /** Expected weekly change at this target, kg (negative = loss). */
+  weeklyKg?: number;
   /** Present when the person chose their own macro split (energy shares, %). */
   split?: MacroShares;
 };
@@ -161,6 +166,12 @@ export type NutritionDashboard = {
   program: NutritionProgram | null;
   targets: NutritionTargets | null;
   needsReview: boolean;
+  /** The target was recalculated today for a new weight, a new goal, or a reached goal (now: keep it). */
+  adjusted?: "weight" | "goal" | "goal_reached" | null;
+  /** The plan as it stands today (new weight / goal); `program.config` stays what was saved. */
+  currentConfig?: ProgramConfig;
+  /** A gentle 4-week check-in note; the target keeps counting. */
+  reviewNote?: string | null;
   mealPlanning?: MealPlanningAvailability;
   reasons: string[];
   date: string;
@@ -208,6 +219,8 @@ export type NutritionPreview = {
   eligible: boolean;
   reasons: string[];
   targets: NutritionTargets | null;
+  /** Offered when the only problem is no room to lose: keeping the weight works. */
+  fallback?: { mode: "maintain"; calories: number } | null;
   explanation: string;
   mealPlanning?: MealPlanningAvailability;
 };

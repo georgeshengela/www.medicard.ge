@@ -45,9 +45,11 @@ export function diaryHref(method?: LogMethod, type?: MealType) {
  * grid of eight equal tiles; every method stays one tap away and the full menu sits behind „სხვა“.
  * Without AI (admin `nutritionAi` off) the photo button and „თქვი“ step aside.
  */
-export function LogBar({ type, onPick, ink: inkProp, fill: fillProp, onFill }: {
+export function LogBar({ type, onPick, ink: inkProp, fill: fillProp, onFill, heroCovers = false }: {
   type?: MealType;
   onPick?: (method: LogMethod) => void;
+  /** The hub's first-meal hero already offers the photo and „თქვი“: the bar keeps search and the rest. */
+  heroCovers?: boolean;
   /** Icon colour (Home passes its layout accent); the camera button is `fill` with `onFill` on it. */
   ink?: string;
   fill?: string;
@@ -66,7 +68,7 @@ export function LogBar({ type, onPick, ink: inkProp, fill: fillProp, onFill }: {
   const go = (method: LogMethod) => (onPick ? onPick(method) : router.push(diaryHref(method, type)));
   // Three ways beside the bar; gallery, label and manual live behind „სხვა გზები“ (the full menu).
   const chips: { method: LogMethod; label: string; icon: LucideIcon }[] = [
-    ai ? { method: "describe", label: voice ? tx("თქვი", "Say it") : tx("აღწერე", "Describe"), icon: voice ? Mic : MessageSquareText } : { method: "manual", label: tx("ხელით", "Manual"), icon: KeyboardIcon },
+    ...(heroCovers ? [] : [ai ? { method: "describe" as const, label: voice ? tx("თქვი", "Say it") : tx("აღწერე", "Describe"), icon: voice ? Mic : MessageSquareText } : { method: "manual" as const, label: tx("ხელით", "Manual"), icon: KeyboardIcon }]),
     { method: "saved", label: tx("შენახული", "Saved"), icon: Bookmark },
     { method: "more", label: tx("სხვა გზები", "More ways"), icon: Ellipsis },
   ];
@@ -80,7 +82,7 @@ export function LogBar({ type, onPick, ink: inkProp, fill: fillProp, onFill }: {
         <Pressable accessibilityRole="button" accessibilityLabel={tx("შტრიხკოდის სკანი", "Scan a barcode")} onPress={() => go("barcode")} style={[s.barButton, { backgroundColor: hubTint(ink, dark) }]}>
           <ScanBarcode size={20} color={ink} strokeWidth={2.1} />
         </Pressable>
-        {ai ? (
+        {ai && !heroCovers ? (
           <Pressable accessibilityRole="button" accessibilityLabel={tx("კერძის გადაღება", "Snap a meal")} onPress={() => go("camera")} style={[s.barButton, { backgroundColor: fill }]}>
             <Camera size={20} color={onInk} strokeWidth={2.1} />
           </Pressable>

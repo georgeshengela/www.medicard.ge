@@ -137,6 +137,8 @@ export function ActionCard({ title, rows, handoff, state, busy, onConfirm, onEdi
   const ink = hubInk(look.ink, dark);
   const Icon = look.icon;
   const done = state !== 'pending';
+  // Medi's food log opens the diary, where the estimate is shown before saving.
+  const counting = handoff && tool === 'nutrition_log';
   return (
     <View style={{ marginLeft: 34, borderRadius: 22, backgroundColor: c.surface, padding: 16, gap: 14, opacity: state === 'cancelled' ? 0.55 : 1 }}>
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
@@ -147,6 +149,7 @@ export function ActionCard({ title, rows, handoff, state, busy, onConfirm, onEdi
           <Text style={{ color: c.text100, fontSize: 15, lineHeight: 22, fontFamily: 'NotoSansGeorgian_600SemiBold' }}>{title}</Text>
           <Text style={{ color: c.text300, fontSize: 12, lineHeight: 17, fontFamily: 'NotoSansGeorgian_400Regular' }}>
             {state === 'saved' ? tx('შენახულია', 'Saved') : state === 'opened' ? tx('გაიხსნა', 'Opened') : state === 'cancelled' ? tx('გაუქმდა', 'Cancelled')
+              : counting ? tx('დავითვლი და შენახვამდე გაჩვენებ', "I'll count it and show you before saving")
               : handoff ? tx('მზადაა გასახსნელად', 'Ready to open') : tx('შენახვამდე გადაამოწმე', 'Check before saving')}
           </Text>
         </View>
@@ -171,7 +174,7 @@ export function ActionCard({ title, rows, handoff, state, busy, onConfirm, onEdi
           <Pressable accessibilityRole="button" onPress={onConfirm} disabled={busy}
             style={{ minHeight: 48, borderRadius: 16, alignItems: 'center', justifyContent: 'center', backgroundColor: '#0D9488', opacity: busy ? 0.6 : 1, flexDirection: 'row', gap: 8 }}>
             {busy ? <ActivityIndicator size="small" color="#FFFFFF" /> : null}
-            <Text style={{ color: '#FFFFFF', fontSize: 14, fontFamily: 'NotoSansGeorgian_700Bold' }}>{handoff ? tx('გახსნა', 'Open') : tx('შენახვა', 'Save')}</Text>
+            <Text style={{ color: '#FFFFFF', fontSize: 14, fontFamily: 'NotoSansGeorgian_700Bold' }}>{counting ? tx('დათვლა', 'Count it') : handoff ? tx('გახსნა', 'Open') : tx('შენახვა', 'Save')}</Text>
           </Pressable>
           <View style={{ flexDirection: 'row' }}>
             {!handoff ? (
