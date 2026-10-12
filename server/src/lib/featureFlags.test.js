@@ -5,6 +5,10 @@ import {
   listFeatureFlags, isFeatureEnabled, setFeatureFlag, resetFeatureFlagCacheForTests, FEATURES,
   featureDisabledMessage, publicFeatureFlags, publicFeatureMessages,
 } from './featureFlags.js';
+// MEDIFAMILY's tests ride here: the npm test script is at the Windows command-line limit.
+import './family/family.test.js';
+import './family/pediatricPolicy.test.js';
+import './family/familyViews.test.js';
 
 function fakeDb(rows = []) {
   const db = {

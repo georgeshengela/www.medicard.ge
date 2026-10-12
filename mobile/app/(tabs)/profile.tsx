@@ -27,6 +27,8 @@ import { ModuleWordmark } from '@/components/brand/ModuleWordmark';
 import { ModulesSheet } from '@/components/home/ModulesSheet';
 import { HomeMediQuestSection } from '@/components/quest/HomeMediQuestSection';
 import { ProfilePetsSection } from '@/components/pets/ProfilePetsSection';
+import { ProfileFamilySection } from '@/components/family/ProfileFamilySection';
+import { familyShipped } from '@/lib/family/familyAvailability';
 import { ProfileCoachSection, useProfileCoachVisible } from '@/components/coach/CoachEntry';
 import { PrivateImage } from '@/components/coach/CoachUI';
 import { useMyAvatarUrl } from '@/lib/myAvatar';
@@ -270,6 +272,16 @@ export default function Profile() {
           {/* Inside the module tone: the card's ring and bar speak MEDIQUEST violet, like its pages. */}
           <ModuleToneProvider tone="quest">
             <HomeMediQuestSection edgeInset={0} hideTitle />
+          </ModuleToneProvider>
+        </View>
+      ) : null}
+
+      {/* MEDIFAMILY (store train 23+, admin switch 'family') */}
+      {familyShipped() && isFeatureOn('family', features) ? (
+        <View style={s.section}>
+          <HomeSectionHeading title="MEDIFAMILY" brand="family" linkLabel={tx('გახსნა', 'Open')} onLink={() => router.push('/family')} />
+          <ModuleToneProvider tone="family">
+            <ProfileFamilySection />
           </ModuleToneProvider>
         </View>
       ) : null}

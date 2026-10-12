@@ -4,7 +4,8 @@ export function isAiSharingRequest(path, method = 'POST') {
     || /^\/api\/assistant\/(plan|transcribe|speak)(?:\?|$)/.test(path)
     || path.split('?')[0] === '/api/health-profile/onboarding-analysis'
     || path.split('?')[0] === '/api/cycle/insights'
-    || /^\/api\/pets\/[^/]+\/chat\/query(?:\?|$)/.test(path));
+    || /^\/api\/pets\/[^/]+\/chat\/query(?:\?|$)/.test(path)
+    || /^\/api\/family\/members\/[^/]+\/chat\/query(?:\?|$)/.test(path));
 }
 
 /** One prompt when consent is missing. An accepted current version never prompts again. */

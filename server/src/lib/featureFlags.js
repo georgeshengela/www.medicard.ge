@@ -180,6 +180,23 @@ export const FEATURES = Object.freeze([
     defaultMessageEn: 'MEDIVET is unavailable for a moment.',
   },
   {
+    key: 'family',
+    group: 'module',
+    label: 'MEDIFAMILY (შვილები)',
+    description: 'ბავშვების პროფილები: აცრების კალენდარი, ზრდა, კვება, ავადობის დღიური, ასაკის გზამკვლევი და შეხსენებები. ცვლილებები ჩერდება, ჩანაწერები ჩანს.',
+    defaultMessage: 'MEDIFAMILY დროებით შეჩერებულია. შენი შვილების მონაცემები შენახულია.',
+    defaultMessageEn: 'MEDIFAMILY is paused for a moment. Your children’s data is saved.',
+  },
+  {
+    key: 'familyMedi',
+    group: 'ai',
+    parent: 'family',
+    label: 'Medi ბავშვისთვის (პედიატრიული AI)',
+    description: 'Medi-ს საუბარი კონკრეტულ ბავშვზე. MEDIFAMILY-ის დანარჩენი ნაწილი მუშაობას აგრძელებს.',
+    defaultMessage: 'Medi ბავშვისთვის დროებით მიუწვდომელია.',
+    defaultMessageEn: 'Medi for children is unavailable for a moment.',
+  },
+  {
     key: 'medirun',
     group: 'module',
     label: 'MEDIRUN',

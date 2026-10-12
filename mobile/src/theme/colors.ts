@@ -80,7 +80,7 @@ const roseDark: Palette = { ...darkColors, ...BRAND_ROSE.dark };
  * pages speak sky blue like its wordmark). Mounted by the module's layout (`ModuleToneProvider`);
  * canvas, surfaces and text stay shared. It wins over the women's rose inside that module.
  */
-export type ModuleTone = 'vet' | 'food' | 'quest' | 'run';
+export type ModuleTone = 'vet' | 'food' | 'quest' | 'run' | 'family';
 type ToneTokens = { primary100: string; primary200: string; primary300: string; accent100: string; accent200: string };
 const MODULE_TONES: Record<ModuleTone, { light: ToneTokens; dark: ToneTokens }> = {
   // MEDIVET (moduleBrand `vet`): #0369A1 / #7DD3FC.
@@ -104,12 +104,18 @@ const MODULE_TONES: Record<ModuleTone, { light: ToneTokens; dark: ToneTokens }> 
     light: { primary100: '#047857', primary200: '#059669', primary300: '#34D399', accent100: '#D1FAE5', accent200: '#6EE7B7' },
     dark: { primary100: '#34D399', primary200: '#10B981', primary300: '#6EE7B7', accent100: '#022C22', accent200: '#065F46' },
   },
+  // MEDIFAMILY (moduleBrand `family`): #C2410C / #FDBA74 — warm coral, the family's sunrise.
+  family: {
+    light: { primary100: '#C2410C', primary200: '#EA580C', primary300: '#FB923C', accent100: '#FFEDD5', accent200: '#FDBA74' },
+    dark: { primary100: '#FDBA74', primary200: '#FB923C', primary300: '#F97316', accent100: '#2A1608', accent200: '#9A3412' },
+  },
 };
 const TONED: Record<ModuleTone, { light: Palette; dark: Palette }> = {
   vet: { light: { ...lightColors, ...MODULE_TONES.vet.light }, dark: { ...darkColors, ...MODULE_TONES.vet.dark } },
   food: { light: { ...lightColors, ...MODULE_TONES.food.light }, dark: { ...darkColors, ...MODULE_TONES.food.dark } },
   quest: { light: { ...lightColors, ...MODULE_TONES.quest.light }, dark: { ...darkColors, ...MODULE_TONES.quest.dark } },
   run: { light: { ...lightColors, ...MODULE_TONES.run.light }, dark: { ...darkColors, ...MODULE_TONES.run.dark } },
+  family: { light: { ...lightColors, ...MODULE_TONES.family.light }, dark: { ...darkColors, ...MODULE_TONES.family.dark } },
 };
 const ModuleToneContext = createContext<ModuleTone | null>(null);
 /**
@@ -123,6 +129,7 @@ const NIGHT: Record<ModuleTone, Palette> = {
   food: { ...TONED.food.dark, ...NIGHT_BASE },
   quest: { ...TONED.quest.dark, ...NIGHT_BASE },
   run: { ...TONED.run.dark, ...NIGHT_BASE },
+  family: { ...TONED.family.dark, ...NIGHT_BASE },
 };
 const NIGHT_PLAIN: Palette = { ...darkColors, ...NIGHT_BASE };
 export function NightProvider({ children }: { children: ReactNode }) {

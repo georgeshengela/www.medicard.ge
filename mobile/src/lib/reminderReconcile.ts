@@ -71,6 +71,10 @@ export function reconcileAllLocalReminders(opts: { force?: boolean } = {}): Prom
       if (goal && localAccountId() === owner) await syncStepsGoalReminders(goal);
     });
     await step(async () => {
+      const { reconcileFamilyReminders } = await import('@/lib/family/familyReminders');
+      if (localAccountId() === owner) await reconcileFamilyReminders({ force: true });
+    });
+    await step(async () => {
       const { loadWeightGoal, syncWeightGoalReminders } = await import('@/lib/weightGoal');
       const goal = await loadWeightGoal();
       if (goal && localAccountId() === owner) await syncWeightGoalReminders(goal);

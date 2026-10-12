@@ -27,6 +27,8 @@ export const WRITE_INVALIDATES: ReadonlyArray<readonly [prefix: string, keys: re
   ['/api/visits', ['visits', 'home']],
   ['/api/records', ['records']],
   ['/api/pets', ['pets']],
+  // MEDIFAMILY: any change to a child refreshes the child page, the children list and Home's card.
+  ['/api/family', ['family', 'home']],
   // Posting, reacting or renaming in the women's space refreshes the Home preview.
   ['/api/community', ['community']],
   // Medi answers, lab/image analyses and saved assistant chats create records and chat sessions.

@@ -77,5 +77,8 @@ export const NEWS_CAPABILITIES = Object.freeze(['NEWS_MANAGE']);
 /** MEDIVET usage (#/pets): VIEW reads the counts, the pet list (names, species, owner contact) and Medi Vet topic counts. */
 export const PETS_CAPABILITIES = Object.freeze(['PETS_VIEW']);
 
+/** MEDIFAMILY usage (#/family): VIEW reads aggregate counts only — never a child's name, birth date or health value. */
+export const FAMILY_CAPABILITIES = Object.freeze(['FAMILY_VIEW']);
+
 /** Module usage pages (MEDICYCLE, MEDIPILL, MEDILAB, MEDIFOOD, MEDIQUEST, MEDICOACH, Medi): counts, people with a name and contact, no health values. */
 export const PRODUCT_USAGE_CAPABILITIES = Object.freeze(['PRODUCT_USAGE_VIEW']);

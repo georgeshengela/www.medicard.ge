@@ -464,6 +464,7 @@ function AppShell() {
               <Stack.Screen name="visits" options={{ headerShown: false }} />
               <Stack.Screen name="community" options={{ headerShown: false }} />
               <Stack.Screen name="pets" options={{ headerShown: false }} />
+              <Stack.Screen name="family" options={{ headerShown: false }} />
               <Stack.Screen name="trainer" options={{ headerShown: false }} />
               <Stack.Screen name="coach" options={{ headerShown: false }} />
               <Stack.Screen name="c/[code]" options={{ headerShown: false }} />
@@ -480,7 +481,7 @@ function AppShell() {
             {user ? <ModuleGate /> : null}
           </View>
           <AppChromeOverlay interactive={chromeInteractive}>
-            {user && !['(auth)', 'run', 'medi-quest', 'medi-companion', 'pets', 'assistant', 'community', 'nutrition', 'trainer', 'coach', 'c', 'u', 'news'].includes(segments[0]) && !((segments as string[]).join('/') === 'profile/complete') ? <FloatingTabBar visible={showTabBar} /> : null}
+            {user && !['(auth)', 'run', 'medi-quest', 'medi-companion', 'pets', 'family', 'assistant', 'community', 'nutrition', 'trainer', 'coach', 'c', 'u', 'news'].includes(segments[0]) && !((segments as string[]).join('/') === 'profile/complete') ? <FloatingTabBar visible={showTabBar} /> : null}
             {user ? <ActiveRunBadge /> : null}
             {/* „ახალი ვერსია მზადაა“ above the tab bar when an update is downloaded (tab screens only). */}
             {showTabBar ? <UpdateReadyCard /> : null}

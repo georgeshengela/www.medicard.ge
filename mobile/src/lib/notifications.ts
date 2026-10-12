@@ -44,6 +44,7 @@ export const VISIT_CHANNEL_ID = 'doctor-visit-reminders';
 export const ENGAGE_CHANNEL_ID = 'medi-engage';
 export const PET_CARE_CHANNEL_ID = 'pet-care-reminders';
 export const NUTRITION_CHANNEL_ID = 'nutrition-reminders-v2';
+export const FAMILY_CHANNEL_ID = 'family-reminders';
 export const QA_PREFIX = 'qa:';
 
 export const NOTIF_PREFIX = {
@@ -56,6 +57,7 @@ export const NOTIF_PREFIX = {
   engage: 'engage:',
   quota: 'quota:',
   pets: 'pets:',
+  family: 'family:',
   nutrition: 'nutrition:',
   fasting: 'fasting:',
 } as const;
@@ -255,6 +257,13 @@ async function ensureAndroidChannels(): Promise<void> {
     lightColor: '#14B8A6',
     sound: 'default',
   });
+  await Notifications.setNotificationChannelAsync(FAMILY_CHANNEL_ID, {
+    name: tx('შვილების აცრები და ასაკი', 'Children’s vaccines and milestones'),
+    importance: Notifications.AndroidImportance.HIGH,
+    vibrationPattern: [0, 220, 120, 220],
+    lightColor: '#EA580C',
+    sound: 'default',
+  });
   await Notifications.setNotificationChannelAsync(PET_CARE_CHANNEL_ID, {
     name: tx('ცხოველის მოვლის შეხსენებები', 'Pet care reminders'),
     importance: Notifications.AndroidImportance.HIGH,
@@ -269,6 +278,7 @@ function scheduleEverythingAfterGrant() {
   setTimeout(() => {
     void import('@/lib/reminderReconcile').then(({ reconcileAllLocalReminders }) => reconcileAllLocalReminders({ force: true })).catch(() => undefined);
     void import('@/lib/petCareReminders').then(({ reconcilePetCareReminders }) => reconcilePetCareReminders({ reason: 'permission' })).catch(() => undefined);
+    void import('@/lib/family/familyReminders').then(({ reconcileFamilyReminders }) => reconcileFamilyReminders({ force: true })).catch(() => undefined);
     void import('@/lib/queryClient').then(({ invalidate }) => invalidate('medications')).catch(() => undefined);
     const owner = localAccountId();
     if (owner) void import('@/lib/cycleReminders').then(({ reconcileCycleReminders }) => reconcileCycleReminders(owner, { force: true })).catch(() => undefined);

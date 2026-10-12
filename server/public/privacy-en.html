@@ -49,7 +49,7 @@
         <div class="legal-dates">
           <article>
             <small>Last updated</small>
-            <b>October 6, 2026</b>
+            <b>October 12, 2026</b>
           </article>
           <article>
             <small>Effective date</small>
@@ -84,6 +84,7 @@
           <a href="#s14"><em>14</em>MEDICOACH — sharing with a trainer</a>
           <a href="#s15"><em>15</em>Website cookies, Google Analytics and the Meta Pixel</a>
           <a href="#s16"><em>16</em>Measuring app installs (Meta SDK)</a>
+          <a href="#s17"><em>17</em>MEDIFAMILY — children's data</a>
         </nav>
         <article class="legal-article">
           <div class="legal-box"><p>This is an English translation. If it differs from the Georgian version, the Georgian version prevails.</p></div>
@@ -118,6 +119,7 @@
           <li>images or documents you select for analysis, or text extracted from them;</li>
           <li>the relevant cycle context for cycle AI tips;</li>
           <li>for MEDIVET, the pet's profile, care information and the conversation;</li>
+          <li>in MEDIFAMILY, for Medi — only when the parent asks — the child's profile (name, age, sex, weeks at birth), growth measurements, vaccine status, allergies, conditions, the latest temperature, symptoms, medicines given, feeding and the conversation; without the parent's own health profile;</li>
           <li>for voice Medi, audio recorded with the button — sent through OpenRouter to Google Vertex AI for conversion to text; for spoken replies, the text of the reply — sent to Microsoft Azure Speech for real-time voicing.</li>
           </ul>
           <p>Adding your health profile to the symptom check is a separate choice. A person's health profile is not included in a MEDIVET request. The user's name is not added automatically from the account context to what is sent to AI, although a name you write or one contained in a document may be part of the request itself. Before uploading, you can cover identifying details that are not needed.</p>
@@ -146,7 +148,7 @@
           <p><strong>Error diagnostics.</strong> For app stability, when an error or crash occurs in the app, a technical report is sent to our server: the error type and a shortened message, the code location, the screen route (without identifiers), the platform, the app version and, after sign-in, a hash of the account identifier. Before sending, emails, long numbers and tokens are removed from the text; health values and text you entered are not sent. Reports are kept for 30 days, are not passed to third parties and are not used for advertising or tracking.</p>
           <h2 id="s9">9. Retention and account deletion</h2>
           <p>Account records and AI responses are kept for history and synchronization until you delete them or your account. In this version there is no promise of a single automatic expiry period for all records. Individual local caches may be changed or deleted sooner.</p>
-          <p>You can delete your account from the profile settings in the app. The main records linked to the account, the health profile, conversations, pet data and AI consent records are deleted. The texts of notifications linked to the account are deleted or redacted; deletion of uploaded files is also processed in the relevant storage. Financial or security history that must be kept may remain within the scope of the relevant obligation.</p>
+          <p>You can delete your account from the profile settings in the app. The main records linked to the account, the health profile, conversations, pet data, every record of children added in MEDIFAMILY and AI consent records are deleted. The texts of notifications linked to the account are deleted or redacted; deletion of uploaded files is also processed in the relevant storage. Financial or security history that must be kept may remain within the scope of the relevant obligation.</p>
           <p>Step-by-step instructions, deletion without the app and an exact list of what is deleted and what remains: <a href="https://medicard.ge/delete-account">https://medicard.ge/delete-account</a></p>
           <p>Deletion does not mean immediate automatic deletion of third-party backups or of data that has already been sent. To make a request about such information, use the support email. You can also manage an entry you previously added to your device's system calendar from that calendar.</p>
           <h2 id="s10">10. Security and international processing</h2>
@@ -177,6 +179,11 @@
           <p>Without consent nothing is loaded from Meta. The Google Analytics tag is on the page before consent too, in Consent Mode: it sets no cookies and sends Google only an anonymous, cookieless signal (page address, time, browser type, country/city derived from the IP address) that cannot recognise you on later visits. A browser that sends Global Privacy Control is treated as a refusal. Your choice is kept in your browser for 12 months. You can change it at any time with the &quot;Cookies&quot; link at the bottom of the site; after you withdraw, the Pixel and Google Analytics stop and their cookies are deleted.</p>
           <h2 id="s16">16. Measuring app installs (Meta SDK)</h2>
           <p>The iPhone app includes the Facebook SDK of Meta Platforms, Inc. only so we can count how many people installed and opened the app after seeing our ads on Facebook and Instagram. The SDK starts only after you accept this policy and sends Meta only its automatic events — app install and app open — with technical data (app version, device model and iOS version, language, time zone, IP address). The advertising identifier (IDFA) is not collected and the app does not ask for tracking permission (App Tracking Transparency); installs are attributed through Apple's SKAdNetwork and Meta's Aggregated Event Measurement. Health data, cycle records, account data, your name, email and phone number are never sent to Meta, and the app logs no events of its own for Meta. Meta processes this data under its own policy (facebook.com/privacy/policy), possibly outside Georgia.</p>
+          <h2 id="s17">17. MEDIFAMILY — children's data</h2>
+          <p>In MEDIFAMILY a parent (or legal guardian) can add a child under 18 and keep their vaccines, growth measurements, feeding, a sick-day diary (temperature, symptoms, medicines given), allergies, conditions and developmental milestones. The child is not a user of the app — the account belongs to the parent (18+).</p>
+          <p>When adding a child, the parent confirms that they are the child's parent or legal guardian and agrees that MEDICARD stores and processes the child's health data (Law of Georgia on Personal Data Protection, Article 7). The consent version and time are stored with the child's profile.</p>
+          <p>Only the account that added the child can see the data. It is used only to show it to the parent, for vaccine and age reminders (scheduled locally on the phone) and for Medi's answer when the parent asks about the child (the recipients in sections 5 and 6, with separate consent to AI processing). The child's conversations with Medi are kept separately and are not part of the parent's own consultation context. A child's data is never used for advertising, never sold and never passed to third parties; admin analytics show counts only (no names, dates or health values).</p>
+          <p>The parent can permanently delete the child's profile and every record at any time in the app (child profile → Edit → Delete); deleting the account deletes the children's data too. MEDIFAMILY and Medi do not replace a pediatrician: for danger signs, call 112.</p>
         </article>
       </div>
     </section>
