@@ -1,7 +1,7 @@
 import { prisma } from './prisma.js';
 import { loadAppActivityRows } from './appActivity.js';
-import { loadOutcomeRows, medianMs, ACTION_KEYS, DIRECT_ACTION_KEYS } from './notificationOutcomes.js';
-import { loadDecisionRows } from './notificationDecisions.js';
+import { ensureNotificationOutcomeTable, medianMs, ACTION_KEYS, DIRECT_ACTION_KEYS } from './notificationOutcomes.js';
+import { ensureNotificationDecisionTable, loadDecisionRows } from './notificationDecisions.js';
 import { loadProductEvents } from './productEvents.js';
 import { loadDoseEvents } from './medicationDoseEvents.js';
 import { loadPermissionRows } from './notificationPermission.js';
@@ -502,21 +502,65 @@ export async function getPermissionAnalytics() {
   };
 }
 
+function isMissingTableError(error) {
+  return error?.code === 'P2010' || /does not exist/i.test(error?.message || '');
+}
+
+/**
+ * The decision/outcome checks of getDataQuality, counted in Postgres. Loading 90 days of Brain rows to
+ * count them (46 580 decisions on 2026-10-12, ~4 000 more a day) froze the server for seconds on every
+ * admin home load. Same rules as before: an outcome is an orphan when its decision is not in the same
+ * window, `futureTimestamps` is anything more than a minute ahead.
+ */
+export async function loadDecisionQualityCounts(fromDt, toExclusiveDt, now = new Date()) {
+  const future = new Date(now.getTime() + 60_000);
+  const emptyDecisions = { duplicateDecisionIds: 0, decisionsMissingRevalidation: 0, futureDecisions: 0, invalidRoutes: 0 };
+  const emptyOutcomes = { unknownActionKeys: 0, orphanOutcomes: 0, futureOutcomes: 0 };
+  const decisionCounts = (async () => {
+    await ensureNotificationDecisionTable();
+    const [row] = await prisma.$queryRaw`
+      SELECT (COUNT(*) - COUNT(DISTINCT "decisionId"))::int AS "duplicateDecisionIds",
+             COUNT(*) FILTER (WHERE "result" = 'SEND' AND "scheduledAt" IS NOT NULL AND "revalidatedAt" IS NULL)::int AS "decisionsMissingRevalidation",
+             COUNT(*) FILTER (WHERE "createdAt" > ${future})::int AS "futureDecisions",
+             COUNT(*) FILTER (WHERE COALESCE("route", '') <> '' AND LEFT("route", 1) <> '/')::int AS "invalidRoutes"
+      FROM "NotificationDecision"
+      WHERE "createdAt" >= ${fromDt} AND "createdAt" < ${toExclusiveDt}
+    `;
+    return row || emptyDecisions;
+  })().catch((error) => {
+    if (isMissingTableError(error)) return emptyDecisions;
+    throw error;
+  });
+  const outcomeCounts = (async () => {
+    await ensureNotificationOutcomeTable();
+    const [row] = await prisma.$queryRaw`
+      SELECT COUNT(*) FILTER (WHERE COALESCE(o."actionKey", '') <> '' AND NOT (o."actionKey" = ANY(${[...ACTION_KEYS]})))::int AS "unknownActionKeys",
+             COUNT(*) FILTER (WHERE COALESCE(o."decisionId", '') <> '' AND NOT EXISTS (
+               SELECT 1 FROM "NotificationDecision" d
+               WHERE d."decisionId" = o."decisionId" AND d."createdAt" >= ${fromDt} AND d."createdAt" < ${toExclusiveDt}
+             ))::int AS "orphanOutcomes",
+             COUNT(*) FILTER (WHERE o."occurredAt" > ${future})::int AS "futureOutcomes"
+      FROM "NotificationOutcome" o
+      WHERE o."occurredAt" >= ${fromDt} AND o."occurredAt" < ${toExclusiveDt}
+    `;
+    return row || emptyOutcomes;
+  })().catch((error) => {
+    if (isMissingTableError(error)) return emptyOutcomes;
+    throw error;
+  });
+  const [decisions, outcomes] = await Promise.all([decisionCounts, outcomeCounts]);
+  return { ...decisions, ...outcomes };
+}
+
 export async function getDataQuality() {
   const today = tbilisiYmd();
   const from = addDaysYmd(today, -90);
-  const [users, decisions, outcomes, activity] = await Promise.all([
+  const now = new Date();
+  const [users, counts, activity] = await Promise.all([
     prisma.user.findMany({ select: { id: true } }),
-    loadDecisionRows(new Date(Date.now() - 90 * 86_400_000), new Date(Date.now() + 86_400_000)),
-    loadOutcomeRows(new Date(Date.now() - 90 * 86_400_000), new Date(Date.now() + 86_400_000)),
+    loadDecisionQualityCounts(new Date(now.getTime() - 90 * 86_400_000), new Date(now.getTime() + 86_400_000), now),
     loadAppActivityRows(from, today),
   ]);
-  const seen = new Set();
-  let duplicateDecisions = 0;
-  for (const row of decisions) {
-    if (seen.has(row.decisionId)) duplicateDecisions += 1;
-    seen.add(row.decisionId);
-  }
   const activityUsers = new Set(activity.map((row) => row.userId));
   const latestByUser = new Map();
   for (const row of activity) {
@@ -538,15 +582,12 @@ export async function getDataQuality() {
         ? Math.round((100 * (latestByUser.size - usersMissingAppVersion)) / latestByUser.size)
         : null,
     usersWithoutRecentActivity: users.filter((u) => !activityUsers.has(u.id)).length,
-    decisionsMissingRevalidation: decisions.filter((d) => d.result === 'SEND' && d.scheduledAt && !d.revalidatedAt).length,
-    unknownActionKeys: outcomes.filter((row) => row.actionKey && !ACTION_KEYS.has(row.actionKey)).length,
-    orphanOutcomes: countOrphanOutcomes(decisions, outcomes),
-    duplicateDecisionIds: duplicateDecisions,
-    futureTimestamps: [
-      ...outcomes.filter((row) => new Date(row.occurredAt).getTime() > Date.now() + 60_000),
-      ...decisions.filter((row) => new Date(row.createdAt).getTime() > Date.now() + 60_000),
-    ].length,
-    invalidRoutes: decisions.filter((d) => d.route && !String(d.route).startsWith('/')).length,
+    decisionsMissingRevalidation: counts.decisionsMissingRevalidation,
+    unknownActionKeys: counts.unknownActionKeys,
+    orphanOutcomes: counts.orphanOutcomes,
+    duplicateDecisionIds: counts.duplicateDecisionIds,
+    futureTimestamps: counts.futureOutcomes + counts.futureDecisions,
+    invalidRoutes: counts.invalidRoutes,
     sampleWindowDays: 90,
   };
 }

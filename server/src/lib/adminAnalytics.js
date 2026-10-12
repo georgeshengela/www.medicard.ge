@@ -14,12 +14,13 @@ import {
   rateSafe,
   tbilisiYmd,
   METRIC_DEFINITIONS,
+  TBILISI_OFFSET_MS,
 } from './adminAnalyticsRange.js';
-import { loadDecisionRows, loadDecisionRowsByIds } from './notificationDecisions.js';
+import { loadDecisionRows as loadDecisionRowsFresh, loadDecisionRowsByIds } from './notificationDecisions.js';
 import { clearAppActivityRowMemo, loadAppActivityRows } from './appActivity.js';
 import { clearUserGeoCache, getUserGeoAnalytics } from './adminUserGeo.js';
 import { loadProductEvents } from './productEvents.js';
-import { loadOutcomeRows } from './notificationOutcomes.js';
+import { loadOutcomeRows as loadOutcomeRowsFresh } from './notificationOutcomes.js';
 import {
   buildNotificationFunnel,
   buildTypePerformance,
@@ -89,8 +90,31 @@ async function cacheWrap(key, producer) {
   return run;
 }
 
+/**
+ * Overview and notifications read the same Brain decision/outcome rows for the same period (27 800
+ * decisions a week on 2026-10-12): one dashboard load now fetches each period once. Read-only rows.
+ */
+const rowMemo = new Map();
+
+function sharedRows(kind, loader, fromDt, toExclusiveDt) {
+  const key = `${kind}:${new Date(fromDt).getTime()}:${new Date(toExclusiveDt).getTime()}`;
+  const hit = rowMemo.get(key);
+  if (hit && Date.now() - hit.at <= CACHE_MS) return hit.rows;
+  const rows = loader(fromDt, toExclusiveDt);
+  rowMemo.set(key, { at: Date.now(), rows });
+  rows.catch(() => {
+    if (rowMemo.get(key)?.rows === rows) rowMemo.delete(key);
+  });
+  if (rowMemo.size > 8) rowMemo.delete(rowMemo.keys().next().value);
+  return rows;
+}
+
+const loadDecisionRows = (fromDt, toExclusiveDt) => sharedRows('decisions', loadDecisionRowsFresh, fromDt, toExclusiveDt);
+const loadOutcomeRows = (fromDt, toExclusiveDt) => sharedRows('outcomes', loadOutcomeRowsFresh, fromDt, toExclusiveDt);
+
 export function clearAdminAnalyticsCache() {
   cache.clear();
+  rowMemo.clear();
 }
 
 export function invalidateAdminAnalyticsPrefix(prefix) {
@@ -137,18 +161,13 @@ function activityYmd(row) {
   return dateOnlyYmd(row.date) || createdAtToTbilisiYmd(row.lastAt || row.firstAt);
 }
 
+/** Hour and weekday (Monday = 0) in Tbilisi, fixed +04:00 — one call per row, so no Intl formatter. */
 function hourInTbilisi(value) {
   if (!value) return null;
-  const parts = new Intl.DateTimeFormat('en-GB', {
-    timeZone: 'Asia/Tbilisi',
-    weekday: 'short',
-    hour: '2-digit',
-    hourCycle: 'h23',
-  }).formatToParts(value instanceof Date ? value : new Date(value));
-  const hour = Number(parts.find((p) => p.type === 'hour')?.value);
-  const weekday = parts.find((p) => p.type === 'weekday')?.value;
-  const weekdayIndex = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].indexOf(weekday);
-  return { hour, weekday: weekdayIndex < 0 ? 0 : weekdayIndex };
+  const ms = (value instanceof Date ? value : new Date(value)).getTime();
+  if (!Number.isFinite(ms)) return null;
+  const local = new Date(ms + TBILISI_OFFSET_MS);
+  return { hour: local.getUTCHours(), weekday: (local.getUTCDay() + 6) % 7 };
 }
 
 function tokenTotals(usage) {

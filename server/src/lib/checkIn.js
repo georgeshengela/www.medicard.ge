@@ -5,11 +5,16 @@ import { publicUser, toDateOnly } from './patient.js';
 export const DAILY_LOGIN_POINTS = 0;
 /** @deprecated Steps goals no longer award User.points (Medi Coins via Quest). */
 export const STEPS_GOAL_POINTS = 0;
-const TBILISI = 'Asia/Tbilisi';
+/** Georgia is UTC+4 all year (no DST since 2005). */
+const TBILISI_OFFSET_MS = 4 * 3_600_000;
 
-/** `YYYY-MM-DD` in Georgia time — the calendar day a login counts for. */
+/**
+ * `YYYY-MM-DD` in Georgia time — the calendar day a login counts for. Fixed offset, no Intl: analytics
+ * call this once per row and a new DateTimeFormat costs ~40 µs (2026-10-12 admin dashboard stalls).
+ */
 export function tbilisiYmd(now = new Date()) {
-  return new Intl.DateTimeFormat('en-CA', { timeZone: TBILISI }).format(now);
+  const ms = now instanceof Date ? now.getTime() : new Date(now).getTime();
+  return new Date(ms + TBILISI_OFFSET_MS).toISOString().slice(0, 10);
 }
 
 function ymdToUtcDate(ymd) {

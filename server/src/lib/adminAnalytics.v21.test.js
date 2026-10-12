@@ -260,4 +260,12 @@ describe('timezone boundary for activity days', () => {
     const beforeMidnight = new Date('2026-09-05T23:30:00+04:00');
     assert.equal(tbilisiYmd(beforeMidnight), '2026-09-05');
   });
+
+  it('the fixed +04:00 day matches the Asia/Tbilisi calendar (no Intl per row)', () => {
+    const intl = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Tbilisi' });
+    for (let t = Date.UTC(2025, 0, 1); t < Date.UTC(2027, 0, 1); t += 3_599_917) {
+      assert.equal(tbilisiYmd(new Date(t)), intl.format(new Date(t)));
+    }
+    assert.equal(tbilisiYmd(Date.UTC(2026, 9, 12, 20)), '2026-10-13');
+  });
 });

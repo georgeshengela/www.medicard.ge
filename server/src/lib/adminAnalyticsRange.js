@@ -1,10 +1,16 @@
 /** Product analytics calendar is Asia/Tbilisi (same as DailyCheckIn). Georgia has no DST. */
 export const ANALYTICS_TZ = 'Asia/Tbilisi';
 export const TBILISI_OFFSET = '+04:00';
+export const TBILISI_OFFSET_MS = 4 * 3_600_000;
 export const MIN_DELTA_BASE = 3;
 
+/**
+ * Fixed +04:00 instead of a new Intl.DateTimeFormat per call: the admin dashboard formats one date per
+ * row, and at ~40 µs a call (2026-10-12) that alone froze the single-CPU server for seconds.
+ */
 export function tbilisiYmd(now = new Date()) {
-  return new Intl.DateTimeFormat('en-CA', { timeZone: ANALYTICS_TZ }).format(now);
+  const ms = now instanceof Date ? now.getTime() : new Date(now).getTime();
+  return new Date(ms + TBILISI_OFFSET_MS).toISOString().slice(0, 10);
 }
 
 export function ymdToUtcDate(ymd) {
