@@ -35,8 +35,8 @@ export default withMedifood(function Method() {
         <NCardTitle icon={Stethoscope} title={tx("როდის გვჭირდება სპეციალისტი?", "When do you need a specialist?")} />
         <NText style={{ color: M.c.text200, fontSize: 13.5, lineHeight: 21 }}>
           {tx(
-            "ავტომატური გეგმა განკუთვნილია 19–78 წლის ზრდასრულისთვის. ორსულობის, ძუძუთი კვების, კვებითი აშლილობის, ქრონიკული დაავადების, სამკურნალო დიეტის ან აპის საზღვრებს გარეთ გამოთვლილი საჭიროებისას კალორიულ სამიზნეს არ ვადგენთ. დღის ავტომატური დიაპაზონია 1500–3500 კკალ; ეს ყველა ადამიანის უსაფრთხო ნორმას არ ნიშნავს.",
-            "The automatic plan is meant for adults aged 19–78. We don't set a calorie target during pregnancy or breastfeeding, with an eating disorder, a chronic illness or a therapeutic diet, or when the calculated need falls outside the app's limits. The automatic daily range is 1500–3500 kcal; that doesn't mean it's a safe norm for everyone.",
+            "ავტომატური გეგმა განკუთვნილია 18–78 წლის ზრდასრულისთვის. ორსულობის, ძუძუთი კვების, კვებითი აშლილობის, ქრონიკული დაავადების, სამკურნალო დიეტის ან აპის საზღვრებს გარეთ გამოთვლილი საჭიროებისას კალორიულ სამიზნეს არ ვადგენთ. აპი დღეში ქალს 1 200 კკალ-ზე, კაცს 1 500 კკალ-ზე ნაკლებს არ დაუნიშნავს (მაქსიმუმი 3 500): თუ არჩეული ტემპი ამ ზღვარს ქვემოთ ჩამოვიდოდა, სამიზნე ზღვარზე ჩერდება და ტემპი ნელდება. წონის ან მიზნის ცვლილებისას სამიზნე თავად გადაითვლება. ეს ყველა ადამიანის უსაფრთხო ნორმას არ ნიშნავს.",
+            "The automatic plan is meant for adults aged 18–78. We don't set a calorie target during pregnancy or breastfeeding, with an eating disorder, a chronic illness or a therapeutic diet, or when the calculated need falls outside the app's limits. The app never sets less than 1,200 kcal a day for women or 1,500 for men (at most 3,500): if the chosen pace would go below that, the target stops at the floor and the pace slows. When your weight or goal changes, the target is recalculated. That doesn't mean it's a safe norm for everyone.",
           )}
         </NText>
         <NText style={{ color: M.c.text200, fontSize: 13.5, lineHeight: 21 }}>

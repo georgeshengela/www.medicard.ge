@@ -16,7 +16,7 @@ const group = (n: number) => Math.round(n).toLocaleString("en-US").replace(/,/g,
 /**
  * „ჩემი რაციონი“ on the hub — the meal plan made the module's second headline (owner 2026-10-09:
  * „where is the function that composes my meals?“). One card, three states:
- * - no goal yet → „შემიდგინე კვება“: four questions, then the composer;
+ * - no goal yet → „შემიდგინე კვება“: the four-step wizard, then the composer;
  * - a goal but no menu today → „✓ შენი კვების გეგმა მზადაა“ with its facts; „მენიუს შედგენა“ composes it with the
  *   animation (or „კვირის მენიუ“ when the menu starts on a later day), „გეგმის შეცვლა“ reopens the questions;
  * - a menu today → the plate shows what is eaten (x/4), the next dish, the week and the shopping list.
@@ -75,7 +75,7 @@ export function PlanCard({ d }: { d: NutritionDashboard }) {
   }
 
   if (ready) {
-    const cfg = d.program!.config;
+    const cfg = d.currentConfig ?? d.program!.config;
     const upcoming = d.planned.filter((p) => p.date > d.date).sort((x, y) => x.date.localeCompare(y.date));
     const goalText = cfg.mode === "lose" ? tx(`კლება · ${cfg.targetKg} კგ`, `Lose · ${cfg.targetKg} kg`) : cfg.mode === "gain" ? tx(`მომატება · ${cfg.targetKg} კგ`, `Gain · ${cfg.targetKg} kg`) : tx("წონის შენარჩუნება", "Keep weight");
     const dietText = cfg.diet === "vegan" ? tx("ვეგანური", "Vegan") : cfg.diet === "vegetarian" ? tx("ვეგეტარიანული", "Vegetarian") : tx("მრავალფეროვანი", "Varied");
@@ -126,9 +126,9 @@ export function PlanCard({ d }: { d: NutritionDashboard }) {
     );
   }
 
-  // No saved plan yet: four questions first.
+  // No saved plan yet: a few questions first (four short steps, not four questions).
   const title = tx("შემიდგინე კვება", "Plan my meals");
-  const body = tx("4 კითხვა — და 7 დღის მენიუ შენს მიზანზე, გემოვნებასა და ალერგენებზე, საყიდლების სიით.", "4 questions — then a 7-day menu fitted to your goal, taste and allergens, with a shopping list.");
+  const body = tx("რამდენიმე კითხვა — და დღის სამიზნე და 7 დღის მენიუ ქართული კერძებით, შენს მიზანსა და ალერგენებზე მორგებული, საყიდლების სიით.", "A few questions — then a daily target and a 7-day menu with Georgian dishes, fitted to your goal and allergens, with a shopping list.");
   const cta = tx("დავიწყოთ", "Let's start");
   const go = () => router.push("/nutrition/goal" as never);
   return (

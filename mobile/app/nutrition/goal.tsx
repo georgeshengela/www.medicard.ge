@@ -38,6 +38,14 @@ import { formatYmd } from "@/lib/format";
 import { BodyMetricSheet, PickerField } from "@/components/ui/BodyMetricSheet";
 import { FoodIconGrid, FoodIconTile } from "@/components/nutrition/FoodIconTile";
 import { ageFromBirthDate, normalizeIsoDate } from "@/lib/birthdate";
+import { estimateDailyTarget } from "@/lib/nutritionTarget";
+
+const group = (n: number) => Math.round(n).toLocaleString("en-US").replace(/,/g, " ");
+/** 0.32 → „0,3“ (ka) / "0.3" (en): a weekly pace in kilograms. */
+const weekly = (kg: number) => {
+  const v = String(Math.round(Math.abs(kg) * 10) / 10 || 0.1);
+  return { ka: v.replace(".", ","), en: v };
+};
 export default withMedifood(function NutritionGoal() {
   const { user } = useAuth();
   return <Goal key={user?.id || "guest"} owner={user?.id || ""} />;
@@ -195,6 +203,34 @@ function Goal({ owner }: { owner: string }) {
     screening: screening as ProgramConfig["screening"],
   });
   const composeNext = !!preview?.eligible && preview.mealPlanning?.eligible !== false;
+  // The target as soon as it can be counted (step 2): the same rules as the server, so a slower pace or
+  // „no room to lose“ shows here, with a way forward, instead of a refusal on the last step.
+  const age = normalizeIsoDate(form.birth) ? ageFromBirthDate(new Date(form.birth)) : null;
+  const estimateFor = (pace: string, mode = form.mode) =>
+    form.activity
+      ? estimateDailyTarget({
+          mode: mode as ProgramConfig["mode"],
+          pace: pace as ProgramConfig["pace"],
+          weightKg: Number(form.weight.replace(",", ".")),
+          heightCm: Number(form.height.replace(",", ".")),
+          age,
+          sex: form.sex as ProgramConfig["sex"],
+          activity: form.activity,
+        })
+      : null;
+  const live = estimateFor(form.pace);
+  const paceDetail = (pace: "gentle" | "steady", base: { ka: string; en: string }) => {
+    const e = estimateFor(pace);
+    if (!e || e.calories == null) return tx(base.ka, base.en);
+    return e.paceLimited
+      ? tx(`≈ ${group(e.calories)} კკალ · უსაფრთხო მინიმუმი, ტემპი ნელი იქნება`, `≈ ${group(e.calories)} kcal · the safe minimum, a slower pace`)
+      : tx(`${base.ka} · ≈ ${group(e.calories)} კკალ`, `${base.en} · ≈ ${group(e.calories)} kcal`);
+  };
+  /** Keeping the weight instead of a loss the numbers do not leave room for. */
+  const keepWeight = () => {
+    setForm((v) => ({ ...v, mode: "maintain", target: v.weight }));
+    setError("");
+  };
   const next = () => {
     setError("");
     Keyboard.dismiss();
@@ -414,12 +450,29 @@ function Goal({ owner }: { owner: string }) {
                     value={form.pace}
                     onChange={(v) => patch("pace", v)}
                     options={[
-                      { value: "gentle", label: tx("რბილი ცვლილება", "Gentle change"), detail: tx("−250 კკალ დღეში", "−250 kcal a day") },
-                      { value: "steady", label: tx("ზომიერი ცვლილება", "Moderate change"), detail: tx("−400 კკალ დღეში", "−400 kcal a day") },
+                      { value: "gentle", label: tx("რბილი ცვლილება", "Gentle change"), detail: paceDetail("gentle", { ka: "−250 კკალ დღეში", en: "−250 kcal a day" }) },
+                      { value: "steady", label: tx("ზომიერი ცვლილება", "Moderate change"), detail: paceDetail("steady", { ka: "−400 კკალ დღეში", en: "−400 kcal a day" }) },
                     ]}
                   />
+                  {live?.noRoom ? (
+                    <NCard style={{ gap: 10 }}>
+                      <NText style={{ fontFamily: "NotoSansGeorgian_600SemiBold", fontSize: 15 }}>{tx("დაკლებისთვის ადგილი თითქმის არ რჩება", "There is almost no room to lose")}</NText>
+                      <NText style={{ fontSize: 13, lineHeight: 20, color: c.text200 }}>
+                        {tx(
+                          `შენი დღის საჭიროება დაახლოებით ${group(live.maintenance)} კკალ-ია, უსაფრთხო მინიმუმი კი ${group(live.floor)}. აპი ამაზე ნაკლებს არ დაგინიშნავს. შეგიძლია წონა შეინარჩუნო, აქტივობა შეცვალო, თუ მეტს მოძრაობ, ან სამიზნე დიეტოლოგთან შეარჩიო.`,
+                          `Your daily need is about ${group(live.maintenance)} kcal and the safe minimum is ${group(live.floor)}. The app won't set less than that. You can keep your weight, change your activity if you move more, or choose a target with a dietitian.`,
+                        )}
+                      </NText>
+                      <NButton secondary label={tx(`წონის შენარჩუნება · ≈ ${group(Math.max(live.floor, live.maintenance))} კკალ`, `Keep my weight · ≈ ${group(Math.max(live.floor, live.maintenance))} kcal`)} onPress={keepWeight} />
+                    </NCard>
+                  ) : null}
                 </>
               )}
+              {form.mode !== "lose" && live?.calories != null ? (
+                <NText style={{ fontSize: 13, lineHeight: 19, color: c.text200, marginHorizontal: 2 }}>
+                  {tx(`დღის სამიზნე დაახლოებით ${group(live.calories)} კკალ იქნება.`, `Your daily target will be about ${group(live.calories)} kcal.`)}
+                </NText>
+              ) : null}
               <NLabel>{tx("კვების არჩევანი", "Eating style")}</NLabel>
               <FoodIconGrid role="radiogroup">
                 {(
@@ -507,6 +560,14 @@ function Goal({ owner }: { owner: string }) {
                       {preview.targets.calories} <NText style={{ fontSize: 15, color: c.text200 }}>{tx("კკალ", "kcal")}</NText>
                     </NText>
                     <MacroRails actual={preview.targets} target={null} />
+                    {preview.targets.paceLimited && preview.targets.weeklyKg != null ? (
+                      <NText style={{ fontSize: 13, lineHeight: 19, color: c.text200 }}>
+                        {tx(
+                          `ეს უსაფრთხო მინიმუმია (${group(preview.targets.floor ?? preview.targets.calories)} კკალ), ამიტომ ტემპი არჩეულზე ნელი იქნება — დაახლოებით ${weekly(preview.targets.weeklyKg).ka} კგ კვირაში.`,
+                          `This is the safe minimum (${group(preview.targets.floor ?? preview.targets.calories)} kcal), so the pace will be slower than you chose — about ${weekly(preview.targets.weeklyKg).en} kg a week.`,
+                        )}
+                      </NText>
+                    ) : null}
                     <NText style={{ fontSize: 12, lineHeight: 18, color: c.text300 }}>
                       {tx("დაკლების/მომატების ზუსტი თარიღი გარანტირებული არ არის. ეს საწყისი შეფასებაა, არა მკაცრი დღიური ლიმიტი.", "An exact date for losing or gaining weight isn’t guaranteed. This is a starting estimate, not a strict daily limit.")}
                     </NText>
@@ -533,6 +594,29 @@ function Goal({ owner }: { owner: string }) {
                   )}
                   <NText style={{ fontSize: 12, lineHeight: 18, color: c.text300, marginHorizontal: 2 }}>{tx("შენახვა განაახლებს აპში შენს საერთო წონის მიზანს და მიმდინარე წონას. შემდეგ რაციონს შეგიდგენ.", "Saving updates your weight goal and current weight across the app. Next we compose your meal plan.")}</NText>
                 </>
+              ) : preview.fallback ? (
+                <NCard>
+                  <NText style={{ fontSize: 18, lineHeight: 26, fontFamily: "NotoSansGeorgian_700Bold" }}>{tx("დაკლებისთვის ადგილი თითქმის არ რჩება", "There is almost no room to lose")}</NText>
+                  {preview.reasons.map((v) => (
+                    <NText key={v} style={{ color: c.text200 }}>
+                      {v}
+                    </NText>
+                  ))}
+                  <NButton
+                    disabled={busy}
+                    label={tx(`წონის შენარჩუნება · ≈ ${group(preview.fallback.calories)} კკალ`, `Keep my weight · ≈ ${group(preview.fallback.calories)} kcal`)}
+                    onPress={() =>
+                      void run(async () => {
+                        const keep = { ...config(), mode: "maintain" as const, targetKg: Number(form.weight.replace(",", ".")) };
+                        const v = await nutritionProgramApi.preview(keep);
+                        if (!alive.current) return;
+                        setForm((f) => ({ ...f, mode: "maintain", target: f.weight }));
+                        setPreview(v);
+                      })
+                    }
+                  />
+                  <NButton secondary label={tx("კვების დღიურზე გადასვლა", "Go to food diary")} onPress={() => router.replace("/nutrition/diary")} />
+                </NCard>
               ) : (
                 <NCard>
                   <NText style={{ fontSize: 18, lineHeight: 26, fontFamily: "NotoSansGeorgian_700Bold" }}>{tx("გეგმა სპეციალისტთან შეარჩიე", "Choose a plan with a specialist")}</NText>

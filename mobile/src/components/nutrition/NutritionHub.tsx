@@ -67,18 +67,19 @@ function Hub() {
           <View style={{ gap: 10 }}>
             <MedifoodHero d={d} onOpen={() => open("/nutrition/diary")} />
             {d.fasting?.active ? <FastingStrip d={d} onOpen={() => open("/nutrition/fasting")} /> : null}
-            <LogBar />
+            <LogBar heroCovers={d.mealCount === 0} />
           </View>
 
+          <HubSection title={tx("დღის კვება", "Today's meals")} linkLabel={tx("დღიური", "Diary")} onLink={() => open("/nutrition/diary")}>
+            <MealSlots d={d} planOn={isHrefAvailable("/nutrition/plan", features)} reload={load} />
+          </HubSection>
+
+          {/* The menu follows the day: its dishes already wait in empty meal slots above. */}
           {isHrefAvailable("/nutrition/plan", features) ? (
             <HubSection title={tx("ჩემი რაციონი", "My meal plan")} linkLabel={d.planned.some((p) => p.date === d.date) ? tx("კვირა", "Week") : undefined} onLink={() => open("/nutrition/plan")}>
               <PlanCard d={d} />
             </HubSection>
           ) : null}
-
-          <HubSection title={tx("დღის კვება", "Today's meals")} linkLabel={tx("დღიური", "Diary")} onLink={() => open("/nutrition/diary")}>
-            <MealSlots d={d} planOn={isHrefAvailable("/nutrition/plan", features)} reload={load} />
-          </HubSection>
 
           <HubSection title={tx("წყალი და მოძრაობა", "Water and movement")}>
             <DayTiles d={d} />
@@ -332,6 +333,16 @@ function GoalCard({ d }: { d: NutritionDashboard }) {
             ? tx(`გეგმის ტემპით ორიენტირი: ${nutritionDateLabel(d.projection.planEta)}.`, `At the plan's pace: around ${nutritionDateLabel(d.projection.planEta)}.`)
             : tx("დღის სამიზნე გეგმიდანაა. წონას როცა ჩაწერ, პროგნოზიც გამოჩნდება.", "Your daily target comes from the plan. Log your weight and a forecast will appear.")}
       </Text>
+      {d.adjusted && d.targets ? (
+        <Text style={[hubText.caption, { color: M.ink, fontFamily: "NotoSansGeorgian_600SemiBold" }]}>
+          {d.adjusted === "goal_reached"
+            ? tx(`მიზანს მიაღწიე! დღის სამიზნე ახლა წონის შენარჩუნებისთვისაა: ${group(d.targets.calories)} კკალ.`, `You reached your goal! Your daily target now keeps your weight: ${group(d.targets.calories)} kcal.`)
+            : d.adjusted === "goal"
+              ? tx(`სამიზნე ახალ მიზანზე გადაითვალა: ${group(d.targets.calories)} კკალ.`, `Your target was recalculated for the new goal: ${group(d.targets.calories)} kcal.`)
+              : tx(`სამიზნე შენს ახალ წონაზე გადაითვალა: ${group(d.targets.calories)} კკალ.`, `Your target was recalculated for your new weight: ${group(d.targets.calories)} kcal.`)}
+        </Text>
+      ) : null}
+      {d.reviewNote ? <Text style={[hubText.caption, { color: c.text300 }]}>{d.reviewNote}</Text> : null}
       <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 10 }}>
         <MedicalSourcesLink sourceIds={["bodyWeightPlanner", "weightPace"]} />
         {isHrefAvailable("/health-metrics/weight", features) ? (

@@ -144,3 +144,16 @@ test("manual fields validate required nutrients and optional micronutrients", as
   assert.equal(mealTypeForHour(19), "dinner");
   assert.equal(mealTypeForHour(23), "snack");
 });
+test("changing the grams in the edit form rescales every filled nutrient from the base values", async () => {
+  const { rescaleFoodFields, foodFields } = await load();
+  const base = foodFields({ name: "ხაჭაპური", grams: 150, calories: 435, protein: 18, carbs: 45, fat: 21, sodium: 690 });
+  const half = rescaleFoodFields(base, "75");
+  assert.equal(half.grams, "75");
+  assert.equal(half.calories, "217.5");
+  assert.equal(half.fat, "10.5");
+  assert.equal(half.sodium, "345");
+  assert.equal(half.fiber, "", "an unknown nutrient stays unknown");
+  // Typing through „1“ and „“ on the way loses nothing: each step scales from the base.
+  assert.equal(rescaleFoodFields(base, "").calories, "435");
+  assert.equal(rescaleFoodFields(base, "300").calories, "870");
+});
