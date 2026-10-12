@@ -241,8 +241,8 @@ export async function getNotificationDecision(decisionId) {
 }
 
 /**
- * Admin analytics only (funnel, plans, types, fatigue). Tens of thousands of rows a week are parsed on
- * the single web CPU, so only the columns those read are selected (2026-10-12 stalls).
+ * Raw rows for scripts/brain-plan-parity.mjs only — never in a request: ~28 000 rows a week parsed on
+ * the single web CPU froze the server (2026-10-12). The dashboard counts in SQL (loadBrainPlanStats).
  */
 export async function loadDecisionRows(fromDt, toExclusiveDt) {
   await ensureNotificationDecisionTable();
@@ -260,7 +260,7 @@ export async function loadDecisionRows(fromDt, toExclusiveDt) {
   }
 }
 
-/** Decisions outside the period that its outcomes belong to (a re-engagement planned two weeks ago firing today). */
+/** Decisions outside the period that its outcomes belong to (a re-engagement planned two weeks ago firing today). Parity script only. */
 export async function loadDecisionRowsByIds(decisionIds) {
   const ids = [...new Set((decisionIds || []).filter(Boolean))].slice(0, 5000);
   if (!ids.length) return [];

@@ -1,7 +1,7 @@
 import { prisma } from './prisma.js';
 import { loadAppActivityRows } from './appActivity.js';
 import { ensureNotificationOutcomeTable, medianMs, ACTION_KEYS, DIRECT_ACTION_KEYS } from './notificationOutcomes.js';
-import { ensureNotificationDecisionTable, loadDecisionRows } from './notificationDecisions.js';
+import { ensureNotificationDecisionTable } from './notificationDecisions.js';
 import { loadProductEvents } from './productEvents.js';
 import { loadDoseEvents } from './medicationDoseEvents.js';
 import { loadPermissionRows } from './notificationPermission.js';
@@ -41,10 +41,13 @@ export function countOrphanOutcomes(decisions, outcomes) {
   return (outcomes || []).filter((row) => row.decisionId && !ids.has(row.decisionId)).length;
 }
 
+/** `decisions` = Brain decision rows, or the number of weekly SEND rows already counted in SQL. */
 export function weeklyReportMetrics(events, decisions) {
   const generated = (events || []).filter((row) => row.kind === 'weekly_report_generated').length;
   const opened = (events || []).filter((row) => row.kind === 'weekly_report_opened').length;
-  const sent = (decisions || []).filter((row) => row.family === 'weekly' && row.result === 'SEND').length;
+  const sent = typeof decisions === 'number'
+    ? decisions
+    : (decisions || []).filter((row) => row.family === 'weekly' && row.result === 'SEND').length;
   return {
     generated,
     opened,
@@ -79,22 +82,10 @@ function msOf(value) {
  * + planned time (or day, for a skip). A planned notification that a later run replaced before its time
  * is `superseded` — it never fired. `aliasOf` maps every row id to its plan's id so outcomes find it.
  *
- * One dashboard load collapses the same shared rows four or five times (funnel, plans, types; 27 800 rows
- * a week on 2026-10-12), so the result is reused for the same array within a minute. Callers only read it.
+ * Reference implementation on raw rows (tests, scripts/brain-plan-parity.mjs); the admin dashboard
+ * counts the same plans in Postgres (loadBrainPlanStats).
  */
-const collapsedByRows = new WeakMap();
-const COLLAPSE_REUSE_MS = 60_000;
-
 export function collapseDecisionPlans(rows, now = Date.now()) {
-  if (!rows || typeof rows !== 'object') return collapseFresh(rows, now);
-  const memo = collapsedByRows.get(rows);
-  if (memo && memo.length === rows.length && Math.abs(memo.now - now) <= COLLAPSE_REUSE_MS) return memo.result;
-  const result = collapseFresh(rows, now);
-  collapsedByRows.set(rows, { now, length: rows.length, result });
-  return result;
-}
-
-function collapseFresh(rows, now) {
   const plans = new Map();
   const aliasOf = new Map();
   for (const row of rows || []) {
@@ -157,10 +148,79 @@ function planOutcomeIndex(outcomes, aliasOf) {
   return byPlan;
 }
 
+const FUNNEL_NOTE = 'პირდაპირი ქმედება (მაგ. „დავლიე“ შეტყობინებიდანვე) შეიძლება მოხდეს აპის გახსნის გარეშე.';
+
+/** The funnel payload from plan counts — shared by the JS reference below and the SQL counts (loadBrainPlanStats). */
+function funnelPayload(c) {
+  return {
+    evaluated: c.evaluated,
+    eligible: c.evaluated - c.suppressed,
+    scheduled: c.scheduled,
+    pending: c.pending,
+    next24h: c.next24h,
+    people: c.people,
+    due: c.due,
+    superseded: c.superseded,
+    delivered: c.delivered,
+    opened: c.opened,
+    actioned: c.actioned,
+    directActioned: c.directActioned,
+    suppressed: c.suppressed,
+    cancelled: c.cancelled,
+    rawRows: c.rawRows,
+    rates: {
+      delivery: rateVisible(c.delivered, Math.max(c.due, c.delivered)),
+      open: rateVisible(c.opened, c.delivered),
+      action: rateVisible(c.actioned, c.delivered),
+      directAction: rateVisible(c.directActioned, c.delivered),
+      suppression: rateVisible(c.suppressed, c.evaluated),
+      revalidationCancel: rateVisible(c.cancelled, c.scheduled),
+    },
+    definitions: RATE_DEFINITIONS,
+    note: FUNNEL_NOTE,
+  };
+}
+
+/**
+ * Per-family rows from plan counts, with the previous period's delivered/opened/actioned as delta.
+ * Exact ties keep the order they came in (the SQL path sends them by family name).
+ */
+export function typeRowsPayload(rows, prevRows = []) {
+  const prevMap = new Map((prevRows || []).map((row) => [row.family, row]));
+  return (rows || []).map((row) => {
+    const before = prevMap.get(row.family);
+    return {
+      family: row.family,
+      evaluated: row.evaluated,
+      eligible: row.evaluated - row.suppressed,
+      scheduled: row.scheduled,
+      delivered: row.delivered,
+      opened: row.opened,
+      actioned: row.actioned,
+      directActioned: row.directActioned,
+      suppressed: row.suppressed,
+      cancelled: row.cancelled,
+      openRate: rateVisible(row.opened, row.delivered),
+      actionRate: rateVisible(row.actioned, row.delivered),
+      directActionRate: rateVisible(row.directActioned, row.delivered),
+      delta: before
+        ? {
+            delivered: deltaSafe(row.delivered, before.delivered),
+            opened: deltaSafe(row.opened, before.opened),
+            actioned: deltaSafe(row.actioned, before.actioned),
+          }
+        : null,
+    };
+  }).sort((a, b) => b.scheduled - a.scheduled || b.evaluated - a.evaluated);
+}
+
 /**
  * The Brain funnel on plans: planned (scheduled on the phone, not replaced) → delivered (the phone
  * confirmed it was shown — since 1.0.0.21.39 also when it arrived while the app was closed) → opened →
  * acted on. Held back before planning (`blocked`) and cancelled after planning sit beside it.
+ *
+ * Reference implementation on raw rows (tests, scripts/brain-plan-parity.mjs). The admin dashboard counts
+ * the same rules in Postgres (loadBrainPlanStats) — change both together and re-run the parity script.
  */
 export function buildNotificationFunnel(decisions, outcomes, { now = Date.now() } = {}) {
   const { plans, aliasOf } = collapseDecisionPlans(decisions, now);
@@ -199,10 +259,9 @@ export function buildNotificationFunnel(decisions, outcomes, { now = Date.now() 
     }
     if (plan.result === 'SEND' && !plan.superseded && !plan.pending && !has(plan.decisionId, 'cancelled_by_revalidation')) due += 1;
   }
-  const evaluated = plans.length;
-  return {
-    evaluated,
-    eligible: evaluated - suppressed,
+  return funnelPayload({
+    evaluated: plans.length,
+    suppressed,
     scheduled,
     pending,
     next24h,
@@ -213,22 +272,12 @@ export function buildNotificationFunnel(decisions, outcomes, { now = Date.now() 
     opened: openedIds.size,
     actioned: actionedIds.size,
     directActioned: directIds.size,
-    suppressed,
     cancelled: cancelledIds.size,
     rawRows: (decisions || []).length,
-    rates: {
-      delivery: rateVisible(deliveredIds.size, Math.max(due, deliveredIds.size)),
-      open: rateVisible(openedIds.size, deliveredIds.size),
-      action: rateVisible(actionedIds.size, deliveredIds.size),
-      directAction: rateVisible(directIds.size, deliveredIds.size),
-      suppression: rateVisible(suppressed, evaluated),
-      revalidationCancel: rateVisible(cancelledIds.size, scheduled),
-    },
-    definitions: RATE_DEFINITIONS,
-    note: 'პირდაპირი ქმედება (მაგ. „დავლიე“ შეტყობინებიდანვე) შეიძლება მოხდეს აპის გახსნის გარეშე.',
-  };
+  });
 }
 
+/** Reference implementation on raw rows, like buildNotificationFunnel; the dashboard uses loadBrainPlanStats. */
 export function buildTypePerformance(decisions, outcomes, prevDecisions, prevOutcomes, { now = Date.now(), familyById = null } = {}) {
   const families = new Map();
   const { plans, aliasOf } = collapseDecisionPlans(decisions, now);
@@ -271,39 +320,233 @@ export function buildTypePerformance(decisions, outcomes, prevDecisions, prevOut
   const prev = prevDecisions
     ? buildTypePerformance(prevDecisions, prevOutcomes || [], null, null, { now })
     : { types: [] };
-  const prevMap = new Map(prev.types.map((row) => [row.family, row]));
 
   return {
-    types: [...families.values()].map((row) => {
-      const delivered = row.deliveredIds.size;
-      const opened = row.openedIds.size;
-      const actioned = row.actionedIds.size;
-      const directActioned = row.directIds.size;
-      const before = prevMap.get(row.family);
-      return {
+    types: typeRowsPayload(
+      [...families.values()].map((row) => ({
         family: row.family,
         evaluated: row.evaluated,
-        eligible: row.evaluated - row.suppressed,
         scheduled: row.scheduled,
-        delivered,
-        opened,
-        actioned,
-        directActioned,
         suppressed: row.suppressed,
         cancelled: row.cancelledIds.size,
-        openRate: rateVisible(opened, delivered),
-        actionRate: rateVisible(actioned, delivered),
-        directActionRate: rateVisible(directActioned, delivered),
-        delta: before
-          ? {
-              delivered: deltaSafe(delivered, before.delivered),
-              opened: deltaSafe(opened, before.opened),
-              actioned: deltaSafe(actioned, before.actioned),
-            }
-          : null,
-      };
-    }).sort((a, b) => b.scheduled - a.scheduled || b.evaluated - a.evaluated),
+        delivered: row.deliveredIds.size,
+        opened: row.openedIds.size,
+        actioned: row.actionedIds.size,
+        directActioned: row.directIds.size,
+      })),
+      prev.types,
+    ),
   };
+}
+
+const EMPTY_PLAN_COUNTS = {
+  evaluated: 0, suppressed: 0, scheduled: 0, pending: 0, next24h: 0, people: 0, due: 0, superseded: 0,
+  delivered: 0, opened: 0, actioned: 0, directActioned: 0, cancelled: 0, rawRows: 0,
+};
+
+/**
+ * The Brain funnel, per-family counts, skip reasons, plan day series and fatigue for one period, counted
+ * in Postgres with the same rules as collapseDecisionPlans / buildNotificationFunnel / buildTypePerformance
+ * and the fatigue loop of getNotificationAnalytics. Parsing ~28 000 raw rows a week (2026-10-12, mostly
+ * plans re-sent by phones before 1.0.0.21.39) and collapsing them in JS blocked the single web CPU for
+ * ~0.65 s per admin home load; this returns one small JSON value.
+ *
+ * - plan = person + family + template + result + reason + planned time (or Tbilisi day for a skip);
+ *   `firstAt`/`lastAt` = first/last run, day series use the first run (the JS took whichever row
+ *   Postgres returned first — createdAt order for 7 days, table order for longer ranges).
+ * - superseded (SEND with a time): the first plan in the same slot that began after this one was last
+ *   seen began before the planned time — a window over the slot's starts, newest first.
+ * - an outcome counts on its plan; an outcome of a decision outside the period counts on its own id.
+ *   `outsideFamilies` looks that decision's family up in the whole table; off = 'unknown' (the previous
+ *   period's types always did that — kept for the same deltas).
+ * - fatigue = each person's latest row with a frequency or cap (same moment: the last synced); a missing
+ *   cap reads as 0, as before.
+ */
+export async function loadBrainPlanStats(fromDt, toExclusiveDt, { now = Date.now(), outsideFamilies = true } = {}) {
+  const nowDt = new Date(now);
+  const next24Dt = new Date(nowDt.getTime() + 86_400_000);
+  try {
+    await Promise.all([ensureNotificationDecisionTable(), ensureNotificationOutcomeTable()]);
+    const [row] = await prisma.$queryRaw`
+      WITH d AS (
+        SELECT "decisionId", "userId", "family", "result", "createdAt", "syncedAt", "scheduledAt",
+               "selectedFrequency", "baseDailyCap", "adaptiveDailyCap",
+               COALESCE("templateKey", '') AS tk, COALESCE("reason", '') AS rs,
+               dense_rank() OVER (ORDER BY "userId", "family", COALESCE("templateKey", ''), "result", COALESCE("reason", ''), "scheduledAt",
+                                  CASE WHEN "scheduledAt" IS NULL THEN ("createdAt" + interval '4 hours')::date END) AS plan
+        FROM "NotificationDecision"
+        WHERE "createdAt" >= ${fromDt} AND "createdAt" < ${toExclusiveDt}
+      ), p AS (
+        SELECT plan, "userId", "result", rs, "scheduledAt",
+               COALESCE(NULLIF("family", ''), 'unknown') AS fam,
+               CASE WHEN "family" IN ('reengage', 'insight', 'achievement') THEN "family" || '|' || tk ELSE "family" END AS slot,
+               min("createdAt") AS "firstAt", max("createdAt") AS "lastAt",
+               (array_agg("syncedAt" ORDER BY "createdAt", "syncedAt"))[1] AS "firstSyncedAt"
+        FROM d
+        GROUP BY plan, "userId", "family", tk, "result", rs, "scheduledAt"
+      ), ev AS (
+        SELECT plan, "userId", slot, "firstAt" AS t, 1 AS k, "firstAt" AS start FROM p
+        UNION ALL
+        SELECT plan, "userId", slot, "lastAt", 0, NULL FROM p WHERE "result" = 'SEND' AND "scheduledAt" IS NOT NULL
+      ), nx AS (
+        -- Newest first; a start at the same moment as the last run sorts after it, so it is not "later".
+        SELECT plan, k, min(start) OVER (PARTITION BY "userId", slot ORDER BY t DESC, k
+                                         ROWS BETWEEN UNBOUNDED PRECEDING AND 1 PRECEDING) AS "nextStart"
+        FROM ev
+      ), ps AS (
+        SELECT p.*, s.superseded,
+               ("result" = 'SEND' AND NOT s.superseded AND COALESCE("scheduledAt" > ${nowDt}, false)) AS pending
+        FROM p
+        LEFT JOIN nx ON nx.plan = p.plan AND nx.k = 0
+        CROSS JOIN LATERAL (SELECT COALESCE(nx."nextStart" < p."scheduledAt", false) AS superseded) s
+      ), oc AS (
+        SELECT CASE WHEN d.plan IS NULL THEN 'o:' || o."decisionId" ELSE 'p:' || d.plan END AS id,
+               d.plan, CASE WHEN d.plan IS NULL THEN o."decisionId" END AS "outsideId",
+               o."outcome", COALESCE(o."actionKey", '') AS "actionKey"
+        FROM "NotificationOutcome" o
+        LEFT JOIN d ON d."decisionId" = o."decisionId"
+        WHERE o."occurredAt" >= ${fromDt} AND o."occurredAt" < ${toExclusiveDt}
+      ), ok AS (
+        SELECT id, plan, min("outsideId") AS "outsideId",
+               bool_or("outcome" IN ('delivered', 'opened', 'actioned', 'snoozed')) AS delivered,
+               bool_or("outcome" = 'opened') AS opened,
+               bool_or("outcome" = 'actioned') AS actioned,
+               bool_or("outcome" = 'actioned' AND "actionKey" = ANY(${[...DIRECT_ACTION_KEYS]})) AS direct,
+               bool_or("outcome" = 'cancelled_by_revalidation') AS revalidated
+        FROM oc
+        GROUP BY id, plan
+      ), okf AS (
+        SELECT ok.*, COALESCE(ps.fam, CASE WHEN ${outsideFamilies}::boolean THEN NULLIF(x."family", '') END, 'unknown') AS fam
+        FROM ok
+        LEFT JOIN ps ON ps.plan = ok.plan
+        LEFT JOIN "NotificationDecision" x ON ok.plan IS NULL AND x."decisionId" = ok."outsideId"
+      ), cx AS (
+        SELECT 'p:' || plan AS id, fam FROM ps WHERE "result" = 'CANCELLED'
+        UNION
+        SELECT id, fam FROM okf WHERE revalidated
+      ), fat AS (
+        SELECT DISTINCT ON ("userId") COALESCE("baseDailyCap", 0) AS base, COALESCE("adaptiveDailyCap", 0) AS adaptive
+        FROM d
+        WHERE COALESCE("selectedFrequency", '') <> '' OR "baseDailyCap" IS NOT NULL
+        ORDER BY "userId", "createdAt" DESC, "syncedAt" DESC, "decisionId" DESC
+      ), tp AS (
+        SELECT fam, count(*) AS evaluated,
+               count(*) FILTER (WHERE "result" = 'BLOCKED') AS suppressed,
+               count(*) FILTER (WHERE "result" IN ('SEND', 'CANCELLED') AND NOT superseded) AS scheduled
+        FROM ps GROUP BY fam
+      ), tov AS (
+        SELECT fam, count(*) FILTER (WHERE delivered) AS delivered, count(*) FILTER (WHERE opened) AS opened,
+               count(*) FILTER (WHERE actioned) AS actioned, count(*) FILTER (WHERE direct) AS direct
+        FROM okf GROUP BY fam
+      ), tc AS (
+        SELECT fam, count(*) AS cancelled FROM cx GROUP BY fam
+      ), fams AS (
+        SELECT fam FROM tp UNION SELECT fam FROM tov UNION SELECT fam FROM tc
+      )
+      SELECT json_build_object(
+        'counts', (
+          SELECT json_build_object(
+            'rawRows', (SELECT count(*) FROM d),
+            'evaluated', count(*),
+            'suppressed', count(*) FILTER (WHERE ps."result" = 'BLOCKED'),
+            'superseded', count(*) FILTER (WHERE ps.superseded),
+            'scheduled', count(*) FILTER (WHERE ps."result" IN ('SEND', 'CANCELLED') AND NOT ps.superseded),
+            'people', count(DISTINCT ps."userId") FILTER (WHERE ps."result" IN ('SEND', 'CANCELLED') AND NOT ps.superseded),
+            'pending', count(*) FILTER (WHERE ps.pending),
+            'next24h', count(*) FILTER (WHERE ps.pending AND ps."scheduledAt" <= ${next24Dt}),
+            'due', count(*) FILTER (WHERE ps."result" = 'SEND' AND NOT ps.superseded AND NOT ps.pending AND NOT COALESCE(ok.revalidated, false)),
+            'delivered', (SELECT count(*) FILTER (WHERE delivered) FROM okf),
+            'opened', (SELECT count(*) FILTER (WHERE opened) FROM okf),
+            'actioned', (SELECT count(*) FILTER (WHERE actioned) FROM okf),
+            'directActioned', (SELECT count(*) FILTER (WHERE direct) FROM okf),
+            'cancelled', (SELECT count(DISTINCT id) FROM cx)
+          )
+          FROM ps LEFT JOIN ok ON ok.plan = ps.plan
+        ),
+        'types', (
+          SELECT COALESCE(json_agg(json_build_object(
+            'family', fam,
+            'evaluated', COALESCE(tp.evaluated, 0),
+            'suppressed', COALESCE(tp.suppressed, 0),
+            'scheduled', COALESCE(tp.scheduled, 0),
+            'cancelled', COALESCE(tc.cancelled, 0),
+            'delivered', COALESCE(tov.delivered, 0),
+            'opened', COALESCE(tov.opened, 0),
+            'actioned', COALESCE(tov.actioned, 0),
+            'directActioned', COALESCE(tov.direct, 0)
+          ) ORDER BY fam), '[]'::json)
+          FROM fams LEFT JOIN tp USING (fam) LEFT JOIN tov USING (fam) LEFT JOIN tc USING (fam)
+        ),
+        'reasons', (
+          SELECT COALESCE(json_agg(json_build_object('reason', reason, 'count', n) ORDER BY n DESC, reason), '[]'::json)
+          FROM (
+            SELECT COALESCE(NULLIF(rs, ''), 'unspecified') AS reason, count(*) AS n
+            FROM ps WHERE "result" IN ('BLOCKED', 'CANCELLED') AND NOT superseded
+            GROUP BY 1
+          ) r
+        ),
+        'days', (
+          SELECT COALESCE(json_agg(json_build_object('kind', kind, 'day', day, 'count', n)), '[]'::json)
+          FROM (
+            SELECT kind, to_char(at + interval '4 hours', 'YYYY-MM-DD') AS day, count(*) AS n
+            FROM (
+              SELECT 'suppressed' AS kind, "firstAt" AS at FROM ps WHERE "result" = 'BLOCKED'
+              UNION ALL
+              SELECT 'cancelled', "firstSyncedAt" FROM ps WHERE "result" = 'CANCELLED'
+              UNION ALL
+              SELECT 'planned', "firstAt" FROM ps WHERE "result" IN ('SEND', 'CANCELLED') AND NOT superseded
+            ) x
+            GROUP BY 1, 2
+          ) y
+        ),
+        'fatigue', (
+          SELECT json_build_object(
+            'sampleUsers', count(*),
+            'normal', count(*) FILTER (WHERE adaptive >= base),
+            'highlyReduced', count(*) FILTER (WHERE adaptive < base AND adaptive <= GREATEST(1, floor(base / 3.0))),
+            'reduced', count(*) FILTER (WHERE adaptive < base AND adaptive > GREATEST(1, floor(base / 3.0)))
+          )
+          FROM fat
+        )
+      ) AS stats
+    `;
+    const stats = row?.stats || {};
+    const fatigue = stats.fatigue || {};
+    return {
+      funnel: funnelPayload({ ...EMPTY_PLAN_COUNTS, ...stats.counts }),
+      types: stats.types || [],
+      reasons: stats.reasons || [],
+      days: stats.days || [],
+      fatigue: {
+        sampleUsers: fatigue.sampleUsers || 0,
+        distribution: { normal: fatigue.normal || 0, reduced: fatigue.reduced || 0, highlyReduced: fatigue.highlyReduced || 0, unknown: 0 },
+      },
+    };
+  } catch (error) {
+    if (!isMissingTableError(error)) throw error;
+    return {
+      funnel: funnelPayload(EMPTY_PLAN_COUNTS),
+      types: [],
+      reasons: [],
+      days: [],
+      fatigue: { sampleUsers: 0, distribution: { normal: 0, reduced: 0, highlyReduced: 0, unknown: 0 } },
+    };
+  }
+}
+
+/** Weekly-report notifications the Brain sent (raw SEND rows, as weeklyReportMetrics counted them). */
+async function countWeeklySends(fromDt, toExclusiveDt) {
+  await ensureNotificationDecisionTable();
+  try {
+    const [row] = await prisma.$queryRaw`
+      SELECT COUNT(*)::int AS n FROM "NotificationDecision"
+      WHERE "family" = 'weekly' AND "result" = 'SEND' AND "createdAt" >= ${fromDt} AND "createdAt" < ${toExclusiveDt}
+    `;
+    return row?.n ?? 0;
+  } catch (error) {
+    if (isMissingTableError(error)) return 0;
+    throw error;
+  }
 }
 
 export function outcomeLatency(outcomes) {
@@ -393,16 +636,16 @@ export async function getVersionAnalytics(query) {
 
 export async function getWeeklyInsightMedication(query) {
   const range = parseAnalyticsRange(query);
-  const [events, doses, schedules, decisions] = await Promise.all([
+  const [events, doses, schedules, weeklySends] = await Promise.all([
     loadProductEvents(range.fromDt, range.toExclusiveDt),
     loadDoseEvents(range.fromYmd, range.toYmd),
     prisma.medicationSchedule.findMany({
       where: { active: true },
       select: { userId: true },
     }),
-    loadDecisionRows(range.fromDt, range.toExclusiveDt),
+    countWeeklySends(range.fromDt, range.toExclusiveDt),
   ]);
-  const weekly = weeklyReportMetrics(events, decisions);
+  const weekly = weeklyReportMetrics(events, weeklySends);
   const insights = {
     generated: events.filter((e) => e.kind === 'insight_generated').length,
     opened: events.filter((e) => e.kind === 'insight_opened').length,

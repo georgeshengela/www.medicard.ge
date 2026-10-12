@@ -16,22 +16,20 @@ import {
   METRIC_DEFINITIONS,
   TBILISI_OFFSET_MS,
 } from './adminAnalyticsRange.js';
-import { loadDecisionRows as loadDecisionRowsFresh, loadDecisionRowsByIds } from './notificationDecisions.js';
 import { clearAppActivityRowMemo, loadAppActivityRows } from './appActivity.js';
 import { clearUserGeoCache, getUserGeoAnalytics } from './adminUserGeo.js';
 import { loadProductEvents } from './productEvents.js';
 import { loadOutcomeRows as loadOutcomeRowsFresh } from './notificationOutcomes.js';
 import {
-  buildNotificationFunnel,
-  buildTypePerformance,
-  collapseDecisionPlans,
   getDataQuality,
   getFeatureRetentionAnalytics,
   getPermissionAnalytics,
   getVersionAnalytics,
   getWeeklyInsightMedication,
+  loadBrainPlanStats,
   outcomeLatency,
   RATE_DEFINITIONS,
+  typeRowsPayload,
   versionAttention,
 } from './adminAnalyticsV21.js';
 import { featureShareOfActive } from './adminCommandCenter.js';
@@ -91,23 +89,18 @@ async function cacheWrap(key, producer) {
 }
 
 /**
- * Overview and notifications read the same Brain decision/outcome rows for the same period (27 800
- * decisions a week on 2026-10-12): one dashboard load now fetches each period once. Read-only rows.
+ * Overview and notifications read the same Brain numbers for the same period: one dashboard load counts
+ * each period once. The Brain funnel is counted in Postgres (loadBrainPlanStats) — parsing ~28 000 raw
+ * decision rows a week froze the single web CPU (2026-10-12); outcome rows are few (~200 in 90 days).
+ * Read-only values.
  */
 const rowMemo = new Map();
-
-/** Lets other people's requests run between the heavy synchronous steps of a dashboard load. */
-const yieldToLoop = () => new Promise((resolve) => setImmediate(resolve));
 
 function sharedRows(kind, loader, fromDt, toExclusiveDt) {
   const key = `${kind}:${new Date(fromDt).getTime()}:${new Date(toExclusiveDt).getTime()}`;
   const hit = rowMemo.get(key);
   if (hit && Date.now() - hit.at <= CACHE_MS) return hit.rows;
-  // Parsing a big result and collapsing it would otherwise run as one block.
-  const rows = loader(fromDt, toExclusiveDt).then(async (list) => {
-    await yieldToLoop();
-    return list;
-  });
+  const rows = loader(fromDt, toExclusiveDt);
   rowMemo.set(key, { at: Date.now(), rows });
   rows.catch(() => {
     if (rowMemo.get(key)?.rows === rows) rowMemo.delete(key);
@@ -116,7 +109,13 @@ function sharedRows(kind, loader, fromDt, toExclusiveDt) {
   return rows;
 }
 
-const loadDecisionRows = (fromDt, toExclusiveDt) => sharedRows('decisions', loadDecisionRowsFresh, fromDt, toExclusiveDt);
+/** The previous period's types put outcomes of plans made before it under 'unknown' (as before — same deltas). */
+const loadPlanStats = (fromDt, toExclusiveDt, { previous = false } = {}) => sharedRows(
+  previous ? 'plans-prev' : 'plans',
+  (from, to) => loadBrainPlanStats(from, to, { outsideFamilies: !previous }),
+  fromDt,
+  toExclusiveDt,
+);
 const loadOutcomeRows = (fromDt, toExclusiveDt) => sharedRows('outcomes', loadOutcomeRowsFresh, fromDt, toExclusiveDt);
 
 export function clearAdminAnalyticsCache() {
@@ -346,14 +345,8 @@ export async function getOverviewAnalytics(query) {
     getVersionAnalytics(query).catch(() => null),
     getDataQuality().catch(() => null),
     getPermissionAnalytics().catch(() => null),
-    Promise.all([
-      loadDecisionRows(range.fromDt, range.toExclusiveDt),
-      loadOutcomeRows(range.fromDt, range.toExclusiveDt),
-    ]).then(([rows, outs]) => buildNotificationFunnel(rows, outs)).catch(() => null),
-    Promise.all([
-      loadDecisionRows(range.prevFromDt, range.prevToExclusiveDt),
-      loadOutcomeRows(range.prevFromDt, range.prevToExclusiveDt),
-    ]).then(([rows, outs]) => buildNotificationFunnel(rows, outs)).catch(() => null),
+    loadPlanStats(range.fromDt, range.toExclusiveDt).then((stats) => stats.funnel).catch(() => null),
+    loadPlanStats(range.prevFromDt, range.prevToExclusiveDt, { previous: true }).then((stats) => stats.funnel).catch(() => null),
   ]);
   const attention = [
     ...buildAttention({
@@ -1021,7 +1014,7 @@ export async function getNotificationAnalytics(query) {
   const key = rangeKey('notifications', range);
   return cacheWrap(key, async () => {
 
-  const [events, prevEvents, campaigns, decisions, prevDecisions, checkins, outcomes, prevOutcomes] = await Promise.all([
+  const [events, prevEvents, campaigns, stats, prevStats, checkins, outcomes] = await Promise.all([
     prisma.pushEvent.findMany({
       where: { createdAt: createdIn(range) },
       select: { key: true, createdAt: true, source: true },
@@ -1031,64 +1024,19 @@ export async function getNotificationAnalytics(query) {
       where: { sentAt: createdIn(range) },
       select: { sentCount: true, failedCount: true, sentAt: true, status: true },
     }),
-    loadDecisionRows(range.fromDt, range.toExclusiveDt),
-    loadDecisionRows(range.prevFromDt, range.prevToExclusiveDt),
+    loadPlanStats(range.fromDt, range.toExclusiveDt),
+    loadPlanStats(range.prevFromDt, range.prevToExclusiveDt, { previous: true }),
     loadAppActivityRows(range.fromYmd, range.toYmd),
     loadOutcomeRows(range.fromDt, range.toExclusiveDt),
-    loadOutcomeRows(range.prevFromDt, range.prevToExclusiveDt),
   ]);
 
   const deliveredEvents = events.length + campaigns.reduce((sum, c) => sum + (c.sentCount || 0), 0);
-  const funnel = buildNotificationFunnel(decisions, outcomes);
-  const { plans } = collapseDecisionPlans(decisions);
-  await yieldToLoop();
-  const prevPlans = collapseDecisionPlans(prevDecisions).plans;
-
-  // Outcomes of plans made before the period (a re-engagement planned two weeks ago firing today).
-  const knownIds = new Set(decisions.map((row) => row.decisionId));
-  const outsideIds = [...new Set(outcomes.map((row) => row.decisionId).filter((id) => id && !knownIds.has(id)))];
-  const outside = outsideIds.length ? await loadDecisionRowsByIds(outsideIds).catch(() => []) : [];
-  const familyById = new Map(outside.map((row) => [row.decisionId, row.family]));
-
-  const reasons = new Map();
-  const latestFatigue = new Map();
-  for (const row of plans) {
-    if ((row.result === 'BLOCKED' || row.result === 'CANCELLED') && !row.superseded) {
-      const reason = row.reason || 'unspecified';
-      reasons.set(reason, (reasons.get(reason) || 0) + 1);
-    }
-  }
-  for (const row of decisions) {
-    if (row.selectedFrequency || row.baseDailyCap != null) {
-      const prev = latestFatigue.get(row.userId);
-      if (!prev || new Date(row.createdAt) >= prev.at) {
-        latestFatigue.set(row.userId, {
-          at: new Date(row.createdAt),
-          selectedFrequency: row.selectedFrequency,
-          baseDailyCap: row.baseDailyCap,
-          adaptiveDailyCap: row.adaptiveDailyCap,
-          ewma: row.ewma,
-        });
-      }
-    }
-  }
-
-  const types = buildTypePerformance(decisions, outcomes, prevDecisions, prevOutcomes, { familyById }).types;
-
-  const fatigueDist = { normal: 0, reduced: 0, highlyReduced: 0, unknown: 0 };
-  for (const row of latestFatigue.values()) {
-    const base = Number(row.baseDailyCap);
-    const adaptive = Number(row.adaptiveDailyCap);
-    if (!Number.isFinite(base) || !Number.isFinite(adaptive)) {
-      fatigueDist.unknown += 1;
-    } else if (adaptive >= base) {
-      fatigueDist.normal += 1;
-    } else if (adaptive <= Math.max(1, Math.floor(base / 3))) {
-      fatigueDist.highlyReduced += 1;
-    } else {
-      fatigueDist.reduced += 1;
-    }
-  }
+  // Plans, outcomes of plans made before the period (a re-engagement planned two weeks ago firing
+  // today), skip reasons and fatigue are counted in Postgres; see loadBrainPlanStats.
+  const { funnel, reasons } = stats;
+  const types = typeRowsPayload(stats.types, prevStats.types);
+  const planDays = (kind) => stats.days.filter((row) => row.kind === kind);
+  const byDay = (rows) => fillDaySeries(range.days, rows, (row) => row.day, (row) => row.count);
 
   const hours = Array.from({ length: 24 }, () => ({ hour: 0, appOpens: 0, notifications: 0 }));
   hours.forEach((row, i) => { row.hour = i; });
@@ -1113,7 +1061,7 @@ export async function getNotificationAnalytics(query) {
     ...(await meta(range)),
     kpis: {
       delivered: { value: deliveredEvents, delta: deltaSafe(deliveredEvents, prevEvents) },
-      evaluated: { value: funnel.evaluated, delta: deltaSafe(funnel.evaluated, prevPlans.length) },
+      evaluated: { value: funnel.evaluated, delta: deltaSafe(funnel.evaluated, prevStats.funnel.evaluated) },
       suppressed: { value: funnel.suppressed },
       cancelled: { value: funnel.cancelled },
       openRate: funnel.rates.open,
@@ -1142,39 +1090,25 @@ export async function getNotificationAnalytics(query) {
         outcomes.filter((row) => row.outcome === 'actioned'),
         (row) => createdAtToTbilisiYmd(row.occurredAt),
       ),
-      suppressed: fillDaySeries(
-        range.days,
-        plans.filter((d) => d.result === 'BLOCKED'),
-        (row) => createdAtToTbilisiYmd(row.createdAt),
-      ),
-      cancelled: fillDaySeries(
-        range.days,
-        [
-          ...plans.filter((d) => d.result === 'CANCELLED').map((d) => ({ at: d.syncedAt || d.createdAt })),
-          ...outcomes.filter((row) => row.outcome === 'cancelled_by_revalidation').map((row) => ({ at: row.occurredAt })),
-        ],
-        (row) => createdAtToTbilisiYmd(row.at),
-      ),
-      planned: fillDaySeries(
-        range.days,
-        plans.filter((d) => (d.result === 'SEND' || d.result === 'CANCELLED') && !d.superseded),
-        (row) => createdAtToTbilisiYmd(row.createdAt),
-      ),
+      suppressed: byDay(planDays('suppressed')),
+      cancelled: byDay([
+        ...planDays('cancelled'),
+        ...outcomes
+          .filter((row) => row.outcome === 'cancelled_by_revalidation')
+          .map((row) => ({ day: createdAtToTbilisiYmd(row.occurredAt), count: 1 })),
+      ]),
+      planned: byDay(planDays('planned')),
     },
     highlights: {
       topFamily: types.filter((row) => (row.delivered || 0) >= 5).sort((a, b) => (b.actionRate?.value ?? -1) - (a.actionRate?.value ?? -1))[0] || null,
       mostSuppressed: types.filter((row) => (row.evaluated || 0) >= 5).sort((a, b) => (b.suppressed || 0) - (a.suppressed || 0))[0] || null,
-      topReason: [...reasons.entries()].sort((a, b) => b[1] - a[1])[0]
-        ? { reason: [...reasons.entries()].sort((a, b) => b[1] - a[1])[0][0], count: [...reasons.entries()].sort((a, b) => b[1] - a[1])[0][1] }
-        : null,
+      topReason: reasons[0] ? { reason: reasons[0].reason, count: reasons[0].count } : null,
     },
     types,
-    suppressions: [...reasons.entries()]
-      .map(([reason, count]) => ({ reason, count }))
-      .sort((a, b) => b.count - a.count),
+    suppressions: reasons.map(({ reason, count }) => ({ reason, count })),
     fatigue: {
-      sampleUsers: latestFatigue.size,
-      distribution: fatigueDist,
+      sampleUsers: stats.fatigue.sampleUsers,
+      distribution: stats.fatigue.distribution,
       note: 'selectedFrequency არის მომხმარებლის არჩევანი. adaptiveDailyCap არის Brain EWMA. ეს ერთი და იგივე არ არის.',
     },
     engagement: {
@@ -1184,8 +1118,8 @@ export async function getNotificationAnalytics(query) {
       source: 'დღის პირველი გახსნა (AppActivity.firstAt), თბილისის დროით.',
       preferredWindow: null,
     },
-    syncedDecisions: decisions.length,
-    plansCount: plans.length,
+    syncedDecisions: funnel.rawRows,
+    plansCount: funnel.evaluated,
     syncedOutcomes: outcomes.length,
   });
   });
