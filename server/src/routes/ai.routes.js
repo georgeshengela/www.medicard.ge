@@ -1,4 +1,4 @@
-import { bindAiLanguage, currentAiLanguage, requireAiConsent } from '../lib/aiConsent.js';
+import { bindAiLanguage, currentAiLanguage, rebindAiAccount, requireAiConsent } from '../lib/aiConsent.js';
 import { t } from '../lib/i18n.js';
 import { Router } from 'express';
 import { FREE_CONSUMER_RELEASE } from '../lib/consumerAccess.js';
@@ -439,6 +439,7 @@ aiRouter.post(
   '/analyze-image',
   enforceAiQuota,
   upload.single('file'),
+  rebindAiAccount,
   asyncHandler(async (req, res) => {
     if (!req.file) {
       return res.status(400).json({ error: t(req, 'ფაილი არ არის ატვირთული.', 'No file was uploaded.') });
@@ -577,6 +578,7 @@ function isLabAppend(body) {
 aiRouter.post(
   '/extract-lab',
   uploadMany.array('files', 8),
+  rebindAiAccount,
   (req, res, next) => {
     req.labAppend = isLabAppend(req.body);
     if (req.labAppend && !FREE_CONSUMER_RELEASE) return next();

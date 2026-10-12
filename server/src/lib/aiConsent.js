@@ -21,6 +21,16 @@ const context = new AsyncLocalStorage();
 export const withAiAccount = (userId, work, lang) =>
   context.run({ userId, lang: parseLang(lang) ?? context.getStore()?.lang ?? null }, work);
 export const currentAiAccount = () => context.getStore()?.userId || null;
+/**
+ * Mount right after a multer upload on any route that calls AI. Multer hands the request on from a
+ * stream event, outside the context requireAuth bound, so the consent check inside consentedAiFetch saw
+ * no account, refused, and the SDK reported „Connection error.“ — every MEDISCAN / lab photo read failed
+ * (found 2026-10-12, broken at least since 2026-10-05).
+ */
+export function rebindAiAccount(req, _res, next) {
+  if (!req.user?.id || currentAiAccount() === req.user.id) return next();
+  return withAiAccount(req.user.id, () => next(), req.lang);
+}
 /** 'ka' | 'en' for the current AI request (Georgian when unknown). */
 export const currentAiLanguage = () => context.getStore()?.lang || 'ka';
 /** True when the request language was explicitly bound (header / stored account language). */

@@ -237,7 +237,8 @@ export async function describeImage({ buffer, mimeType, kind, patientContext, mo
         } catch (error) {
           failures.push(error);
           errors.push(`openrouter:${openRouterModel}:${effort}: ${error?.message ?? error}`);
-          console.warn('[medicard] vision pass failed', openRouterModel, effort, error?.message ?? error);
+          // The SDK reports any fetch refusal as „Connection error.“; the real reason is in `cause`.
+          console.warn('[medicard] vision pass failed', openRouterModel, effort, error?.message ?? error, error?.cause?.message ?? '');
         }
       }
     }

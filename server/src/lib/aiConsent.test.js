@@ -74,3 +74,28 @@ test('the AI context carries the reading language', async () => {
   assert.equal(await withAiAccount('A', async () => currentAiLanguage()), 'ka');
   assert.equal(currentAiLanguage(), 'ka');
 });
+test('an AI call after a multer upload still sees the account and language (MEDISCAN „Connection error.“, 2026-10-12)', async () => {
+  const { default: express } = await import('express');
+  const { default: multer } = await import('multer');
+  const { currentAiLanguage, rebindAiAccount } = await import('./aiConsent.js');
+  const upload = multer({ storage: multer.memoryStorage() });
+  const app = express();
+  // What requireAuth does: the rest of the chain runs inside the account's AI context.
+  app.use((req, _res, next) => { req.user = { id: 'A' }; req.lang = 'en'; withAiAccount('A', () => next(), 'en'); });
+  const seen = (req, res) => res.json({ account: currentAiAccount(), lang: currentAiLanguage() });
+  app.post('/lost', upload.single('file'), seen);
+  app.post('/kept', upload.single('file'), rebindAiAccount, seen);
+  const server = await new Promise((resolve) => { const s = app.listen(0, '127.0.0.1', () => resolve(s)); });
+  try {
+    const post = async (path) => {
+      const body = new FormData();
+      body.append('file', new Blob([Buffer.alloc(64 * 1024, 1)], { type: 'image/jpeg' }), 'lab.jpg');
+      return (await fetch(`http://127.0.0.1:${server.address().port}${path}`, { method: 'POST', body })).json();
+    };
+    // Documents why the middleware exists: multer resumes the chain outside the context.
+    assert.deepEqual(await post('/lost'), { account: null, lang: 'ka' });
+    assert.deepEqual(await post('/kept'), { account: 'A', lang: 'en' });
+  } finally {
+    server.close();
+  }
+});
