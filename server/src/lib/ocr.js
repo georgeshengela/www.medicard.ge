@@ -1,5 +1,6 @@
 import { createRequire } from 'node:module';
 import { createWorker } from 'tesseract.js';
+import { stripNul } from './dbText.js';
 
 const require = createRequire(import.meta.url);
 // Import the library entry point directly: pdf-parse's index.js runs a debug harness
@@ -64,7 +65,7 @@ export async function extractPdfText(buffer) {
 }
 
 function normalise(text) {
-  return text
+  return stripNul(text)
     .replace(/\r\n/g, '\n')
     .replace(/[ \t]+/g, ' ')
     .replace(/\n{3,}/g, '\n\n')

@@ -5,6 +5,7 @@ import { extractLabFromText, isCredibleLabRow } from './labExtract.js';
 import { mediaPart, VISION_EFFORTS, VISION_MAX_TOKENS } from './vision.js';
 import { reasoningHeadroom, withReasoningHeadroom } from './reasoningBudget.js';
 import { consentedAiFetch } from './consentedAiFetch.js';
+import { stripNul } from './dbText.js';
 
 const row = (key, value = 5) => ({ key, nameKa: key, nameEn: key, value, display: String(value), unit: 'u', refLow: 1, refHigh: 9, flag: 'N' });
 const panel = (id, date, recordIds, keys, extra = {}) => ({ id, date, createdAt: `${date}T00:00:00.000Z`, recordIds, analysis: '', parameters: keys.map((k) => row(k)), ...extra });
@@ -214,5 +215,16 @@ describe('MEDISCAN F4: a reader that is down never blames the photo', async () =
     assert.doesNotMatch(down.messageEn, /photo|retake/i);
     // A PDF the readers did look at keeps the old copy.
     assert.equal(visionFailedError([new Error('empty response')], null, { document: true }).status, 502);
+  });
+});
+
+describe('lab text with a NUL character (2026-10-13: extract-lab failed with 22021)', () => {
+  it('drops NUL before saving and keeps the rest of the text and its values', () => {
+    const pdfText = 'ჰემოგლობინი\u0000 135 g/L 120 - 160\nWBC 6.2 10^9/L 4.0 - 9.0';
+    const clean = stripNul(pdfText);
+    assert.equal(clean.includes('\u0000'), false);
+    assert.equal(clean, 'ჰემოგლობინი 135 g/L 120 - 160\nWBC 6.2 10^9/L 4.0 - 9.0');
+    assert.equal(stripNul('no nul here'), 'no nul here');
+    assert.equal(stripNul(null), null);
   });
 });

@@ -7,6 +7,7 @@ import { VISION_PROMPTS } from './prompts.js';
 import { AiEngineError } from './evidencemd.js';
 import { openRouterFallbackModels } from './aiEngine.js';
 import { thinksByDefault } from './reasoningBudget.js';
+import { stripNul } from './dbText.js';
 
 /**
  * Vision pre-processing layer.
@@ -290,11 +291,13 @@ async function describeWithClaude({ base64, mimeType, prompt }) {
   });
 
   assertVisionCompletion(response, 'anthropic');
-  const notes = response.content
-    .filter((block) => block.type === 'text')
-    .map((block) => block.text)
-    .join('\n')
-    .trim();
+  const notes = stripNul(
+    response.content
+      .filter((block) => block.type === 'text')
+      .map((block) => block.text)
+      .join('\n')
+      .trim(),
+  );
 
   if (!notes) throw new Error('empty response');
   return { notes, provider: 'anthropic', model: response.model ?? env.ANTHROPIC_MODEL };
@@ -342,7 +345,7 @@ async function describeWithOpenAiCompatible({
   }, { headers: { [AI_LANGUAGE_HEADER]: 'off' } });
 
   assertVisionCompletion(response, provider);
-  const notes = response.choices?.[0]?.message?.content?.trim();
+  const notes = stripNul(response.choices?.[0]?.message?.content?.trim());
   if (!notes) throw new Error('empty response');
   return { notes, provider, model: response.model ?? model };
 }
