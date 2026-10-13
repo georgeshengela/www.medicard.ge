@@ -47,8 +47,8 @@ Tests in `horoscope.test.js` (Placidus self-check, ascendant on the horizon, tz 
 App `/api/horoscope` (`requireFeature('horoscope')`, Oracle routes also `horoscopeOracle`): `/` hub, `/home`,
 `/sign/:sign`, `/chart`, `PUT /profile` (birth time/place, Home card), `/places` (Open-Meteo geocoding, name only),
 `/sky?month=`, `/compat`, `/numerology`, `/chinese`, `/tarot`, `/dreams[?q]`, `/dreams/:id`, `/oracle`,
-`POST /oracle/query` (`requireAiConsent` + `enforceAiQuota` + `runTrackedAi` mode `HOROSCOPE`, SSE, Gemini Flash
-on the approved Vertex route; daily limit from admin), `DELETE /oracle/:id`. AI disclosure has a MEDIHOROSCOPE line
+`POST /oracle/query` (`requireAiConsent` + `enforceAiQuota` + `runTrackedAi` mode `HOROSCOPE`, SSE, Claude Sonnet 5.5
+on Google Vertex — the approved zero-retention route added to aiDisclosure.json routing; daily limit from admin), `DELETE /oracle/:id`. AI disclosure has a MEDIHOROSCOPE line
 (2026-10-13 — everyone is asked to re-confirm once). Privacy §18.
 
 Admin `#/horoscope` (`v4/modules/horoscope.js`, `/api/admin/horoscope`, HOROSCOPE_VIEW / HOROSCOPE_MANAGE):

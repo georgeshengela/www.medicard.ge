@@ -22,7 +22,7 @@
     },
     {
       "name": "Google — Google Cloud Vertex AI",
-      "role": "Gemini პასუხები, ფოტოებისა და ტექსტის დამუშავება და ხმოვანი ჩანაწერის ტექსტად გარდაქმნა.",
+      "role": "Gemini-ის და Claude-ის პასუხები (Claude — Anthropic-ის მოდელი Google Cloud-ზე), ფოტოებისა და ტექსტის დამუშავება და ხმოვანი ჩანაწერის ტექსტად გარდაქმნა.",
       "url": "https://cloud.google.com/terms/cloud-privacy-notice"
     },
     {
@@ -50,6 +50,9 @@
     ],
     "openai/gpt-4o": [
       "azure"
+    ],
+    "anthropic/claude-sonnet-5.5": [
+      "google-vertex/global"
     ]
   },
   "privacyUrl": "https://medicard.ge/privacy.html",
@@ -89,7 +92,7 @@
       },
       {
         "name": "Google — Google Cloud Vertex AI",
-        "role": "Gemini replies, photo and text processing, and speech-to-text for recorded audio.",
+        "role": "Gemini and Claude replies (Claude is Anthropic's model, run on Google Cloud), photo and text processing, and speech-to-text for recorded audio.",
         "url": "https://cloud.google.com/terms/cloud-privacy-notice"
       },
       {

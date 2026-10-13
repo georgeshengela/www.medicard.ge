@@ -1,7 +1,7 @@
 // MEDIHOROSCOPE Oracle: the module's own assistant (Medi's character in a witch hat), a mysterious but clear
 // fortune-teller who reads the person's real chart, today's sky, tarot draws and dreams. Personal data goes
 // out only through the AI-consent path (route: requireAiConsent → consentedAiFetch), on an approved route.
-import { askOpenRouterPrepared, hasOpenRouter, OPENROUTER_MODELS } from '../aiEngine.js';
+import { askOpenRouterPrepared, hasOpenRouter } from '../aiEngine.js';
 import { AiEngineError } from '../evidencemd.js';
 import { wrapUntrustedBlock } from '../petsAiContext.js';
 import { SIGN_INFO, PLANET_NAMES, ELEMENT_NAMES, CHINESE_NAMES, MOON_PHASE_NAMES } from './signs.js';
@@ -11,7 +11,8 @@ import { tarotDraw, tarotRoman } from './catalog.js';
 export const ORACLE_MAX_TOKENS = 1600;
 export const ORACLE_TEMPERATURE = 0.85;
 export const ORACLE_HISTORY_TURNS = 10;
-export const ORACLE_MODEL = OPENROUTER_MODELS.gemini_flash;
+// Claude Sonnet 5.5 (the owner's pick for Georgian) on Google Vertex — the approved, zero-retention route in aiDisclosure.json.
+export const ORACLE_MODEL = 'anthropic/claude-sonnet-5.5';
 
 export function oracleSystemPrompt(name = { ka: 'ორაკული', en: 'Oracle' }) {
   return `
