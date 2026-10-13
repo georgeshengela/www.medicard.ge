@@ -36,12 +36,13 @@ export function CycleTestResultRow({ value, onChange, accent }: Props) {
               justifyContent: 'center',
               backgroundColor: on ? color : c.cardSoft,
               borderWidth: 1,
-              borderColor: on ? c.ink : c.border,
+              borderColor: on ? color : c.border,
             }}
           >
             <Text
               style={{
-                color: on ? c.onPrimary : c.ink,
+                // Dark mode accents are light (rose #FF8FA8, turquoise #5ED6D0): white on them was unreadable.
+                color: on ? c.onPeriod : c.ink,
                 fontFamily: 'NotoSansGeorgian_700Bold',
                 fontSize: 13,
               }}

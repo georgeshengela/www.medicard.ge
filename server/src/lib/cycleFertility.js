@@ -1,4 +1,16 @@
-import { formatDateEn } from './cycleHonesty.js';
+import { formatDateEn, formatDateKa } from './cycleHonesty.js';
+
+/**
+ * '2026-10-10' → '10 ოქტომბერს' (Georgian dative day + month, for „… აღრიცხე 10 ოქტომბერს“): the
+ * nominative -ი drops before -ს. User-facing copy never shows an ISO key.
+ */
+export function dayMonthDativeKa(key) {
+  const full = formatDateKa(key);
+  const m = /^(\d{1,2}) (\S+) \d{4}$/.exec(String(full));
+  if (!m) return full;
+  const month = m[2].endsWith('ი') ? m[2].slice(0, -1) : m[2];
+  return `${m[1]} ${month}ს`;
+}
 
 /**
  * TTC fertility observations. Does not change period / ovulation / fertile-window math.
@@ -134,7 +146,7 @@ export function buildTtcObservationCards({ logs = [], today, lastPeriodStart, la
       title: en ? 'Positive OPK logged' : 'აღრიცხული დადებითი OPK',
       body: en
         ? `You logged a positive ovulation test on ${formatDateEn(recentPositive.date)}. This does not confirm that ovulation happened.`
-        : `დადებითი ოვულაციის ტესტი აღრიცხე ${recentPositive.date}-ზე. ეს არ ადასტურებს, რომ ოვულაცია მოხდა.`,
+        : `დადებითი ოვულაციის ტესტი აღრიცხე ${dayMonthDativeKa(recentPositive.date)}. ეს არ ადასტურებს, რომ ოვულაცია მოხდა.`,
       action: null,
     });
   }

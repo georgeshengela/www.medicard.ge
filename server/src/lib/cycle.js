@@ -637,23 +637,50 @@ export function stampCalendarPhases(calendar, {
  * Logged bleeding wins — except when the stored date is newer than every logged bleed day: that is a
  * period the person told us about ("started on the 20th") without logging it day by day, and it must
  * not be overridden by an older logged period (2026-09-29 audit).
+ * And except when the stored date is a few days before the latest logged run (she gave the start in
+ * setup — „10 ოქტომბერს დაიწყო“ — and logged from the 12th): the run is the same period, it began on the
+ * date she gave. `context.previousRunEnd` (the run before the latest) and `context.logs` (an explicit
+ * „none“ in between means it ended) keep an older period's date from being pulled forward.
  */
-export function resolveLastPeriodStart(stored, inferredStart, lastBleedDay = null) {
+export function resolveLastPeriodStart(stored, inferredStart, lastBleedDay = null, context = {}) {
   if (!inferredStart) return stored || null;
   // A real new period: after every logged bleed day and at least a short cycle after the logged start.
   if (stored && lastBleedDay && stored > lastBleedDay && daysBetween(inferredStart, stored) >= MIN_NEW_PERIOD_GAP) {
     return stored;
   }
+  if (storedStartLeadsRun(stored, inferredStart, context)) return stored;
   return inferredStart;
 }
 
 /** Shortest start-to-start gap that can be a new period (matches the 18-day floor used for averages). */
 const MIN_NEW_PERIOD_GAP = 18;
 
+/**
+ * The stored start opens the latest logged run: before its first logged day, within one period's span
+ * (the same 10-day bound that merges a run), after the previous run ended and with no „none“ between.
+ */
+function storedStartLeadsRun(stored, runStart, { previousRunEnd = null, logs = null } = {}) {
+  if (!stored || !runStart || stored >= runStart) return false;
+  if (daysBetween(stored, runStart) + 1 > PERIOD_MERGE_MAX_SPAN_DAYS) return false;
+  if (previousRunEnd && stored <= previousRunEnd) return false;
+  if (Array.isArray(logs) && logs.length) {
+    const byDate = new Map(logs.map((log) => [toDateKey(log.date), log]));
+    if (classifyCycleFlowDay(byDate.get(stored)?.flow) === 'none') return false;
+    if (interiorHasExplicitNone(stored, runStart, byDate)) return false;
+  }
+  return true;
+}
+
 /** The last logged bleed day (end of the latest period run), or null. */
 export function lastLoggedBleedDay(inferred) {
   const ranges = inferred?.periodRanges;
   return ranges?.length ? ranges[ranges.length - 1].end : null;
+}
+
+/** The end of the logged run before the latest one, or null (`resolveLastPeriodStart` context). */
+export function previousLoggedRunEnd(inferred) {
+  const ranges = inferred?.periodRanges;
+  return ranges?.length >= 2 ? ranges[ranges.length - 2].end : null;
 }
 
 /**
@@ -673,7 +700,10 @@ export function pickLastPeriodStart(
     current &&
     touched.includes(current) &&
     !logs.some((l) => toDateKey(l.date) === current && PERIOD_FLOWS.includes(l.flow));
-  return resolveLastPeriodStart(stale ? null : current, inferred.lastPeriodStart, lastLoggedBleedDay(inferred));
+  return resolveLastPeriodStart(stale ? null : current, inferred.lastPeriodStart, lastLoggedBleedDay(inferred), {
+    previousRunEnd: previousLoggedRunEnd(inferred),
+    logs,
+  });
 }
 
 /**
@@ -1175,19 +1205,39 @@ export function detectLatePeriod({
   return empty;
 }
 
+/**
+ * Consecutive calendar days of logged heavy flow in the current run — the newest heavy day must be today
+ * or within the 2-day logging gap the period merge allows. Several separate heavy runs never add up, and
+ * a heavy run that ended weeks ago no longer counts. Rows without a flow (mood-only) are ignored.
+ */
+export function heavyBleedingDays(logs, today = todayInTimeZone()) {
+  const flowOn = new Map();
+  for (const log of logs || []) {
+    const date = toDateKey(log?.date);
+    if (!date || date > today || log.flow == null) continue;
+    flowOn.set(date, log.flow);
+  }
+  const days = [...flowOn.keys()].sort().reverse();
+  const newest = days[0];
+  if (!newest || flowOn.get(newest) !== 'heavy') return 0;
+  if (daysBetween(newest, today) > PERIOD_MERGE_MAX_INTERIOR_DAYS) return 0;
+  let count = 0;
+  let expected = newest;
+  for (const date of days) {
+    if (date !== expected || flowOn.get(date) !== 'heavy') break;
+    count += 1;
+    expected = addDays(date, -1);
+  }
+  return count;
+}
+
 export function buildCycleAlerts({ profile, logs, predictions, inferred, today, forecastEligibility, lang = 'ka' }) {
   const en = lang === 'en';
   const alerts = [];
   const todayKey = today || todayInTimeZone();
   const conditions = parseConditions(profile);
 
-  const sorted = [...logs].sort((a, b) => b.date.localeCompare(a.date));
-  let heavyRun = 0;
-  for (const log of sorted) {
-    if (log.flow === 'heavy') heavyRun += 1;
-    else break;
-  }
-  if (heavyRun >= 8) {
+  if (heavyBleedingDays(logs, todayKey) >= 8) {
     alerts.push({
       level: 'urgent',
       messageKa: en

@@ -620,6 +620,8 @@ async function deliverCycleReminder(data: Record<string, unknown>): Promise<{
         mode: bundle.profile.mode,
         privacyEnabled: Boolean(bundle.profile.privacyEnabled),
         nextPeriodStart: bundle.predictions.nextPeriodStart,
+        // Variable cycles plan „მალე“ / „გვიანდება“ from the window: without it they read as stale here.
+        nextPeriodRange: bundle.predictions.nextPeriodRange ?? null,
         ovulationDate: bundle.predictions.ovulationDate,
         fertileWindowStart: bundle.predictions.fertileWindow?.start ?? null,
         showFertilityMarkers: gates.showFertilityMarkers,

@@ -1,11 +1,12 @@
 import { CyclePressable as Pressable } from '@/components/cycle/CyclePressable';
 import { ChatScreenShell, ChatFormScroll } from '@/components/chat/ChatScreenShell';
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
   Text,
   useWindowDimensions,
   View} from 'react-native';
+import * as Haptics from 'expo-haptics';
 import { X, CalendarDays, Check } from 'lucide-react-native';
 import { CyclePrimaryButton } from './CycleUI';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -106,16 +107,42 @@ export function CycleQuickLogSheet({
   const { caps, hydrated, saving, saveError } = q;
   // Another day's sheet is titled with that day, never "Log today" (CYC-12).
   const titleDate = quickLogTitleDate(date, q.today);
+  /** Closing or „სრული აღრიცხვა“ with unsaved picks asks first (the day sheet's guard), never drops them. */
+  const [pending, setPending] = useState<'close' | 'full' | null>(null);
+  useEffect(() => {
+    setPending(null);
+  }, [visible, date]);
+
+  const run = (next: 'close' | 'full') => {
+    setPending(null);
+    if (next === 'full' && onOpenFull) onOpenFull();
+    else onClose();
+  };
+  const guard = (next: 'close' | 'full') => {
+    if (q.dirty && !q.saving) {
+      Haptics.selectionAsync().catch(() => undefined);
+      setPending(next);
+      return;
+    }
+    run(next);
+  };
+  const close = () => guard('close');
 
   const save = async (markStart?: boolean) => {
-    if (await q.save(markStart)) onClose();
+    if (!(await q.save(markStart))) return;
+    if (pending) run(pending);
+    else onClose();
+  };
+  const discard = () => {
+    q.reset();
+    if (pending) run(pending);
   };
 
   return (
-    <Modal visible={visible} {...APP_MODAL_PROPS} onRequestClose={onClose}>
+    <Modal visible={visible} {...APP_MODAL_PROPS} onRequestClose={close}>
       <ChatScreenShell header={null} style={{ backgroundColor: c.overlay }}>
         <View style={{ flex: 1, minHeight: 0, justifyContent: 'flex-end' }}>
-          <Pressable accessibilityRole="button" accessibilityLabel={ka.common.close} onPress={onClose} style={{ position: 'absolute', inset: 0 }} />
+          <Pressable accessibilityRole="button" accessibilityLabel={ka.common.close} onPress={close} style={{ position: 'absolute', inset: 0 }} />
           <View role="dialog" aria-modal={true} accessibilityLabel={ka.cycle.quickLogTitle} accessibilityViewIsModal
             style={{
               backgroundColor: c.card,
@@ -137,7 +164,7 @@ export function CycleQuickLogSheet({
               <Text style={{ flex:1, color: c.ink, fontSize: 18, lineHeight:26, fontFamily: 'NotoSansGeorgian_600SemiBold' }}>
                 {titleDate ?? ka.cycle.logTodayCta}
               </Text>
-              <Pressable onPress={onClose} disabled={saving} accessibilityRole="button" accessibilityLabel={ka.common.close}
+              <Pressable onPress={close} disabled={saving} accessibilityRole="button" accessibilityLabel={ka.common.close}
                 style={{width:44,height:44,borderRadius:22,backgroundColor:c.cardSoft,alignItems:'center',justifyContent:'center'}}><X size={20} color={c.muted}/></Pressable>
               </View>
               {!hydrated || !caps ? (
@@ -174,10 +201,28 @@ export function CycleQuickLogSheet({
               </>
               )}
             </ChatFormScroll>
+            {/* Unsaved picks: an inline question, never a system alert (same as the day sheet). */}
+            {pending ? (
+              <View style={{ marginHorizontal: 16, marginBottom: 8, marginTop: 8, borderRadius: 16, borderWidth: 1, padding: 12, gap: 10, backgroundColor: c.cardSoft, borderColor: c.border }}>
+                <Text style={{ color: c.ink, fontSize: 13.5, lineHeight: 19, fontFamily: 'NotoSansGeorgian_600SemiBold' }}>
+                  {tx('ცვლილებები შეუნახავია — შევინახო?', 'Unsaved changes — save them?')}
+                </Text>
+                <View style={{ flexDirection: 'row', gap: 8 }}>
+                  <Pressable accessibilityRole="button" accessibilityLabel={tx('უარყოფა', 'Discard')} onPress={discard}
+                    style={{ flex: 1, minHeight: 42, borderRadius: 21, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 12, backgroundColor: c.card }}>
+                    <Text style={{ color: c.ink, fontSize: 13, fontFamily: 'NotoSansGeorgian_700Bold' }}>{tx('უარყოფა', 'Discard')}</Text>
+                  </Pressable>
+                  <Pressable accessibilityRole="button" accessibilityLabel={ka.cycle.saveLog} onPress={() => void save()} disabled={saving}
+                    style={{ flex: 1, minHeight: 42, borderRadius: 21, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 12, backgroundColor: c.cta }}>
+                    <Text style={{ color: c.onPrimary, fontSize: 13, fontFamily: 'NotoSansGeorgian_700Bold' }}>{ka.cycle.saveLog}</Text>
+                  </Pressable>
+                </View>
+              </View>
+            ) : null}
             {hydrated && caps ? <View style={{paddingHorizontal:16,paddingTop:10,paddingBottom:Math.max(insets.bottom,8),borderTopWidth:1,borderColor:c.border,backgroundColor:c.card,gap:0}}>
               <CyclePrimaryButton label={isPeriodStart && caps.showClassicCycleOverview ? ka.cycle.quickLogStart : ka.cycle.saveLog}
                 loading={saving} onPress={() => void save(isPeriodStart)} icon={Check}/>
-              {onOpenFull ? <Pressable onPress={onOpenFull} disabled={saving} accessibilityRole="button" accessibilityLabel={ka.cycle.fullLog}
+              {onOpenFull ? <Pressable onPress={() => guard('full')} disabled={saving} accessibilityRole="button" accessibilityLabel={ka.cycle.fullLog}
                 style={{minHeight:44,alignItems:'center',justifyContent:'center'}}>
                 <Text style={{color:c.brand,fontSize:13,lineHeight:20,fontFamily:'NotoSansGeorgian_600SemiBold'}}>{ka.cycle.fullLog}</Text>
               </Pressable> : null}

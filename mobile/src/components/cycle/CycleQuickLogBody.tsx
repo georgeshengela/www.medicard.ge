@@ -138,7 +138,7 @@ export function CycleQuickLogBody({
                   {ka.cycle.sexSectionTitle}
                   {form.sexual === true ? <Text style={{ color: c.period }}>{` · ${tx('აღრიცხულია', 'logged')}`}</Text> : null}
                 </Text>
-                <Text numberOfLines={1} style={[s.lockHint, { color: c.mutedSoft }]}>
+                <Text style={[s.lockHint, { color: c.mutedSoft }]}>
                   {ka.cycle.sexPrivateHint}
                 </Text>
               </View>
@@ -335,8 +335,9 @@ function Group({ title, hint, children }: { title: string; hint?: string; childr
         <Text accessibilityRole="header" style={[s.groupTitle, { color: c.ink }]}>
           {title}
         </Text>
+        {/* Hints wrap (Georgian is long) instead of being cut mid-word. */}
         {hint ? (
-          <Text numberOfLines={1} style={[s.groupHint, { color: c.mutedSoft }]}>
+          <Text style={[s.groupHint, { color: c.mutedSoft }]}>
             {hint}
           </Text>
         ) : null}
@@ -351,7 +352,7 @@ const s = StyleSheet.create({
   group: { gap: 10 },
   groupHead: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', gap: 10 },
   groupTitle: { fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 14, lineHeight: 20 },
-  groupHint: { fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 12, lineHeight: 16, flexShrink: 1 },
+  groupHint: { fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 12, lineHeight: 16, flexShrink: 1, textAlign: 'right' },
   lockRow: { flexDirection: 'row', alignItems: 'center', gap: 12, borderRadius: 16, paddingVertical: 10, paddingHorizontal: 12 },
   lockIcon: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
   lockTitle: { fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 14, lineHeight: 20 },

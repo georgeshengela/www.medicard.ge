@@ -9,6 +9,7 @@ import {
   toDateKey,
   resolveLastPeriodStart,
   lastLoggedBleedDay,
+  previousLoggedRunEnd,
 } from './cycle.js';
 import {
   CYCLE_SEXUAL_SYMPTOM_KEYS,
@@ -236,6 +237,7 @@ export function buildPartnerPayload({ profile, logs, permissions, today = todayI
     toDateKey(profile.lastPeriodStart),
     inferred.lastPeriodStart,
     lastLoggedBleedDay(inferred),
+    { previousRunEnd: previousLoggedRunEnd(inferred), logs },
   );
   const predictions = buildPredictions({
     lastPeriodStart,

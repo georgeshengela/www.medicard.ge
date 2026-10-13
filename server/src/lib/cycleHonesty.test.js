@@ -5,6 +5,7 @@ import {
   buildCycleAlerts,
   buildLocalInsights,
   buildPredictions,
+  heavyBleedingDays,
 } from './cycle.js';
 import {
   CYCLE_AI_HONESTY_RULES,
@@ -319,5 +320,28 @@ describe('server cycle copy wording (W2-12a)', () => {
     assert.ok(heavy);
     assert.match(heavy.messageKa, /სისხლდენა/);
     assert.doesNotMatch(heavy.messageKa, /გამონადენ/);
+  });
+
+  it('the 8+ heavy-bleeding alert counts consecutive days of the current run, not heavy rows', () => {
+    const profile = { mode: 'TRACK_PERIOD', isIrregular: false, conditions: [] };
+    const alertFor = (logs, today) =>
+      buildCycleAlerts({ profile, logs, predictions: {}, inferred: { periodStarts: [] }, today }).some((a) => a.level === 'urgent');
+    const heavy = (date) => ({ date, flow: 'heavy' });
+    // Eight heavy rows spread over three periods: no run of 8 days.
+    const spread = ['2026-01-02', '2026-01-03', '2026-01-04', '2026-02-01', '2026-02-02', '2026-02-03', '2026-03-01', '2026-03-02'].map(heavy);
+    assert.equal(heavyBleedingDays(spread, '2026-03-02'), 2);
+    assert.equal(alertFor(spread, '2026-03-02'), false);
+    // Eight heavy rows with a missing day in between: two runs, not eight days.
+    const gap = ['2026-03-01', '2026-03-02', '2026-03-03', '2026-03-04', '2026-03-06', '2026-03-07', '2026-03-08', '2026-03-09'].map(heavy);
+    assert.equal(alertFor(gap, '2026-03-09'), false);
+    // Eight consecutive days up to yesterday (today not logged yet): the alert.
+    const run = Array.from({ length: 8 }, (_, i) => heavy(`2026-03-${String(2 + i).padStart(2, '0')}`));
+    assert.equal(heavyBleedingDays(run, '2026-03-10'), 8);
+    assert.equal(alertFor(run, '2026-03-10'), true);
+    // A mood-only row today does not break the run; a run that ended weeks ago no longer counts.
+    assert.equal(alertFor([...run, { date: '2026-03-10', flow: null, moods: ['calm'] }], '2026-03-10'), true);
+    assert.equal(alertFor(run, '2026-04-01'), false);
+    // Lighter flow today ends the run.
+    assert.equal(alertFor([...run, { date: '2026-03-10', flow: 'light' }], '2026-03-10'), false);
   });
 });

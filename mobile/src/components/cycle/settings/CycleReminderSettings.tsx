@@ -5,15 +5,18 @@
  * (`reminderPrefs`) and the scheduled notifications follow a moment later (one write per burst of taps).
  */
 import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { ScrollView, Text, View } from 'react-native';
-import { useNavigation } from 'expo-router';
+import { Linking, Platform, ScrollView, Text, View } from 'react-native';
+import { useFocusEffect, useNavigation } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Bell, CalendarClock, EyeOff, Heart, NotebookPen, Smartphone, Sparkles } from 'lucide-react-native';
+import { Bell, BellOff, CalendarClock, EyeOff, Heart, NotebookPen, Smartphone, Sparkles } from 'lucide-react-native';
 import { CycleNotificationMaskPreview } from '@/components/cycle/CycleNotificationMaskPreview';
-import { CycleAtmosphere, CycleCard, CycleLoading, CycleSection, cycleNavHeader } from '@/components/cycle/CycleUI';
+import { CycleAtmosphere, CycleCard, CycleLoading, CyclePrimaryButton, CycleSection, cycleNavHeader } from '@/components/cycle/CycleUI';
 import { ka } from '@/i18n/ka';
 import { tx } from '@/i18n/locale';
 import { api, type CycleBundle } from '@/lib/api';
+import { onReturnToForeground } from '@/lib/appForeground';
+import { getNotificationPermissionStatus, requestNotificationPermission } from '@/lib/notifications';
+import { markPrimerAsked, primerCopy, primerSettingsLabel } from '@/lib/permissionPrimer';
 import {
   DEFAULT_CYCLE_REMINDER_PREFS,
   getCycleReminderPrefs,
@@ -44,7 +47,58 @@ import {
   SettingsStepper,
   serverReminderPrefs,
   useCycleSettingsView,
+  type CycleColors,
 } from './CycleSettingsKit';
+
+type NotificationPermission = 'granted' | 'denied' | 'undetermined';
+
+/**
+ * Her cycle reminders cannot arrive while the phone's notifications are off: a calm note instead of a
+ * bare „შენახულია“. Never asked → MEDIPILL's one-button primer („გაგრძელება“ opens the system sheet,
+ * App Review 5.1.1(iv)); already refused → „პარამეტრების გახსნა“.
+ */
+function RemindersPermissionNote({
+  kind,
+  busy,
+  onContinue,
+  c,
+}: {
+  kind: 'primer' | 'settings';
+  busy: boolean;
+  onContinue: () => void;
+  c: CycleColors;
+}) {
+  const settings = kind === 'settings';
+  const primer = primerCopy('notifications');
+  const Icon = settings ? BellOff : Bell;
+  return (
+    <CycleCard style={{ marginBottom: 18, gap: 14 }}>
+      <View style={{ flexDirection: 'row', alignItems: 'flex-start', gap: 12 }}>
+        <View style={{ width: 40, height: 40, borderRadius: 14, backgroundColor: c.accentSoft, alignItems: 'center', justifyContent: 'center' }}>
+          <Icon size={20} color={c.brand} strokeWidth={2} />
+        </View>
+        <View style={{ flex: 1, minWidth: 0, gap: 4 }}>
+          <Text accessibilityRole="header" style={{ color: c.ink, fontSize: 15, lineHeight: 21, fontFamily: 'NotoSansGeorgian_700Bold' }}>
+            {settings ? tx('შეტყობინებები გამორთულია', 'Notifications are off') : primer.title}
+          </Text>
+          <Text style={{ color: c.muted, fontSize: 13, lineHeight: 19 }}>
+            {settings
+              ? tx(
+                  'ამიტომ ციკლის შეხსენებებს ვერ მიიღებ. ჩართე შეტყობინებები ტელეფონის პარამეტრებში.',
+                  'So your cycle reminders can’t reach you. Turn notifications on in your phone’s Settings.',
+                )
+              : primer.body}
+          </Text>
+        </View>
+      </View>
+      <CyclePrimaryButton
+        label={settings ? primerSettingsLabel() : primer.cta}
+        loading={busy}
+        onPress={settings ? () => void Linking.openSettings().catch(() => undefined) : onContinue}
+      />
+    </CycleCard>
+  );
+}
 
 /** Keys the server keeps in `reminderPrefs` (the rest live on the device only). */
 const SERVER_KEYS: (keyof CycleReminderPrefs)[] = ['enabled', 'periodDaysBefore', 'ovulation', 'dailyLog', 'pms', 'opk', 'bbt'];
@@ -148,6 +202,55 @@ export function CycleReminderSettings() {
     [persist],
   );
 
+  // The phone's notification permission — only read here (on focus and back from Settings); the system
+  // sheet opens from the note's one „გაგრძელება“ button, never from an effect.
+  const [permission, setPermission] = useState<NotificationPermission | null>(null);
+  const permissionRef = useRef<NotificationPermission | null>(null);
+  const [asking, setAsking] = useState(false);
+  const askingRef = useRef(false);
+  const alive = useRef(true);
+  useEffect(() => {
+    alive.current = true;
+    return () => {
+      alive.current = false;
+    };
+  }, []);
+  const readPermission = useCallback(async () => {
+    if (Platform.OS === 'web') return;
+    const status = await getNotificationPermissionStatus().catch(() => null);
+    if (!alive.current) return;
+    const was = permissionRef.current;
+    permissionRef.current = status;
+    setPermission(status);
+    // Allowed in the phone's Settings: plan her reminders now (a grant from the sheet plans them itself).
+    if (status === 'granted' && was != null && was !== 'granted' && !askingRef.current) void persist();
+  }, [persist]);
+  useFocusEffect(
+    useCallback(() => {
+      void readPermission();
+    }, [readPermission]),
+  );
+  useEffect(() => onReturnToForeground(() => void readPermission()), [readPermission]);
+  // The request is the first thing the tap does (iOS 26 shows no sheet after other awaits).
+  const askPermission = () => {
+    if (askingRef.current) return;
+    askingRef.current = true;
+    const asked = requestNotificationPermission();
+    setAsking(true);
+    void asked
+      .catch(() => false)
+      .then((granted) => {
+        // A grant from the sheet re-plans every reminder itself; the read below must not plan again.
+        if (granted) permissionRef.current = 'granted';
+        return markPrimerAsked('notifications');
+      })
+      .finally(() => {
+        askingRef.current = false;
+        if (alive.current) setAsking(false);
+        void readPermission();
+      });
+  };
+
   const update = (patch: Partial<CycleReminderPrefs>) => {
     const next = { ...prefsRef.current, ...patch };
     prefsRef.current = next;
@@ -201,6 +304,10 @@ export function CycleReminderSettings() {
             </Text>
           ) : null}
         </View>
+
+        {reminders.enabled && permission && permission !== 'granted' ? (
+          <RemindersPermissionNote kind={permission === 'denied' ? 'settings' : 'primer'} busy={asking} onContinue={askPermission} c={c} />
+        ) : null}
 
         <CycleSection title={tx('მენსტრუაციის შეხსენებები', 'Period reminders')} subtitle={ka.cycle.remindersHint}>
           <CycleCard>
@@ -270,15 +377,20 @@ export function CycleReminderSettings() {
               {/* Fertile-days display off: ovulation and the ovulation-based PMS reminder are never scheduled. */}
               {tracking.fertility.effective === 'on' ? (
                 <>
-                  <SettingsRowSwitch
-                    icon={Sparkles}
-                    label={ka.cycle.remindersOvulation}
-                    value={reminders.ovulation}
-                    onChange={(v) => update({ ovulation: v })}
-                    c={c}
-                  />
-                  <ReminderExample type="ovulation" c={c} />
-                  <SettingsDivider c={c} />
+                  {/* Ovulation / fertile reminders are planned only while trying to conceive — no dead switch elsewhere. */}
+                  {mode === 'TRY_TO_CONCEIVE' ? (
+                    <>
+                      <SettingsRowSwitch
+                        icon={Sparkles}
+                        label={ka.cycle.remindersOvulation}
+                        value={reminders.ovulation}
+                        onChange={(v) => update({ ovulation: v })}
+                        c={c}
+                      />
+                      <ReminderExample type="ovulation" c={c} />
+                      <SettingsDivider c={c} />
+                    </>
+                  ) : null}
                   <SettingsRowSwitch
                     icon={Heart}
                     label={ka.cycle.remindersPms}

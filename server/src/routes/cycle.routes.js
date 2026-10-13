@@ -38,6 +38,7 @@ import {
   pickLastPeriodStart,
   resolveLastPeriodStart,
   lastLoggedBleedDay,
+  previousLoggedRunEnd,
   resolveForecastAverages,
   stampCalendarPhases,
   todayInTimeZone,
@@ -143,7 +144,12 @@ import {
   planFillRange,
   planStartPeriod,
 } from '../lib/cyclePeriod.js';
-import { derivePeriodStatus, trimEndedPeriodProjection } from '../lib/cyclePeriodStatus.js';
+import {
+  derivePeriodStatus,
+  endedPeriodTodayPhase,
+  restampEndedPeriodPhases,
+  trimEndedPeriodProjection,
+} from '../lib/cyclePeriodStatus.js';
 import {
   IMPORT_MAX_READINGS,
   TEMPERATURE_MODES,
@@ -430,6 +436,7 @@ async function loadBundle(userId, clock = null, lang = 'ka') {
     toDateKey(profile.lastPeriodStart),
     inferred.lastPeriodStart,
     lastLoggedBleedDay(inferred),
+    { previousRunEnd: previousLoggedRunEnd(inferred), logs: forecastLogs },
   );
 
   const enginePredictions = buildPredictions({
@@ -488,7 +495,7 @@ async function loadBundle(userId, clock = null, lang = 'ka') {
     });
   }
   // After the history stamps, so no past day keeps a fertile / ovulation word in this mode either.
-  const rawPredictions = periForecast
+  const projectedPredictions = periForecast
     ? applyPerimenopauseForecast(enginePredictions, periForecast, {
         lastPeriodStart,
         avgPeriodLength: averages.usedPeriodLength,
@@ -504,7 +511,21 @@ async function loadBundle(userId, clock = null, lang = 'ka') {
     today,
     typicalLength: averages.usedPeriodLength,
     mode: profile.mode,
+    lastPeriodStart,
   });
+  // Ended („დასრულდა“ or the auto-end): the rest of this period's projected days — today included — read as
+  // the next phase, before presentation so contraception and the fertility gate still apply.
+  const rawPredictions =
+    periodStatus?.state === 'ended' && projectedPredictions?.calendar
+      ? {
+          ...projectedPredictions,
+          calendar: restampEndedPeriodPhases(projectedPredictions.calendar, periodStatus, {
+            lastPeriodStart,
+            periodLength: averages.usedPeriodLength,
+            lang,
+          }),
+        }
+      : projectedPredictions;
   // Cycle deviations card (brief §9 wave 2 item 14): null unless ≥ 180 days + 3 cycles, no factor, ≥ 1 finding.
   const deviations = buildCycleDeviations({
     today,
@@ -537,13 +558,17 @@ async function loadBundle(userId, clock = null, lang = 'ka') {
   const todayPhase = applyForecastEligibilityToTodayPhase(
     presentTodayPhase(
       alignPhaseWithForecast(
-        detectCyclePhase({
-          lastPeriodStart,
-          avgCycleLength: averages.usedCycleLength,
-          avgPeriodLength: averages.usedPeriodLength,
-          today,
-          lang,
-        }),
+        endedPeriodTodayPhase(
+          detectCyclePhase({
+            lastPeriodStart,
+            avgCycleLength: averages.usedCycleLength,
+            avgPeriodLength: averages.usedPeriodLength,
+            today,
+            lang,
+          }),
+          periodStatus,
+          { today, lastPeriodStart, periodLength: averages.usedPeriodLength, calendar: rawPredictions?.calendar, lang },
+        ),
         rawPredictions,
         today,
       ),

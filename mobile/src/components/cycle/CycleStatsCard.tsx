@@ -31,6 +31,11 @@ export function CycleStatsCard({ bundle, onOpen }: { bundle: CycleBundle; onOpen
   // „საშუალოდან დამალვა“: the numbers above already leave these out; say so, never why.
   const hidden = hiddenCycleCount(bundle);
   const hiddenNote = hidden > 0 ? tx(`${hidden} ციკლი დამალულია`, `${hidden} ${hidden === 1 ? 'cycle' : 'cycles'} hidden`) : null;
+  // „არ ვიცი“ in setup and nothing learned yet: 28 / 5 are the usual values, not her numbers — say so.
+  const typicalNote =
+    avg?.source === 'default'
+      ? tx('ჯერ ტიპური მნიშვნელობებია — შენი რიცხვები ციკლების აღრიცხვისას გამოჩნდება', 'Typical values for now — your own numbers appear as you log your cycles')
+      : null;
 
   const rangeTone = (v: number | null, [lo, hi]: readonly [number, number]): Tone =>
     v == null ? 'unknown' : !verdicts ? 'learning' : v < lo ? 'shorter' : v > hi ? 'longer' : 'typical';
@@ -52,7 +57,7 @@ export function CycleStatsCard({ bundle, onOpen }: { bundle: CycleBundle; onOpen
       <CyclePressable
         onPress={onOpen}
         accessibilityRole="button"
-        accessibilityLabel={`${ka.cycle.statsTitle}. ${tiles.map((t) => `${t.label} ${t.value} ${ka.cycle.statsDayUnit}`).join(', ')}${hiddenNote ? `. ${hiddenNote}` : ''}`}
+        accessibilityLabel={`${ka.cycle.statsTitle}. ${tiles.map((t) => `${t.label} ${t.value} ${ka.cycle.statsDayUnit}`).join(', ')}${typicalNote ? `. ${typicalNote}` : ''}${hiddenNote ? `. ${hiddenNote}` : ''}`}
         style={{ backgroundColor: c.card, borderRadius: 22, padding: 16, marginTop: 12 }}
       >
         <View style={{ flexDirection: 'row', gap: 8 }}>
@@ -67,6 +72,9 @@ export function CycleStatsCard({ bundle, onOpen }: { bundle: CycleBundle; onOpen
             </View>
           ))}
         </View>
+        {typicalNote ? (
+          <Text style={{ color: c.mutedSoft, fontSize: 12, lineHeight: 17, marginTop: 10 }}>{typicalNote}</Text>
+        ) : null}
         <View style={{ flexDirection: 'row', alignItems: 'center', marginTop: 12, gap: 6 }}>
           {verdicts ? (
             <Text style={{ flex: 1, color: c.mutedSoft, fontSize: 12, lineHeight: 17 }}>
@@ -99,9 +107,10 @@ function ToneChip({ tone }: { tone: Tone }) {
   const label =
     tone === 'typical' ? ka.cycle.statsTypical : tone === 'longer' ? ka.cycle.statsLonger : tone === 'shorter' ? ka.cycle.statsShorter : ka.cycle.statsVariable;
   return (
-    <View style={{ alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 6, paddingHorizontal: 7, paddingVertical: 2, borderRadius: 999, backgroundColor: cycleHexAlpha(color, 0.12) }}>
+    <View style={{ alignSelf: 'flex-start', maxWidth: '100%', flexDirection: 'row', alignItems: 'center', gap: 4, marginTop: 6, paddingHorizontal: 7, paddingVertical: 2, borderRadius: 10, backgroundColor: cycleHexAlpha(color, 0.12) }}>
       <View style={{ width: 5, height: 5, borderRadius: 3, backgroundColor: color }} />
-      <Text numberOfLines={1} style={{ color, fontSize: 10, lineHeight: 14, fontFamily: 'NotoSansGeorgian_600SemiBold' }}>{label}</Text>
+      {/* „ტიპურზე გრძელი“ wraps to a second line in a narrow tile instead of being cut. */}
+      <Text numberOfLines={2} style={{ flexShrink: 1, color, fontSize: 10, lineHeight: 14, fontFamily: 'NotoSansGeorgian_600SemiBold' }}>{label}</Text>
     </View>
   );
 }

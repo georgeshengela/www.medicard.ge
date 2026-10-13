@@ -9,7 +9,9 @@ import { buildPartnerPayload } from './cycleShare.js';
 import {
   CYCLE_FERTILITY_AI_RULES,
   CYCLE_TEST_RESULTS,
+  buildTtcObservationCards,
   collectFertilityTests,
+  dayMonthDativeKa,
   formatCycleTestKa,
   isCycleTestResult,
   normalizeCycleTestResult,
@@ -189,5 +191,19 @@ describe('partner privacy — fertility observations stay off the payload', () =
     assert.equal(text.includes('libido'), false);
     assert.equal(text.includes('eggwhite'), false);
     assert.equal(text.includes('36.7'), false);
+  });
+});
+
+describe('TTC observation cards never show an ISO date', () => {
+  it('the recent positive OPK card names the day in words (ka dative, en full date)', () => {
+    const logs = [{ date: '2026-10-10', ovulationTest: 'positive' }];
+    const ka = buildTtcObservationCards({ logs, today: '2026-10-13', lastPeriodStart: '2026-09-28', lang: 'ka' }).find((c) => c.id === 'ttc_opk_recent');
+    assert.ok(ka);
+    assert.match(ka.body, /აღრიცხე 10 ოქტომბერს\./);
+    assert.doesNotMatch(ka.body, /\d{4}-\d{2}-\d{2}/);
+    const en = buildTtcObservationCards({ logs, today: '2026-10-13', lastPeriodStart: '2026-09-28', lang: 'en' }).find((c) => c.id === 'ttc_opk_recent');
+    assert.match(en.body, /10 October 2026/);
+    assert.equal(dayMonthDativeKa('2026-08-03'), '3 აგვისტოს');
+    assert.equal(dayMonthDativeKa('2026-01-21'), '21 იანვარს');
   });
 });

@@ -494,3 +494,92 @@ describe('variable cycles and the 3-cycle gate (brief §9 items 12–13)', () =>
     );
   });
 });
+
+describe('bleeding logged today keeps the next period’s reminders', () => {
+  // She logs today's bleeding; the fresh forecast puts the next period four weeks out.
+  const next = { nextPeriodStart: '2026-10-13', ovulationDate: null, fertileWindow: null, estimated: true };
+  const logs = [{ date: today, flow: 'medium' }];
+  const live = {
+    today,
+    mode: 'TRACK_PERIOD',
+    nextPeriodStart: next.nextPeriodStart,
+    nextPeriodRange: null,
+    periodDaysBefore: 2,
+    logs,
+    prefsEnabled: true,
+    globalEnabled: true,
+    forecastAllowed: true,
+    typeEnabled: { period_soon: true, period_start: true, period_late: true },
+  };
+
+  it('soon / start / late for the next period are still planned and pass revalidation', () => {
+    const rows = buildCycleCandidates({ today, mode: 'TRACK_PERIOD', predictions: next, prefs: prefs({ dailyLog: false, pms: false }), logs });
+    const chosen = pickCycleScheduleSet(rows, today);
+    const at = Object.fromEntries(chosen.map((row) => [row.type, row.eventDate]));
+    assert.equal(at.period_soon, '2026-10-11');
+    assert.equal(at.period_start, '2026-10-13');
+    assert.equal(at.period_late, '2026-10-15');
+    for (const row of chosen) assert.equal(revalidateCycleCandidate(row, live).ok, true, row.type);
+  });
+
+  it('a reminder for today, or one from the forecast before this bleed, is still dropped', () => {
+    assert.equal(
+      revalidateCycleCandidate({ type: 'period_start', eventDate: today }, { ...live, nextPeriodStart: today }).reason,
+      CYCLE_SUPPRESSION.PERIOD_STARTED,
+    );
+    // Stale forecast: the next start is still the one she was waiting for (3 days out).
+    assert.equal(
+      revalidateCycleCandidate({ type: 'period_start', eventDate: '2026-09-18' }, { ...live, nextPeriodStart: '2026-09-18' }).reason,
+      CYCLE_SUPPRESSION.PERIOD_STARTED,
+    );
+    // No bleeding today: nothing changes.
+    assert.equal(revalidateCycleCandidate({ type: 'period_start', eventDate: '2026-09-18' }, { ...live, nextPeriodStart: '2026-09-18', logs: [] }).ok, true);
+  });
+});
+
+describe('daily-log and BBT nudges cover the coming week', () => {
+  it('plans today and the next 6 days, skipping days already logged', () => {
+    const logs = [
+      { date: today, flow: null, moods: ['calm'] },
+      { date: '2026-09-17', flow: 'none' },
+    ];
+    const rows = buildCycleCandidates({ today, mode: 'TRACK_PERIOD', predictions: {}, prefs: prefs(), logs });
+    const days = rows.filter((row) => row.type === 'log_nudge').map((row) => row.eventDate);
+    assert.deepEqual(days, ['2026-09-16', '2026-09-18', '2026-09-19', '2026-09-20', '2026-09-21']);
+    const ids = new Set(rows.map((row) => row.candidateId));
+    assert.equal(ids.size, rows.length);
+  });
+
+  it('TTC BBT: one per day without a temperature, same week', () => {
+    const logs = [{ date: '2026-09-16', bbt: 36.6 }];
+    const rows = buildCycleCandidates({
+      today,
+      mode: 'TRY_TO_CONCEIVE',
+      predictions: {},
+      prefs: prefs({ bbt: true, dailyLog: false, ovulation: false, pms: false }),
+      logs,
+      fertilityStatus: 'READY',
+    });
+    const days = rows.filter((row) => row.type === 'bbt').map((row) => row.eventDate);
+    assert.equal(days.length, 6);
+    assert.equal(days.includes('2026-09-16'), false);
+    assert.equal(days[0], today);
+    assert.equal(days[days.length - 1], '2026-09-21');
+  });
+
+  it('revalidation: a planned day in the window passes; past, too far or already logged does not', () => {
+    const live = { today, mode: 'TRACK_PERIOD', logs: [], prefsEnabled: true, globalEnabled: true, typeEnabled: { log_nudge: true } };
+    assert.equal(revalidateCycleCandidate({ type: 'log_nudge', eventDate: '2026-09-18' }, live).ok, true);
+    assert.equal(revalidateCycleCandidate({ type: 'log_nudge', eventDate: today }, live).ok, true);
+    assert.equal(revalidateCycleCandidate({ type: 'log_nudge', eventDate: '2026-09-14' }, live).reason, CYCLE_SUPPRESSION.STALE_PREDICTION);
+    assert.equal(revalidateCycleCandidate({ type: 'log_nudge', eventDate: '2026-09-22' }, live).reason, CYCLE_SUPPRESSION.STALE_PREDICTION);
+    assert.equal(
+      revalidateCycleCandidate({ type: 'log_nudge', eventDate: today }, { ...live, logs: [{ date: today, flow: 'none' }] }).reason,
+      CYCLE_SUPPRESSION.ALREADY_LOGGED,
+    );
+    assert.equal(
+      revalidateCycleCandidate({ type: 'bbt', eventDate: today }, { ...live, mode: 'TRY_TO_CONCEIVE', typeEnabled: { bbt: true }, logs: [{ date: today, bbt: 36.5 }] }).reason,
+      CYCLE_SUPPRESSION.ALREADY_LOGGED,
+    );
+  });
+});

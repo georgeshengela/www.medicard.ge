@@ -10,6 +10,7 @@ import type { Medication, ScheduledDose } from './api';
 import { localAccountId } from './localAccount';
 import { isReminderFamilyOn } from './reminderPrefs';
 import { getCycleReminderPrefs } from '@/lib/cycleReminderPrefs';
+import { getMaskPreset } from '@/lib/cycleNotificationMask';
 import { loadEngagePrefs } from '@/lib/mediEngagePrefs';
 import {
   cyclePushPayload,
@@ -112,7 +113,7 @@ Notifications.setNotificationHandler({
             ? applyPushCopy('pregnancy-care-masked')
             : data.type === 'pet_care'
               ? applyPushCopy('pet-care-masked')
-              : applyPushCopy('cycle-masked');
+              : getMaskPreset((await getCycleReminderPrefs()).maskStyle);
         void Notifications.scheduleNotificationAsync({
           identifier: `${data.type === 'pregnancy_care_plan' ? 'pregnancy_care' : data.type === 'pet_care' ? 'pets' : 'cycle'}:mask-rewrite:${String(data.candidateId || Date.now())}`,
           content: {
@@ -1098,7 +1099,8 @@ async function resolveCycleNotificationContent(
     discreet: Boolean(engage?.discreet),
   });
   if (effective.masked) {
-    const discreet = applyPushCopy('cycle-masked');
+    // The text she picked under „რა ეწეროს ეკრანზე“ — the same one the settings preview shows.
+    const discreet = getMaskPreset(prefs.maskStyle);
     return {
       title: discreet.title,
       body: discreet.body,
