@@ -59,3 +59,14 @@ Used only by MEDISLEEP sleep sounds, which keep playing with the screen locked u
 ```
 
 Attachment — upload the same screen recording.
+
+## 1.24.0 (38) — submitted instead of 1.23.1 (owner 2026-10-13: „გაუშვი ბილდი და ავტოსაბმითი“)
+
+Build 38 = everything in 1.23.1 (MEDISLEEP, MEDIFAMILY) + MEDIHOROSCOPE. In App Store Connect: remove 1.23.1 from review
+if it is still waiting, create version **1.24.0** (or change the version number of the rejected 1.23.1 record), select
+build 38, keep the MEDISLEEP steps above **and attach the same screen recording**, add the paragraph below to the
+App Review Notes, then Submit for Review.
+
+```
+New in this version — MEDIHOROSCOPE (entertainment): daily, weekly, monthly and yearly horoscopes computed from real astronomical planet positions, a birth chart, tarot of the day, compatibility, numerology, the Chinese zodiac and a dream dictionary. It is clearly labelled as entertainment and reflection, never gives medical, financial or psychological advice, and sits apart from the health features. Its chat assistant ("Oracle") asks for the same AI data-sharing consent as Medi before anything is sent, and it refers health questions to Medi. To open it: Home → the grid button (top right) → "Horoscope" / „ჰოროსკოპი“.
+```
