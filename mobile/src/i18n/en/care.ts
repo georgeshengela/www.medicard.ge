@@ -341,6 +341,14 @@ export const enCare: Pick<Strings, 'upload' | 'records' | 'chats' | 'meds' | 'ph
     strength: 'Strength',
     pack: 'Pack',
     offersCount: (n: number) => (n === 1 ? 'At 1 pharmacy' : `At ${n} pharmacies`),
+    activeSubstance: 'Active substance',
+    prescription: 'Prescription',
+    noPrescription: 'No prescription',
+    unitPrice: (price: string, unit: string) => `${price} ₾ per ${unit}`,
+    otherPacksTitle: 'Other pack sizes',
+    analoguesTitle: 'Same substance and dose',
+    analoguesNote: "Ask your doctor or pharmacist before switching to another maker's medicine.",
+    madeIn: (country: string) => `Made in ${country}`,
   },
 
   pets: {

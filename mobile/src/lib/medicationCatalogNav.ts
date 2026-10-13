@@ -3,7 +3,7 @@ import type { CatalogProductSummary } from '@/lib/api';
 export function catalogProductSetupParams(product: CatalogProductSummary) {
   return {
     name: product.name,
-    generic: product.manufacturer ?? product.strength ?? '',
+    generic: product.inn ?? product.manufacturer ?? product.strength ?? '',
     imageUrl: product.imageUrl ? encodeURIComponent(product.imageUrl) : '',
     catalogProductId: product.id,
     manufacturer: product.manufacturer ?? '',

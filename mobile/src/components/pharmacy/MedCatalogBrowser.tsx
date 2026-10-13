@@ -33,7 +33,7 @@ export function MedCatalogBrowser({
   /** A fixed category (the category screen): no chips, the list is that category only. */
   category?: string;
   autoFocus?: boolean;
-  sort?: 'name' | 'best_price';
+  sort?: 'name' | 'best_price' | 'popular';
 }) {
   const c = useThemeColors();
   const dark = useIsDark();
