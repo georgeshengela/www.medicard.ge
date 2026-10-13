@@ -92,4 +92,6 @@ a played sound.
 Server + admin can ship before the app (the app is hidden on trains < 23). App: train 1.0.0.23 store build —
 `npm --prefix mobile run ota:baseline`, then `npm --prefix mobile run build:ios` (the widget extension gains the
 `MedicardSleep` widget; AlarmKit needs Xcode 26). Review notes: background audio is used only for sounds the person
-starts, with a timer; AlarmKit for the wake-up she sets.
+starts, with a timer; AlarmKit for the wake-up she sets. Build 37 was rejected under 2.5.4 (the reviewer heard
+nothing in the background): every submission needs the steps + a physical-device screen recording in App Review
+Information (`docs/APP-REVIEW-2026-10-13.md`).

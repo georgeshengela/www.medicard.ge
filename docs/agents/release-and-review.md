@@ -87,3 +87,7 @@ Owner wants App promotion (app install) ads on Meta. Meta greys the app out of i
 ## Train 22 (store build 2026-10-11)
 
 Branch `build/train-22` = origin/main 1.0.0.21.46 + `build/train-22-rating` (expo-store-review) + `build/train-22-notification-wake` (iOS module) + `feat/meta-sdk-train-22` (Meta SDK), version 1.0.0.22.0. From here main's OTAs target runtime 1.0.0.22; App Store users stay on train 21 until this build is approved and installed, so urgent fixes for them go out from a branch of the last 21 commit (71f5d6ca, see the OTA notes above).
+
+## Background audio (2.5.4, build 37 rejected 2026-10-13)
+
+`UIBackgroundModes` `audio` (pinned in `plugins/withMedirunBackground.js`) exists only for MEDISLEEP sleep sounds. App Review rejects it when the reviewer cannot hear audio after leaving the app — they do not hunt for the feature. Every submission must carry the steps (Home → MEDISLEEP → „Sounds for sleep“ → Rain → Home Screen) in App Review Information → Notes **and** a screen recording from a physical device as the Attachment. Never answer by removing the mode: the sounds would stop when the phone locks. Texts: `docs/APP-REVIEW-2026-10-13.md`.
