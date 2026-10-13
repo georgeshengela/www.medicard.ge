@@ -38,6 +38,9 @@ import { adminTrainerRouter, trainerRouter } from './routes/trainer.routes.js';
 import { adminPetsRouter } from './routes/adminPets.routes.js';
 import { sleepRouter } from './routes/sleep.routes.js';
 import { adminSleepRouter } from './routes/adminSleep.routes.js';
+import { horoscopeRouter } from './routes/horoscope.routes.js';
+import { adminHoroscopeRouter } from './routes/adminHoroscope.routes.js';
+import { startHoroscopeScheduler, stopHoroscopeScheduler } from './lib/horoscope/jobs.js';
 import { adminUsageRouter } from './routes/adminUsage.routes.js';
 import { adminFeedRouter } from './routes/adminFeed.routes.js';
 import { identityRouter } from './routes/identity.routes.js';
@@ -373,10 +376,12 @@ app.use('/api/rewards', requireFeature('rewardsStore', { match: (req) => /\/rede
 app.use('/api/referrals', requireFeature('invites'), referralRouter);
 app.use('/api/trainer', requireFeature('coach'), trainerRouter);
 app.use('/api/sleep', requireFeature('sleep'), sleepRouter);
+app.use('/api/horoscope', requireFeature('horoscope'), requireFeature('horoscopeOracle', { match: (req) => req.path.startsWith('/oracle') }), horoscopeRouter);
 app.use('/api/admin/trainers', adminTrainerRouter);
 app.use('/api/admin/pets', adminPetsRouter);
 app.use('/api/admin/family', adminFamilyRouter);
 app.use('/api/admin/sleep', adminSleepRouter);
+app.use('/api/admin/horoscope', adminHoroscopeRouter);
 app.use('/api/admin/usage', adminUsageRouter);
 app.use('/api/admin/feed', adminFeedRouter);
 app.use('/api/identity', identityRouter);
@@ -533,6 +538,8 @@ const server = app.listen(env.PORT, '0.0.0.0', () => {
 attachAdminRealtime(server);
 startQuotaResetSweeper();
 if (env.NODE_ENV === 'production') startPharmacySyncScheduler();
+// MEDIHOROSCOPE: tomorrow's readings are written the day before, so 00:00 Tbilisi already has the new day.
+if (env.NODE_ENV === 'production') startHoroscopeScheduler();
 // „გაანათე თბილისი“ gift autopilot (owner OK 2026-10-01). Pause: admin მოდულები → MEDIRUN ავტოპილოტი; MEDIRUN_AUTOPILOT=off stops it here.
 if (env.NODE_ENV === 'production' && process.env.MEDIRUN_AUTOPILOT !== 'off') startMedirunAutopilot();
 // Production only: local servers point at the main DB and must not write samples or alert the owner.
@@ -557,6 +564,7 @@ for (const signal of ['SIGINT', 'SIGTERM']) {
     console.log(`\n[medicard] ${signal} received, shutting down…`);
     stopQuotaResetSweeper();
     stopPharmacySyncScheduler();
+    stopHoroscopeScheduler();
     stopCapacityMonitor();
     stopErrorPurge();
     // Render sends SIGTERM on every deploy while the new instance takes traffic. Let in-flight

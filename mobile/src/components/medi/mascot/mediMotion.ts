@@ -294,6 +294,8 @@ export function stepAnim(S: AnimState, req: MascotRequest, dt: number): Pose {
 export const MASCOT_CROPS = {
   full: { x: -120, y: -520, w: 2288, h: 2590 },
   snug: { x: 180, y: -40, w: 1688, h: 2080 },
+  /** MEDIHOROSCOPE's Oracle: `full` with room above for the witch hat's tip. */
+  hat: { x: -120, y: -700, w: 2288, h: 2770 },
 } as const;
 
 // ---------- pose → SVG frame (picture pixels, 2048 × 2048) ----------

@@ -31,6 +31,8 @@ export const WRITE_INVALIDATES: ReadonlyArray<readonly [prefix: string, keys: re
   ['/api/sleep', ['sleep', 'home']],
   // MEDIFAMILY: any change to a child refreshes the child page, the children list and Home's card.
   ['/api/family', ['family', 'home']],
+  // MEDIHOROSCOPE: birth time/place and the Home card switch; the Oracle chat refreshes its own thread.
+  ['/api/horoscope', ['horoscope', 'home']],
   // Posting, reacting or renaming in the women's space refreshes the Home preview.
   ['/api/community', ['community']],
   // Medi answers, lab/image analyses and saved assistant chats create records and chat sessions.

@@ -1,5 +1,5 @@
 {
-  "revision": "2026-09-24.nutrition-program",
+  "revision": "2026-10-13.horoscope-oracle",
   "title": "გავუზიაროთ მონაცემები AI სერვისებს?",
   "purpose": "Medi-ს პასუხებისა და შენ მიერ მოთხოვნილი მოქმედებებისთვის ქვემოთ ჩამოთვლილი მონაცემები გარე AI სერვისებს გადაეცემა — გამოყენებული ფუნქციის მიხედვით.",
   "categories": [
@@ -11,7 +11,8 @@
     "MEDIFAMILY-ში Medi-სთვის, როცა შვილზე კითხვას სვამ — ბავშვის პროფილი (სახელი, ასაკი, სქესი), ზრდა, აცრები, ალერგიები, მდგომარეობები, ბოლო ტემპერატურა, სიმპტომები, მიცემული წამლები და კვება; შენი ჯანმრთელობის პროფილის გარეშე.",
     "ხმოვანი ასისტენტი: ჩაწერილი ხმა — OpenRouter-ის გავლით Google Vertex AI-ს ტექსტად გარდასაქმნელად; ხმოვანი პასუხის ჩართვისას პასუხის ტექსტი — Microsoft Azure Speech-ს გასახმოვანებლად.",
     "კვების ფოტოს შეფასება: მხოლოდ არჩეული საკვების ფოტო და შენ მიერ დამატებული პორციის აღწერა — OpenRouter-ის გავლით Google Vertex AI-ს. ჯანმრთელობის პროფილი არ იგზავნება; ფოტო მუდმივად არ ინახება.",
-    "Medi-სთან კვების შესახებ საუბრისას — შენახული კვების ჯამები და ბოლო 7 დღის პროგრესი, დღის სამიზნეები, წონის მიზანი, რაციონი და კვების არჩევანი. დაცული ციკლის დეტალები არ იგზავნება."
+    "Medi-სთან კვების შესახებ საუბრისას — შენახული კვების ჯამები და ბოლო 7 დღის პროგრესი, დღის სამიზნეები, წონის მიზანი, რაციონი და კვების არჩევანი. დაცული ციკლის დეტალები არ იგზავნება.",
+    "MEDIHOROSCOPE-ის ორაკულთან საუბრისას — შენი შეტყობინება, სახელი, დაბადების თარიღი და, თუ დაამატე, დაბადების დრო და ადგილი, მათგან გამოთვლილი ასტრორუკა და დღევანდელი ცა — OpenRouter-ის გავლით Google Vertex AI-ს. ჯანმრთელობის ინფორმაცია არ იგზავნება."
   ],
   "recipients": [
     {
@@ -61,7 +62,8 @@
     "ცხოველის პროფილი და მოვლა Medi Vet-ში — ადამიანის ჯანმრთელობის პროფილის გარეშე",
     "შვილის პროფილი და ჯანმრთელობის ჩანაწერები MEDIFAMILY-ში, როცა მასზე Medi-ს ეკითხები",
     "ხმოვანი ჩანაწერი ტექსტად გარდასაქმნელად და, თუ ჩართულია, პასუხის ტექსტი გასახმოვანებლად",
-    "კვების ფოტო, პორციის აღწერა და კვების ჯამები, როცა ამ ფუნქციას იყენებ"
+    "კვების ფოტო, პორციის აღწერა და კვების ჯამები, როცა ამ ფუნქციას იყენებ",
+    "შეტყობინება, დაბადების თარიღი, დრო და ადგილი MEDIHOROSCOPE-ის ორაკულისთვის"
   ],
   "choice": "არჩევანი ნებაყოფლობითია. „ახლა არა“ ან დახურვა მოთხოვნას AI-ს არ აგზავნის; დანარჩენი ფუნქციები რჩება. გაუქმება: პროფილი → კონფიდენციალობა და მონაცემები. ახალი მიმღები ან არსებითი ცვლილება ხელახალ თანხმობას მოითხოვს.",
   "en": {
@@ -76,7 +78,8 @@
       "In MEDIFAMILY, when you ask Medi about your child: the child's profile (name, age, sex), growth, vaccines, allergies, conditions, latest temperature, symptoms, medicines given and feeding — without your own health profile.",
       "Voice assistant: recorded audio is sent through OpenRouter to Google Cloud Vertex AI for transcription. If spoken replies are on, the reply text is sent to Microsoft Azure Speech to generate speech.",
       "Food estimates: only the selected food photo and your portion description go through OpenRouter to Google Vertex AI. No health profile is sent; the photo is not stored permanently.",
-      "When discussing nutrition with Medi: saved meal totals and the last 7 days of progress, daily targets, weight goal, planned meals and dietary preferences. Protected cycle details are not sent."
+      "When discussing nutrition with Medi: saved meal totals and the last 7 days of progress, daily targets, weight goal, planned meals and dietary preferences. Protected cycle details are not sent.",
+      "In MEDIHOROSCOPE, when you talk to the Oracle: your message, first name, birth date and — if you added them — birth time and place, the chart computed from them and today's sky, through OpenRouter to Google Vertex AI. No health information is sent."
     ],
     "recipients": [
       {
@@ -114,7 +117,8 @@
       "Pet profile and care details in Medi Vet, without the human health profile",
       "Your child's profile and health records in MEDIFAMILY, when you ask Medi about them",
       "Recorded audio for transcription, and reply text for spoken answers when that is on",
-      "A food photo, portion note, and nutrition totals when you use those features"
+      "A food photo, portion note, and nutrition totals when you use those features",
+      "Your message and birth date, time and place for the MEDIHOROSCOPE Oracle"
     ],
     "choice": "This choice is voluntary. Not Now or closing does not send the request to AI. Other features keep working. Withdraw later in Profile → Privacy & Data. A new recipient or material change requires a new decision.",
     "headings": {

@@ -41,6 +41,8 @@ export type HomeSectionId =
   | 'disclaimer'
   // MEDISLEEP (every layout)
   | 'sleep'
+  // MEDIHOROSCOPE (every layout; hidden until shipped + switched on, and by the person or admin)
+  | 'horoscope'
   // standard
   | 'hero'
   | 'cycle'
@@ -84,6 +86,7 @@ export const HOME_LAYOUT_ORDER: Record<HomeLayoutId, readonly HomeSectionId[]> =
     'cycle',
     'week',
     'sleep',
+    'horoscope',
     'challenges',
     'checkup',
     'news',
@@ -105,6 +108,7 @@ export const HOME_LAYOUT_ORDER: Record<HomeLayoutId, readonly HomeSectionId[]> =
     'dayPair',
     'nutritionLite',
     'sleep',
+    'horoscope',
     'womenCare',
     'news',
     'cycleStats',
@@ -121,6 +125,7 @@ export const HOME_LAYOUT_ORDER: Record<HomeLayoutId, readonly HomeSectionId[]> =
     'coach',
     'waterOutdoor',
     'sleep',
+    'horoscope',
     'medirun',
     'quest',
     'cycle',
@@ -142,6 +147,7 @@ export const HOME_LAYOUT_ORDER: Record<HomeLayoutId, readonly HomeSectionId[]> =
     'meals',
     'waterSteps',
     'sleep',
+    'horoscope',
     'cycle',
     'news',
     'nutritionTools',

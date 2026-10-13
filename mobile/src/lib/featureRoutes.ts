@@ -19,6 +19,8 @@ export const FEATURE_KEYS = [
   'mediVet',
   'family',
   'familyMedi',
+  'horoscope',
+  'horoscopeOracle',
   'medirun',
   'quest',
   'rewardsStore',
@@ -87,6 +89,8 @@ export function featureForPath(segments: readonly string[]): FeatureKey | null {
       return third === 'chat' ? 'mediVet' : 'pets';
     case 'family':
       return third === 'chat' ? 'familyMedi' : 'family';
+    case 'horoscope':
+      return second === 'oracle' ? 'horoscopeOracle' : 'horoscope';
     case 'run':
     case 'medipulsi':
       return 'medirun';

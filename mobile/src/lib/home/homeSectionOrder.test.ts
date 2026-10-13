@@ -71,7 +71,7 @@ test('an admin-paused module drops its section and nothing else', () => {
 test('standard (rebuilt 2026-10-04 for men first) in its exact order', () => {
   const order = buildHomeSectionOrder({ includeCycle: true });
   assert.deepEqual(order, [
-    'dashboard', 'hero', 'ask', 'nextDose', 'attention', 'coach', 'cycle', 'week', 'sleep', 'challenges', 'checkup', 'news', 'nutrition',
+    'dashboard', 'hero', 'ask', 'nextDose', 'attention', 'coach', 'cycle', 'week', 'sleep', 'horoscope', 'challenges', 'checkup', 'news', 'nutrition',
     'profileNudge', 'customize', 'disclaimer',
   ]);
   assert.deepEqual(buildHomeSectionOrder({ layout: 'standard', includeCycle: true }), order);

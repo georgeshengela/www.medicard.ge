@@ -2387,6 +2387,11 @@ export async function nutritionProgramRequest<T>(path:string, method:'GET'|'POST
   return result;
 }
 
+/** MEDIHOROSCOPE (/api/horoscope): typed calls live in src/lib/horoscope/horoscopeApi.ts. */
+export function horoscopeRequest<T>(path: string, method: 'GET' | 'POST' | 'PUT' | 'DELETE' = 'GET', body?: unknown): Promise<T> {
+  return request<T>('/api/horoscope' + path, { method, body, timeoutMs: 30000 });
+}
+
 /** MEDIFAMILY (/api/family): typed calls live in src/lib/family/familyApi.ts. */
 export function familyRequest<T>(path: string, method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE' = 'GET', body?: unknown): Promise<T> {
   return request<T>('/api/family' + path, { method, body, timeoutMs: 30000 });

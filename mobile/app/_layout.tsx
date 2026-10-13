@@ -487,13 +487,14 @@ function AppShell() {
               <Stack.Screen name="pharmacy" options={{ headerShown: false }} />
               <Stack.Screen name="run" options={{ headerShown: false }} />
               <Stack.Screen name="sleep" options={{ headerShown: false }} />
+              <Stack.Screen name="horoscope" options={{ headerShown: false }} />
               <Stack.Screen name="record/[id]" options={{ headerShown: false }} />
               <Stack.Screen name="news/[id]" options={{ headerShown: false }} />
             </Stack>
             {user ? <ModuleGate /> : null}
           </View>
           <AppChromeOverlay interactive={chromeInteractive}>
-            {user && !['(auth)', 'run', 'medi-quest', 'medi-companion', 'pets', 'family', 'assistant', 'community', 'nutrition', 'trainer', 'coach', 'c', 'u', 'news'].includes(segments[0]) && !((segments as string[]).join('/') === 'profile/complete') ? <FloatingTabBar visible={showTabBar} /> : null}
+            {user && !['(auth)', 'run', 'medi-quest', 'medi-companion', 'pets', 'family', 'horoscope', 'assistant', 'community', 'nutrition', 'trainer', 'coach', 'c', 'u', 'news'].includes(segments[0]) && !((segments as string[]).join('/') === 'profile/complete') ? <FloatingTabBar visible={showTabBar} /> : null}
             {user ? <ActiveRunBadge /> : null}
             {/* „ახალი ვერსია მზადაა“ above the tab bar when an update is downloaded (tab screens only). */}
             {showTabBar ? <UpdateReadyCard /> : null}

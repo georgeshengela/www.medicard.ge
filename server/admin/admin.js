@@ -5,7 +5,7 @@ const EMAIL_KEY = 'medicard.admin.email';
 const TAB_KEY = 'medicard.admin.tab';
 const USERS_PAGE_SIZE = 15;
 const PAGE_SIZE = 25;
-const ADMIN_TABS = ['overview', 'orders', 'users', 'push', 'sms', 'pharmacy', 'rewards', 'ai', 'health', 'audit', 'quality', 'testing', 'nutrition', 'community', 'medipulsi', 'poster-studio', 'settings', 'features', 'quests', 'funnel', 'director', 'email', 'support', 'trainers', 'capacity', 'news', 'errors', 'social', 'campaigns', 'medirun-boxes', 'pets', 'family', 'cycle', 'pills', 'lab', 'sleep'];
+const ADMIN_TABS = ['overview', 'orders', 'users', 'push', 'sms', 'pharmacy', 'rewards', 'ai', 'health', 'audit', 'quality', 'testing', 'nutrition', 'community', 'medipulsi', 'poster-studio', 'settings', 'features', 'quests', 'funnel', 'director', 'email', 'support', 'trainers', 'capacity', 'news', 'errors', 'social', 'campaigns', 'medirun-boxes', 'pets', 'family', 'cycle', 'pills', 'lab', 'sleep', 'horoscope'];
 
 const state = {
   token: localStorage.getItem(TOKEN_KEY) || '',
@@ -660,6 +660,7 @@ async function switchTab(tab, opts = {}) {
     nutrition: ['Health', 'MEDIFOOD', 'ვინ იყენებს კვების დღიურს და როგორ; კერძების კატალოგი და პარამეტრები.', ''],
     cycle: ['Health', 'MEDICYCLE', 'როგორ იყენებენ ციკლს — ანონიმურად, სახელების გარეშე.', ''],
     sleep: ['Health', 'MEDISLEEP', 'ძილის მოდული: ვინ იყენებს, ხმების ბიბლიოთეკა, რჩევები და პარამეტრები.', ''],
+    horoscope: ['Health', 'MEDIHOROSCOPE', 'ჰოროსკოპი: დღევანდელი ცა, 12 ნიშნის ტექსტები, ბიბლიოთეკა, გამოყენება და პარამეტრები.', ''],
     pills: ['Health', 'MEDIPILL', 'ვინ იწერს წამლებს, ნიშნავს დოზებს და ამოწმებს ფასებს.', ''],
     lab: ['Health', 'MEDILAB', 'ანალიზები, გამოსახულება და კანი: ვინ კითხულობს MEDISCAN-ით და როგორ.', ''],
     pets: ['Health', 'MEDIVET', 'ვინ იყენებს ცხოველების მოდულს და როგორ.', ''],
@@ -734,6 +735,7 @@ async function switchTab(tab, opts = {}) {
     if (tab === 'pills') await window.renderPillsUsage?.();
     if (tab === 'lab') await window.renderLabUsage?.();
     if (tab === 'sleep') await window.renderSleepHost?.();
+    if (tab === 'horoscope') await window.renderHoroscopeHost?.();
   }
   startAdminLive();
 }
@@ -1136,7 +1138,7 @@ const USER_SCREEN_KA = {
   '': 'მთავარი', home: 'მთავარი', explore: 'ყველა სერვისი', profile: 'პროფილი', records: 'ჩანაწერები', record: 'ჩანაწერი',
   medications: 'მედიკამენტები', nutrition: 'კვება', 'nutrition/diary': 'კვების დღიური', assistant: 'Medi', chat: 'Medi',
   'medi-quest': 'MEDIQUEST', 'medi-companion': 'MEDIQUEST', run: 'MEDIRUN', medipulsi: 'MEDIRUN', pets: 'ჩემი ცხოველები', family: 'MEDIFAMILY',
-  cycle: 'ციკლი', sleep: 'MEDISLEEP', community: 'ქალების სივრცე', visits: 'ვიზიტები', lab: 'ლაბორატორია', symptoms: 'სიმპტომები',
+  cycle: 'ციკლი', sleep: 'MEDISLEEP', horoscope: 'MEDIHOROSCOPE', community: 'ქალების სივრცე', visits: 'ვიზიტები', lab: 'ლაბორატორია', symptoms: 'სიმპტომები',
   pharmacy: 'ფარმაცია', coach: 'MEDICOACH', trainer: 'ტრენერი', news: 'სიახლეები', weather: 'ამინდი',
   week: 'კვირის ანგარიში', 'health-metrics': 'ჯანმრთელობის მაჩვენებლები', invite: 'მოწვევა', share: 'გაზიარება',
 };

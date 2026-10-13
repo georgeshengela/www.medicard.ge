@@ -100,6 +100,11 @@ import { useIsDark } from '@/theme/colors';
 import { tx } from '@/i18n/locale';
 import { HomeSleep } from '@/components/home/sections/HomeSleep';
 import { useSleepHub } from '@/lib/sleep/useSleepData';
+import { HomeHoroscope } from '@/components/home/sections/HomeHoroscope';
+import { useAccountQuery } from '@/hooks/useAccountQuery';
+import { horoscopeApi, type HomeCard as HoroscopeHomeCard } from '@/lib/horoscope/horoscopeApi';
+import { horoscopeVisible } from '@/lib/horoscope/horoscopeAvailability';
+import { FRESH as HORO_FRESH } from '@/lib/queryClient';
 
 
 
@@ -117,6 +122,9 @@ export default function Home() {
   // MEDISLEEP: one subscriber for its card (Home rule), only while the module is on.
   const sleepOn = isFeatureOn('sleep', features);
   const sleepHub = useSleepHub(sleepOn).data;
+  // MEDIHOROSCOPE: one subscriber for its card, only when the binary ships it and the module is on.
+  const horoscopeOn = horoscopeVisible() && isFeatureOn('horoscope', features);
+  const horoscopeCard = useAccountQuery<HoroscopeHomeCard>({ key: ['horoscope', 'home'], fetch: () => horoscopeApi.home(), staleTime: HORO_FRESH.LONG, enabled: horoscopeOn }).data;
   // An invite link opened before sign-up: offer the code once, while the account is new.
   // While invites are paused the code stays saved, so it is offered once they are back.
   const userId = user?.id;
@@ -212,6 +220,7 @@ export default function Home() {
     }
     if (!checkupOn) hidden.add('checkup');
     if (!isFeatureOn('news', features)) hidden.add('news');
+    if (!horoscopeOn || !horoscopeCard?.show) hidden.add('horoscope');
     // Reminders keep arriving while medications are paused; only the Home block goes.
     if (!medsOn) hidden.add('nextDose');
     if (!stepsOn && !waterOn && !showMedsRing) hidden.add('hero');
@@ -234,7 +243,7 @@ export default function Home() {
     if (!isFeatureOn('medirun', features) && !isFeatureOn('quest', features)) hidden.add('challenges');
     if (!isHrefAvailable('/visits', features) && !isHrefAvailable('/lab', features)) hidden.add('attention');
     return hidden;
-  }, [features, checkupOn, medsOn, stepsOn, waterOn, showMedsRing, cycleOn, nutritionOn, layoutsOn, foodInDay]);
+  }, [features, checkupOn, medsOn, stepsOn, waterOn, showMedsRing, cycleOn, nutritionOn, layoutsOn, foodInDay, horoscopeOn, horoscopeCard?.show]);
 
   // A new layout starts at its top, with a short fade (none under reduced motion).
   const scrollRef = useRef<ScrollView>(null);
@@ -427,6 +436,7 @@ export default function Home() {
     week: <HomeWeekSteps todayTotal={stepsTotal} goal={stepsGoal} fetchedAt={stepsBundle?.fetchedAt ?? null} />,
     challenges: <HomeChallenges />,
     sleep: <HomeSleep hub={sleepHub} />,
+    horoscope: <HomeHoroscope card={horoscopeCard} />,
     cycle: (
       <View style={s.section}>
         {heading(tx('ქალის ჯანმრთელობა', "Women's health"), '/cycle', tx('ციკლის ნახვა', 'View cycle'))}

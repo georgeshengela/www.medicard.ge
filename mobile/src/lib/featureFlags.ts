@@ -66,6 +66,8 @@ export const FEATURE_LABELS: Record<FeatureKey, string> = {
   invites: tx('მეგობრის მოწვევა', 'Inviting friends'),
   homeLayouts: tx('მთავარი გვერდის ვარიანტები', 'Home layouts'),
   ratingPrompt: tx('შეფასების თხოვნა', 'Rating request'),
+  horoscope: 'MEDIHOROSCOPE',
+  horoscopeOracle: tx('ორაკული', 'Oracle'),
 };
 
 /**

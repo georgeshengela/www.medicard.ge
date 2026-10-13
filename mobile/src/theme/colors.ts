@@ -80,7 +80,7 @@ const roseDark: Palette = { ...darkColors, ...BRAND_ROSE.dark };
  * pages speak sky blue like its wordmark). Mounted by the module's layout (`ModuleToneProvider`);
  * canvas, surfaces and text stay shared. It wins over the women's rose inside that module.
  */
-export type ModuleTone = 'vet' | 'food' | 'quest' | 'run' | 'sleep' | 'family';
+export type ModuleTone = 'vet' | 'food' | 'quest' | 'run' | 'sleep' | 'family' | 'horo';
 type ToneTokens = { primary100: string; primary200: string; primary300: string; accent100: string; accent200: string };
 const MODULE_TONES: Record<ModuleTone, { light: ToneTokens; dark: ToneTokens }> = {
   // MEDIVET (moduleBrand `vet`): #0369A1 / #7DD3FC.
@@ -114,6 +114,11 @@ const MODULE_TONES: Record<ModuleTone, { light: ToneTokens; dark: ToneTokens }> 
     light: { primary100: '#C2410C', primary200: '#EA580C', primary300: '#FB923C', accent100: '#FFEDD5', accent200: '#FDBA74' },
     dark: { primary100: '#FDBA74', primary200: '#FB923C', primary300: '#F97316', accent100: '#2A1608', accent200: '#9A3412' },
   },
+  // MEDIHOROSCOPE (moduleBrand `horo`): brass on the lapis night (HORO_NIGHT below) — always a night space.
+  horo: {
+    light: { primary100: '#8A6414', primary200: '#B07F1F', primary300: '#C99A45', accent100: '#F6EBD3', accent200: '#E9C77E' },
+    dark: { primary100: '#F3DDA6', primary200: '#E9C77E', primary300: '#C99A45', accent100: '#1A1A3A', accent200: '#5B4A22' },
+  },
 };
 const TONED: Record<ModuleTone, { light: Palette; dark: Palette }> = {
   vet: { light: { ...lightColors, ...MODULE_TONES.vet.light }, dark: { ...darkColors, ...MODULE_TONES.vet.dark } },
@@ -122,6 +127,7 @@ const TONED: Record<ModuleTone, { light: Palette; dark: Palette }> = {
   run: { light: { ...lightColors, ...MODULE_TONES.run.light }, dark: { ...darkColors, ...MODULE_TONES.run.dark } },
   sleep: { light: { ...lightColors, ...MODULE_TONES.sleep.light }, dark: { ...darkColors, ...MODULE_TONES.sleep.dark } },
   family: { light: { ...lightColors, ...MODULE_TONES.family.light }, dark: { ...darkColors, ...MODULE_TONES.family.dark } },
+  horo: { light: { ...lightColors, ...MODULE_TONES.horo.light }, dark: { ...darkColors, ...MODULE_TONES.horo.dark } },
 };
 const ModuleToneContext = createContext<ModuleTone | null>(null);
 /**
@@ -138,6 +144,8 @@ const NIGHT: Record<ModuleTone, Palette> = {
   // MEDISLEEP's night is plum-indigo instead of MEDIRUN's city blue; the lavender greys keep text calm at night.
   sleep: { ...TONED.sleep.dark, bg100: '#0B0A1F', bg200: '#1C1938', bg300: '#2C2852', surface: '#15132E', surfaceRaised: '#1E1B3F', text200: '#CFCBE6', text300: '#8B86AE' },
   family: { ...TONED.family.dark, ...NIGHT_BASE },
+  // MEDIHOROSCOPE's night is deep lapis (the astrolabe sky); moonlit greys keep long readings easy at night.
+  horo: { ...TONED.horo.dark, bg100: '#060A1F', bg200: '#141C3D', bg300: '#252F5A', surface: '#0E1533', surfaceRaised: '#172045', text200: '#D3D6E8', text300: '#8A90B3' },
 };
 const NIGHT_PLAIN: Palette = { ...darkColors, ...NIGHT_BASE };
 export function NightProvider({ children }: { children: ReactNode }) {

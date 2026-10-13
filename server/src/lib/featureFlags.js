@@ -84,6 +84,23 @@ export const FEATURES = Object.freeze([
     defaultMessageEn: 'Cycle tracking is paused for a moment. Your entries are saved.',
   },
   {
+    key: 'horoscope',
+    group: 'module',
+    label: 'MEDIHOROSCOPE (ჰოროსკოპი)',
+    description: 'ყოველდღიური, კვირის, თვის და წლის ჰოროსკოპი რეალური ცის მიხედვით, ასტრორუკა, თავსებადობა, ტარო, ნუმეროლოგია, ჩინური ჰოროსკოპი და სიზმრები. ახალ ვერსიაში მოდული იმალება; შენახული პროფილი რჩება.',
+    defaultMessage: 'MEDIHOROSCOPE დროებით შეჩერებულია.',
+    defaultMessageEn: 'MEDIHOROSCOPE is paused for a moment.',
+  },
+  {
+    key: 'horoscopeOracle',
+    group: 'ai',
+    parent: 'horoscope',
+    label: 'MEDIHOROSCOPE — ორაკული (AI ჩატი)',
+    description: 'ჰოროსკოპის ასისტენტი (Medi ჯადოქრის ქუდით): ჩატი რუკაზე, ტაროზე და სიზმრებზე. დანარჩენი ჰოროსკოპი მუშაობს.',
+    defaultMessage: 'ორაკული დროებით დუმს.',
+    defaultMessageEn: 'The Oracle is resting for a moment.',
+  },
+  {
     key: 'sleep',
     group: 'module',
     label: 'MEDISLEEP (ძილი)',

@@ -2,7 +2,7 @@ import React, { memo, useEffect, useId, useMemo, useRef, useState } from 'react'
 import { AppState, Platform, Pressable, View, type StyleProp, type ViewStyle } from 'react-native';
 import { useIsFocused } from 'expo-router';
 import Animated, { useAnimatedProps, useFrameCallback, useSharedValue } from 'react-native-reanimated';
-import Svg, { Circle, ClipPath, Defs, Ellipse, G, Path, RadialGradient, Stop } from 'react-native-svg';
+import Svg, { Circle, ClipPath, Defs, Ellipse, G, Image as SvgImage, Path, RadialGradient, Stop } from 'react-native-svg';
 import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
 import { MEDI_ART, type MascotShape } from './mediMascotArt';
 import {
@@ -19,6 +19,8 @@ const IS_WEB = Platform.OS === 'web';
 const INK = '#123134', MOUTH_IN = '#081819', TONGUE = '#1f7574';
 
 const CROPS = MASCOT_CROPS;
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const WITCH_HAT = require('../../../../assets/horoscope/witch-hat.png');
 
 /** A group's transform (+ opacity): native svg takes `matrix`, react-native-svg web takes `transform`. */
 function groupProps(m: M6, opacity?: number) {
@@ -64,6 +66,11 @@ export type MediMascotProps = {
   /** Tap → a giggle, then back to what Medi was doing. */
   giggle?: boolean;
   onPress?: () => void;
+  /**
+   * Costume on the head (moves with it): 'witch' = MEDIHOROSCOPE's Oracle (generated in Medi's own flat style,
+   * brand/horoscope/oracle-studio.mjs → cutout.cjs). Use the `hat` crop so the tip fits.
+   */
+  hat?: 'witch';
   /** Only when Medi is the control itself; otherwise the mascot is decoration and hidden from screen readers. */
   accessibilityLabel?: string;
   style?: StyleProp<ViewStyle>;
@@ -75,7 +82,7 @@ export type MediMascotProps = {
  * computes the pose and every SVG group reads its own matrix. Reduced motion = a still of the mood, no blinks.
  * Never in MEDICYCLE, MEDISCAN / labs / symptoms, permission primers or MEDIRUN; never `sad` for a missed dose.
  */
-export function MediMascot({ mood = 'idle', then = 'idle', playKey, size = 120, crop = 'full', giggle = false, onPress, accessibilityLabel, style }: MediMascotProps) {
+export function MediMascot({ mood = 'idle', then = 'idle', playKey, size = 120, crop = 'full', giggle = false, hat, onPress, accessibilityLabel, style }: MediMascotProps) {
   const reduced = usePrefersReducedMotion();
   const focused = useIsFocused();
   const appActive = useAppActive();
@@ -192,6 +199,12 @@ export function MediMascot({ mood = 'idle', then = 'idle', playKey, size = 120, 
           <APath d={f0.mouthD} fill={MOUTH_IN} animatedProps={mouthP} />
           <APath d={f0.tongueD} opacity={f0.tongueO} fill={TONGUE} animatedProps={tongueP} />
           <APath d={f0.lineD} fill="none" stroke={MOUTH_IN} strokeWidth={26} strokeLinecap="round" animatedProps={lineP} />
+          {hat === 'witch' ? (
+            // Brim centred on the crown just above the face mask (picture y ≈ 450), tipped a little to one side.
+            <G transform="rotate(-6 1024 450)">
+              <SvgImage href={WITCH_HAT} x={274} y={-556} width={1500} height={1240} preserveAspectRatio="xMidYMid meet" />
+            </G>
+          ) : null}
         </AG>
         {arm('L', 2, armL2)}
         {arm('R', 2, armR2)}

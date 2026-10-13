@@ -2809,3 +2809,36 @@ html[data-theme="dark"] .s-sl { --mod-soft: color-mix(in srgb, var(--mod, var(--
   .s-sl-sound .s-sl-actions, .s-sl-tip .s-sl-actions { grid-column: 1 / -1; justify-items: start; }
   .s-sl-row { justify-content: flex-start; }
 }
+
+/* ───────────── MEDIHOROSCOPE (#/horoscope) ───────────── */
+#tab-horoscope { --mod: #8A6414; --hz-ready: var(--s-ok); }
+html[data-theme="dark"] #tab-horoscope { --mod: #E9C77E; }
+#tab-horoscope .hz-events { margin: 12px 0 0; padding: 0; list-style: none; display: grid; gap: 6px; font-size: 13px; color: var(--s-text-2, inherit); }
+#tab-horoscope .hz-grid { display: grid; gap: 12px; }
+#tab-horoscope .hz-row { display: grid; grid-template-columns: 170px minmax(0, 1fr) auto; gap: 12px; align-items: center; }
+#tab-horoscope .hz-row-head { display: grid; gap: 2px; }
+#tab-horoscope .hz-row-head small { color: var(--s-muted, #6b7280); font-size: 12px; }
+#tab-horoscope .hz-cells { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: 4px; }
+#tab-horoscope .hz-cell { height: 30px; border-radius: 8px; border: 1px solid var(--s-line); background: var(--s-surface); font: inherit; font-size: 11.5px; color: var(--s-muted, #6b7280); cursor: pointer; }
+#tab-horoscope .hz-cell.is-ready { background: color-mix(in srgb, var(--hz-ready) 14%, var(--s-surface)); border-color: color-mix(in srgb, var(--hz-ready) 35%, var(--s-line)); color: var(--hz-ready); }
+#tab-horoscope .hz-cell.is-edited { background: color-mix(in srgb, var(--mod) 14%, var(--s-surface)); border-color: color-mix(in srgb, var(--mod) 40%, var(--s-line)); color: var(--mod); }
+#tab-horoscope .hz-cell.is-hidden { background: var(--s-sunken); text-decoration: line-through; }
+#tab-horoscope .hz-cell.is-missing { border-style: dashed; }
+#tab-horoscope .hz-cell.is-on { outline: 2px solid var(--mod); outline-offset: 1px; }
+#tab-horoscope .hz-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+#tab-horoscope .hz-two, #hz-edit-form .hz-two, #hz-lib-form.hz-two { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
+#tab-horoscope .hz-reading h4 { margin: 0 0 10px; font-size: 17px; color: var(--mod); }
+#tab-horoscope .hz-reading p { margin: 0 0 10px; line-height: 1.6; font-size: 14px; }
+#tab-horoscope .hz-reading p b { display: block; font-size: 12px; color: var(--s-muted, #6b7280); font-weight: 600; margin-bottom: 2px; }
+#tab-horoscope .hz-lib-tools { display: grid; grid-template-columns: 260px minmax(0, 1fr); gap: 12px; margin-bottom: 12px; }
+#tab-horoscope .hz-lib { list-style: none; margin: 0; padding: 0; display: grid; gap: 0; }
+#tab-horoscope .hz-lib-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px; align-items: start; padding: 12px 0; border-top: 1px solid var(--s-line); }
+#tab-horoscope .hz-lib-row:first-child { border-top: 0; }
+#tab-horoscope .hz-lib-row p { margin: 4px 0 0; font-size: 13px; line-height: 1.55; color: var(--s-text-2, inherit); }
+#tab-horoscope .hz-team { margin-left: auto; }
+#tab-horoscope .hz-save { display: flex; justify-content: flex-end; gap: 12px; align-items: center; }
+#tab-horoscope pre { white-space: pre-wrap; font-size: 12px; }
+@media (max-width: 900px) {
+  #tab-horoscope .hz-row { grid-template-columns: minmax(0, 1fr); }
+  #tab-horoscope .hz-two, #hz-edit-form .hz-two, #hz-lib-form.hz-two, #tab-horoscope .hz-lib-tools { grid-template-columns: minmax(0, 1fr); }
+}

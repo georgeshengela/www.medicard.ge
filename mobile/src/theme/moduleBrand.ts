@@ -12,7 +12,7 @@
  * header `ModuleHeader` (components/brand/ModuleHeader.tsx) — the MEDIRUN hub header.
  * The site (`server/public/js/module-brand.js`) mirrors these values — keep them in sync.
  */
-export type ModuleBrandId = 'run' | 'cycle' | 'food' | 'pill' | 'quest' | 'vet' | 'coach' | 'scan' | 'lab' | 'sleep' | 'family' | 'profile' | 'medi';
+export type ModuleBrandId = 'run' | 'cycle' | 'food' | 'pill' | 'quest' | 'vet' | 'coach' | 'scan' | 'lab' | 'sleep' | 'family' | 'horo' | 'profile' | 'medi';
 
 export type ModuleBrand = {
   id: ModuleBrandId;
@@ -94,6 +94,13 @@ export const MODULE_BRANDS: Record<ModuleBrandId, ModuleBrand> = {
     id: 'family', suffix: 'FAMILY', name: 'MEDIFAMILY',
     ink: { light: '#C2410C', dark: '#FDBA74' },
     gradient: ['#7C2D12', '#EA580C', '#FB923C'], glow: 'rgba(253,186,116,0.40)', onHero: '#FFEDD5',
+  },
+  // MEDIHOROSCOPE (owner 2026-10-13): a magical night module — brass astrolabe on lapis night. Brass ink is
+  // distinct from MEDIFAMILY coral and the hub amber; the hero is the night sky, not a gold gradient.
+  horo: {
+    id: 'horo', suffix: 'HOROSCOPE', name: 'MEDIHOROSCOPE',
+    ink: { light: '#8A6414', dark: '#E9C77E' },
+    gradient: ['#0A1030', '#1B2A66', '#C99A45'], glow: 'rgba(233,199,126,0.32)', onHero: '#F3DDA6',
   },
   // MEDIPROFILE (owner 2026-10-04): the Profile tab's title. It is the person's own page, not a module,
   // so it keeps the brand teal instead of a signature colour.

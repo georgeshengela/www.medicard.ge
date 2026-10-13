@@ -30,6 +30,7 @@ import {
 } from 'lucide-react-native';
 import { useThemeColors } from '@/theme/colors';
 import { isHrefAvailable, useFeatureState } from '@/lib/featureFlags';
+import { horoscopeShipped } from '@/lib/horoscope/horoscopeAvailability';
 import { tx } from '@/i18n/locale';
 
 type Feature = {
@@ -178,6 +179,17 @@ export const HOME_FEATURE_GROUPS: { title: string; items: Feature[] }[] = [
     ],
   },
   {
+    title: tx('ვარსკვლავები', 'The stars'),
+    items: [
+      {
+        title: 'MEDIHOROSCOPE',
+        detail: tx('ჰოროსკოპი რეალური ცით, ასტრორუკა, ტარო და ორაკული', 'Horoscopes from the real sky, a birth chart, tarot and the Oracle'),
+        href: '/horoscope',
+        icon: Sparkles,
+      },
+    ],
+  },
+  {
     title: tx('მოძრაობა და მოტივაცია', 'Movement and motivation'),
     items: [
       {
@@ -224,7 +236,7 @@ export function HomeFeatureDirectory({
     <View style={{ gap: 28 }}>
       {HOME_FEATURE_GROUPS.map((group) => {
         if (category && group.title !== category) return null;
-        const items = group.items.filter((item) => (!item.female || female) && (item.href !== '/community' || community) && isHrefAvailable(item.href, features));
+        const items = group.items.filter((item) => (!item.female || female) && (item.href !== '/community' || community) && (item.href !== '/horoscope' || horoscopeShipped()) && isHrefAvailable(item.href, features));
         if (!items.length) return null;
         return (
           <View key={group.title}>

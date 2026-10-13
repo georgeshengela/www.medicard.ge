@@ -85,3 +85,6 @@ export const PRODUCT_USAGE_CAPABILITIES = Object.freeze(['PRODUCT_USAGE_VIEW']);
 
 /** MEDISLEEP (#/sleep): VIEW reads usage counts and the catalogue; MANAGE edits sounds (uploads), advice and module settings. */
 export const SLEEP_CAPABILITIES = Object.freeze(['SLEEP_VIEW', 'SLEEP_MANAGE']);
+
+/** MEDIHOROSCOPE (#/horoscope): VIEW reads readings, library, generator log and usage counts; MANAGE edits texts, writes again and changes settings. */
+export const HOROSCOPE_CAPABILITIES = Object.freeze(['HOROSCOPE_VIEW', 'HOROSCOPE_MANAGE']);

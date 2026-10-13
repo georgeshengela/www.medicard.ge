@@ -1,0 +1,418 @@
+<!doctype html>
+<html lang="ka">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MEDIHOROSCOPE board</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Exo+2:ital,wght@0,800&family=Noto+Sans+Georgian:wght@400;500;600;700&family=Noto+Serif+Georgian:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --night: #0A1030; --lapis: #1B2A66; --brass: #C99A45; --brass-hi: #E9C77E; --brass-ink: #8A6414;
+    --moon: #DCE3F0; --harm: #8FB3FF; --tense: #F08A9A;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #E7EAEE; font-family: 'Noto Sans Georgian', system-ui, sans-serif; color: #0f1a1c; }
+  .board { padding: 40px 32px 80px; }
+  .board h1 { font: 800 30px/1 'Exo 2'; margin: 0 0 6px; letter-spacing: .2px; }
+  .board h1 i { color: var(--brass-ink); display: inline-block; transform: skewX(-16deg); font-style: normal; }
+  .board .lede { color: #46565a; margin: 0 0 30px; max-width: 760px; line-height: 1.6; font-size: 15px; }
+  .row { display: flex; gap: 36px; align-items: flex-start; flex-wrap: wrap; margin-bottom: 56px; }
+  .shot { display: flex; flex-direction: column; gap: 12px; }
+  .shot > b { font-weight: 600; font-size: 14px; color: #222; }
+  .shot > span { font-size: 13px; color: #5b6b70; max-width: 390px; line-height: 1.5; }
+
+  /* phone = app canvas */
+  .phone { width: 390px; border-radius: 44px; overflow: hidden; box-shadow: 0 30px 60px -30px rgba(10,16,48,.45), 0 0 0 10px #111; }
+  .phone.dark { --bg100:#030712; --surface:#111827; --raised:#1F2937; --bg300:#374151; --t1:#FFFFFF; --t2:#D1D5DB; --t3:#6B7280; --ink: var(--brass-hi); --tint: rgba(233,199,126,.15); }
+  .phone.light { --bg100:#f5f7f7; --surface:#ffffff; --raised:#ffffff; --bg300:#dde3e4; --t1:#0f1a1c; --t2:#46565a; --t3:#7b8b8f; --ink: var(--brass-ink); --tint: rgba(138,100,20,.08); }
+  .screen { background: var(--bg100); color: var(--t1); padding: 58px 20px 40px; min-height: 844px; }
+  .status { height: 0; }
+
+  .mh { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; }
+  .btn { width: 44px; height: 44px; border-radius: 16px; background: var(--surface); display: grid; place-items: center; flex: none; }
+  .btn svg { width: 20px; height: 20px; stroke: var(--t1); fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+  .mh .title { flex: 1; min-width: 0; }
+  .wm { font: 800 25px/1 'Exo 2'; letter-spacing: .1px; white-space: nowrap; }
+  .wm i { font-style: normal; display: inline-block; transform: skewX(-16deg); color: var(--ink); }
+  .mh .sub { font-size: 11px; color: var(--t2); margin-top: 4px; }
+
+  .hero { position: relative; border-radius: 22px; overflow: hidden; color: #fff; padding: 18px 18px 20px;
+    background: radial-gradient(120% 70% at 100% 0%, rgba(233,199,126,.30), transparent 55%), linear-gradient(160deg, var(--night) 0%, #121A45 55%, var(--lapis) 100%); }
+  .hero .wheel { display: block; margin: 0 auto; }
+  .hero .meta { text-align: center; font-size: 12px; color: rgba(243,221,166,.85); margin-top: 2px; }
+  .hero h2 { font: 500 22px/1.34 'Noto Serif Georgian', serif; text-align: center; margin: 10px 8px 16px; color: #FBF3E0; text-wrap: balance; }
+  .scores { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .score { background: rgba(255,255,255,.06); border-radius: 14px; padding: 10px 10px 9px; }
+  .score small { display: block; font-size: 11px; color: rgba(255,255,255,.66); margin-bottom: 6px; }
+  .dots { display: flex; gap: 4px; }
+  .dots i { width: 7px; height: 7px; border-radius: 50%; background: rgba(255,255,255,.18); }
+  .dots i.on { background: var(--brass-hi); }
+
+  .seg { display: flex; background: var(--surface); border-radius: 14px; padding: 4px; margin: 20px 0 14px; }
+  .seg span { flex: 1; text-align: center; font-size: 13px; padding: 8px 0; border-radius: 10px; color: var(--t2); font-weight: 500; }
+  .seg span.on { background: var(--ink); color: var(--bg100); font-weight: 600; }
+  .phone.light .seg span.on { color: #fff; }
+
+  .card { background: var(--surface); border-radius: 22px; padding: 18px; }
+  .p { font-size: 15px; line-height: 1.66; color: var(--t1); margin: 0; }
+  .area { display: grid; grid-template-columns: 1fr auto; gap: 4px 12px; padding: 14px 0; border-top: 1px solid var(--bg300); }
+  .area:first-of-type { border-top: 0; }
+  .area b { font-weight: 600; font-size: 14px; }
+  .area p { grid-column: 1 / -1; margin: 0; font-size: 14px; line-height: 1.6; color: var(--t2); }
+  .phone .dots i { background: var(--bg300); }
+  .phone .dots i.on { background: var(--ink); }
+  .hero .dots i { background: rgba(255,255,255,.18); }
+  .hero .dots i.on { background: var(--brass-hi); }
+
+  .tip { margin-top: 12px; display: flex; gap: 12px; align-items: center; }
+  .lucky { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 12px; }
+  .lucky div { background: var(--surface); border-radius: 16px; padding: 12px; }
+  .lucky small { display: block; font-size: 11px; color: var(--t3); margin-bottom: 4px; }
+  .lucky strong { font-size: 17px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+  .sw { width: 14px; height: 14px; border-radius: 50%; display: inline-block; box-shadow: 0 0 0 1px rgba(127,127,127,.3); }
+
+  .sec { font-size: 17px; font-weight: 700; margin: 28px 0 12px; display: flex; justify-content: space-between; align-items: baseline; }
+  .sec a { font-size: 13px; color: var(--ink); font-weight: 500; text-decoration: none; }
+  .tr { display: grid; grid-template-columns: 42px 1fr; gap: 12px; padding: 12px 0; border-top: 1px solid var(--bg300); align-items: start; }
+  .tr:first-child { border-top: 0; padding-top: 0; }
+  .tile { width: 42px; height: 42px; border-radius: 14px; background: var(--tint); display: grid; place-items: center; }
+  .tile svg { width: 22px; height: 22px; fill: var(--ink); }
+  .tr b { font-size: 14px; font-weight: 600; display: block; }
+  .tr span { font-size: 13px; color: var(--t2); line-height: 1.5; display: block; margin-top: 2px; }
+  .tr em { font-style: normal; color: var(--t3); font-size: 12px; }
+
+  .skyrow { display: flex; gap: 14px; align-items: center; }
+  .skyrow .mtxt b { display: block; font-weight: 600; font-size: 15px; }
+  .skyrow .mtxt span { font-size: 13px; color: var(--t2); }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 14px; }
+  .chip { font-size: 12px; padding: 6px 10px; border-radius: 999px; background: var(--tint); color: var(--ink); font-weight: 500; display: inline-flex; gap: 6px; align-items: center; }
+  .chip svg { width: 13px; height: 13px; fill: currentColor; }
+  .ev { display: grid; grid-template-columns: 52px 1fr; gap: 12px; padding: 11px 0; border-top: 1px solid var(--bg300); align-items: center; }
+  .ev .d { text-align: center; line-height: 1.05; }
+  .ev .d strong { display: block; font-size: 20px; font-weight: 600; }
+  .ev .d small { font-size: 11px; color: var(--t3); }
+  .ev b { font-size: 14px; font-weight: 600; display: block; }
+  .ev span { font-size: 12px; color: var(--t2); }
+
+  .tools .tr { align-items: center; }
+  .chev { width: 18px; height: 18px; stroke: var(--t3); fill: none; stroke-width: 2; }
+  .tools .tr { grid-template-columns: 42px 1fr 18px; }
+
+  .note { font-size: 12px; color: var(--t3); line-height: 1.55; margin-top: 22px; text-align: center; padding: 0 8px; }
+
+  .big3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 14px; }
+  .big3 div { background: var(--surface); border-radius: 18px; padding: 12px; }
+  .big3 small { font-size: 11px; color: var(--t3); display: block; }
+  .big3 strong { display: flex; gap: 6px; align-items: center; font-size: 15px; font-weight: 600; margin-top: 6px; }
+  .big3 strong svg { width: 18px; height: 18px; fill: var(--ink); }
+  .big3 em { font-style: normal; font-size: 12px; color: var(--t2); }
+  .bars { display: grid; gap: 10px; }
+  .bar { display: grid; grid-template-columns: 70px 1fr 38px; gap: 10px; align-items: center; font-size: 13px; }
+  .bar i { height: 8px; border-radius: 99px; background: var(--bg300); position: relative; overflow: hidden; }
+  .bar i u { position: absolute; inset: 0 auto 0 0; background: var(--ink); border-radius: 99px; }
+  .bar span { text-align: right; color: var(--t2); }
+  .pl { display: grid; grid-template-columns: 42px 1fr auto; gap: 12px; align-items: center; padding: 10px 0; border-top: 1px solid var(--bg300); }
+  .pl:first-child { border-top: 0; padding-top: 0; }
+  .pl b { font-size: 14px; font-weight: 600; }
+  .pl span { display: block; font-size: 12px; color: var(--t2); }
+  .pl em { font-style: normal; font-size: 13px; color: var(--t2); font-variant-numeric: tabular-nums; }
+
+  .compat { display: flex; align-items: center; justify-content: space-between; }
+  .medal { width: 92px; text-align: center; }
+  .medal .disc { width: 72px; height: 72px; border-radius: 50%; margin: 0 auto 8px; display: grid; place-items: center; background: var(--tint); }
+  .medal .disc svg { width: 38px; height: 38px; fill: var(--ink); }
+  .medal b { font-size: 14px; }
+  .ring { position: relative; width: 112px; height: 112px; }
+  .ring strong { position: absolute; inset: 0; display: grid; place-items: center; font: 600 30px/1 'Noto Serif Georgian', serif; }
+  .tarot { display: flex; gap: 16px; align-items: stretch; }
+  .tcard { width: 128px; height: 208px; border-radius: 16px; flex: none; position: relative; overflow: hidden;
+    background: linear-gradient(170deg, var(--night), var(--lapis)); color: #F3DDA6; }
+  .tcard svg { position: absolute; inset: 0; }
+  .ttext b { font-size: 16px; font-weight: 600; display: block; margin-bottom: 6px; }
+  .ttext p { margin: 0; font-size: 13px; line-height: 1.6; color: var(--t2); }
+  .num { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .num div { background: var(--surface); border-radius: 18px; padding: 14px; }
+  .num small { font-size: 11px; color: var(--t3); display: block; }
+  .num strong { font: 500 34px/1.1 'Noto Serif Georgian', serif; color: var(--ink); display: block; margin: 6px 0 4px; }
+  .num span { font-size: 12px; color: var(--t2); line-height: 1.45; display: block; }
+</style>
+</head>
+<body>
+<div class="board">
+  <h1>MEDI<i>HOROSCOPE</i></h1>
+  <p class="lede">პირველი ვიზუალი — <b>ცის რეალური მდგომარეობა დღეს</b> (პლანეტები თავის ნამდვილ გრადუსებზე, Tbilisi, <span id="today"></span>), ტექსტები — ჩვენი AI-ს მიერ დაწერილი რეალური ცის მიხედვით. ერთი თამამი ელემენტი: სპილენძისფერი ასტროლაბი ღამის ფონზე. დანარჩენი — აპის ჩვეულებრივი ბარათები.</p>
+
+  <div class="row">
+    <div class="shot"><b>1 · მოდულის მთავარი (მუქი)</b><span>ზედა რგოლზე — შენი ნიშანი, პლანეტები ნამდვილ ადგილებზე, ცენტრში დღევანდელი მთვარე.</span><div class="phone dark" id="hubDark"></div></div>
+    <div class="shot"><b>2 · იგივე, ღია თემა</b><span>ღამის ჰერო ორივე თემაში ერთნაირია, ბარათები — აპის თემით.</span><div class="phone light" id="hubLight"></div></div>
+    <div class="shot"><b>3 · ჩემი ასტრორუკა</b><span>დაბადების თარიღი + დრო + ადგილი → სრული ნატალური რუკა: სახლები, ასპექტები, ელემენტები. ყველა პუნქტზე დაჭერით — განმარტება.</span><div class="phone dark" id="chart"></div></div>
+    <div class="shot"><b>4 · ხელსაწყოები</b><span>თავსებადობა, დღის ტარო, ნუმეროლოგია, ჩინური ჰოროსკოპი — თითო თავისი გვერდით.</span><div class="phone light" id="tools"></div></div>
+  </div>
+</div>
+<script src="./board-data.js"></script>
+<script src="./board-readings.js"></script>
+<script>
+const B = window.BOARD, R = window.READINGS || {};
+const DEG = Math.PI / 180;
+const SIGNS = ['aries','taurus','gemini','cancer','leo','virgo','libra','scorpio','sagittarius','capricorn','aquarius','pisces'];
+const SIGN_KA = { aries:'ვერძი', taurus:'კურო', gemini:'ტყუპები', cancer:'კირჩხიბი', leo:'ლომი', virgo:'ქალწული', libra:'სასწორი', scorpio:'მორიელი', sagittarius:'მშვილდოსანი', capricorn:'თხის რქა', aquarius:'მერწყული', pisces:'თევზები' };
+const SIGN_LOC = { aries:'ვერძში', taurus:'კუროში', gemini:'ტყუპებში', cancer:'კირჩხიბში', leo:'ლომში', virgo:'ქალწულში', libra:'სასწორში', scorpio:'მორიელში', sagittarius:'მშვილდოსანში', capricorn:'თხის რქაში', aquarius:'მერწყულში', pisces:'თევზებში' };
+const PL_KA = { sun:'მზე', moon:'მთვარე', mercury:'მერკური', venus:'ვენერა', mars:'მარსი', jupiter:'იუპიტერი', saturn:'სატურნი', uranus:'ურანი', neptune:'ნეპტუნი', pluto:'პლუტონი', asc:'ასცენდენტი', mc:'ზენიტი' };
+const ASP_KA = { conjunction:'შეერთება', sextile:'სექსტილი', square:'კვადრატი', trine:'ტრიგონი', opposition:'ოპოზიცია' };
+const MONTHS = ['იან','თებ','მარ','აპრ','მაი','ივნ','ივლ','აგვ','სექ','ოქტ','ნოე','დეკ'];
+const MONTHS_LONG = ['იანვარი','თებერვალი','მარტი','აპრილი','მაისი','ივნისი','ივლისი','აგვისტო','სექტემბერი','ოქტომბერი','ნოემბერი','დეკემბერი'];
+const ROMAN = ['I','II','III','IV','V','VI','VII','VIII','IX','X','XI','XII'];
+const PHASE_KA = { new:'ახალი მთვარე', waxing_crescent:'მზარდი ნამგალი', first_quarter:'პირველი მეოთხედი', waxing_gibbous:'მზარდი მთვარე', full:'სავსე მთვარე', waning_gibbous:'კლებადი მთვარე', last_quarter:'ბოლო მეოთხედი', waning_crescent:'კლებადი ნამგალი' };
+const ME = 'taurus';
+
+function glyph(key, x, y, size, fill, extra = '') {
+  const g = B.glyphs[key]; if (!g) return '';
+  const [vx, vy, vw] = g.vb.split(' ').map(Number);
+  const s = size / vw;
+  return `<g transform="translate(${x - size / 2} ${y - size / 2}) scale(${s}) translate(${-vx} ${-vy})" ${extra}><path d="${g.d}" fill="${fill}" ${g.evenOdd ? 'fill-rule="evenodd"' : ''}/></g>`;
+}
+function glyphSvg(key) { const g = B.glyphs[key]; return `<svg viewBox="${g.vb}"><path d="${g.d}" ${g.evenOdd ? 'fill-rule="evenodd"' : ''}/></svg>`; }
+const ICON = {
+  back: '<svg viewBox="0 0 24 24"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>',
+  cal: '<svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M8 3v4M16 3v4M3 10h18"/></svg>',
+  pen: '<svg viewBox="0 0 24 24"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>',
+  chev: '<svg class="chev" viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg>',
+};
+
+function moonPath(cx, cy, r, angle) {
+  const waxing = angle < 180;
+  const k = (1 - Math.cos(angle * DEG)) / 2;
+  const rx = Math.max(0.01, r * Math.abs(1 - 2 * k));
+  const limb = waxing ? 1 : 0;
+  const term = waxing ? (k > 0.5 ? 1 : 0) : (k > 0.5 ? 0 : 1);
+  return `M${cx} ${cy - r}A${r} ${r} 0 0 ${limb} ${cx} ${cy + r}A${rx} ${r} 0 0 ${term} ${cx} ${cy - r}Z`;
+}
+
+function spread(items, minGap) {
+  const a = items.map((p) => ({ ...p, disp: p.lon })).sort((x, y) => x.lon - y.lon);
+  for (let it = 0; it < 60; it++) {
+    let moved = false;
+    for (let i = 0; i < a.length; i++) {
+      const p = a[i], q = a[(i + 1) % a.length];
+      let gap = ((q.disp - p.disp) % 360 + 360) % 360; if (a.length === 1) break;
+      if (gap < minGap) { const push = (minGap - gap) / 2; p.disp -= push; q.disp += push; moved = true; }
+    }
+    if (!moved) break;
+  }
+  return a;
+}
+
+/** The engraved wheel. mode 'sky' (user's sign on top) or 'chart' (ascendant on the left). */
+function wheel({ size, mode, bodies, highlight, chart, moon }) {
+  const c = size / 2, R = size / 2 - 2;
+  const rot = mode === 'chart' ? (lon) => 180 + (lon - chart.angles.asc.lon) : (lon) => 90 + (lon - (SIGNS.indexOf(highlight) * 30 + 15));
+  const pt = (lon, r) => { const t = rot(lon) * DEG; return [c + r * Math.cos(t), c - r * Math.sin(t)]; };
+  const brass = '#E9C77E', faint = 'rgba(233,199,126,.28)', hair = 'rgba(233,199,126,.5)';
+  const rOut = R, rSign = R * 0.84, rTick = R * 0.70, rPl = mode === 'chart' ? R * 0.57 : R * 0.56, rIn = mode === 'chart' ? R * 0.40 : R * 0.36;
+  let s = `<svg class="wheel" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}">`;
+  s += `<circle cx="${c}" cy="${c}" r="${rOut}" fill="none" stroke="${hair}" stroke-width="1"/>`;
+  s += `<circle cx="${c}" cy="${c}" r="${rTick}" fill="none" stroke="${hair}" stroke-width="1"/>`;
+  s += `<circle cx="${c}" cy="${c}" r="${rIn}" fill="none" stroke="${faint}" stroke-width="1"/>`;
+  // highlighted sign sector
+  if (highlight) {
+    const i = SIGNS.indexOf(highlight), a0 = i * 30, a1 = a0 + 30;
+    const [x0, y0] = pt(a0, rOut), [x1, y1] = pt(a1, rOut), [x2, y2] = pt(a1, rTick), [x3, y3] = pt(a0, rTick);
+    s += `<path d="M${x0} ${y0}A${rOut} ${rOut} 0 0 0 ${x1} ${y1}L${x2} ${y2}A${rTick} ${rTick} 0 0 1 ${x3} ${y3}Z" fill="rgba(233,199,126,.14)"/>`;
+  }
+  for (let i = 0; i < 12; i++) {
+    const [x0, y0] = pt(i * 30, rOut), [x1, y1] = pt(i * 30, rTick);
+    s += `<line x1="${x0}" y1="${y0}" x2="${x1}" y2="${y1}" stroke="${hair}" stroke-width="1"/>`;
+    const [gx, gy] = pt(i * 30 + 15, (rOut + rTick) / 2);
+    const on = SIGNS[i] === highlight;
+    s += glyph(SIGNS[i], gx, gy, size * (on ? 0.07 : 0.058), on ? brass : 'rgba(233,199,126,.62)');
+  }
+  for (let d = 0; d < 360; d++) {
+    const len = d % 10 === 0 ? 0.05 : d % 5 === 0 ? 0.032 : 0.016;
+    const [x0, y0] = pt(d, rTick), [x1, y1] = pt(d, rTick - R * len);
+    s += `<line x1="${x0}" y1="${y0}" x2="${x1}" y2="${y1}" stroke="${d % 5 ? faint : hair}" stroke-width="${d % 10 ? 0.6 : 1}"/>`;
+  }
+  if (mode === 'chart') {
+    chart.houses.cusps.forEach((cu, i) => {
+      const [x0, y0] = pt(cu, rTick - R * 0.05), [x1, y1] = pt(cu, rIn);
+      const angle = i === 0 || i === 3 || i === 6 || i === 9;
+      s += `<line x1="${x0}" y1="${y0}" x2="${x1}" y2="${y1}" stroke="${angle ? brass : faint}" stroke-width="${angle ? 1.4 : 0.8}"/>`;
+      const next = chart.houses.cusps[(i + 1) % 12];
+      const mid = cu + (((next - cu) % 360 + 360) % 360) / 2;
+      const [tx, ty] = pt(mid, rIn + R * 0.06);
+      s += `<text x="${tx}" y="${ty}" font-size="${size * 0.026}" fill="rgba(233,199,126,.55)" text-anchor="middle" dominant-baseline="central" font-family="Noto Sans Georgian">${ROMAN[i]}</text>`;
+    });
+    const [ax, ay] = pt(chart.angles.asc.lon, rOut + 0); s += `<circle cx="${ax}" cy="${ay}" r="3" fill="${brass}"/>`;
+    // aspects
+    const P = Object.fromEntries(chart.bodies.map((b) => [b.key, b.lon]));
+    P.asc = chart.angles.asc.lon; P.mc = chart.angles.mc.lon;
+    for (const a of chart.aspects) {
+      if (a.aspect === 'conjunction') continue;
+      const [x0, y0] = pt(P[a.a], rIn), [x1, y1] = pt(P[a.b], rIn);
+      const col = a.aspect === 'trine' || a.aspect === 'sextile' ? 'rgba(143,179,255,.75)' : 'rgba(240,138,154,.75)';
+      s += `<line x1="${x0}" y1="${y0}" x2="${x1}" y2="${y1}" stroke="${col}" stroke-width="${a.orb < 2 ? 1.2 : 0.7}"/>`;
+    }
+  }
+  const gSize = size * 0.064;
+  const minGap = (gSize * 1.25 / rPl) / DEG;
+  const placed = spread(bodies.map((b) => ({ key: b.key, lon: b.lon, retro: b.retro, degree: b.degree })), minGap);
+  for (const p of placed) {
+    const [tx, ty] = pt(p.lon, rTick), [tx2, ty2] = pt(p.lon, rTick - R * 0.07);
+    s += `<line x1="${tx}" y1="${ty}" x2="${tx2}" y2="${ty2}" stroke="${brass}" stroke-width="1.2"/>`;
+    const [gx, gy] = pt(p.disp, rPl);
+    if (Math.abs(p.disp - p.lon) > 1.5) { const [lx, ly] = pt(p.lon, rTick - R * 0.07); const [mx, my] = pt(p.disp, rPl + gSize * 0.62); s += `<line x1="${lx}" y1="${ly}" x2="${mx}" y2="${my}" stroke="rgba(233,199,126,.45)" stroke-width="0.8"/>`; }
+    s += glyph(p.key, gx, gy, gSize, '#FBF3E0');
+    if (mode === 'chart') {
+      const [dx, dy] = pt(p.disp, rPl - R * 0.085);
+      s += `<text x="${dx}" y="${dy}" font-size="${size * 0.026}" fill="rgba(251,243,224,.7)" text-anchor="middle" dominant-baseline="central" font-family="Noto Sans Georgian">${p.degree}°${p.retro ? 'ʀ' : ''}</text>`;
+    } else if (p.retro) {
+      const [dx, dy] = pt(p.disp, rPl - R * 0.075);
+      s += `<text x="${dx}" y="${dy}" font-size="${size * 0.024}" fill="rgba(240,138,154,.9)" text-anchor="middle" dominant-baseline="central" font-family="Noto Sans Georgian">R</text>`;
+    }
+  }
+  if (moon) {
+    const mr = rIn * 0.5;
+    s += `<circle cx="${c}" cy="${c}" r="${mr}" fill="rgba(255,255,255,.06)"/>`;
+    s += `<path d="${moonPath(c, c, mr, moon.angle)}" fill="#E8EDF7"/>`;
+  }
+  return s + '</svg>';
+}
+
+function dots(n) { return `<span class="dots">${[1,2,3,4,5].map((i) => `<i class="${i <= n ? 'on' : ''}"></i>`).join('')}</span>`; }
+const fmtDate = (ymd) => { const [, m, d] = ymd.split('-').map(Number); return `${d} ${MONTHS_LONG[m - 1]}`; };
+const evDay = (iso) => { const d = new Date(iso); const p = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Tbilisi', year: 'numeric', month: '2-digit', day: '2-digit' }).format(d).split('-').map(Number); return { d: p[2], m: MONTHS[p[1] - 1] }; };
+function evText(e) {
+  switch (e.type) {
+    case 'new_moon': return [`ახალი მთვარე ${SIGN_LOC[e.sign]}`, 'ახალი დასაწყისის დრო'];
+    case 'full_moon': return [`სავსე მთვარე ${SIGN_LOC[e.sign]}`, 'კულმინაცია, საქმის დასრულება'];
+    case 'ingress': return [`${PL_KA[e.body]} შედის ${SIGN_LOC[e.sign]}`, e.body === 'sun' ? 'იწყება მორიელის სეზონი' : 'პლანეტა ნიშანს იცვლის'];
+    case 'station_retrograde': return [`${PL_KA[e.body]} უკუსვლაში გადადის`, `${SIGN_LOC[e.sign]}, რეტროგრადი იწყება`];
+    case 'station_direct': return [`${PL_KA[e.body]} პირდაპირ სვლაზე გადადის`, `${SIGN_LOC[e.sign]}, რეტროგრადი სრულდება`];
+    case 'lunar_eclipse': return [`მთვარის დაბნელება ${SIGN_LOC[e.sign]}`, ''];
+    case 'solar_eclipse': return [`მზის დაბნელება ${SIGN_LOC[e.sign]}`, ''];
+    default: return [e.type, ''];
+  }
+}
+
+function hub(dark) {
+  const day = R.day?.body || null;
+  const t = day?.ka || { headline: '…', general: '…', love: '…', money: '…', mood: '…', tip: '…' };
+  const sc = day?.scores || { love: 3, money: 3, mood: 3 };
+  const lucky = day?.lucky || { number: 7, color: 'gold', time: '19:00' };
+  const COLORS = { gold:['ოქროსფერი','#C99A45'], burgundy:['ალუბლისფერი','#7D2338'], emerald:['ზურმუხტისფერი','#0F7B63','ზურმუხტი'], blue:['ლურჯი','#2F5FB3'], green:['მწვანე','#3E8E5E'], white:['თეთრი','#F4F4F2'], navy:['მუქი ლურჯი','#1C2A5E'], pink:['ვარდისფერი','#E58BA8'], violet:['იისფერი','#7A4FB8'], silver:['ვერცხლისფერი','#B8BEC9'], coral:['მარჯნისფერი','#EE7A5F'], turquoise:['ფირუზისფერი','#2BB3B1'], yellow:['ყვითელი','#E8C547'], orange:['ნარინჯისფერი','#E58A2B'], red:['წითელი','#C2362F'], brown:['ყავისფერი','#7A5536'], beige:['კრემისფერი','#E9DCC3'], black:['შავი','#1A1A1A'] };
+  const col = COLORS[lucky.color] || COLORS.gold;
+  const moon = B.sky.moon;
+  const retro = B.sky.bodies.filter((b) => b.retro);
+  const ev = B.events.filter((e) => ['station_retrograde','station_direct','ingress','new_moon','full_moon','lunar_eclipse','solar_eclipse'].includes(e.type) && !(e.type === 'ingress' && ['uranus','neptune','pluto'].includes(e.body))).slice(0, 4);
+  const tr = B.transits.slice(0, 3);
+  const TR_TEXT = {
+    'venus sextile asc': 'ვენერა რბილად ეხება შენს ასცენდენტს — დღეს შენთან ურთიერთობა სხვებისთვის განსაკუთრებით სასიამოვნოა. კარგი დღეა შეხვედრისთვის.',
+    'neptune sextile mc': 'ნეპტუნი შთაგონებას აძლევს შენს მიზნებს — წარმოიდგინე, სად გინდა იყო ერთ წელიწადში.',
+    'pluto trine mc': 'პლუტონი მშვიდ ძალას მატებს კარიერულ ნაბიჯებს — ის, რასაც დიდი ხანია აშენებ, საფუძველს იმაგრებს.',
+  };
+  return `<div class="screen">
+    <div class="mh"><div class="btn">${ICON.back}</div><div class="title"><div class="wm">MEDI<i>HOROSCOPE</i></div><div class="sub">${SIGN_KA[ME]} · ${fmtDate(B.today)}</div></div><div class="btn">${ICON.cal}</div></div>
+    <div class="hero">
+      ${wheel({ size: 314, mode: 'sky', bodies: B.sky.bodies, highlight: ME, moon })}
+      <div class="meta">${PHASE_KA[moon.key]} ${Math.round(moon.illumination * 100)}% · მთვარე ${SIGN_LOC[moon.sign]}</div>
+      <h2>${t.headline}</h2>
+      <div class="scores">
+        <div class="score"><small>სიყვარული</small>${dots(sc.love)}</div>
+        <div class="score"><small>საქმე და ფული</small>${dots(sc.money)}</div>
+        <div class="score"><small>განწყობა</small>${dots(sc.mood)}</div>
+      </div>
+    </div>
+    <div class="seg"><span class="on">დღეს</span><span>ხვალ</span><span>კვირა</span><span>თვე</span><span>${B.today.slice(0, 4)}</span></div>
+    <div class="card">
+      <p class="p">${t.general}</p>
+    </div>
+    <div class="card" style="margin-top:12px">
+      <div class="area"><b>სიყვარული</b>${dots(sc.love)}<p>${t.love}</p></div>
+      <div class="area"><b>საქმე და ფული</b>${dots(sc.money)}<p>${t.money}</p></div>
+      <div class="area"><b>განწყობა</b>${dots(sc.mood)}<p>${t.mood}</p></div>
+    </div>
+    <div class="lucky">
+      <div><small>რიცხვი</small><strong>${lucky.number}</strong></div>
+      <div><small>ფერი</small><strong><i class="sw" style="background:${col[1]}"></i>${col[2] || col[0]}</strong></div>
+      <div><small>დრო</small><strong>${lucky.time}</strong></div>
+    </div>
+    <div class="card" style="margin-top:12px"><div class="tr" style="padding:0;grid-template-columns:1fr"><b>დღის რჩევა</b><span>${t.tip}</span></div></div>
+
+    <div class="sec">შენი დღე რუკაზე<a>ასტრორუკა</a></div>
+    <div class="card">
+      ${tr.map((x) => `<div class="tr"><div class="tile">${glyphSvg(x.transit)}</div><div><b>${PL_KA[x.transit]} · ${ASP_KA[x.aspect]} · შენი ${PL_KA[x.natal]}</b><span>${TR_TEXT[`${x.transit} ${x.aspect} ${x.natal}`] || ''}</span></div></div>`).join('')}
+    </div>
+
+    <div class="sec">ცა ახლა<a>კალენდარი</a></div>
+    <div class="card">
+      <div class="skyrow"><svg width="52" height="52" viewBox="0 0 52 52"><circle cx="26" cy="26" r="24" fill="${dark ? '#1F2937' : '#E5E9F2'}"/><path d="${moonPath(26, 26, 24, moon.angle)}" fill="${dark ? '#E8EDF7' : '#C9A55A'}"/></svg>
+        <div class="mtxt"><b>${PHASE_KA[moon.key]}</b><span>მთვარე ${SIGN_LOC[moon.sign]} · ${moon.lunarDay}-ე მთვარის დღე</span></div></div>
+      <div class="chips">${retro.map((b) => `<span class="chip">${glyphSvg(b.key)}${PL_KA[b.key]} რეტრო</span>`).join('')}</div>
+      <div style="margin-top:10px">${ev.map((e) => { const d = evDay(e.at); const [a, b] = evText(e); return `<div class="ev"><div class="d"><strong>${d.d}</strong><small>${d.m}</small></div><div><b>${a}</b><span>${b}</span></div></div>`; }).join('')}</div>
+    </div>
+
+    <div class="sec">მეტი</div>
+    <div class="card tools">
+      ${[['sun','ჩემი ასტრორუკა','დაბადების დრო და ადგილი → სრული რუკა'],['venus','თავსებადობა','ორი ნიშანი: სიყვარული, მეგობრობა, საქმე'],['moon','დღის ტარო','ერთი კარტი ყოველ დილით'],['jupiter','ნუმეროლოგია','ცხოვრების გზის რიცხვი და დღის რიცხვი'],['saturn','ჩინური ჰოროსკოპი','შენი ცხოველი და 2026, ცეცხლის ცხენის წელი'],['neptune','სიზმრების ახსნა','სიმბოლოების ლექსიკონი ა-დან ჰ-მდე'],['aries','12 ნიშანი','ხასიათი, ელემენტი, მმართველი პლანეტა']].map(([g, a, b]) => `<div class="tr"><div class="tile">${glyphSvg(g)}</div><div><b>${a}</b><span>${b}</span></div>${ICON.chev}</div>`).join('')}
+    </div>
+    <p class="note">ჰოროსკოპი გასართობი და თვითშემეცნების საშუალებაა — არ არის სამედიცინო, ფინანსური ან ფსიქოლოგიური რჩევა. პლანეტების მდებარეობა ასტრონომიულად ზუსტია.</p>
+  </div>`;
+}
+
+function chartScreen() {
+  const ch = B.chart;
+  const big = [['sun', 'მზე', ch.bodies[0]], ['moon', 'მთვარე', ch.bodies[1]], ['asc', 'ასცენდენტი', ch.angles.asc]];
+  const EL = { fire: 'ცეცხლი', earth: 'მიწა', air: 'ჰაერი', water: 'წყალი' };
+  return `<div class="screen">
+    <div class="mh"><div class="btn">${ICON.back}</div><div class="title"><div class="wm">MEDI<i>HOROSCOPE</i></div><div class="sub">ჩემი ასტრორუკა</div></div><div class="btn">${ICON.pen}</div></div>
+    <div class="hero" style="padding:12px">
+      ${wheel({ size: 326, mode: 'chart', bodies: ch.bodies, chart: ch })}
+      <div class="meta" style="margin-top:6px">15 მაისი 1990, 14:30 · თბილისი · პლაციდუსი</div>
+    </div>
+    <div class="big3">${big.map(([g, n, b]) => `<div><small>${n}</small><strong>${glyphSvg(b.sign)}${SIGN_KA[b.sign]}</strong><em>${b.degree}°${String(b.minute).padStart(2, '0')}′</em></div>`).join('')}</div>
+    <div class="seg"><span class="on">პლანეტები</span><span>სახლები</span><span>ასპექტები</span></div>
+    <div class="card">
+      ${ch.bodies.map((b) => `<div class="pl"><div class="tile">${glyphSvg(b.key)}</div><div><b>${PL_KA[b.key]} ${SIGN_LOC[b.sign]}</b><span>${ROMAN[b.house - 1]} სახლი${b.retro ? ' · რეტროგრადული' : ''}</span></div><em>${b.degree}°${String(b.minute).padStart(2, '0')}′</em></div>`).join('')}
+    </div>
+    <div class="sec">ელემენტები</div>
+    <div class="card bars">${['fire','earth','air','water'].map((k) => `<div class="bar"><b style="font-weight:500">${EL[k]}</b><i><u style="width:${ch.elements[k] || 0}%"></u></i><span>${ch.elements[k] || 0}%</span></div>`).join('')}</div>
+  </div>`;
+}
+
+function toolsScreen() {
+  const cz = B.chinese;
+  return `<div class="screen">
+    <div class="mh"><div class="btn">${ICON.back}</div><div class="title"><div class="wm">MEDI<i>HOROSCOPE</i></div><div class="sub">თავსებადობა</div></div><div class="btn">${ICON.cal}</div></div>
+    <div class="card">
+      <div class="compat">
+        <div class="medal"><div class="disc">${glyphSvg('taurus')}</div><b>კურო</b></div>
+        <div class="ring"><svg width="112" height="112" viewBox="0 0 112 112"><circle cx="56" cy="56" r="48" fill="none" stroke="var(--bg300)" stroke-width="6"/><circle cx="56" cy="56" r="48" fill="none" stroke="var(--ink)" stroke-width="6" stroke-linecap="round" stroke-dasharray="${0.86 * 301.6} 400" transform="rotate(-90 56 56)"/></svg><strong>86</strong></div>
+        <div class="medal"><div class="disc">${glyphSvg('virgo')}</div><b>ქალწული</b></div>
+      </div>
+      <div class="area" style="margin-top:12px"><b>სიყვარული</b>${dots(5)}<p>ორი მიწის ნიშანი ერთმანეთს ენდობა სიტყვის გარეშეც — სიმშვიდე და ერთგულება აქ ბუნებრივად მოდის.</p></div>
+      <div class="area"><b>მეგობრობა</b>${dots(4)}</div>
+      <div class="area"><b>საქმე</b>${dots(4)}</div>
+    </div>
+    <div class="sec">დღის ტარო</div>
+    <div class="card tarot">
+      <div class="tcard"><svg viewBox="0 0 128 208"><rect x="7" y="7" width="114" height="194" rx="11" fill="none" stroke="rgba(233,199,126,.6)"/><text x="64" y="34" text-anchor="middle" font-family="Noto Serif Georgian" font-size="15" fill="#E9C77E">XVII</text>${glyph('venus', 64, 100, 46, '#FBF3E0')}<circle cx="64" cy="100" r="38" fill="none" stroke="rgba(233,199,126,.35)"/><text x="64" y="176" text-anchor="middle" font-family="Noto Serif Georgian" font-size="15" fill="#FBF3E0">ვარსკვლავი</text></svg></div>
+      <div class="ttext"><b>ვარსკვლავი</b><p>იმედი და აღდგენა. დღე მშვიდად გთავაზობს იმის დაბრუნებას, რაც შენთვის მნიშვნელოვანია — ნუ ჩქარობ, გზა ნათელია.</p></div>
+    </div>
+    <div class="sec">ნუმეროლოგია</div>
+    <div class="num">
+      <div><small>ცხოვრების გზა</small><strong>${B.lifePath}</strong><span>შემოქმედი და მოსაუბრე: გამოხატვა შენი ძალაა.</span></div>
+      <div><small>დღის რიცხვი</small><strong>${B.personalDay}</strong><span>ცვლილებებისა და თავისუფლების დღე.</span></div>
+    </div>
+    <div class="sec">ჩინური ჰოროსკოპი</div>
+    <div class="card"><div class="tr" style="padding:0"><div class="tile">${glyphSvg('jupiter')}</div><div><b>${cz.animal === 'horse' ? 'ცხენი' : cz.animal} · ${cz.element === 'metal' ? 'მეტალი' : cz.element}</b><span>2026 — ცეცხლის ცხენის წელი, შენი წელი: ენერგია, მოძრაობა და თამამი ნაბიჯები.</span></div></div></div>
+  </div>`;
+}
+
+document.getElementById('today').textContent = fmtDate(B.today);
+document.getElementById('hubDark').innerHTML = hub(true);
+document.getElementById('hubLight').innerHTML = hub(false);
+document.getElementById('chart').innerHTML = chartScreen();
+document.getElementById('tools').innerHTML = toolsScreen();
+</script>
+</body>
+</html>

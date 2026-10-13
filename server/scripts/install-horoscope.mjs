@@ -1,0 +1,29 @@
+// Additive only; installs the MEDIHOROSCOPE tables on the configured main database. Existing rows are never
+// changed or deleted.
+import 'dotenv/config';
+import { readFile } from 'node:fs/promises';
+import { PrismaClient } from '@prisma/client';
+
+export const HOROSCOPE_SQL_URL = new URL('../prisma/20261013-horoscope.sql', import.meta.url);
+
+/** Every statement must be CREATE TABLE / INDEX IF NOT EXISTS on a "Horoscope*" table. */
+export function horoscopeStatements(sql) {
+  const statements = sql.replace(/--[^\n]*/g, '').split(';').map((s) => s.trim()).filter(Boolean);
+  if (statements.some((s) => !/^CREATE (TABLE|INDEX|UNIQUE INDEX) IF NOT EXISTS "Horoscope[A-Za-z_]*"/.test(s))) {
+    throw new Error('Unexpected non-additive statement');
+  }
+  return statements;
+}
+
+if (/install-horoscope.mjs$/.test(process.argv[1] || '')) {
+  const db = new PrismaClient();
+  try {
+    const statements = horoscopeStatements(await readFile(HOROSCOPE_SQL_URL, 'utf8'));
+    await db.$transaction(async (tx) => {
+      for (const statement of statements) await tx.$executeRawUnsafe(statement);
+    }, { timeout: 30000 });
+    console.log(`MEDIHOROSCOPE tables installed (${statements.length} statements). Existing data was not modified.`);
+  } finally {
+    await db.$disconnect();
+  }
+}

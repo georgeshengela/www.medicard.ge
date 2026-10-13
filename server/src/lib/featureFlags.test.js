@@ -9,6 +9,7 @@ import {
 import './family/family.test.js';
 import './family/pediatricPolicy.test.js';
 import './family/familyViews.test.js';
+import './horoscope/horoscope.test.js';
 
 function fakeDb(rows = []) {
   const db = {
