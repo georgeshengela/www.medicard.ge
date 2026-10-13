@@ -63,7 +63,7 @@ Admin `#/horoscope` (`v4/modules/horoscope.js`, `/api/admin/horoscope`, HOROSCOP
   module layout only (headlines, tips).
 - **Release gate**: new module ⇒ store build (2.5.2). Entries show in DEV or native train ≥ 24
   (`HOROSCOPE_FIRST_TRAIN`, `horoscopeAvailability.ts`) and while `horoscope` is on. OTAs into train 23 carry
-  the code hidden. The next store build must be train 24.
+  the code hidden. Store build 1.0.0.24.0 (2026-10-13, owner: „გაუშვი ბილდი და ავტოსაბმითი“) carries it with MEDISLEEP and MEDIFAMILY; from then on main is train 24 and train-23 OTAs go from a branch.
 - Home card `HomeHoroscope` (section `horoscope`, every layout, after sleep) — hidden by the person (birth
   screen) or admin (`homeCard`).
 - Web `/app/horoscope[/oracle|chart|tarot|compat|more]` (`public/app/js/pages/horoscope.js`, `css/horoscope.css`) —
