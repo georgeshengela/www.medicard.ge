@@ -114,7 +114,7 @@ export const AuthPhoneField = forwardRef<TextInput, Props>(function AuthPhoneFie
           keyboardType="phone-pad"
           textContentType="telephoneNumber"
           autoComplete="tel"
-          maxLength={16}
+          // No maxLength: it would cut a pasted „+995 555 12 34 56“ before the cleanup; the 9 digits are clamped above.
           accessibilityLabel={`${label ?? tx('ტელეფონის ნომერი', 'Phone number')}, +995`}
           onFocus={() => setFocused(true)}
           onBlur={() => setFocused(false)}

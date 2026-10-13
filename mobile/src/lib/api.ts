@@ -2735,7 +2735,7 @@ export const api = {
       birthDate?: string;
       aiEngine?: AiEngineId;
     }) =>
-      request<{ user: User }>('/api/auth/me', { method: 'PATCH', body }),
+      request<{ user: User }>('/api/auth/me', { method: 'PATCH', body, timeoutMs: 20_000 }),
 
     deleteAccount: () => request<{ ok: boolean }>('/api/auth/me', { method: 'DELETE', timeoutMs: 20_000 }),
   },
@@ -2783,6 +2783,8 @@ export const api = {
       request<{ profile: HealthProfile; user?: User }>('/api/health-profile', {
         method: 'PUT',
         body,
+        // Onboarding „გაგრძელება“ waits on this; never the 180 s default.
+        timeoutMs: 20_000,
       }),
     complete: (body: {
       gender: Gender;
@@ -2793,6 +2795,7 @@ export const api = {
       request<{ profile: HealthProfile; user: User }>('/api/health-profile/complete', {
         method: 'POST',
         body,
+        timeoutMs: 20_000,
       }),
   },
 

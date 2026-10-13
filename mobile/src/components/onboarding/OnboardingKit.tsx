@@ -121,8 +121,14 @@ export function QuestionPage({
       dismissOnTap={!center}
       contentStyle={{ paddingHorizontal: GUTTER, paddingTop: 14 }}
       footer={
-        primary || footerBelow ? (
+        primary || footerBelow || error ? (
           <View style={{ gap: 4 }}>
+            {/* Above the button, never under a wheel or ruler at the end of the scroll (small iPhones). */}
+            {error ? (
+              <View style={{ marginBottom: 8 }}>
+                <VelvetNotice palette={p} text={error} />
+              </View>
+            ) : null}
             {primary ? (
               <VelvetButton palette={p} label={primary.label} onPress={primary.onPress} disabled={primary.disabled} busy={primary.busy} />
             ) : null}
@@ -138,11 +144,6 @@ export function QuestionPage({
         <Text style={{ marginTop: 8, fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 15, lineHeight: 23, color: p.ink2 }}>{body}</Text>
       ) : null}
       <View style={center ? { flexGrow: 1, justifyContent: 'center', paddingVertical: 16 } : { marginTop: 24 }}>{children}</View>
-      {error ? (
-        <View style={{ marginTop: 16 }}>
-          <VelvetNotice palette={p} text={error} />
-        </View>
-      ) : null}
     </KeyboardFormShell>
   );
 }

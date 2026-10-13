@@ -62,8 +62,6 @@ const kaStrings = {
     forgotPasswordEmailHint: 'შეიყვანე ელ-ფოსტა — გამოგიგზავნით 6-ნიშნა კოდს.',
     forgotPasswordViaEmail: 'ელ-ფოსტით',
     forgotPasswordViaSms: 'SMS-ით',
-    forgotPasswordVia2fa: '2FA-ით',
-    forgotPasswordComingSoon: 'ეს ფუნქცია მალე დაემატება.',
     forgotPasswordSend: 'კოდის გაგზავნა',
     forgotPasswordSentTitle: 'კოდი გამოგზავნილია',
     forgotPasswordSentBody: 'რამდენიმე წუთში მიიღებ ელ-წერილს 6-ნიშნა კოდით. შეიყვანე იგი აპში პაროლის შესაცვლელად.',
@@ -3403,9 +3401,8 @@ const kaStrings = {
     privacyIntro:
       'Medicard.GE-ში თქვენი კონფიდენციალურობა პრიორიტეტია. ეს პოლიტიკა აღწერს, როგორ ვაგროვებთ, ვიყენებთ და ვიცავთ თქვენს მონაცემებს ჯანმრთელობის აპლიკაციის გამოყენებისას.',
     notificationsHint: 'პარამეტრების შეცვლა ნებისმიერ დროს შეგიძლია.',
-    notificationsPreviewTitle: 'არტერიული წნევა გაიზარდა ⚠',
-    notificationsPreviewBody: 'დააჭირე დეტალების სანახავად!',
-    notificationsPreviewAction: 'გაიგე მეტი',
+    // The preview is a real medication reminder (`previewPushCopy('medication')`) with its real button.
+    notificationsPreviewAction: 'მივიღე ✓',
     locationHint: 'პარამეტრების შეცვლა ნებისმიერ დროს შეგიძლია.',
     locationPreviewCity: 'თბილისი',
     locationPreviewCountry: 'საქართველო',

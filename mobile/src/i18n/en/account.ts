@@ -194,9 +194,7 @@ export const enAccount: Pick<Strings, 'visits' | 'referral' | 'passport' | 'phon
     privacyIntro:
       'At Medicard.GE, your privacy comes first. This policy explains how we collect, use and protect your data when you use the health app.',
     notificationsHint: 'You can change this anytime in settings.',
-    notificationsPreviewTitle: 'Blood pressure went up ⚠',
-    notificationsPreviewBody: 'Tap to see details!',
-    notificationsPreviewAction: 'Learn more',
+    notificationsPreviewAction: 'Taken ✓',
     locationHint: 'You can change this anytime in settings.',
     locationPreviewCity: 'Tbilisi',
     locationPreviewCountry: 'Georgia',

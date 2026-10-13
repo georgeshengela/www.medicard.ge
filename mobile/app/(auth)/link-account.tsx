@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Keyboard, Pressable, Text, View } from 'react-native';
+import { Alert, Keyboard, Pressable, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Lock } from 'lucide-react-native';
 import { AuthShell } from '@/components/AuthShell';
@@ -54,7 +54,11 @@ export default function LinkAccount() {
       // AuthGate moves on to Home / onboarding once the session is set.
     } catch (caught) {
       if (caught instanceof ApiError && caught.code === 'SOCIAL_LINK_EXPIRED') {
+        // The 10-minute link is gone, so every retry here would repeat the error: say so once and go
+        // back to sign-in, where Apple / Google starts a fresh one.
         setPendingSocialLink(null);
+        Alert.alert(authErrorMessage(caught), '', [{ text: ka.auth.signIn, onPress: () => router.dismissTo('/(auth)/sign-in') }]);
+        return;
       }
       setError(authErrorMessage(caught));
     } finally {
