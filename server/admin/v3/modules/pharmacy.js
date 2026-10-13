@@ -270,8 +270,9 @@
       return;
     }
 
-    const comparedPct = catalog.products ? Math.round((catalog.comparedProducts / catalog.products) * 100) : 0;
-    const triplePct = catalog.products ? Math.round((insights.tripleCompare / catalog.products) * 100) : 0;
+    // Pharmadepot and GPC are one company with one price list: a real comparison is PSP against them.
+    const bothChains = catalog.bothChains ?? catalog.comparedProducts;
+    const comparedPct = catalog.products ? Math.round((bothChains / catalog.products) * 100) : 0;
     const stockPct = catalog.offers ? Math.round((insights.inStockOffers / catalog.offers) * 100) : 0;
     const topDeals = insights.topDeals || [];
     const prevSource = $('pharm-source')?.value;
@@ -306,8 +307,8 @@
         <div class="s-metrics" role="group" aria-label="კატალოგის მდგომარეობა">
           <div class="s-metric"><span>კატალოგი</span><strong>${fmt(catalog.products)}</strong><small>უნიკალური პროდუქტი</small></div>
           <div class="s-metric"><span>შეთავაზებები</span><strong>${fmt(catalog.offers)}</strong><small>${fmt(insights.inStockOffers)} მარაგშია · ${stockPct}%</small></div>
-          <div class="s-metric${catalog.products && comparedPct < 40 ? ' is-warn' : ''}"><span>შედარებადი</span><strong>${fmt(catalog.comparedProducts)}</strong><small>2+ აფთიაქში · ${comparedPct}% კატალოგის</small></div>
-          <div class="s-metric"><span>სრული შედარება</span><strong>${fmt(insights.tripleCompare)}</strong><small>3 აფთიაქში · ${triplePct}% კატალოგის</small></div>
+          <div class="s-metric${catalog.products && comparedPct < 25 ? ' is-warn' : ''}"><span>შედარებადი</span><strong>${fmt(bothChains)}</strong><small>PSP-ში და ფარმადეპო/ჯიპისიში · ${comparedPct}% კატალოგის</small></div>
+          <div class="s-metric"><span>ერთ ქსელში</span><strong>${fmt(Math.max(0, (catalog.products || 0) - bothChains))}</strong><small>მხოლოდ PSP-ში ან მხოლოდ ფარმადეპო/ჯიპისიში</small></div>
         </div>
 
         <section class="s-card" data-v3-pharmacy="sources">

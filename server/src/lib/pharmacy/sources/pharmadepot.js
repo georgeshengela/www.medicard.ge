@@ -1,6 +1,60 @@
 import { Worker } from 'node:worker_threads';
 import * as cheerio from 'cheerio';
 import { FETCH_HEADERS, SOURCES } from '../constants.js';
+import { factsFromPharmadepot } from '../facts.js';
+
+/**
+ * The page's Next.js flight data (`self.__next_f.push([1,"…"])` chunks) — it carries every listed
+ * product as JSON: shelf and old price, brand, and `medicament_characteristic` (substance, dose, form,
+ * count, volume, maker, country, whether a prescription is needed, sub-category, med_code shared with GPC).
+ */
+export function flightProductsFromHtml(html) {
+  const re = /self\.__next_f\.push\(\[1,("(?:[^"\\]|\\.)*")\]\)/g;
+  let m;
+  let flight = '';
+  while ((m = re.exec(html))) {
+    try {
+      flight += JSON.parse(m[1]);
+    } catch {
+      /* a chunk that is not a JSON string */
+    }
+  }
+  const products = new Map();
+  const start = /\{"id":\d+,"price":/g;
+  let s;
+  while ((s = start.exec(flight))) {
+    const raw = balancedObject(flight, s.index);
+    if (!raw) continue;
+    start.lastIndex = s.index + raw.length;
+    try {
+      const obj = JSON.parse(raw);
+      if (obj.medicament_characteristic || obj.full_name) products.set(String(obj.id), obj);
+    } catch {
+      /* not a product object */
+    }
+  }
+  return products;
+}
+
+function balancedObject(text, from) {
+  let depth = 0;
+  let inString = false;
+  for (let i = from; i < text.length; i += 1) {
+    const ch = text[i];
+    if (inString) {
+      if (ch === '\\') i += 1;
+      else if (ch === '"') inString = false;
+      continue;
+    }
+    if (ch === '"') inString = true;
+    else if (ch === '{' || ch === '[') depth += 1;
+    else if (ch === '}' || ch === ']') {
+      depth -= 1;
+      if (depth === 0) return text.slice(from, i + 1);
+    }
+  }
+  return null;
+}
 
 /**
  * Pharmadepot and GPC run the same storefront (same markup, `?product=ID` links). One crawler
@@ -32,10 +86,15 @@ async function fetchHtml(url, attempt = 1) {
   }
 }
 
-/** Parse product cards from a Pharmadepot/GPC category or search page. */
+/**
+ * Parse product cards from a Pharmadepot/GPC category or search page. The link and picture come from
+ * the card markup; name, prices and the structured facts from the page's flight data when it has them
+ * (the markup prices stay as the fallback).
+ */
 export function parsePharmadepotListingHtml(html, categoryId = null, platform = PHARMADEPOT_PLATFORM.PHARMADEPOT) {
   const { sourceId, base } = platform;
   const $ = cheerio.load(html);
+  const flight = flightProductsFromHtml(html);
   const products = [];
   const seen = new Set();
 
@@ -49,6 +108,29 @@ export function parsePharmadepotListingHtml(html, categoryId = null, platform = 
 
     // The whole card (image, name, prices) sits inside the product link.
     const card = $(el);
+    const json = flight.get(sourceProductId);
+    const sourceUrl = href.startsWith('http') ? href : `${base}${href.startsWith('/') ? '' : '/'}${href}`;
+
+    if (json && Number(json.price) > 0 && json.full_name) {
+      const priceGel = Number(json.price);
+      const initial = Number(json.initial_price);
+      const oldPriceGel = Number.isFinite(initial) && initial > priceGel ? initial : null;
+      products.push({
+        sourceId,
+        sourceProductId,
+        rawName: String(json.full_name).replace(/\s+/g, ' ').trim(),
+        priceGel,
+        oldPriceGel,
+        discountPercent: oldPriceGel ? Math.round(((oldPriceGel - priceGel) / oldPriceGel) * 100) : null,
+        inStock: json.medicament_is_active !== false,
+        imageUrl: json.image_url || card.find('img[src^="http"]').attr('src') || null,
+        sourceUrl,
+        country: json.medicament_characteristic?.manufacturer_country_name || null,
+        categoryId,
+        facts: factsFromPharmadepot(json),
+      });
+      return;
+    }
 
     const rawName =
       card.find('img[alt]').first().attr('alt') ||
@@ -83,7 +165,6 @@ export function parsePharmadepotListingHtml(html, categoryId = null, platform = 
       null;
 
     const country = card.find('.text-black70').first().text().trim() || null;
-    const sourceUrl = href.startsWith('http') ? href : `${base}${href.startsWith('/') ? '' : '/'}${href}`;
 
     let discountPercent = null;
     if (oldPriceGel && oldPriceGel > priceGel) {

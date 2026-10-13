@@ -988,6 +988,24 @@ model CatalogProduct {
   bestSource     PharmacySource? @relation("BestSource", fields: [bestSourceId], references: [id], onDelete: SetNull)
   offerCount     Int             @default(0)
   lastSyncedAt   DateTime?
+  // Pharmacy compare v2 (prisma/20261013-pharmacy-compare.sql, install-pharmacy-compare.mjs).
+  mergedIntoId      String?
+  latinName         String?
+  inn               String?
+  innKa             String?
+  innKey            String?
+  formGroup         String?
+  doseKey           String?
+  unitCount         Int?
+  volumeKey         String?
+  rx                Boolean?
+  kind              String?
+  brandKey          String?
+  countryIso        String?
+  manufacturerLatin String?
+  chainCount        Int             @default(0)
+  savingsPercent    Int?
+  searchText        String?
   offers         PharmacyOffer[]
   priceHistory   CatalogPriceHistory[]
   priceAlerts    PriceDropAlert[]
@@ -1016,6 +1034,7 @@ model PharmacyOffer {
   inStock          Boolean        @default(true)
   imageUrl         String?
   syncedAt         DateTime       @default(now())
+  facts            Json?
 
   @@unique([sourceId, sourceProductId])
   @@unique([catalogProductId, sourceId])

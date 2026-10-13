@@ -7,8 +7,8 @@ import { getUserLanguages, langOf } from './i18n.js';
 /**
  * Price-drop alerts (Phase 3.2, 2026-09-27).
  * When a catalog product's best price falls by at least DROP_PCT (and a meaningful amount),
- * everyone taking that medicine (an active MedicationSchedule linked by config.catalogProductId)
- * gets one push — in daytime Tbilisi hours, at most one price alert per person per day.
+ * everyone taking that medicine (an active MedicationSchedule linked by config.catalogProductId, to
+ * the product or to one folded into it by the catalogue rebuild — pharmacy/catalog.js) gets one push — in daytime Tbilisi hours, at most one price alert per person per day.
  * People can turn it off (HealthProfile.extraAnswers.priceDropAlerts === false).
  */
 export const DROP_PCT = 0.10;
@@ -83,7 +83,7 @@ export async function recordPriceChange(productId, previousBest, next, db = pris
     FROM "MedicationSchedule" m
     LEFT JOIN "HealthProfile" h ON h."userId" = m."userId"
     WHERE m.active = TRUE
-      AND m.config->>'catalogProductId' = ${productId}
+      AND m.config->>'catalogProductId' IN (SELECT id FROM "CatalogProduct" WHERE id = ${productId} OR "mergedIntoId" = ${productId})
       AND COALESCE(h."extraAnswers"->>'priceDropAlerts', 'true') <> 'false'
     ON CONFLICT ("userId", "productId", "toGel") DO NOTHING`;
   return { queued: Number(queued) || 0 };
@@ -98,7 +98,7 @@ export async function dispatchPriceDropAlerts({ now = new Date(), db = prisma, s
     // Queued before the person turned alerts off or stopped the medicine: no longer wanted.
     await db.$executeRaw`UPDATE "PriceDropAlert" a SET state = 'SKIPPED' WHERE a.state = 'PENDING' AND (
         EXISTS (SELECT 1 FROM "HealthProfile" h WHERE h."userId" = a."userId" AND h."extraAnswers"->>'priceDropAlerts' = 'false')
-        OR NOT EXISTS (SELECT 1 FROM "MedicationSchedule" m WHERE m."userId" = a."userId" AND m.active = TRUE AND m.config->>'catalogProductId' = a."productId"))`;
+        OR NOT EXISTS (SELECT 1 FROM "MedicationSchedule" m WHERE m."userId" = a."userId" AND m.active = TRUE AND m.config->>'catalogProductId' IN (SELECT id FROM "CatalogProduct" WHERE id = a."productId" OR "mergedIntoId" = a."productId")))`;
     const pending = await db.$queryRaw`SELECT id, "userId", "productId", "medName", "fromGel", "toGel" FROM "PriceDropAlert" WHERE state = 'PENDING' ORDER BY "createdAt" LIMIT 300`;
     if (!pending.length) return { sent: 0 };
     const dayStartUtc = new Date(`${tbilisiParts(now).day}T00:00:00.000+04:00`);

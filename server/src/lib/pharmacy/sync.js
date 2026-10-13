@@ -1,11 +1,12 @@
 import dns from 'node:dns';
 import { prisma } from '../prisma.js';
 import { ensureDrugCategories, ensurePharmacySources } from './categories.js';
-import { upsertOfferFromListing, recomputeAllPricing, recomputeProductPricing, invalidateMatchGeoCache } from './match.js';
-import { invalidateCrossSourceIndex } from './crossMatch.js';
+import { upsertOfferFromListing } from './match.js';
+import { rebuildCatalog } from './catalog.js';
+import { enrichPspFacts } from './facts.js';
 import { SOURCES, isOfferStale } from './constants.js';
 import { fetchPharmadepotProducts, fetchGpcProducts } from './sources/pharmadepot.js';
-import { fetchPspProducts, closePspBrowser } from './sources/psp.js';
+import { fetchPspProducts, fetchPspAttributes, closePspBrowser } from './sources/psp.js';
 
 // Render's outbound network occasionally fails to route IPv6 (AAAA) addresses,
 // which Node/undici surfaces only as a generic "fetch failed" with no further
@@ -33,19 +34,11 @@ async function markUnlistedOutOfStock(source, runStartedAt, fetchedCount) {
     }
     return 0;
   }
-  const gone = await prisma.pharmacyOffer.findMany({
+  const { count } = await prisma.pharmacyOffer.updateMany({
     where: { sourceId: source, inStock: true, syncedAt: { lt: runStartedAt } },
-    select: { id: true, catalogProductId: true },
-  });
-  if (!gone.length) return 0;
-  await prisma.pharmacyOffer.updateMany({
-    where: { id: { in: gone.map((o) => o.id) } },
     data: { inStock: false },
   });
-  for (const productId of new Set(gone.map((o) => o.catalogProductId))) {
-    await recomputeProductPricing(productId);
-  }
-  return gone.length;
+  return count;
 }
 
 async function startSyncRun(source) {
@@ -66,26 +59,60 @@ async function finishSyncRun(id, { status, itemsFetched, error }) {
   });
 }
 
+/** A few listings at a time: each is one or two small queries, independent of the others. */
+const INGEST_CONCURRENCY = Number(process.env.PHARMACY_INGEST_CONCURRENCY) || 4;
+
 async function ingestListings(listings) {
-  const touched = new Set();
   let skipped = 0;
+  let created = 0;
   const skipSamples = [];
 
-  for (const listing of listings) {
+  const one = async (listing) => {
     try {
-      const productId = await upsertOfferFromListing(listing);
-      touched.add(productId);
+      const result = await upsertOfferFromListing(listing);
+      if (result.created) created += 1;
     } catch (err) {
       skipped += 1;
       const msg = `${listing.sourceId}/${listing.sourceProductId}: ${err?.message || err}`;
       if (skipSamples.length < 5) skipSamples.push(msg);
       console.warn(`[pharmacy-sync] skip ${msg}`);
     }
+  };
+  for (let i = 0; i < listings.length; i += INGEST_CONCURRENCY) {
+    await Promise.all(listings.slice(i, i + INGEST_CONCURRENCY).map(one));
   }
-  for (const id of touched) {
-    await recomputeProductPricing(id);
+  return { count: listings.length - skipped, created, skipped, skipSamples };
+}
+
+/**
+ * PSP's substance pairs, units and maker come from a slow query (~8 s per 100 products); they are read
+ * once per product and kept in its facts. The first run reads the whole catalogue, later runs only
+ * what is new.
+ */
+export async function enrichPspOffers() {
+  const missing = await prisma.$queryRaw`
+    SELECT id, "sourceProductId", facts FROM "PharmacyOffer"
+    WHERE "sourceId" = 'PSP' AND facts IS NOT NULL AND facts->>'sku' IS NOT NULL
+      AND (COALESCE(facts->>'enriched', 'false') <> 'true' OR COALESCE(facts->>'leaflet', '') <> '2')`;
+  if (!missing.length) return 0;
+  console.log(`[pharmacy-sync] PSP attributes for ${missing.length} products…`);
+  // Saved a chunk at a time, so an interrupted first run continues where it stopped.
+  let enriched = 0;
+  for (let from = 0; from < missing.length; from += 360) {
+    const chunk = missing.slice(from, from + 360);
+    const attrs = await fetchPspAttributes(chunk.map((m) => m.facts.sku));
+    const ready = chunk.filter((m) => attrs.has(String(m.sourceProductId)));
+    for (let i = 0; i < ready.length; i += INGEST_CONCURRENCY) {
+      await Promise.all(
+        ready
+          .slice(i, i + INGEST_CONCURRENCY)
+          .map((m) => prisma.pharmacyOffer.update({ where: { id: m.id }, data: { facts: enrichPspFacts(m.facts, attrs.get(String(m.sourceProductId))) } })),
+      );
+    }
+    enriched += ready.length;
+    console.log(`[pharmacy-sync] PSP attributes ${Math.min(from + 360, missing.length)}/${missing.length}`);
   }
-  return { count: listings.length - skipped, products: touched.size, skipped, skipSamples };
+  return enriched;
 }
 
 export async function cleanupStaleRuns() {
@@ -96,6 +123,7 @@ export async function cleanupStaleRuns() {
   });
 }
 
+/** One pharmacy: fetch, store offers. `rebuild` (default) regroups the catalogue right after. */
 export async function syncPharmacySource(source, opts = {}) {
   const fetcher = FETCHERS[source];
   if (!fetcher) throw new Error(`Unknown source: ${source}`);
@@ -112,13 +140,13 @@ export async function syncPharmacySource(source, opts = {}) {
       maxPages: opts.maxPages,
       categoryId: opts.categoryId ?? null,
       onProgress: (n) => {
-        if (n % 50 === 0) console.log(`[pharmacy-sync] ${source} fetched ${n}…`);
+        if (n % 500 === 0) console.log(`[pharmacy-sync] ${source} fetched ${n}…`);
       },
     });
     const result = await ingestListings(listings);
     result.markedOutOfStock = await markUnlistedOutOfStock(source, run.startedAt, result.count);
-    invalidateCrossSourceIndex();
-    invalidateMatchGeoCache();
+    if (source === 'PSP') result.enriched = await enrichPspOffers();
+    if (opts.rebuild !== false) result.catalog = await rebuildCatalog();
     const status = result.skipped > 0 && result.count === 0 ? 'FAILED' : 'DONE';
     const error =
       result.skipped > 0
@@ -128,7 +156,7 @@ export async function syncPharmacySource(source, opts = {}) {
         : null;
     await finishSyncRun(run.id, { status, itemsFetched: result.count, error });
     console.log(
-      `[pharmacy-sync] ${source} done — ${result.count} offers, ${result.products} products${result.skipped ? `, ${result.skipped} skipped` : ''}${result.markedOutOfStock ? `, ${result.markedOutOfStock} no longer listed` : ''}`,
+      `[pharmacy-sync] ${source} done — ${result.count} offers (${result.created} new)${result.skipped ? `, ${result.skipped} skipped` : ''}${result.markedOutOfStock ? `, ${result.markedOutOfStock} no longer listed` : ''}${result.enriched ? `, ${result.enriched} enriched` : ''}`,
     );
     return result;
   } catch (err) {
@@ -146,11 +174,6 @@ export async function syncPharmacySource(source, opts = {}) {
 export async function syncAllPharmacySources(opts = {}) {
   await cleanupStaleRuns();
   const run = await startSyncRun('ALL');
-  // PSP is the only source whose names carry an explicit "Georgian - Latin" pair
-  // (e.g. "კლოტრიმაზოლი - Clotrimazole"), which is what seeds the geo→latin brand
-  // map used to cross-match the same drug across sources. Running it first means
-  // Pharmadepot's and Aversi's Georgian-only names can resolve to that same brand
-  // instead of falling back to the raw (case-inflected) Georgian word as their key.
   const sources = opts.sources || ALL_SOURCES;
   let total = 0;
   const errors = [];
@@ -160,15 +183,19 @@ export async function syncAllPharmacySources(opts = {}) {
 
   for (const source of sources) {
     try {
-      const r = await syncPharmacySource(source, opts);
+      const r = await syncPharmacySource(source, { ...opts, rebuild: false });
       total += r.count;
     } catch (err) {
       errors.push(`${source}: ${err.message}`);
     }
   }
 
-  await recomputeAllPricing();
-  invalidateCrossSourceIndex();
+  // One regrouping after every pharmacy is in: the same box at PSP, Pharmadepot and GPC becomes one product.
+  try {
+    await rebuildCatalog();
+  } catch (err) {
+    errors.push(`catalog: ${err.message}`);
+  }
 
   await finishSyncRun(run.id, {
     status: errors.length ? 'FAILED' : 'DONE',
@@ -195,10 +222,12 @@ export async function getSyncMeta() {
 }
 
 export async function getCatalogStats() {
-  const [products, offers, comparedProducts] = await Promise.all([
-    prisma.catalogProduct.count(),
+  const live = { mergedIntoId: null, offerCount: { gt: 0 } };
+  const [products, offers, comparedProducts, bothChains] = await Promise.all([
+    prisma.catalogProduct.count({ where: live }),
     prisma.pharmacyOffer.count(),
-    prisma.catalogProduct.count({ where: { offerCount: { gte: 2 } } }),
+    prisma.catalogProduct.count({ where: { ...live, offerCount: { gte: 2 } } }),
+    prisma.catalogProduct.count({ where: { ...live, chainCount: { gte: 2 } } }),
   ]);
 
   const offersBySourceRows = await prisma.pharmacyOffer.groupBy({
@@ -210,15 +239,15 @@ export async function getCatalogStats() {
     offersBySourceRows.map((row) => [row.sourceId, row._count._all]),
   );
 
-  return { products, offers, comparedProducts, offersBySource };
+  return { products, offers, comparedProducts, bothChains, offersBySource };
 }
 
 async function getPharmacyInsights() {
   const [tripleCompare, inStockOffers, dealCandidates] = await Promise.all([
-    prisma.catalogProduct.count({ where: { offerCount: { gte: 3 } } }),
+    prisma.catalogProduct.count({ where: { mergedIntoId: null, offerCount: { gte: 3 } } }),
     prisma.pharmacyOffer.count({ where: { inStock: true } }),
     prisma.catalogProduct.findMany({
-      where: { offerCount: { gte: 2 } },
+      where: { mergedIntoId: null, chainCount: { gte: 2 } },
       select: {
         id: true,
         name: true,
@@ -228,7 +257,7 @@ async function getPharmacyInsights() {
         offers: { select: { priceGel: true, sourceId: true, inStock: true, syncedAt: true } },
         bestSource: { select: { nameKa: true } },
       },
-      take: 180,
+      take: 400,
       orderBy: { updatedAt: 'desc' },
     }),
   ]);

@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { buildSourcePricesFromOffers, pricingFromOffers } from './crossMatch.js';
+import { buildSourcePricesFromOffers, pricingFromOffers } from './pricing.js';
 
 const now = new Date();
 const old = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
