@@ -95,13 +95,15 @@ export function coveredLength(covered, parkOnly = true) { let total = 0; for (co
         total += ranges.reduce((s, r) => s + (r[1] - r[0]) * e.length, 0);
 } return total; }
 export function parkProgress(s) { const unique = coveredLength(s.covered); return { unique, percent: Math.min(100, unique / PARK_METERS * 100), complete: unique / PARK_METERS >= .85 }; }
+/** When the phone last reported an accurate position: a player standing still at a box stays fresh. */
+export function lastSeen(s) { const at = Math.max(Number(s.seenAt) || 0, Number(s.lastFix) || 0); return at > 0 ? at : null; }
 export function createJourney(source = 'demo', spawn = START) { return { version: 3, network: NETWORK_VERSION, source, position: [...NODES[spawn]], heading: 200, meters: 0, seconds: 0, movingSeconds: 0, steps: 0, speed: 0, maxSpeed: 0, sessionStartCoverage: 0, covered: {}, trail: [], claimed: false, cursor: null, queue: [], seed: 7, accuracy: source === 'demo' ? 6 : 999, lastFix: null, lastRaw: null, match: null, rejected: 0, status: source === 'demo' ? 'ready' : 'waiting', startedAt: new Date().toISOString(), completedAt: null }; }
 export const DEFAULT_CONFIG = { pace: 'walk', speed: 5, rate: 10, scenario: 'explore', accuracy: 6, pulseRadius: 120, revealRadius: 18, giftIndex: 0, autoPause: true, stride: .72 };
 export function validConfig(x) { const c = { ...DEFAULT_CONFIG, ...x }; return { ...c, pace: c.pace === 'run' ? 'run' : 'walk', scenario: ['explore', 'gift', 'return', 'still'].includes(c.scenario) ? c.scenario : 'explore', speed: Math.max(2, Math.min(14, Number(c.speed) || 5)), rate: [1, 5, 10, 25].includes(c.rate) ? c.rate : 10, accuracy: [6, 15, 40].includes(c.accuracy) ? c.accuracy : 6, pulseRadius: Math.max(60, Math.min(180, Number(c.pulseRadius) || 120)), revealRadius: Math.max(10, Math.min(25, Number(c.revealRadius) || 18)), giftIndex: Math.min(GIFTS.length - 1, Math.max(0, Math.floor(Number(c.giftIndex) || 0))), stride: Math.max(.4, Math.min(1.5, Number(c.stride) || .72)), autoPause: c.autoPause !== false }; }
 function mark(s, e, from, to) { if (Math.abs(to - from) < 1e-9)
     return; s.covered[e.id] = mergeIntervals(s.covered[e.id] || [], [Math.max(0, Math.min(1, from)), Math.max(0, Math.min(1, to))]); }
 export function proximity(s, c, now = Date.now()) {
-    const distanceM = distance(s.position, NODES[GIFTS[c.giftIndex]]), quality = s.accuracy <= 25 && (s.source === 'demo' || (s.lastFix !== null && now - s.lastFix < 15000 && s.status !== 'vehicle'));
+    const distanceM = distance(s.position, NODES[GIFTS[c.giftIndex]]), seen = lastSeen(s), quality = s.accuracy <= 25 && (s.source === 'demo' || (seen !== null && now - seen < 15000 && s.status !== 'vehicle'));
     const revealed = !s.claimed && quality && distanceM + (s.source === 'gps' ? s.accuracy : 0) <= c.revealRadius;
     return { distance: distanceM, signal: !s.claimed && quality && distanceM <= c.pulseRadius, revealed, quality, period: Math.round(2200 - 1500 * Math.max(0, 1 - distanceM / c.pulseRadius)) };
 }
@@ -183,7 +185,9 @@ export function acceptFix(input, fix, stride = .72, now = Date.now()) {
     if (fix.accuracy > 25)
         return { ...input, accuracy: fix.accuracy, speed: 0, rejected: input.rejected + 1, status: 'inaccurate' };
     const match = nearestEdge(fix.position), onPath = match.distance <= Math.min(18, Math.max(8, fix.accuracy));
-    const base = { ...input, covered: { ...input.covered }, accuracy: fix.accuracy, status: onPath ? 'tracking' : 'off-path', surge: 0 };
+    // `seenAt` refreshes on every accurate fix, a still one too: the anchor (`lastFix`/`lastRaw`) must not move while
+    // standing, or slow drift would never add up, but the server still needs to know the position is live (boxes).
+    const base = { ...input, covered: { ...input.covered }, accuracy: fix.accuracy, status: onPath ? 'tracking' : 'off-path', surge: 0, seenAt: fix.timestamp };
     if (!input.lastRaw || input.lastFix === null || fix.timestamp - input.lastFix > 15000) {
         return { ...base, ...(input.vehicle ? { status: 'vehicle' } : {}), position: onPath ? match.point : fix.position, lastRaw: fix.position, lastFix: fix.timestamp, match: onPath ? { edge: match.edge.id, t: match.t } : null, speed: 0 };
     }

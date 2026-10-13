@@ -15,7 +15,8 @@ export const RUN_TEAL='#14B8A6',RUN_CTA='#0D9488';
 export function runInk(ink:HubInk,dark:boolean){return ink==='teal'?(dark?'#5EEAD4':'#0F766E'):hubInk(ink,dark);}
 const FLOAT:ViewStyle={shadowColor:'#030712',shadowOpacity:.16,shadowRadius:14,shadowOffset:{width:0,height:6},elevation:6};
 
-export function Copy({children,size=14,muted=false,bold=false,style,numberOfLines}:{children:React.ReactNode;size?:number;muted?:boolean;bold?:boolean;style?:TextStyle|TextStyle[];numberOfLines?:number}){const c=useThemeColors();return <Text numberOfLines={numberOfLines} style={[{fontFamily:bold?BOLD:REGULAR,fontSize:size,lineHeight:Math.round(size*1.55),color:muted?c.text200:c.text100},style as TextStyle]}>{children}</Text>;}
+/** `fit`: shrink to fit the line(s), never below this share of `size` (a long Georgian word on a 375 pt phone). */
+export function Copy({children,size=14,muted=false,bold=false,style,numberOfLines,fit}:{children:React.ReactNode;size?:number;muted?:boolean;bold?:boolean;style?:TextStyle|TextStyle[];numberOfLines?:number;fit?:number}){const c=useThemeColors();return <Text numberOfLines={numberOfLines} adjustsFontSizeToFit={fit!=null} minimumFontScale={fit} style={[{fontFamily:bold?BOLD:REGULAR,fontSize:size,lineHeight:Math.round(size*1.55),color:muted?c.text200:c.text100},style as TextStyle]}>{children}</Text>;}
 
 /** Hub card: flat surface, radius 22, no border. `floating` only for map overlays. */
 export function Card({children,style,floating=false}:{children:React.ReactNode;style?:ViewStyle;floating?:boolean}){const c=useThemeColors();return <View style={[{backgroundColor:c.surface,borderRadius:HUB.cardRadius,padding:HUB.cardPad,gap:12},floating?FLOAT:null,style]}>{children}</View>;}

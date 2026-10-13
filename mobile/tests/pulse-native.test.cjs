@@ -151,7 +151,12 @@ test('back from Settings the permission is only re-read, and the location is fou
 test('MEDIRUN location screen: Settings only after a refusal, foreground re-check never requests, When-In-Use only',()=>{
  const screen=fs.readFileSync(path.join(root,'components/run/PulseActive.tsx'),'utf8'),store=fs.readFileSync(path.join(root,'lib/run/store.ts'),'utf8');
  assert.match(screen,/const locationOff=run\.error==='permission'&&run\.permissionBlocked/);
- assert.match(screen,/locationOff\?<Action label=\{primerSettingsLabel\(\)\} icon=\{Settings2\} onPress=\{\(\)=>void Linking\.openSettings\(\)/);
+ assert.match(screen,/locationOff\|\|precisionOff\?<Action label=\{primerSettingsLabel\(\)\} icon=\{Settings2\} onPress=\{\(\)=>void Linking\.openSettings\(\)/);
+ // Before the OS sheet: one „გაგრძელება“ button and no second one (App Review 5.1.1(iv)).
+ assert.match(screen,/label=\{askable\?tx\('გაგრძელება','Continue'\)/);
+ assert.match(screen,/\{locationOff\|\|precisionOff\|\|askable\?null:<Action secondary/);
+ // Approximate location only: explained before the walk with Settings, re-checked (never requested) on return.
+ assert.match(store,/error: 'precision'/);assert.match(screen,/run\.error!=='precision'\)\)return;return onReturnToForeground/);
  assert.match(screen,/onReturnToForeground\(\(\)=>void recheckLocationPermission\(/);
  assert.doesNotMatch(screen,/requestForegroundPermissionsAsync|requestLocationPermission|requestBackgroundPermissionsAsync/);
  const recheck=store.slice(store.indexOf('export async function recheckLocationPermission'),store.indexOf('export async function regeneratePin'));

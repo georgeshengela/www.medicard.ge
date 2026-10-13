@@ -1,4 +1,5 @@
 import {getPulseClient,resetPulseClient} from '@/lib/medipulsi/client';
+import {pulseErrorText} from '@/lib/medipulsi/errorText';
 import {VEHICLE_MPS} from '@/lib/medipulsi/core/journey';
 import {tx} from '../../i18n/locale.js';
 import { useSyncExternalStore } from 'react';
@@ -32,7 +33,8 @@ import {
 import { onGiftSignal, resetGiftAlerts } from '@/lib/run/giftAlerts';
 
 export type RunPhase = 'idle' | 'preparing' | 'ready' | 'running' | 'paused' | 'finished';
-export type RunError = 'permission' | 'location' | 'sync' | null;
+/** `precision`: location is on but only approximate (iOS Precise Location off, Android „approximate“) — nothing could count. */
+export type RunError = 'permission' | 'location' | 'precision' | 'sync' | null;
 export type SimMode = 'off' | 'run' | 'drive';
 
 export type RunState = {
@@ -86,6 +88,8 @@ export type RunState = {
   litBuildings: number;
   /** Location was refused and the OS will not ask again: only Settings can turn it on. */
   permissionBlocked: boolean;
+  /** The OS gives only an approximate location (read without asking; re-read on return to the app). */
+  reducedAccuracy: boolean;
 };
 
 const PIN_RADIUS_M = 28;
@@ -135,6 +139,7 @@ const initial: RunState = {
   driving: false,
   litBuildings: 0,
   permissionBlocked: false,
+  reducedAccuracy: false,
 };
 
 /** A system pause continues on its own when the app is back within this window; after it the person decides. */
@@ -304,9 +309,24 @@ function ensureAppStatePersist() {
 async function verifyLocationAccess(): Promise<void> {
   const owner = generation;
   const access = await Location.getForegroundPermissionsAsync().catch(() => null);
+  // Precise Location switched off (or back on) in Settings meanwhile: the map's GPS hint says why nothing counts.
+  const reduced = precisionReduced(access);
+  if (access?.granted && state.phase === 'running' && reduced !== state.reducedAccuracy) set({ reducedAccuracy: reduced });
   if (!access || access.granted || owner !== generation || state.phase !== 'running' || state.simulating) return;
   pauseRun();
   set({ error: 'location' });
+}
+
+/** iOS „Precise Location“ off, or Android „approximate“ only: fixes land a kilometre or more away and never count. */
+export function precisionReduced(access: Location.LocationPermissionResponse | null | undefined): boolean {
+  return access?.granted === true && (access.ios?.accuracy === 'reduced' || access.android?.accuracy === 'coarse');
+}
+
+/** Reads (never asks) whether location is approximate only; the run screen explains it. */
+async function readPrecision(): Promise<boolean> {
+  const reduced = precisionReduced(await Location.getForegroundPermissionsAsync().catch(() => null));
+  if (reduced !== state.reducedAccuracy) set({ reducedAccuracy: reduced });
+  return reduced;
 }
 
 /** Continue a run the system paused when the app left the screen. A failed attempt (network waking up) retries once. */
@@ -437,6 +457,14 @@ export async function prepareRun(
     set({ phase: 'idle', error: 'permission', permissionBlocked: now?.granted !== true && now?.canAskAgain === false });
     return false;
   }
+  // Approximate location only: every fix is off by a kilometre or more and none would count. Say so before the walk
+  // (one Settings button on the map screen; the location is found by itself on return — recheckLocationPermission).
+  const reduced = await readPrecision();
+  if (request.signal.aborted || request !== prepareAbort) return false;
+  if (reduced) {
+    set({ phase: 'idle', error: 'precision' });
+    return false;
+  }
 
   const fix = await readFix();
   if(request.signal.aborted || request!==prepareAbort)return false;
@@ -470,9 +498,18 @@ export function prepareExploration(body: {weightKg?:number|null;heightCm?:number
  * it is on, find the location by itself. Never asks the OS — that happens only from a press.
  */
 export async function recheckLocationPermission(body: {weightKg?:number|null;heightCm?:number|null} = {}): Promise<boolean> {
-  if (state.phase !== 'idle' || state.error !== 'permission') return false;
+  const waiting = () => state.phase === 'idle' && (state.error === 'permission' || state.error === 'precision');
+  if (!waiting()) return false;
   const now = await Location.getForegroundPermissionsAsync().catch(() => null);
-  if (!now || state.phase !== 'idle' || state.error !== 'permission') return false;
+  if (!now || !waiting()) return false;
+  if (state.error === 'precision') {
+    // Precise Location still off: stay on the explanation (no sheet, nothing asked).
+    if (now.granted && precisionReduced(now)) return false;
+    if (state.reducedAccuracy) set({ reducedAccuracy: false });
+    if (now.granted) return prepareExploration(body, { askOs: false });
+    set({ error: 'permission', permissionBlocked: now.canAskAgain === false });
+    return false;
+  }
   if (!now.granted) {
     const blocked = now.canAskAgain === false;
     if (blocked !== state.permissionBlocked) set({ permissionBlocked: blocked });
@@ -503,7 +540,10 @@ export async function startRun(): Promise<void> {
   const client=getPulseClient();
   try {
     const verified=await client.begin();
-    if(owner!==generation || (AppState.currentState && AppState.currentState!=='active')){client.stop();return;}
+    if(owner!==generation){client.stop();return;}
+    // Locked or left while the session was opening (Start, then straight into the pocket): GPS cannot start from
+    // the background, so the session waits as a system pause that continues on its own on return — never dropped.
+    if(AppState.currentState && AppState.currentState!=='active'){client.stop();holdAsSystemPause(verified);return;}
     const now=Date.now();
     autoPausedAt=null;vehicleSince=null;trackingSince=now;
     if(state.phase==='ready'){
@@ -512,9 +552,21 @@ export async function startRun(): Promise<void> {
       set({phase:'running',startedAt:now,path:state.current?[state.current]:[],segments:[],splits:Array.from({length:Math.floor(verified.meters/1000)},()=>-1),distanceM:verified.meters,movingMs:movingAccumMs,elapsedMs:0,error:null,syncError:null,autoPaused:false,driving:false});
     } else set({phase:'running',distanceM:verified.meters,error:null,syncError:null,autoPaused:false,driving:false});
     segmentStartedAt=now;lastFixAt=0;
-    startTimer();ensureAppStatePersist();await startWatch();void flushPersist();
-  }catch(error){if(owner===generation)set({error:'sync',syncError:(error as Error).message});}
+    startTimer();ensureAppStatePersist();await startWatch();void flushPersist();void readPrecision();
+  }catch(error){if(owner===generation)set({error:'sync',syncError:pulseErrorText(error)});}
   finally{starting=false;}
+}
+
+/** The opened session as a paused one the app continues by itself (`autoPaused`, see maybeAutoResume). */
+function holdAsSystemPause(verified:{meters:number;seconds:number}): void {
+  const now=Date.now();
+  autoPausedAt=autoPausedAt??now;vehicleSince=null;segmentStartedAt=null;
+  if(state.phase==='ready'){
+    resetGiftAlerts();lastBackgroundNearbyAt=0;
+    movingAccumMs=verified.seconds*1000;
+    set({phase:'paused',startedAt:now,path:state.current?[state.current]:[],segments:[],splits:Array.from({length:Math.floor(verified.meters/1000)},()=>-1),distanceM:verified.meters,movingMs:movingAccumMs,elapsedMs:0,speedKmh:0,error:null,syncError:null,autoPaused:true,recordsInBackground:false,driving:false});
+  } else set({phase:'paused',distanceM:verified.meters,speedKmh:0,error:null,syncError:null,autoPaused:true,recordsInBackground:false,driving:false});
+  startTimer();ensureAppStatePersist();void flushPersist();
 }
 
 /** `background`: the system paused the run because the app left the screen — it continues on return. */
@@ -532,6 +584,14 @@ export function pauseRun(reason: 'manual' | 'background' = 'manual'): void {
 export async function resumeRun(): Promise<void> {
   if (state.phase !== 'paused') return;
   await startRun();
+}
+
+/**
+ * A finished walk goes into the phone's history only when something moved: 50 m or a minute of active time, and
+ * never 0 m (Start tapped indoors, then left). The summary screen says so instead of „saved“.
+ */
+export function isKeptWalk(summary: Pick<RunSummary, 'distanceM' | 'movingMs'>): boolean {
+  return summary.distanceM > 0 && (summary.distanceM >= 50 || summary.movingMs >= 60_000);
 }
 
 export async function finishRun(): Promise<RunSummary | null> {
@@ -567,7 +627,7 @@ export async function finishRun(): Promise<RunSummary | null> {
   stopEverything();
   wipePersist();
   set({ phase: 'finished', movingMs, elapsedMs, summary, autoPaused: false, recordsInBackground: false, driving: false });
-  if (!wasSimulation && (summary.distanceM >= 50 || summary.movingMs >= 60_000)) {
+  if (!wasSimulation && isKeptWalk(summary)) {
     const owner=generation;
     void saveRunSummary(summary).catch(()=>{if(owner===generation)set({syncError:tx('სესიის დეტალები ტელეფონში ვერ შეინახა. გადაამოწმე თავისუფალი ადგილი.','Couldn’t save the session details on your phone. Check your free storage.')});});
   }
@@ -893,7 +953,10 @@ function ingestFix(fix: Fix) {
     const client=getPulseClient(), before=client.getSnapshot().journey;
     if(!client.getSnapshot().running){pauseRun();set({syncError:client.getSnapshot().message});return;}
     const journey=client.ingest({position:[fix.lng,fix.lat],accuracy:fix.accuracy??999,timestamp:fix.at,speed:fix.speed!=null&&fix.speed>=0?fix.speed:null,mocked:fix.mocked});
-    const point={lat:journey.position[1],lng:journey.position[0]};
+    // A rejected fix (indoors, invalid) leaves the journey where it last was — for a new player the engine's park
+    // spawn — so the runner and the camera stay put; only the accuracy reading changes.
+    const rejected=journey.status==='inaccurate'||journey.status==='invalid';
+    const point=rejected&&state.current?state.current:{lat:journey.position[1],lng:journey.position[0]};
     const added=journey.meters-before.meters;
     let segments=state.segments,path=state.path;
     if(added>0 && before.accuracy<=25 && ['tracking','off-path','stationary'].includes(before.status) && haversineM({lat:before.position[1],lng:before.position[0]},point)<=added+20){
@@ -905,7 +968,7 @@ function ingestFix(fix: Fix) {
     const reached=Boolean(state.pin && added>0 && haversineM(point,state.pin)<=PIN_RADIUS_M);
     const complete=state.targetMeters>0 && journey.meters>=state.targetMeters;
     trackVehicle(journey.vehicle,Math.min(fix.at,Date.now()));
-    set({current:point,accuracyM:fix.accuracy,headingDeg:compassLive?state.headingDeg:(fix.heading??journey.heading),distanceM:journey.meters,speedKmh:journey.speed,path,segments,reachedPin:state.reachedPin||reached,completedTarget:state.completedTarget||complete,transportWarning:Boolean(journey.vehicle),transportResuming:Boolean(journey.vehicle)&&journey.speed<VEHICLE_MPS*3.6});
+    set({current:point,accuracyM:fix.accuracy,headingDeg:compassLive||rejected?state.headingDeg:(fix.heading??journey.heading),distanceM:journey.meters,speedKmh:journey.speed,path,segments,reachedPin:state.reachedPin||reached,completedTarget:state.completedTarget||complete,transportWarning:Boolean(journey.vehicle),transportResuming:Boolean(journey.vehicle)&&journey.speed<VEHICLE_MPS*3.6});
     if(journey.vehicle&&!before.vehicle)emit('transport_warning');
     else if(before.vehicle&&!journey.vehicle)emit('transport_resumed');
     if(reached&&!isReachedEmitted){isReachedEmitted=true;emit('pin_reached');}

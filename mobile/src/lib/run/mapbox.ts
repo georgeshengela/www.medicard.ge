@@ -79,27 +79,40 @@ type DirectionsResponse = {
   }>;
 };
 
-/** Walking route between two points via Mapbox Directions. Null on any failure. */
-export async function fetchWalkingRoute(from: LatLng, to: LatLng, signal?: AbortSignal): Promise<RunRoute | null> {
-  const token = await resolveMapboxToken();
-  if (!token.startsWith('pk.')) return null;
-  const path = `${from.lng.toFixed(6)},${from.lat.toFixed(6)};${to.lng.toFixed(6)},${to.lat.toFixed(6)}`;
-  const url =
-    `https://api.mapbox.com/directions/v5/mapbox/walking/${path}` +
-    `?geometries=geojson&overview=full&steps=false&access_token=${encodeURIComponent(token)}`;
+/** A route that has not come back by then is given up (a weak network must not hold the goal walk's start). */
+export const ROUTE_TIMEOUT_MS = 8000;
+
+/** Walking route between two points via Mapbox Directions. Null on any failure or after `timeoutMs`. */
+export async function fetchWalkingRoute(from: LatLng, to: LatLng, signal?: AbortSignal, timeoutMs = ROUTE_TIMEOUT_MS): Promise<RunRoute | null> {
+  if (signal?.aborted) return null;
+  const abort = new AbortController();
+  const stop = () => abort.abort();
+  signal?.addEventListener?.('abort', stop);
+  const timer = setTimeout(stop, timeoutMs);
+  // The token lookup and the JSON body wait too: whatever comes first, the answer or the timeout.
+  const gaveUp = new Promise<null>((resolve) => abort.signal.addEventListener?.('abort', () => resolve(null)));
   try {
-    const res = await fetch(url, { signal });
-    if (!res.ok) return null;
-    const json = (await res.json()) as DirectionsResponse;
-    const route = json.routes?.[0];
-    if (!route || json.code !== 'Ok' || !route.geometry?.coordinates?.length) return null;
-    return {
-      coords: route.geometry.coordinates,
-      distanceM: route.distance,
-      durationS: route.duration,
-    };
-  } catch {
-    return null;
+    return await Promise.race([gaveUp, (async (): Promise<RunRoute | null> => {
+      const token = await resolveMapboxToken();
+      if (!token.startsWith('pk.') || abort.signal.aborted) return null;
+      const path = `${from.lng.toFixed(6)},${from.lat.toFixed(6)};${to.lng.toFixed(6)},${to.lat.toFixed(6)}`;
+      const url =
+        `https://api.mapbox.com/directions/v5/mapbox/walking/${path}` +
+        `?geometries=geojson&overview=full&steps=false&access_token=${encodeURIComponent(token)}`;
+      const res = await fetch(url, { signal: abort.signal });
+      if (!res.ok) return null;
+      const json = (await res.json()) as DirectionsResponse;
+      const route = json.routes?.[0];
+      if (!route || json.code !== 'Ok' || !route.geometry?.coordinates?.length) return null;
+      return {
+        coords: route.geometry.coordinates,
+        distanceM: route.distance,
+        durationS: route.duration,
+      };
+    })().catch(() => null)]);
+  } finally {
+    clearTimeout(timer);
+    signal?.removeEventListener?.('abort', stop);
   }
 }
 

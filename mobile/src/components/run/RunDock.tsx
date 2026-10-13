@@ -62,13 +62,15 @@ export function RunDock({run, pace, progress, busy, onPrimary, onFinish, onDetai
   const running = run.phase === 'running', active = running || run.phase === 'paused';
   const hold = running && run.transportWarning; // in a vehicle: distance and time are on hold
   const pct = Math.round(Math.min(1, progress) * 100);
-  const primaryLabel = running ? tx('პაუზა', 'Pause') : run.phase === 'paused' ? tx('გავაგრძელოთ გზა', 'Keep going') : tx('დავიწყოთ აღმოჩენა', 'Start exploring');
+  // A goal walk looks for its walking route first (≤ 8 s per try, then a straight-line pin): say so while it does.
+  const routing = run.phase === 'preparing' && run.mode === 'run';
+  const primaryLabel = running ? tx('პაუზა', 'Pause') : run.phase === 'paused' ? tx('გავაგრძელოთ გზა', 'Keep going') : routing ? tx('გზას ვეძებთ…', 'Finding a route…') : tx('დავიწყოთ აღმოჩენა', 'Start exploring');
   const disabled = busy || run.phase === 'preparing';
   if (!active) {
     // Before the first start: one clear call to action instead of an unlabeled round button.
     return (
       <Pressable accessibilityRole="button" accessibilityLabel={primaryLabel} accessibilityState={{disabled, busy}} disabled={disabled} onPress={onPrimary} style={{height: 52, borderRadius: 26, backgroundColor: INK.cta, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, opacity: run.phase === 'preparing' ? 0.6 : 1, shadowColor: '#000', shadowOpacity: 0.35, shadowRadius: 16, shadowOffset: {width: 0, height: 8}, elevation: 10}}>
-        {busy ? <ActivityIndicator color={INK.text} /> : <Play size={17} color={INK.text} fill={INK.text} />}
+        {busy || routing ? <ActivityIndicator color={INK.text} /> : <Play size={17} color={INK.text} fill={INK.text} />}
         <Text style={{fontFamily: BOLD, fontSize: 15, color: INK.text}}>{primaryLabel}</Text>
       </Pressable>
     );

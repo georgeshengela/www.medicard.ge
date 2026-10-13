@@ -28,7 +28,7 @@ export function TodayStrip({todayKm}:{todayKm:number}){
  return <View accessible accessibilityLabel={tx(`დღეს: ${cells[0].value} კილომეტრი, ${cells[1].value} ყუთი, ${cells[2].value} ${cells[2].label}`,`Today: ${cells[0].value} km, ${cells[1].value} boxes, ${cells[2].value} ${cells[2].label}`)} style={{flexDirection:'row',backgroundColor:'rgba(5,11,22,0.58)',borderWidth:1,borderColor:'rgba(255,255,255,0.14)',borderRadius:16,paddingVertical:9}}>
   {cells.map((c,i)=><View key={c.label} style={{flex:1,alignItems:'center',borderLeftWidth:i?1:0,borderColor:LINE,paddingHorizontal:4}}>
    <View style={{flexDirection:'row',alignItems:'baseline',gap:2}}><Copy bold size={16} style={{color:'#fff',fontVariant:['tabular-nums'],lineHeight:20}}>{c.value}</Copy>{c.unit?<Copy bold size={10} style={{color:'#99F6E4'}}>{c.unit}</Copy>:null}</View>
-   <Copy size={10} numberOfLines={1} style={{color:SOFT,lineHeight:13}}>{c.label}</Copy>
+   <Copy size={10} numberOfLines={2} style={{color:SOFT,lineHeight:13,textAlign:'center'}}>{c.label}</Copy>
   </View>)}
  </View>;
 }

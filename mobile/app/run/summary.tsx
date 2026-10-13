@@ -1,12 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { View } from 'react-native';
-import { ArrowUpRight, CloudUpload, Home } from 'lucide-react-native';
+import { ArrowUpRight, CloudUpload, Footprints, Home } from 'lucide-react-native';
 import * as Haptics from 'expo-haptics';
 import { useRouter } from 'expo-router';
 import { RunFinishedView } from '@/components/run/RunFinishedView';
 import { Action, Copy } from '@/components/run/PulseUi';
 import { StepsGoalConfetti } from '@/components/health/steps-goal/StepsGoalConfetti';
-import { cancelRun, getRunState, useRunSession } from '@/lib/run/store';
+import { cancelRun, getRunState, isKeptWalk, useRunSession } from '@/lib/run/store';
 import { useThemeColors } from '@/theme/colors';
 import { usePulse } from '@/lib/medipulsi/client';
 import { noteRatingMoment } from '@/lib/ratingPrompt';
@@ -32,6 +32,13 @@ export default function RunSummaryScreen() {
   if (!summary) return <View style={{ flex: 1, backgroundColor: colors.bg100 }} />;
 
   const celebrate = summary.reachedPin || summary.completedTarget;
+  // Nothing moved (Start tapped indoors) or too short to keep: never „saved“ — say what happened instead.
+  const kept = isKeptWalk(summary);
+  const footnote = !kept
+    ? summary.distanceM <= 0
+      ? tx('ამ სესიაში მოძრაობა არ დაფიქსირდა — მანძილი მხოლოდ სიარულისას ითვლება. შემდეგ ჯერზე გარეთ გადი და იარე.', 'No movement was recorded this session — distance only counts while you walk. Next time, step outside and walk.')
+      : tx('გასეირნება ძალიან მოკლე იყო და ტელეფონის ისტორიაში არ შეინახა: ვინახავთ 50 მ-ზე ან 1 წუთზე გრძელს.', 'The walk was too short to keep in your phone’s history: we keep walks over 50 m or 1 minute.')
+    : pulse.pending > 0 ? tx('შენახულია ტელეფონში · ანგარიშზე გაგზავნას ელოდება', 'Saved on your phone · waiting to sync to your account') : tx('გასეირნების ჩანაწერი შენახულია', 'Walk record saved');
 
   // Back to the hub underneath (never a second hub); Home is the one tab root (navigationGuard).
   const leave = (to: '/run' | '/(tabs)/home') => {
@@ -50,7 +57,7 @@ export default function RunSummaryScreen() {
         onBack={() => leave('/run')}
         footer={
           <View style={{ gap: 10 }}>
-            <View style={{ flexDirection: 'row', gap: 9, alignItems: 'center', marginBottom: 4 }}><CloudUpload size={18} color={colors.primary100} /><Copy muted size={11} style={{ flex: 1 }}>{pulse.pending > 0 ? tx('შენახულია ტელეფონში · ანგარიშზე გაგზავნას ელოდება', 'Saved on your phone · waiting to sync to your account') : tx('გასეირნების ჩანაწერი შენახულია', 'Walk record saved')}</Copy></View>
+            <View style={{ flexDirection: 'row', gap: 9, alignItems: 'center', marginBottom: 4 }}>{kept ? <CloudUpload size={18} color={colors.primary100} /> : <Footprints size={18} color={colors.primary100} />}<Copy muted={kept} size={kept ? 11 : 12} style={{ flex: 1 }}>{footnote}</Copy></View>
             <Action label={tx('MEDIRUN-ში დაბრუნება', 'Back to MEDIRUN')} icon={ArrowUpRight} onPress={() => leave('/run')} />
             <Action secondary label={tx('MEDICARD-ის მთავარი', 'MEDICARD home')} icon={Home} onPress={() => leave('/(tabs)/home')} />
           </View>

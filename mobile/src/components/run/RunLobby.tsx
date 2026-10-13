@@ -119,7 +119,7 @@ export function RunLobby({header,today,active,onStart,onGoal,onMore}:{header:Rea
      <Animated.View pointerEvents="none" style={{position:'absolute',left:-6,right:-6,top:-6,bottom:-6,borderRadius:28,backgroundColor:'rgba(45,212,191,0.28)',opacity:glow.interpolate({inputRange:[0,1],outputRange:[.3,.85]})}}/>
      <Pressable accessibilityRole="button" accessibilityLabel={live?tx('წავედით ყუთების საძებნელად','Go find the boxes'):tx('დავიწყოთ გასეირნება','Start a walk')} onPress={onStart} style={{minHeight:64,borderRadius:22,backgroundColor:RUN_CTA,paddingHorizontal:14,flexDirection:'row',alignItems:'center',gap:12,shadowColor:'#14B8A6',shadowOpacity:.55,shadowRadius:18,shadowOffset:{width:0,height:6},elevation:10}}>
       <View style={{width:38,height:38,borderRadius:13,backgroundColor:'rgba(255,255,255,0.2)',alignItems:'center',justifyContent:'center'}}><Play fill="#fff" color="#fff" size={16}/></View>
-      <Copy bold size={18} numberOfLines={1} style={{flex:1,color:'#fff'}}>{live?tx('წავედით საძებნელად','Go find them'):tx('დავიწყოთ','Let’s go')}</Copy>
+      <Copy bold size={18} numberOfLines={1} fit={.75} style={{flex:1,color:'#fff'}}>{live?tx('წავედით საძებნელად','Go find them'):tx('დავიწყოთ','Let’s go')}</Copy>
      </Pressable>
     </View>
     <Pressable accessibilityRole="button" accessibilityLabel={tx('ივარჯიშე მიზნით','Train with a goal')} onPress={onGoal} style={{width:64,height:64,borderRadius:22,backgroundColor:GLASS,borderWidth:1,borderColor:EDGE,alignItems:'center',justifyContent:'center'}}><Target size={22} color={MINT}/></Pressable>

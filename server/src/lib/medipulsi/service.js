@@ -1,7 +1,7 @@
 import {createHash,randomUUID,randomBytes} from 'node:crypto';
 import {prisma} from '../prisma.js';
 import {env} from '../../config/env.js';
-import {createJourney,acceptFix,parkProgress} from './core/journey.js';
+import {createJourney,acceptFix,parkProgress,lastSeen} from './core/journey.js';
 import {pauseJourney,resetSession} from './core/session.js';
 import {emptyBook,advanceMission} from './core/missions.js';
 import {distance} from './core/engine.js';
@@ -88,7 +88,8 @@ export async function batch(userId,sessionId,input,now=Date.now()){return transa
  await tx.medipulsiPlayer.update({where:{userId},data:{state,revision:{increment:1}}});return {seq:input.seq,accepted};
 });}
 const noSignal={signal:false,revealed:false,quality:false,period:2200,distance:0,gift:null};
-function fresh(j,now){return j?.lastFix&&now-j.lastFix<15000&&now-j.lastFix>=-5000&&j.accuracy<=25&&['tracking','off-path','stationary'].includes(j.status);}
+/** A live, precise position: any accurate fix in the last 15 s counts, also while standing still at a box (`seenAt`). */
+export function fresh(j,now){const at=j?lastSeen(j):null;return Boolean(at&&now-at<15000&&now-at>=-5000&&j.accuracy<=25&&['tracking','off-path','stationary'].includes(j.status));}
 function inRange(j,g){return distance(j.position,[g.longitude,g.latitude])+j.accuracy<=g.revealRadius;}
 export async function nearby(userId,now=Date.now(),lang='ka'){
  const cfg=await config();
@@ -140,7 +141,7 @@ export async function claim(userId,giftId,now=Date.now()){
  const rank=starterBox?null:g.allocated+1,coins=payoutFor(rule,g.allocated);
  // The box's park travels with the claim so the share clip can say where it was found (never a coordinate).
  const where=rule?.meta?.place?{place:rule.meta.place,placeEn:rule.meta.placeEn||null,district:rule.meta.district||null}:{};
- const claimed=await tx.medipulsiClaim.create({data:{id:randomUUID(),userId,giftId,sessionId:s.id,code:randomBytes(10).toString('hex').toUpperCase(),status:g.rewardKind==='DIGITAL'?'APPROVED':'PENDING',reward:{title:coins>0?`${coins} Medi Coins`:g.title,description:g.description,kind:g.rewardKind,coins,...(starterBox?{starter:true}:{rank,base:rule?.coins||0}),...where,evidence:{fixAt:p.state.journey.lastFix,accuracy:p.state.journey.accuracy,distance:distance(p.state.journey.position,[g.longitude,g.latitude]),sessionMeters:s.meters,rejectedFixes:s.rejected}}}});
+ const claimed=await tx.medipulsiClaim.create({data:{id:randomUUID(),userId,giftId,sessionId:s.id,code:randomBytes(10).toString('hex').toUpperCase(),status:g.rewardKind==='DIGITAL'?'APPROVED':'PENDING',reward:{title:coins>0?`${coins} Medi Coins`:g.title,description:g.description,kind:g.rewardKind,coins,...(starterBox?{starter:true}:{rank,base:rule?.coins||0}),...where,evidence:{fixAt:p.state.journey.lastFix,seenAt:p.state.journey.seenAt??null,accuracy:p.state.journey.accuracy,distance:distance(p.state.journey.position,[g.longitude,g.latitude]),sessionMeters:s.meters,rejectedFixes:s.rejected}}}});
  await tx.medipulsiGift.update({where:{id:giftId},data:{allocated:{increment:1}}});
  await creditGiftCoins(tx,{userId,claimId:claimed.id,giftId,rule,amount:coins,rank,now:new Date(now)});
  // The balance after this opening rides along, so the app's coin counter is right the moment the box opens.

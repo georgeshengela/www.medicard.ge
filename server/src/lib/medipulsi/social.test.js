@@ -7,6 +7,8 @@ import {milestoneView,unionShare,MILESTONES} from './cityMeter.js';
 import {wrappedWindow} from './wrapped.js';
 import {walletRows} from './economy.js';
 import {FILE_CAMPAIGN,parseCampaign,economyOf} from './campaignStore.js';
+// The walking engine's server checks (fresh position at a box, vehicle reset) — kept out of the full npm test line.
+import './journey.test.js';
 
 const NOW=Date.parse('2026-10-07T10:00:00+04:00');
 const TBILISI=[44.7930,41.6970];
