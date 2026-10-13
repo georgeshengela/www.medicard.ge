@@ -35,7 +35,7 @@ export function clusterOffers(offers) {
     return r;
   };
 
-  const SETS = ['forms', 'inns', 'volumes', 'counts', 'chains', 'countries', 'words'];
+  const SETS = ['forms', 'inns', 'volumes', 'counts', 'chains', 'countries', 'words', 'makers'];
   for (const o of offers) {
     parent.set(o.key, o.key);
     const id = o.identity;
@@ -46,6 +46,7 @@ export function clusterOffers(offers) {
       counts: new Set(id.count ? [id.count] : []),
       chains: new Set([chainOf(o.sourceId)]),
       countries: new Set(id.country ? [id.country] : []),
+      makers: new Set(id.maker ? [id.maker] : []),
       words: new Set(id.words || []),
       // Every spelling of the dose this group can still be: the members' spellings that all agree.
       doses: id.doses?.length ? new Set(id.doses) : null,
@@ -60,7 +61,11 @@ export function clusterOffers(offers) {
     // One chain listing the box twice from two countries means two variants, not a typo; and a box named
     // only by its substance (Captopril 25mg #40) is a different maker's box when the countries differ.
     const sameChain = [...a.chains].some((c) => b.chains.has(c));
-    if ((sameChain || a.generic || b.generic) && new Set([...a.countries, ...b.countries]).size > 1) return false;
+    const countriesDiffer = new Set([...a.countries, ...b.countries]).size > 1;
+    if ((sameChain || a.generic || b.generic) && countriesDiffer) return false;
+    // Another country AND another maker (Zelenin drops from Georgia and from Latvia) is another box; a
+    // country alone may just be PSP's data, the same maker spelled in both alphabets agrees.
+    if (countriesDiffer && a.makers.size && b.makers.size && ![...a.makers].some((m) => [...b.makers].some((n) => m.slice(0, 4) === n.slice(0, 4)))) return false;
     // Two listings of one chain that each carry words the other lacks (Herbion „სუროს“ vs
     // „მრავალძარღვა“) are two boxes; „Fenistil“ vs „Fenistil New“ may be one.
     if (sameChain && [...a.words].some((w) => !b.words.has(w)) && [...b.words].some((w) => !a.words.has(w))) return false;

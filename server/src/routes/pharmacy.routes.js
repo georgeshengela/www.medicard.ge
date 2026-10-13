@@ -54,6 +54,13 @@ function unitPrice(row) {
   return Math.round((row.bestPriceGel / row.unitCount) * 100) / 100;
 }
 
+/** „30 ტაბლეტი“ / „30 tablets“ — the box's count with its unit. */
+function packLabel(unitCount, formGroup, lang) {
+  const unit = UNIT_LABELS[formGroup];
+  if (!unit || !unitCount) return null;
+  return `${unitCount} ${lang === 'en' ? unit[unitCount === 1 ? 1 : 2] : unit[0]}`;
+}
+
 function mapProduct(row, lang, { includeOffers = false } = {}) {
   const offers = row.offers || [];
   const sourcePrices = buildSourcePricesFromOffers(offers, row.bestSourceId, { countryName: (iso) => countryLabel(iso, lang) }).map((p) => ({
@@ -76,6 +83,7 @@ function mapProduct(row, lang, { includeOffers = false } = {}) {
     packSize: row.packSize,
     unitCount: row.unitCount ?? null,
     unitLabel: unit ? unit[lang === 'en' ? 1 : 0] : null,
+    packLabel: packLabel(row.unitCount, row.formGroup, lang),
     unitPriceGel: unitPrice(row),
     // The active substance: Georgian for Georgian readers when a pharmacy gave it, otherwise Latin.
     inn: lang === 'en' ? row.inn || row.innKa : row.innKa || row.inn,
@@ -281,6 +289,7 @@ const ALTERNATIVE_SELECT = {
   countryIso: true,
   chainCount: true,
   rx: true,
+  brandKey: true,
 };
 
 function mapAlternative(row, lang) {
@@ -293,6 +302,7 @@ function mapAlternative(row, lang) {
     bestPriceGel: row.bestPriceGel,
     unitCount: row.unitCount ?? null,
     unitLabel: unit ? unit[lang === 'en' ? 1 : 0] : null,
+    packLabel: packLabel(row.unitCount, row.formGroup, lang),
     unitPriceGel: unitPrice(row),
     strength: doseLabel(row.strength, lang),
     manufacturer: lang === 'en' ? row.manufacturerLatin || row.manufacturer : row.manufacturer,
@@ -328,13 +338,23 @@ pharmacyRouter.get(
         : [],
       prisma.catalogProduct.findMany({ where: { mergedIntoId: row.id }, select: { id: true } }),
     ]);
+    // One line per maker's box: a pharmacy listing the same box twice (two countries) shows once.
+    const onePerBrand = (rows) => {
+      const seen = new Set();
+      return rows.filter((r) => {
+        const key = `${r.brandKey}|${r.unitCount}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+    };
     const byUnit = (a, b) => (unitPrice(a) ?? a.bestPriceGel ?? 1e9) - (unitPrice(b) ?? b.bestPriceGel ?? 1e9);
 
     return res.json({
       product: {
         ...mapProduct(row, lang, { includeOffers: true }),
         otherPacks: otherPacks.sort((a, b) => (a.unitCount ?? 0) - (b.unitCount ?? 0)).map((r) => mapAlternative(r, lang)),
-        analogues: analogues.sort(byUnit).slice(0, 12).map((r) => mapAlternative(r, lang)),
+        analogues: onePerBrand(analogues.sort(byUnit)).slice(0, 12).map((r) => mapAlternative(r, lang)),
         aliases: aliases.map((a) => a.id),
       },
     });

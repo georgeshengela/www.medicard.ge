@@ -310,16 +310,17 @@ export const FORM_LABELS = {
 };
 
 /** What one unit in the box is called, for „ერთი ტაბლეტის ფასი“. */
+/** [Georgian, English one, English many] — Georgian keeps the singular after a number („30 ტაბლეტი“). */
 export const UNIT_LABELS = {
-  tablet: ['ტაბლეტი', 'tablet'],
-  'tablet-eff': ['ტაბლეტი', 'tablet'],
-  lozenge: ['ტაბლეტი', 'lozenge'],
-  capsule: ['კაფსულა', 'capsule'],
-  powder: ['პაკეტი', 'sachet'],
-  rectal: ['სანთელი', 'suppository'],
-  vaginal: ['ცალი', 'unit'],
-  injection: ['ამპულა', 'ampoule'],
-  patch: ['პლასტირი', 'patch'],
+  tablet: ['ტაბლეტი', 'tablet', 'tablets'],
+  'tablet-eff': ['ტაბლეტი', 'tablet', 'tablets'],
+  lozenge: ['ტაბლეტი', 'lozenge', 'lozenges'],
+  capsule: ['კაფსულა', 'capsule', 'capsules'],
+  powder: ['პაკეტი', 'sachet', 'sachets'],
+  rectal: ['სანთელი', 'suppository', 'suppositories'],
+  vaginal: ['ცალი', 'unit', 'units'],
+  injection: ['ამპულა', 'ampoule', 'ampoules'],
+  patch: ['პლასტირი', 'patch', 'patches'],
 };
 
 /* ------------------------------------------------------------------ brand */
@@ -444,24 +445,52 @@ function leadingPhrase(text) {
  * „Ibuprofen-Normon“) keeps its maker word, since several makers sell the same generic; a trailing
  * variant mark („ევატონი-T“) is a modifier, not part of the brand.
  */
+/** Words of a chemical name: „კალცი გლუკონატი“ and „კალცი ქლორიდი“ differ only in the second word. */
+const CHEMICAL_WORDS = new Set(
+  [
+    'კალცი', 'კალციუმი', 'calcium', 'calci', 'ნატრიუმი', 'sodium', 'natrium', 'natrii', 'მაგნიუმი', 'magnesium',
+    'კალიუმი', 'potassium', 'kalium', 'თუთია', 'zinc', 'რკინა', 'iron', 'ferrum', 'ვიტამინი', 'vitamin', 'მჟავა',
+    'acid', 'ქლორიდი', 'chloride', 'იოდი', 'iodine', 'ბორის', 'boric', 'სალიცილის', 'salicylic', 'სულფატი', 'sulfate',
+    'გლუკონატი', 'gluconate', 'კარბონატი', 'carbonate', 'ციტრატი', 'citrate', 'ჰიდროკარბონატი', 'bicarbonate',
+  ].map((w) => phon(w)),
+);
+
+/**
+ * The brand key of a phrase. A box named by its substance or a chemical name („პაროქსეტინი ნორმონი“,
+ * „Ibuprofen-Normon“, „კალცი გლუკონატი“) keeps the rest of its name and its maker word, since several
+ * makers sell the same generic; `generic` says no maker word was found. A trailing variant mark
+ * („ევატონი-T“) is a modifier, not part of the brand.
+ */
 function brandKeyOf(words, innSkeletons) {
   const isInn = (w) => innSkeletons.has(skeleton(w)) || innSkeletons.has(innComponentKey(w));
+  const named = (w) => isInn(w) || CHEMICAL_WORDS.has(phon(w));
   const usable = words.filter((w) => !MODIFIER_BY_PHON.has(phon(w)) && !/^[A-Z]{1,4}$/.test(w) && phon(w).length >= 2);
   if (!usable.length) return null;
   const parts = usable[0].split('-').filter(Boolean);
   while (parts.length > 1 && /^[A-Za-z]{1,3}$/.test(parts[parts.length - 1]) && /[A-Z]/.test(parts[parts.length - 1])) parts.pop();
   let key;
   let generic = false;
-  if (parts.length > 1 && isInn(parts[0])) key = `${phon(parts[0])}~${phon(parts.slice(1).join(''))}`;
-  else {
-    key = phon(parts.join(''));
-    if (isInn(usable[0])) {
-      const maker = usable.slice(1).find((w) => !isInn(w) && phon(w).length >= 3);
-      if (maker) key = `${key}~${phon(maker)}`;
-      else generic = true;
-    }
-  }
+  if (parts.length > 1 && named(parts[0])) key = `${phon(parts[0])}~${phon(parts.slice(1).join(''))}`;
+  else if (named(usable[0])) {
+    const name = [phon(parts.join(''))];
+    let i = 1;
+    while (i < usable.length && named(usable[i])) name.push(phon(usable[i++]));
+    const maker = usable.slice(i).find((w) => phon(w).length >= 3);
+    key = [...name, maker ? phon(maker) : null].filter(Boolean).join('~');
+    generic = !maker;
+  } else key = phon(parts.join(''));
   return key.length >= 3 ? { key, generic } : null;
+}
+
+/** The maker's spelling key: its first real word („ლაბ. ნორმონი“ → normon, „MERCK (Germany)“ → merk). */
+const MAKER_FILLER = new Set(['lab', 'labs', 'laboratorios', 'laboratoires', 'laboratory', 'laboratories', 'ლაბ', 'ლაბორატორია', 'jsc', 'llc', 'ltd', 'sc', 'ооо', 'შპს', 'სს'].map((w) => w.toLowerCase()));
+export function makerKey(manufacturer) {
+  for (const w of String(manufacturer || '').split(/[\s.,()/-]+/)) {
+    if (!w || MAKER_FILLER.has(w.toLowerCase())) continue;
+    const p = phon(w);
+    if (p.length >= 3) return p.slice(0, 5);
+  }
+  return null;
 }
 
 /* ------------------------------------------------------------------ active substance */
@@ -665,7 +694,13 @@ export function identityOf(name, facts = {}, sourceId = null) {
   const innLatin = splitInn(f.inn) || (f.innPairs ? f.innPairs.map((p) => p[1]) : null);
   const innKaList = splitInn(f.innKa) || (f.innPairs ? f.innPairs.map((p) => p[0]) : null);
   const inn = innKey(innLatin) || innKey(innKaList);
-  const innSkeletons = new Set((innLatin || innKaList || []).map(innComponentKey).filter(Boolean));
+  // Every spelling of the substance, whole and word by word, in both alphabets („ნატრიუმის ქლორიდი“).
+  const innSkeletons = new Set();
+  for (const component of [...(innLatin || []), ...(innKaList || [])]) {
+    innSkeletons.add(innComponentKey(component));
+    for (const w of String(component).split(/[\s()-]+/)) if (skeleton(w).length >= 3) innSkeletons.add(skeleton(w));
+  }
+  innSkeletons.delete('');
 
   // Brand: Pharmadepot's `name` is the clean brand phrase; PSP's name holds it in both alphabets.
   const phrases = [];
@@ -720,6 +755,7 @@ export function identityOf(name, facts = {}, sourceId = null) {
     count: count && Number.isFinite(count) ? count : null,
     formGroup,
     country: f.country ?? null,
+    maker: makerKey(f.manufacturer),
     rx: typeof f.rx === 'boolean' ? f.rx : null,
     medCode: f.medCode ?? null,
     kind,
