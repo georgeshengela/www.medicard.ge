@@ -1,0 +1,294 @@
+<!doctype html>
+<html lang="ka">
+<head>
+<meta charset="utf-8">
+<title>MEDIHOROSCOPE film</title>
+<!--
+  20 s MEDIHOROSCOPE app film for Facebook/Instagram boosting. film.html?fmt=feed (1080×1350) | story (1080×1920).
+  Deterministic: window.seek(t) draws the frame at t seconds (render-film.mjs captures 30 fps).
+  Rules from earlier ads: the phone is always whole and centred, one phone stays while its screen and the headline
+  change, legibility comes from a lifted "lens" card, the first frame is a sentence, the end card is under 2 s,
+  9:16 text stays inside y 270–1250. Brand rule: MEDICARD AI is on screen the whole time.
+-->
+<style>
+@font-face { font-family: FiraGO; src: url(fonts/FiraGO-Regular.woff2); font-weight: 400; }
+@font-face { font-family: FiraGO; src: url(fonts/FiraGO-Medium.woff2); font-weight: 500; }
+@font-face { font-family: FiraGO; src: url(fonts/FiraGO-SemiBold.woff2); font-weight: 600; }
+@font-face { font-family: FiraGO; src: url(fonts/FiraGO-ExtraBold.woff2); font-weight: 800; }
+@font-face { font-family: SerifGeo; src: url(fonts/noto-serif-georgian-500.ttf); font-weight: 500; }
+@font-face { font-family: Exo2; src: url(fonts/exo2-800.ttf); font-weight: 800; }
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { background: #000; overflow: hidden; }
+body { font-family: FiraGO, sans-serif; color: #F6EEDC; -webkit-font-smoothing: antialiased; }
+#film { position: relative; overflow: hidden; background: radial-gradient(120% 80% at 50% 22%, #24357A 0%, #121C52 36%, #060A1F 80%); }
+canvas#sky { position: absolute; inset: 0; }
+#astro { position: absolute; will-change: transform, opacity; }
+#astro svg { width: 100%; height: 100%; overflow: visible; }
+.mark { position: absolute; display: flex; align-items: center; gap: 16px; z-index: 30; }
+.mark img { width: 64px; height: 64px; border-radius: 15px; box-shadow: 0 0 0 1.5px rgba(255,255,255,.14); }
+.mark span { font-weight: 800; font-size: 32px; color: #fff; letter-spacing: .01em; }
+.headline { position: absolute; left: 60px; right: 60px; text-align: center; font-family: SerifGeo; font-weight: 500; color: #F6EEDC; line-height: 1.12; z-index: 20; }
+.headline em { font-style: normal; color: #E9C77E; }
+.phone { position: absolute; z-index: 10; aspect-ratio: 390 / 844; background: #07070C; will-change: transform, opacity;
+  box-shadow: 0 0 0 2px rgba(255,255,255,.10), 0 40px 90px rgba(0,0,0,.55), 0 0 160px rgba(233,199,126,.22); }
+.phone .screen { position: absolute; overflow: hidden; background: #0B1238; }
+.phone .screen img { position: absolute; left: 0; width: 100%; will-change: transform, opacity; }
+.phone .bar { position: absolute; left: 0; right: 0; top: 0; display: flex; align-items: center; justify-content: space-between; font-weight: 600; color: #fff; z-index: 3; background: #0B1238; }
+.phone .island { position: absolute; left: 50%; transform: translateX(-50%); width: 31%; border-radius: 99px; background: #000; z-index: 4; }
+.phone .bar svg { fill: #fff; }
+.phone .dim { position: absolute; inset: 0; background: #050818; opacity: 0; z-index: 5; border-radius: inherit; }
+.lens { position: absolute; z-index: 15; border-radius: 26px; overflow: hidden; background-repeat: no-repeat; opacity: 0; will-change: transform, opacity;
+  box-shadow: 0 0 0 1.5px rgba(233,199,126,.55), 0 30px 80px rgba(0,0,0,.6), 0 0 90px rgba(233,199,126,.18); }
+.end { position: absolute; left: 0; right: 0; z-index: 25; text-align: center; opacity: 0; }
+.end img { width: 168px; height: 168px; border-radius: 38px; box-shadow: 0 20px 60px rgba(0,0,0,.45), 0 0 0 2px rgba(255,255,255,.14); }
+.end .name { font-weight: 800; font-size: 92px; color: #fff; margin-top: 34px; letter-spacing: .01em; line-height: 1; }
+.end .line { font-family: SerifGeo; font-weight: 500; font-size: 50px; color: #E9C77E; margin-top: 26px; }
+.end .find { font-size: 34px; color: rgba(246,238,220,.8); margin-top: 54px; line-height: 1.4; }
+.end .find b { color: #fff; font-weight: 800; }
+.end .site { font-weight: 600; font-size: 34px; margin-top: 10px; color: #F6EEDC; }
+</style>
+</head>
+<body>
+<div id="film">
+  <canvas id="sky"></canvas>
+  <div id="astro"></div>
+  <div id="veil" style="position:absolute;left:0;right:0;top:0;z-index:6;pointer-events:none"></div>
+  <div class="mark"><img src="img/app-icon.png" alt=""><span>MEDICARD AI</span></div>
+  <div id="heads"></div>
+  <div class="phone" id="phone"><div class="screen" id="screen"><div class="island"></div><div class="bar" id="bar"></div><div class="dim" id="dim"></div></div></div>
+  <div id="lenses"></div>
+  <div class="end" id="end"><img src="img/app-icon.png" alt=""><div class="name">MEDICARD AI</div><div class="line">ჰოროსკოპი ახლა MEDICARD AI-ში</div><div class="find">App Store-ში მოძებნე <b>MEDICARD AI</b></div><div class="site">medicard.ge — უფასოა</div></div>
+</div>
+<script type="module">
+import { ASTRO_GLYPHS } from './js/astroGlyphs.js';
+const q = new URLSearchParams(location.search);
+const STORY = q.get('fmt') === 'story';
+const W = 1080, H = STORY ? 1920 : 1350;
+const film = document.getElementById('film');
+Object.assign(film.style, { width: `${W}px`, height: `${H}px` });
+const sky = await fetch('js/sky.json').then((r) => r.json());
+
+// ── Layout ───────────────────────────────────────────────────────────────────
+const L = STORY
+  ? { markTop: 300, headTop: 400, headSize: 70, hookSize: 112, hookTop: 420, hookWheel: [1250, 1040], pw: 500, py: 620, lensW: 860, lensY: 900, endTop: 560 }
+  : { markTop: 56, headTop: 150, headSize: 62, hookSize: 100, hookTop: 160, hookWheel: [875, 980], pw: 440, py: 336, lensW: 820, lensY: 590, endTop: 270 };
+const mark = document.querySelector('.mark');
+Object.assign(mark.style, { left: STORY ? '72px' : '56px', top: `${L.markTop}px` });
+document.getElementById('end').style.top = `${L.endTop}px`;
+
+// ── Timeline (96 BPM: a beat is 0.625 s; cuts sit on beats) ─────────────────
+const SCREENS = {
+  hub: { src: 'img/screens/hl-hub.png', css: 2000 },
+  sign: { src: 'img/screens/hl-sign.png', css: 2400 },
+  chart: { src: 'img/screens/hl-chart.png', css: 1500 },
+  oracle: { src: 'img/screens/hl-oracle-ans.png', css: 844 },
+  tarot: { src: 'img/screens/hl-tarot3.png', css: 1500 },
+  compat: { src: 'img/screens/hl-compat.png', css: 1700 },
+  sky: { src: 'img/screens/h-sky.png', css: 844 },
+};
+// pan: CSS px of the screenshot scrolled at scene start → end
+const SCENES = [
+  { t0: 2.5, t1: 6.25, head: 'ყოველდღე<br><em>ახალი ჰოროსკოპი</em>', screen: 'hub', pan: [0, 150],
+    lens: { t0: 4.35, t1: 6.0, screen: 'hub', crop: [8, 436, 374, 192] } },
+  { t0: 6.25, t1: 8.75, head: 'დღე, კვირა, თვე<br>და <em>მთელი წელი</em>', screen: 'sign', pan: [0, 1050] },
+  { t0: 8.75, t1: 11.25, head: 'შენი <em>ნატალური რუკა</em>', screen: 'chart', pan: [0, 40],
+    lens: { t0: 9.6, t1: 11.05, screen: 'chart', crop: [6, 60, 378, 404], w: STORY ? 760 : 620, y: STORY ? 990 : 660 } },
+  { t0: 11.25, t1: 15.0, head: 'ჰკითხე <em>ორაკულს</em>', screen: 'oracle', pan: [0, 0],
+    lens: { t0: 12.5, t1: 14.8, screen: 'oracle', crop: [10, 196, 370, 268] } },
+  { t0: 15.0, t1: 18.125, head: 'ტარო, თავსებადობა<br>და <em>ცის კალენდარი</em>', screens: [['tarot', 15.0, 380], ['compat', 16.04, 0], ['sky', 17.08, 0]] },
+];
+const HOOK = { t1: 2.5, head: 'რას გეუბნება<br><em>ცა დღეს?</em>' };
+const END = 18.125, T = 20;
+
+// ── Helpers ──────────────────────────────────────────────────────────────────
+const clamp = (x, a = 0, b = 1) => Math.max(a, Math.min(b, x));
+const ease = (x) => (x < 0.5 ? 4 * x * x * x : 1 - Math.pow(-2 * x + 2, 3) / 2);
+const out = (x) => 1 - Math.pow(1 - x, 3);
+const ramp = (t, a, b) => clamp((t - a) / (b - a));
+
+// ── Sky: seeded stars that twinkle + shooting stars ─────────────────────────
+const cv = document.getElementById('sky');
+cv.width = W; cv.height = H;
+const g = cv.getContext('2d');
+let seed = 13;
+const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+const STARS = Array.from({ length: 300 }, () => ({ x: rnd() * W, y: rnd() * H, r: rnd() < 0.08 ? 1.6 + rnd() * 1.4 : 0.5 + rnd() * 1.1, a: 0.25 + rnd() * 0.65, f: 0.4 + rnd() * 1.6, p: rnd() * 6.28, warm: rnd() < 0.25 }));
+const SHOOT = [[0.35, 0.78, 0.10], [5.0, 0.30, 0.14], [9.9, 0.86, 0.08], [14.1, 0.40, 0.06], [18.4, 0.70, 0.12]];
+function drawSky(t) {
+  g.clearRect(0, 0, W, H);
+  for (const s of STARS) {
+    const a = s.a * (0.65 + 0.35 * Math.sin(t * s.f * 2.2 + s.p));
+    g.fillStyle = s.warm ? `rgba(243,221,166,${a})` : `rgba(255,255,255,${a})`;
+    g.beginPath(); g.arc(s.x, s.y, s.r, 0, 6.283); g.fill();
+  }
+  for (const [ts, fx, fy] of SHOOT) {
+    const k = (t - ts) / 0.95;
+    if (k < 0 || k > 1) continue;
+    const x0 = W * fx, y0 = H * fy, ang = (152 * Math.PI) / 180, dist = 520;
+    const head = out(k) * dist, len = 220 * Math.sin(Math.PI * Math.min(1, k * 1.25));
+    const hx = x0 + Math.cos(ang) * head, hy = y0 + Math.sin(ang) * head;
+    const tx = hx - Math.cos(ang) * len, ty = hy - Math.sin(ang) * len;
+    const gr = g.createLinearGradient(hx, hy, tx, ty);
+    const al = 1 - Math.pow(k, 3);
+    gr.addColorStop(0, `rgba(255,248,225,${0.95 * al})`); gr.addColorStop(1, 'rgba(255,248,225,0)');
+    g.strokeStyle = gr; g.lineWidth = 2.4; g.lineCap = 'round';
+    g.beginPath(); g.moveTo(hx, hy); g.lineTo(tx, ty); g.stroke();
+    const h = g.createRadialGradient(hx, hy, 0, hx, hy, 16); h.addColorStop(0, `rgba(255,250,230,${0.9 * al})`); h.addColorStop(1, 'rgba(255,250,230,0)');
+    g.fillStyle = h; g.beginPath(); g.arc(hx, hy, 16, 0, 6.283); g.fill();
+  }
+}
+
+// ── Astrolabe (same drawing as the posters) ───────────────────────────────────
+function glyph(key, cx, cy, size, fill) {
+  const gl = ASTRO_GLYPHS[key];
+  if (!gl) return '';
+  const [vx, vy, vw, vh] = gl.vb.split(' ').map(Number);
+  const s = size / Math.max(vw, vh);
+  return `<g transform="translate(${cx - size / 2},${cy - size / 2}) scale(${s}) translate(${-vx},${-vy})"><path d="${gl.d}" fill="${fill}"/></g>`;
+}
+const SIGNS = ['aries', 'taurus', 'gemini', 'cancer', 'leo', 'virgo', 'libra', 'scorpio', 'sagittarius', 'capricorn', 'aquarius', 'pisces'];
+function astrolabeSvg() {
+  const R = 500, cx = 500, cy = 500, dim = 'rgba(233,199,126,.58)', hair = 'rgba(233,199,126,.34)';
+  const pt = (lon, r) => { const a = Math.PI - lon * Math.PI / 180; return [cx + Math.cos(a) * r, cy - Math.sin(a) * r]; };
+  let s = `<svg viewBox="-20 -20 1040 1040"><defs><linearGradient id="brass" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFF0C4"/><stop offset=".45" stop-color="#E9C77E"/><stop offset=".72" stop-color="#B98A3A"/><stop offset="1" stop-color="#F3DDA6"/></linearGradient><mask id="cres"><rect x="0" y="0" width="1000" height="1000" fill="#fff"/><circle cx="528" cy="486" r="58" fill="#000"/></mask></defs>`;
+  s += `<circle cx="${cx}" cy="${cy}" r="${R}" fill="rgba(233,199,126,.04)" stroke="url(#brass)" stroke-width="5"/>`;
+  s += `<circle cx="${cx}" cy="${cy}" r="${R - 22}" fill="none" stroke="${dim}" stroke-width="1.5"/><circle cx="${cx}" cy="${cy}" r="${R - 118}" fill="none" stroke="url(#brass)" stroke-width="2"/><circle cx="${cx}" cy="${cy}" r="${R - 300}" fill="none" stroke="${hair}" stroke-width="1.2"/>`;
+  for (let d = 0; d < 360; d += 1) {
+    const long = d % 30 === 0, five = d % 5 === 0;
+    const [x1, y1] = pt(d, R - 22); const [x2, y2] = pt(d, R - 22 - (long ? 96 : d % 10 === 0 ? 18 : five ? 12 : 6));
+    s += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${long ? 'url(#brass)' : five ? dim : hair}" stroke-width="${long ? 2.4 : 1.2}"/>`;
+  }
+  SIGNS.forEach((k, i) => { const [gx, gy] = pt(i * 30 + 15, R - 70); s += glyph(k, gx, gy, 58, '#F0D592'); });
+  const list = sky.bodies.filter((b) => ASTRO_GLYPHS[b.key]);
+  list.forEach((b, i) => { const [px, py] = pt(b.lon, R - 182 - (i % 2) * 54); s += glyph(b.key, px, py, 50, '#FBF5E6'); });
+  s += `<circle cx="${cx}" cy="${cy}" r="66" fill="#F3E1A8" mask="url(#cres)" style="filter:drop-shadow(0 0 22px rgba(243,225,168,.75))"/></svg>`;
+  return s;
+}
+const veil = document.getElementById('veil');
+Object.assign(veil.style, { height: `${STORY ? 620 : 360}px`, background: `linear-gradient(180deg, rgba(6,10,31,0) 0%, rgba(8,13,40,.82) ${STORY ? 45 : 20}%, rgba(8,13,40,.6) 70%, rgba(8,13,40,0) 100%)` });
+const astro = document.getElementById('astro');
+astro.innerHTML = astrolabeSvg();
+const AS = STORY ? 1500 : 1300, AC = STORY ? 860 : 640;
+Object.assign(astro.style, { width: `${AS}px`, height: `${AS}px`, left: `${(W - AS) / 2}px`, top: `${AC - AS / 2}px` });
+
+// ── Phone ────────────────────────────────────────────────────────────────────
+const pw = L.pw, ph = pw * 844 / 390, pad = pw * 0.032, sw = pw - 2 * pad, shh = ph - 2 * pad, barH = pw * 0.118, k = sw / 390;
+const phone = document.getElementById('phone');
+Object.assign(phone.style, { width: `${pw}px`, left: `${(W - pw) / 2}px`, top: `${L.py}px`, borderRadius: `${pw * 0.145}px` });
+const screen = document.getElementById('screen');
+Object.assign(screen.style, { left: `${pad}px`, top: `${pad}px`, width: `${sw}px`, height: `${shh}px`, borderRadius: `${pw * 0.118}px` });
+const bar = document.getElementById('bar');
+Object.assign(bar.style, { height: `${barH}px`, padding: `0 ${pw * 0.085}px 0 ${pw * 0.1}px`, fontSize: `${pw * 0.042}px` });
+bar.innerHTML = `<span>21:40</span><svg style="height:${pw * 0.034}px" viewBox="0 0 64 12"><rect x="0" y="8" width="3.2" height="4" rx="1"/><rect x="5" y="5.5" width="3.2" height="6.5" rx="1"/><rect x="10" y="3" width="3.2" height="9" rx="1"/><rect x="15" y="0.5" width="3.2" height="11.5" rx="1"/><path d="M30 3.2c2.6 0 5 1 6.8 2.7l-1.4 1.5A7.6 7.6 0 0 0 30 5.3a7.6 7.6 0 0 0-5.4 2.1l-1.4-1.5A9.8 9.8 0 0 1 30 3.2zm0 3.6c1.6 0 3 .6 4.1 1.6L30 12.2l-4.1-3.8A6 6 0 0 1 30 6.8z"/><rect x="42" y="1.5" width="19" height="9.5" rx="2.6" fill="none" stroke="#fff" stroke-width="1.1" opacity=".6"/><rect x="43.6" y="3.1" width="13.6" height="6.3" rx="1.5"/></svg>`;
+Object.assign(screen.querySelector('.island').style, { top: `${pw * 0.028 - pad}px`, height: `${pw * 0.085}px` });
+const dim = document.getElementById('dim');
+const imgs = {};
+for (const [key, s] of Object.entries(SCREENS)) {
+  const im = document.createElement('img');
+  im.src = s.src; im.style.top = `${barH}px`; im.style.opacity = 0;
+  screen.insertBefore(im, dim);
+  imgs[key] = im;
+}
+
+// ── Headlines ────────────────────────────────────────────────────────────────
+const heads = document.getElementById('heads');
+const mkHead = (html, size, top) => { const d = document.createElement('div'); d.className = 'headline'; d.innerHTML = html; Object.assign(d.style, { fontSize: `${size}px`, top: `${top}px`, opacity: 0 }); heads.appendChild(d); return d; };
+const hookEl = mkHead(HOOK.head, L.hookSize, 0);
+const sceneHeads = SCENES.map((s) => mkHead(s.head, L.headSize, L.headTop));
+
+// ── Lenses ───────────────────────────────────────────────────────────────────
+const lensBox = document.getElementById('lenses');
+const lensEls = SCENES.map((s) => {
+  if (!s.lens) return null;
+  const [cx, cy, cw, ch] = s.lens.crop;
+  const lw = s.lens.w || L.lensW, ly = s.lens.y || L.lensY;
+  const scale = lw / cw;
+  const d = document.createElement('div');
+  d.className = 'lens';
+  const shot = SCREENS[s.lens.screen];
+  Object.assign(d.style, { width: `${lw}px`, height: `${ch * scale}px`, left: `${(W - lw) / 2}px`, top: `${ly - (ch * scale) / 2}px`,
+    backgroundImage: `url(${shot.src})`, backgroundSize: `${390 * scale}px auto`, backgroundPosition: `${-cx * scale}px ${-cy * scale}px`, backgroundColor: '#0B1238' });
+  lensBox.appendChild(d);
+  return d;
+});
+
+// ── Frame ────────────────────────────────────────────────────────────────────
+const endEl = document.getElementById('end');
+window.seek = (t) => {
+  drawSky(t);
+  // astrolabe: hero during the hook, then a slow presence behind the phone
+  const hookOut = ramp(t, 2.0, 2.7);
+  const astroOp = 1 - 0.7 * ease(hookOut) - 0.25 * ramp(t, END - 0.2, END + 0.4);
+  astro.style.opacity = astroOp * ease(ramp(t, 0, 0.3));
+  veil.style.opacity = ease(hookOut) * (1 - ease(ramp(t, END, END + 0.4)));
+  const [hc, hs] = L.hookWheel, m = ease(hookOut);
+  const dy = (hc - AC) * (1 - m), sc = (hs / AS) * (1 - m) + 1 * m;
+  astro.style.transform = `translateY(${dy}px) scale(${sc}) rotate(${t * 2.4}deg)`;
+  // hook headline: centred, rises out
+  const hIn = ease(ramp(t, 0, 0.35)), hOut = ease(ramp(t, 2.05, 2.45));
+  hookEl.style.opacity = hIn * (1 - hOut);
+  hookEl.style.top = `${L.hookTop - 30 * hOut}px`;
+  // phone: rises in after the hook, leaves before the end card
+  const pIn = out(ramp(t, 2.1, 2.95)), pOut = ease(ramp(t, END - 0.15, END + 0.35));
+  phone.style.opacity = pIn * (1 - pOut);
+  phone.style.transform = `translateY(${(1 - pIn) * 260 + pOut * 80}px) scale(${1 - 0.06 * pOut})`;
+  // scene headlines
+  SCENES.forEach((s, i) => {
+    const a = ease(ramp(t, s.t0 + 0.02, s.t0 + 0.42)) * (1 - ease(ramp(t, s.t1 - 0.22, s.t1)));
+    sceneHeads[i].style.opacity = a;
+    sceneHeads[i].style.transform = `translateY(${(1 - ease(ramp(t, s.t0, s.t0 + 0.45))) * 18}px)`;
+  });
+  // screens
+  for (const im of Object.values(imgs)) im.style.opacity = 0;
+  let current = null, panCss = 0;
+  for (const s of SCENES) {
+    if (t < s.t0 - 0.0001 || t >= s.t1) continue;
+    if (s.screens) {
+      for (let j = 0; j < s.screens.length; j++) {
+        const [key, st, pan] = s.screens[j];
+        const next = s.screens[j + 1]?.[1] ?? s.t1;
+        if (t >= st && t < next) { current = key; panCss = pan; }
+      }
+    } else {
+      current = s.screen;
+      panCss = s.pan[0] + (s.pan[1] - s.pan[0]) * ease(ramp(t, s.t0 + 0.3, s.t1 - 0.2));
+    }
+  }
+  if (t < SCENES[0].t0) current = 'hub';
+  if (t >= END) current = 'sky';
+  if (current) {
+    imgs[current].style.opacity = 1;
+    imgs[current].style.transform = `translateY(${-panCss * k}px)`;
+    // the outgoing screen fades over the first 0.25 s of a scene
+    const sc = SCENES.find((s) => t >= s.t0 && t < s.t0 + 0.25 && !s.screens);
+    const prev = sc && SCENES[SCENES.indexOf(sc) - 1];
+    if (prev) {
+      const pk = prev.screens ? prev.screens.at(-1)[0] : prev.screen;
+      if (pk !== current) { imgs[pk].style.opacity = 1 - ramp(t, sc.t0, sc.t0 + 0.25); imgs[current].style.opacity = ramp(t, sc.t0, sc.t0 + 0.25); }
+    }
+  }
+  // lenses + phone dim
+  let dimA = 0;
+  SCENES.forEach((s, i) => {
+    const el = lensEls[i];
+    if (!el) return;
+    const a = out(ramp(t, s.lens.t0, s.lens.t0 + 0.4)) * (1 - ease(ramp(t, s.lens.t1 - 0.3, s.lens.t1)));
+    el.style.opacity = a;
+    el.style.transform = `translateY(${(1 - a) * 40}px) scale(${0.94 + 0.06 * a})`;
+    dimA = Math.max(dimA, a * 0.55);
+  });
+  dim.style.opacity = dimA;
+  // end card
+  const e = out(ramp(t, END + 0.1, END + 0.6));
+  endEl.style.opacity = e;
+  endEl.style.transform = `translateY(${(1 - e) * 30}px)`;
+  mark.style.opacity = 1 - ease(ramp(t, END, END + 0.3));
+};
+
+await document.fonts.ready;
+await Promise.all([...document.images].map((i) => i.decode().catch(() => {})));
+window.seek(Number(q.get('t') || 0));
+document.body.dataset.ready = '1';
+</script>
+</body>
+</html>

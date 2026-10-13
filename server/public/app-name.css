@@ -1,0 +1,10 @@
+/* „The app is MEDICARD AI“ (owner 2026-10-13): people who saw a MEDICYCLE ad looked for an app called MEDICYCLE.
+   Every module landing page says, next to the App Store button, what to search for, with the real App Store icon,
+   and its module wordmark carries „MEDICARD AI-ის განყოფილება“. Works on dark heroes (inherits the text colour). */
+.appname { display: inline-flex; align-items: center; gap: 12px; margin: 18px 0 0; padding: 8px 18px 8px 8px; border-radius: 18px;
+  background: rgba(255, 255, 255, .10); border: 1px solid rgba(255, 255, 255, .20); text-decoration: none; color: inherit; }
+.appname img { width: 40px; height: 40px; border-radius: 10px; flex: none; box-shadow: 0 0 0 1px rgba(255, 255, 255, .16); }
+.appname span { display: flex; flex-direction: column; font-size: 13.5px; line-height: 1.25; opacity: .86; }
+.appname b { font-size: 18px; font-weight: 800; letter-spacing: .01em; opacity: 1; }
+.wm-part { display: block; margin-top: 6px; font-family: "FiraGO", system-ui, sans-serif; font-weight: 500; font-size: 15px; letter-spacing: 0; opacity: .82; }
+.appname em { font-style: normal; }

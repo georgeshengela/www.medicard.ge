@@ -271,6 +271,15 @@ app.get(['/cycle', '/cycle/'], (_req, res, next) => {
   res.sendFile(path.join(PUBLIC_DIST, 'cycle', 'index.html'));
 });
 
+// MEDIHOROSCOPE and MEDISLEEP landings for the launch ads (2026-10-14). /sleep is health-adjacent: no Pixel / GA.
+for (const page of ['horoscope', 'sleep']) {
+  app.get([`/${page}`, `/${page}/`], (_req, res, next) => {
+    if (!PUBLIC_DIST) return next();
+    res.set('Cache-Control', 'no-store');
+    res.sendFile(path.join(PUBLIC_DIST, page, 'index.html'));
+  });
+}
+
 // One-click marketing unsubscribe (email links + RFC 8058 POST). Public, no auth.
 app.use(unsubscribeRouter);
 

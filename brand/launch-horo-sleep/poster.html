@@ -1,0 +1,429 @@
+<!doctype html>
+<html lang="ka">
+<head>
+<meta charset="utf-8">
+<title>MEDICARD AI — new modules posters</title>
+<!--
+  Launch posters for MEDIHOROSCOPE and MEDISLEEP (2026-10-14). poster.html?v=<variant>&fmt=feed|story
+  Brand rule (owner 2026-10-13): people took module names (MEDICYCLE) for the app's name. Every creative leads
+  with the app — the MEDICARD AI icon + name at the top, „App Store-ში მოძებნე „MEDICARD AI““ at the bottom —
+  and a module name only ever appears as a part of MEDICARD AI („…-ის ახალი განყოფილება“).
+-->
+<style>
+@font-face { font-family: FiraGO; src: url(fonts/FiraGO-Regular.woff2); font-weight: 400; }
+@font-face { font-family: FiraGO; src: url(fonts/FiraGO-Medium.woff2); font-weight: 500; }
+@font-face { font-family: FiraGO; src: url(fonts/FiraGO-SemiBold.woff2); font-weight: 600; }
+@font-face { font-family: FiraGO; src: url(fonts/FiraGO-Bold.woff2); font-weight: 700; }
+@font-face { font-family: FiraGO; src: url(fonts/FiraGO-ExtraBold.woff2); font-weight: 800; }
+@font-face { font-family: NotoSansGeo; src: url(fonts/NotoSansGeorgian_300Light.ttf); font-weight: 300; }
+@font-face { font-family: NotoSansGeo; src: url(fonts/NotoSansGeorgian_400Regular.ttf); font-weight: 400; }
+@font-face { font-family: NotoSansGeo; src: url(fonts/NotoSansGeorgian_500Medium.ttf); font-weight: 500; }
+@font-face { font-family: SerifGeo; src: url(fonts/noto-serif-georgian-500.ttf); font-weight: 500; }
+@font-face { font-family: Exo2; src: url(fonts/exo2-800.ttf); font-weight: 800; }
+
+:root {
+  --W: 1080px; --H: 1350px;
+  --ink: #F6EEDC; --mist: rgba(246, 238, 220, .74); --faint: rgba(246, 238, 220, .46);
+  --accent: #E9C77E; --accent-deep: #C99A45;
+  --bg1: #060A1F; --bg2: #121C52; --bg3: #24357A;
+  --brand: #14B8A6;
+}
+.sleep {
+  --ink: #F6F0FF; --mist: rgba(246, 240, 255, .76); --faint: rgba(246, 240, 255, .48);
+  --accent: #F3E1A8; --accent-deep: #D9A8FF;
+  --bg1: #0D0726; --bg2: #24145C; --bg3: #4B2A9E;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { background: #000; }
+body { width: var(--W); height: var(--H); overflow: hidden; font-family: FiraGO, sans-serif; color: var(--ink); -webkit-font-smoothing: antialiased; }
+#poster { position: relative; width: var(--W); height: var(--H); overflow: hidden;
+  background: radial-gradient(120% 80% at 70% 18%, var(--bg3) 0%, var(--bg2) 34%, var(--bg1) 78%); }
+canvas.sky { position: absolute; inset: 0; width: 100%; height: 100%; }
+
+/* ── The app lockup: who this is (MEDICARD AI), always top-left ─────────────── */
+.lockup { position: absolute; left: 72px; top: var(--top, 72px); display: flex; align-items: center; gap: 22px; z-index: 20; }
+.lockup img { width: 92px; height: 92px; border-radius: 22px; box-shadow: 0 10px 30px rgba(0,0,0,.35), 0 0 0 1.5px rgba(255,255,255,.14); }
+.lockup .name { font-weight: 800; font-size: 44px; letter-spacing: .01em; line-height: 1; color: #fff; }
+.lockup .line { margin-top: 10px; font-size: 25px; color: var(--mist); line-height: 1; }
+.news { position: absolute; right: 72px; top: calc(var(--top, 72px) + 24px); z-index: 20; padding: 12px 24px 13px; border-radius: 999px;
+  font-weight: 600; font-size: 26px; line-height: 1; color: var(--bg1); background: var(--accent); }
+
+/* ── Footer: where to get it ──────────────────────────────────────────────── */
+.foot { position: absolute; left: 72px; right: 72px; bottom: var(--bottom, 64px); z-index: 20; display: flex; align-items: flex-end; justify-content: space-between;
+  padding-top: 26px; border-top: 1.5px solid rgba(255,255,255,.16); }
+.foot .find { font-size: 26px; color: var(--mist); line-height: 1.25; }
+.foot .find b { display: block; font-weight: 800; font-size: 36px; color: #fff; letter-spacing: .01em; margin-top: 6px; }
+.foot .site { font-weight: 600; font-size: 30px; color: var(--ink); text-align: right; line-height: 1.25; }
+.foot .site small { display: block; font-weight: 400; font-size: 24px; color: var(--faint); }
+
+/* ── Module tag: the module as a PART of the app ──────────────────────────── */
+.tag { display: inline-flex; align-items: baseline; gap: 16px; font-size: 26px; color: var(--mist); white-space: nowrap; }
+.wm { font-family: Exo2; font-weight: 800; font-size: 34px; letter-spacing: -.01em; color: #fff; }
+.wm i { display: inline-block; font-style: normal; color: var(--accent); transform: skewX(-16deg); margin-left: .04em; }
+
+/* ── Type ─────────────────────────────────────────────────────────────────── */
+.head { position: absolute; left: 72px; right: 72px; z-index: 10; }
+.h1 { font-family: SerifGeo; font-weight: 500; font-size: 112px; line-height: 1.08; letter-spacing: -.01em; color: var(--ink); }
+.sleep .h1 { font-family: NotoSansGeo; font-weight: 300; letter-spacing: -.015em; }
+.h2 { font-family: SerifGeo; font-weight: 500; font-size: 64px; line-height: 1.1; color: var(--accent); margin-top: 10px; }
+.sleep .h2 { font-family: NotoSansGeo; font-weight: 400; }
+.lede { margin-top: 28px; font-size: 34px; line-height: 1.42; color: var(--mist); max-width: 860px; }
+.lede b { color: var(--ink); font-weight: 600; }
+
+/* ── Phone ────────────────────────────────────────────────────────────────── */
+.phone { position: absolute; z-index: 8; width: var(--pw); aspect-ratio: 390 / 844; border-radius: calc(var(--pw) * .145);
+  background: #07070C; padding: calc(var(--pw) * .032);
+  box-shadow: 0 0 0 2px rgba(255,255,255,.10), 0 40px 90px rgba(0,0,0,.55), 0 0 140px var(--glow, rgba(233,199,126,.18)); }
+.phone .screen { position: relative; width: 100%; height: 100%; border-radius: calc(var(--pw) * .118); overflow: hidden; background: var(--scr, #0A1030); }
+.phone .screen img { position: absolute; left: 0; top: calc(var(--pw) * .118); width: 100%; }
+.phone .bar { position: absolute; left: 0; right: 0; top: 0; height: calc(var(--pw) * .118); display: flex; align-items: center; justify-content: space-between;
+  padding: 0 calc(var(--pw) * .085) 0 calc(var(--pw) * .1); font-weight: 600; font-size: calc(var(--pw) * .042); color: #fff; z-index: 2; }
+.phone .island { position: absolute; top: calc(var(--pw) * .028); left: 50%; transform: translateX(-50%); width: 31%; height: calc(var(--pw) * .085); border-radius: 99px; background: #000; z-index: 3; }
+.phone .bar svg { height: calc(var(--pw) * .034); fill: #fff; }
+
+/* ── Astrolabe ────────────────────────────────────────────────────────────── */
+.astro { position: absolute; z-index: 4; }
+.astro svg { width: 100%; height: 100%; overflow: visible; }
+
+/* ── Oracle ───────────────────────────────────────────────────────────────── */
+.oracle { position: absolute; z-index: 9; }
+.oracle svg { width: 100%; height: 100%; overflow: visible; }
+.halo { position: absolute; z-index: 5; border-radius: 50%; background: radial-gradient(circle, rgba(233,199,126,.34) 0%, rgba(233,199,126,.10) 38%, transparent 66%); }
+.quote { position: absolute; z-index: 10; font-family: SerifGeo; font-weight: 500; font-size: 40px; line-height: 1.36; color: var(--ink); }
+.quote::before { content: '„'; color: var(--accent); }
+.quote::after { content: '“'; color: var(--accent); }
+
+/* ── Sound art ────────────────────────────────────────────────────────────── */
+.mosaic { position: absolute; z-index: 4; display: grid; gap: 22px; transform: rotate(-6deg); }
+.mosaic figure { position: relative; border-radius: 28px; overflow: hidden; box-shadow: 0 24px 60px rgba(0,0,0,.45); aspect-ratio: 3 / 4; }
+.mosaic img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.mosaic figcaption { position: absolute; left: 20px; bottom: 16px; font-weight: 600; font-size: 26px; color: #fff; text-shadow: 0 2px 10px rgba(0,0,0,.6); }
+.fade { position: absolute; z-index: 6; left: 0; right: 0; pointer-events: none; }
+
+/* ── Moon ─────────────────────────────────────────────────────────────────── */
+.moon { position: absolute; z-index: 4; border-radius: 50%;
+  background: radial-gradient(circle at 38% 36%, #FFF6DA 0%, #F3E1A8 46%, #D9BE7A 100%);
+  box-shadow: 0 0 120px rgba(243,225,168,.45), 0 0 300px rgba(217,168,255,.25); }
+.moon .bite { position: absolute; border-radius: 50%; background: var(--bg2); }
+.sleeper { position: absolute; z-index: 6; }
+
+/* ── Sign wheel ───────────────────────────────────────────────────────────── */
+.signs { position: absolute; z-index: 4; }
+.signs svg { width: 100%; height: 100%; overflow: visible; }
+</style>
+</head>
+<body>
+<div id="poster"></div>
+<script type="module">
+import { ASTRO_GLYPHS } from './js/astroGlyphs.js';
+
+const q = new URLSearchParams(location.search);
+const V = q.get('v') || 'h1';
+const STORY = q.get('fmt') === 'story', OG = q.get('fmt') === 'og';
+const W = OG ? 1200 : 1080, H = OG ? 630 : STORY ? 1920 : 1350;
+document.documentElement.style.setProperty('--H', `${H}px`);
+document.documentElement.style.setProperty('--W', `${W}px`);
+// Story safe zones: profile row + reply bar.
+document.documentElement.style.setProperty('--top', STORY ? '210px' : OG ? '56px' : '72px');
+document.documentElement.style.setProperty('--bottom', STORY ? '250px' : '64px');
+const P = document.getElementById('poster');
+const SLEEP = V.startsWith('s') || V === 'og-s';
+if (SLEEP) document.body.classList.add('sleep');
+const sky = await fetch('js/sky.json').then((r) => r.json());
+
+const el = (tag, cls, html, style) => {
+  const n = document.createElement(tag);
+  if (cls) n.className = cls;
+  if (html != null) n.innerHTML = html;
+  if (style) Object.assign(n.style, style);
+  return n;
+};
+const add = (n) => (P.appendChild(n), n);
+
+// ── Seeded star field with a few falling stars ────────────────────────────────
+function stars({ count = 260, streaks = 3, seed = 7, warm = !SLEEP } = {}) {
+  const c = add(el('canvas', 'sky'));
+  c.width = W; c.height = H;
+  const g = c.getContext('2d');
+  let s = seed;
+  const rnd = () => ((s = (s * 16807) % 2147483647) / 2147483647);
+  for (let i = 0; i < count; i++) {
+    const x = rnd() * W, y = rnd() * H, r = rnd() < 0.08 ? 1.6 + rnd() * 1.4 : 0.5 + rnd() * 1.1;
+    const a = 0.25 + rnd() * 0.7;
+    g.fillStyle = warm && rnd() < 0.25 ? `rgba(243,221,166,${a})` : `rgba(255,255,255,${a})`;
+    g.beginPath(); g.arc(x, y, r, 0, Math.PI * 2); g.fill();
+    if (r > 2.2) { // a soft glint on the brightest
+      const gr = g.createRadialGradient(x, y, 0, x, y, r * 7);
+      gr.addColorStop(0, `rgba(255,255,255,${a * 0.35})`); gr.addColorStop(1, 'rgba(255,255,255,0)');
+      g.fillStyle = gr; g.beginPath(); g.arc(x, y, r * 7, 0, Math.PI * 2); g.fill();
+    }
+  }
+  for (let i = 0; i < streaks; i++) {
+    const x = W * (0.15 + rnd() * 0.75), y = H * (0.05 + rnd() * 0.45), len = 160 + rnd() * 200, ang = (Math.PI / 180) * (148 + rnd() * 10);
+    const x2 = x + Math.cos(ang) * len, y2 = y + Math.sin(ang) * len;
+    const gr = g.createLinearGradient(x, y, x2, y2);
+    gr.addColorStop(0, 'rgba(255,248,225,.95)'); gr.addColorStop(1, 'rgba(255,248,225,0)');
+    g.strokeStyle = gr; g.lineWidth = 2.2; g.lineCap = 'round';
+    g.beginPath(); g.moveTo(x, y); g.lineTo(x2, y2); g.stroke();
+    const h = g.createRadialGradient(x, y, 0, x, y, 14); h.addColorStop(0, 'rgba(255,250,230,.9)'); h.addColorStop(1, 'rgba(255,250,230,0)');
+    g.fillStyle = h; g.beginPath(); g.arc(x, y, 14, 0, Math.PI * 2); g.fill();
+  }
+}
+
+// ── Shared chrome ─────────────────────────────────────────────────────────────
+function lockup(line = 'უფასო აპი iPhone-ისთვის') {
+  add(el('div', 'lockup', `<img src="img/app-icon.png" alt=""><div><div class="name">MEDICARD AI</div><div class="line">${line}</div></div>`));
+  add(el('div', 'news', 'სიახლე'));
+}
+function foot() {
+  add(el('div', 'foot', `<div class="find">App Store-ში მოძებნე<b>MEDICARD AI</b></div><div class="site">medicard.ge<small>უფასოა</small></div>`));
+}
+const WM = SLEEP ? '<span class="wm">MEDI<i>SLEEP</i></span>' : '<span class="wm">MEDI<i>HOROSCOPE</i></span>';
+const tag = (text = 'MEDICARD AI-ის ახალი განყოფილება') => `<div class="tag">${WM}<span>${text}</span></div>`;
+
+// ── Phone with a real app screen ──────────────────────────────────────────────
+async function topColor(src) {
+  const img = new Image(); img.src = src; await img.decode();
+  const c = document.createElement('canvas'); c.width = 4; c.height = 4;
+  const g = c.getContext('2d'); g.drawImage(img, 0, 0, img.width, 6, 0, 0, 4, 4);
+  const [r, gg, b] = g.getImageData(1, 1, 1, 1).data;
+  return `rgb(${r},${gg},${b})`;
+}
+async function phone(screen, { x, y, w, time = '21:40', glow, rotate = 0, shift = 0 }) {
+  const src = `img/screens/${screen}.png`;
+  const p = add(el('div', 'phone', `<div class="screen"><div class="island"></div><div class="bar"><span>${time}</span><span>${barIcons}</span></div><img src="${src}" alt=""></div>`));
+  Object.assign(p.style, { left: `${x}px`, top: `${y}px`, transform: rotate ? `rotate(${rotate}deg)` : '' });
+  p.style.setProperty('--pw', `${w}px`);
+  if (glow) p.style.setProperty('--glow', glow);
+  p.querySelector('.screen').style.setProperty('--scr', await topColor(src));
+  if (shift) p.querySelector('.screen img').style.top = `calc(var(--pw) * .118 - ${shift}px)`;
+  return p;
+}
+const barIcons = `<svg viewBox="0 0 64 12"><rect x="0" y="8" width="3.2" height="4" rx="1"/><rect x="5" y="5.5" width="3.2" height="6.5" rx="1"/><rect x="10" y="3" width="3.2" height="9" rx="1"/><rect x="15" y="0.5" width="3.2" height="11.5" rx="1"/><path d="M30 3.2c2.6 0 5 1 6.8 2.7l-1.4 1.5A7.6 7.6 0 0 0 30 5.3a7.6 7.6 0 0 0-5.4 2.1l-1.4-1.5A9.8 9.8 0 0 1 30 3.2zm0 3.6c1.6 0 3 .6 4.1 1.6L30 12.2l-4.1-3.8A6 6 0 0 1 30 6.8z"/><rect x="42" y="1.5" width="19" height="9.5" rx="2.6" fill="none" stroke="#fff" stroke-width="1.1" opacity=".6"/><rect x="43.6" y="3.1" width="13.6" height="6.3" rx="1.5"/><rect x="62" y="4.4" width="1.6" height="3.6" rx=".8" opacity=".6"/></svg>`;
+
+// ── Astrolabe (zodiac ring + today's planets, from the real sky) ──────────────
+function glyph(key, cx, cy, size, fill) {
+  const g = ASTRO_GLYPHS[key];
+  if (!g) return '';
+  const [vx, vy, vw, vh] = g.vb.split(' ').map(Number);
+  const s = size / Math.max(vw, vh);
+  return `<g transform="translate(${cx - size / 2},${cy - size / 2}) scale(${s}) translate(${-vx},${-vy})"><path d="${g.d}" fill="${fill}"/></g>`;
+}
+const SIGNS = ['aries', 'taurus', 'gemini', 'cancer', 'leo', 'virgo', 'libra', 'scorpio', 'sagittarius', 'capricorn', 'aquarius', 'pisces'];
+function astrolabe({ x, y, size, rot = 0, planets = true, opacity = 1 }) {
+  const R = 500, cx = 500, cy = 500;
+  const brass = 'url(#brass)', dim = 'rgba(233,199,126,.58)', hair = 'rgba(233,199,126,.34)';
+  // Ecliptic longitude → angle: Aries 0° on the left (as in charts), counter-clockwise.
+  const pt = (lon, r) => { const a = Math.PI - (lon + rot) * Math.PI / 180; return [cx + Math.cos(a) * r, cy - Math.sin(a) * r]; };
+  let s = `<svg viewBox="-20 -20 1040 1040"><defs>
+    <radialGradient id="disc" cx="50%" cy="50%" r="50%"><stop offset="0" stop-color="rgba(18,28,82,0)"/><stop offset=".7" stop-color="rgba(233,199,126,.04)"/><stop offset="1" stop-color="rgba(233,199,126,.13)"/></radialGradient>
+    <linearGradient id="brass" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFF0C4"/><stop offset=".45" stop-color="#E9C77E"/><stop offset=".72" stop-color="#B98A3A"/><stop offset="1" stop-color="#F3DDA6"/></linearGradient>
+    <filter id="glow" x="-10%" y="-10%" width="120%" height="120%"><feGaussianBlur stdDeviation="5" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+    <mask id="cres"><rect x="0" y="0" width="1000" height="1000" fill="#fff"/><circle cx="528" cy="486" r="58" fill="#000"/></mask>
+  </defs><g filter="url(#glow)">`;
+  s += `<circle cx="${cx}" cy="${cy}" r="${R}" fill="url(#disc)" stroke="${brass}" stroke-width="5"/>`;
+  s += `<circle cx="${cx}" cy="${cy}" r="${R - 22}" fill="none" stroke="${dim}" stroke-width="1.5"/>`;
+  s += `<circle cx="${cx}" cy="${cy}" r="${R - 118}" fill="none" stroke="${brass}" stroke-width="2"/>`;
+  s += `<circle cx="${cx}" cy="${cy}" r="${R - 136}" fill="none" stroke="${hair}" stroke-width="1.2"/>`;
+  s += `<circle cx="${cx}" cy="${cy}" r="${R - 300}" fill="none" stroke="${hair}" stroke-width="1.2"/>`;
+  for (let d = 0; d < 360; d += 1) {
+    const long = d % 30 === 0, mid = d % 10 === 0, five = d % 5 === 0;
+    const [x1, y1] = pt(d, R - 22); const [x2, y2] = pt(d, R - 22 - (long ? 96 : mid ? 18 : five ? 12 : 6));
+    if (long || five || d % 1 === 0) s += `<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${long ? brass : five ? dim : hair}" stroke-width="${long ? 2.4 : 1.2}"/>`;
+  }
+  SIGNS.forEach((k, i) => { const [gx, gy] = pt(i * 30 + 15, R - 70); s += glyph(k, gx, gy, 58, '#F0D592'); });
+  // aspect web between planets (only the close ones)
+  if (planets) {
+    const list = sky.bodies.filter((b) => ASTRO_GLYPHS[b.key]);
+    for (let i = 0; i < list.length; i++) for (let j = i + 1; j < list.length; j++) {
+      const d = Math.abs(((list[i].lon - list[j].lon + 540) % 360) - 180);
+      const asp = [0, 60, 90, 120, 180].find((a) => Math.abs(d - a) < 5);
+      if (asp === undefined || asp === 0) continue;
+      const [a1, b1] = pt(list[i].lon, R - 300); const [a2, b2] = pt(list[j].lon, R - 300);
+      s += `<line x1="${a1}" y1="${b1}" x2="${a2}" y2="${b2}" stroke="${asp === 90 || asp === 180 ? 'rgba(255,170,150,.45)' : 'rgba(150,200,255,.45)'}" stroke-width="1.6"/>`;
+    }
+    list.forEach((b, i) => {
+      const r = R - 182 - (i % 2) * 54;
+      const [px, py] = pt(b.lon, r);
+      const [tx, ty] = pt(b.lon, R - 136); const [ux, uy] = pt(b.lon, R - 152);
+      s += `<line x1="${tx}" y1="${ty}" x2="${ux}" y2="${uy}" stroke="${brass}" stroke-width="2"/>`;
+      s += glyph(b.key, px, py, 50, '#FBF5E6');
+      const [dx, dy] = pt(b.lon, R - 300); s += `<circle cx="${dx}" cy="${dy}" r="5" fill="#F0D592"/>`;
+    });
+  }
+  // centre: a crescent Moon
+  s += `</g><circle cx="${cx}" cy="${cy}" r="120" fill="rgba(243,225,168,.07)"/><g style="filter:drop-shadow(0 0 22px rgba(243,225,168,.75))"><circle cx="${cx}" cy="${cy}" r="66" fill="#F3E1A8" mask="url(#cres)"/></g>`;
+  s += `</svg>`;
+  const n = add(el('div', 'astro', s));
+  Object.assign(n.style, { left: `${x}px`, top: `${y}px`, width: `${size}px`, height: `${size}px`, opacity });
+  return n;
+}
+
+// ── Oracle (Medi in the witch hat, the app's own vector) ──────────────────────
+async function oracle({ x, y, h }) {
+  const svg = await fetch('img/oracle.svg').then((r) => r.text());
+  const n = add(el('div', 'oracle', svg.replace(/^<svg[^>]*?width="[^"]*"\s*height="[^"]*"/, '<svg')));
+  Object.assign(n.style, { left: `${x}px`, top: `${y}px`, height: `${h}px`, width: `${h * 2288 / 2770}px` });
+  return n;
+}
+
+// ── Variants ──────────────────────────────────────────────────────────────────
+const V_ = {
+  // H1 — the astrolabe: the real sky of the day, huge, cropped off the right edge.
+  async h1() {
+    stars({ count: 300, streaks: 2, seed: 11 });
+    const size = STORY ? 1080 : 1100, cy = STORY ? 830 : 470;
+    astrolabe({ x: W / 2 - size / 2, y: cy - size / 2, size, rot: 12 });
+    add(el('div', 'fade', '', { top: 0, height: '260px', background: 'linear-gradient(180deg, rgba(6,10,31,.85) 0%, rgba(6,10,31,0) 100%)' }));
+    const f0 = STORY ? 940 : 500;
+    add(el('div', 'fade', '', { top: `${f0}px`, height: `${H - f0}px`, background: 'linear-gradient(180deg, rgba(6,10,31,0) 0%, rgba(6,10,31,.9) 34%, #060A1F 62%)' }));
+    lockup();
+    add(el('div', 'head', `${tag()}<div class="h1" style="margin-top:24px;font-size:${STORY ? 104 : 112}px">ჰოროსკოპი<br>MEDICARD AI-ში</div><div class="lede">ყოველდღე ახალი — დაწერილი პლანეტების <b>რეალური მდებარეობით</b>.${STORY ? '' : ' დღის, კვირის, თვისა და წლის ჰოროსკოპი, ნატალური რუკა და ტარო.'}</div>`,
+      { top: `${STORY ? 1110 : 676}px` }));
+    foot();
+  },
+  // H2 — the real app: one whole phone, the hub with the night sky.
+  async h2() {
+    stars({ count: 240, streaks: 3, seed: 5 });
+    const w = STORY ? 418 : 430;
+    lockup();
+    if (STORY) {
+      add(el('div', 'head', `<div class="h1" style="font-size:96px">რას გეუბნება<br>ცა დღეს?</div>`, { top: '380px' }));
+      await phone('h-hub', { x: (W - w) / 2, y: 625, w, glow: 'rgba(233,199,126,.30)' });
+      add(el('div', 'head', `${tag('ახლა MEDICARD AI-ში')}`, { top: `${650 + w * 844 / 390 + 34}px`, textAlign: 'center' })).style.display = 'none';
+    } else {
+      await phone('h-hub', { x: 580, y: 200, w, glow: 'rgba(233,199,126,.30)' });
+      add(el('div', 'head', `<div class="h1" style="font-size:92px">რას<br>გეუბნება<br>ცა დღეს?</div><div class="lede" style="max-width:450px;font-size:32px">შენი ჰოროსკოპი ყოველ დილით — ახლა <b>MEDICARD AI</b>-ში.</div><div style="margin-top:34px">${tag('ახალი განყოფილება')}</div>`,
+        { top: '330px', right: '540px' }));
+    }
+    foot();
+  },
+  // H3 — the Oracle: the module's own assistant.
+  async h3() {
+    stars({ count: 260, streaks: 2, seed: 23 });
+    astrolabe({ x: STORY ? -260 : -300, y: STORY ? 300 : 120, size: STORY ? 1600 : 1300, rot: -20, planets: false, opacity: .35 });
+    const oh = STORY ? 740 : 600;
+    const ow = oh * 2288 / 2770;
+    const ox = STORY ? (W - ow) / 2 + 40 : 500, oy = STORY ? 330 : 150;
+    add(el('div', 'halo', '', { left: `${ox + ow / 2 - oh * .62}px`, top: `${oy + oh * .52 - oh * .62}px`, width: `${oh * 1.24}px`, height: `${oh * 1.24}px` }));
+    await oracle({ x: ox, y: oy, h: oh });
+    lockup();
+    add(el('div', 'head', `${tag('ახალი განყოფილება MEDICARD AI-ში')}<div class="h1" style="margin-top:22px;font-size:${STORY ? 104 : 92}px">ჰკითხე<br>ვარსკვლავებს</div><div class="quote" style="position:static;margin-top:26px;font-size:${STORY ? 38 : 34}px;max-width:900px">შენს რუკას, დღევანდელ ცას, ტაროს და სიზმრებს ერთად წავიკითხავთ.</div><div class="lede" style="margin-top:12px;font-size:28px">— ორაკული, ჰოროსკოპის ასისტენტი</div>`,
+      { top: `${STORY ? 1080 : 735}px` }));
+    foot();
+  },
+  // H4 — the twelve signs as a ring of brass seals; "which one are you?"
+  async h4() {
+    stars({ count: 260, streaks: 2, seed: 41 });
+    const size = STORY ? 900 : 800, cx = W / 2, cy = STORY ? 790 : 575;
+    let s = `<svg viewBox="0 0 1000 1000">`;
+    const KA = ['ვერძი', 'კურო', 'ტყუპები', 'კირჩხიბი', 'ლომი', 'ქალწული', 'სასწორი', 'მორიელი', 'მშვილდოსანი', 'თხის რქა', 'მერწყული', 'თევზები'];
+    s += `<circle cx="500" cy="500" r="330" fill="none" stroke="rgba(233,199,126,.30)" stroke-width="1.5"/>`;
+    s += `<circle cx="500" cy="500" r="470" fill="none" stroke="rgba(233,199,126,.18)" stroke-width="1.2"/>`;
+    SIGNS.forEach((k, i) => {
+      const a = (-90 + i * 30) * Math.PI / 180, r = 400;
+      const x = 500 + Math.cos(a) * r, y = 500 + Math.sin(a) * r;
+      s += `<circle cx="${x}" cy="${y}" r="70" fill="rgba(14,22,70,.94)" stroke="#E9C77E" stroke-width="2.6"/>`;
+      s += glyph(k, x, y - 10, 56, '#F0D592');
+      s += `<text x="${x}" y="${y + 44}" text-anchor="middle" font-family="FiraGO" font-weight="500" font-size="${KA[i].length > 8 ? 17 : 20}" fill="rgba(246,238,220,.9)">${KA[i]}</text>`;
+    });
+    s += `</svg>`;
+    const n = add(el('div', 'signs', s));
+    Object.assign(n.style, { left: `${cx - size / 2}px`, top: `${cy - size / 2}px`, width: `${size}px`, height: `${size}px` });
+    add(el('div', 'head', `<div class="h1" style="text-align:center;font-size:${STORY ? 80 : 66}px;line-height:1.12">რომელი<br>ნიშანი ხარ?</div>`,
+      { top: `${cy - (STORY ? 92 : 76)}px`, left: `${cx - 260}px`, right: `${W - cx - 260}px` }));
+    lockup();
+    add(el('div', 'head', `<div class="h2" style="color:var(--ink);font-size:${STORY ? 54 : 50}px;white-space:nowrap">ჰოროსკოპი ახლა MEDICARD AI-ში</div><div class="lede" style="margin-top:14px;font-size:${STORY ? 34 : 30}px">დღის, კვირის, თვისა და წლის ჰოროსკოპი, თავსებადობა, ტარო და ნუმეროლოგია.</div>`,
+      { top: `${STORY ? 1290 : 1005}px` }));
+    foot();
+  },
+
+  // S1 — the sounds: a tilted wall of the real cover art.
+  async s1() {
+    stars({ count: 140, streaks: 1, seed: 3, warm: false });
+    const pick = ['rain-window', 'ocean', 'iavnana', 'forest-night', 'fire', 'salamuri', 'night-piano', 'stream', 'thunder', 'rain', 'singing-bowls', 'wind'];
+    const KA = { 'rain-window': 'წვიმა ფანჯარაზე', ocean: 'ზღვის ტალღები', iavnana: 'იავნანა', 'forest-night': 'ღამის ტყე', fire: 'ბუხარი', salamuri: 'სალამური', 'night-piano': 'ღამის პიანინო', stream: 'ნაკადული', thunder: 'ჭექა-ქუხილი', rain: 'წვიმა', 'singing-bowls': 'მომღერალი თასები', wind: 'ქარი' };
+    const cols = 3, cw = 330;
+    const m = add(el('div', 'mosaic', pick.slice(0, STORY ? 12 : 9).map((k) => `<figure><img src="img/art/${k}.jpg"><figcaption>${KA[k]}</figcaption></figure>`).join('')));
+    Object.assign(m.style, { gridTemplateColumns: `repeat(${cols}, ${cw}px)`, left: '60px', top: STORY ? '330px' : '-40px' });
+    add(el('div', 'fade', '', { top: 0, height: `${STORY ? 560 : 300}px`, background: `linear-gradient(180deg, #0D0726 ${STORY ? 40 : 10}%, rgba(13,7,38,0) 100%)` }));
+    add(el('div', 'fade', '', { top: `${H * (STORY ? 0.38 : 0.36)}px`, height: `${H * (STORY ? 0.62 : 0.64)}px`, background: 'linear-gradient(180deg, rgba(13,7,38,0) 0%, rgba(13,7,38,.94) 30%, #0D0726 52%)' }));
+    lockup();
+    add(el('div', 'head', `${tag()}<div class="h1" style="margin-top:24px;font-size:${STORY ? 112 : 104}px">დაიძინე<br>წვიმის ხმაზე</div><div class="lede">20 ხმა და მელოდია: წვიმა, ზღვა, ქართული იავნანა, სალამური. ტაიმერით ნელა ჩაქრება, ეკრანის ჩაკეტვის შემდეგაც უკრავს.</div>`,
+      { top: `${STORY ? 1030 : 640}px` }));
+    foot();
+  },
+  // S2 — the real app at bedtime: one whole phone, the dial.
+  async s2() {
+    stars({ count: 200, streaks: 1, seed: 9, warm: false });
+    const w = STORY ? 415 : 430;
+    lockup();
+    if (STORY) {
+      add(el('div', 'head', `<div class="h1" style="font-size:100px">ძილი ახლა<br>MEDICARD AI-ში</div>`, { top: '380px' }));
+      await phone('s-hub', { x: (W - w) / 2, y: 630, w, time: '22:40', glow: 'rgba(217,168,255,.30)' });
+    } else {
+      await phone('s-hub', { x: 580, y: 200, w, time: '22:40', glow: 'rgba(217,168,255,.30)' });
+      add(el('div', 'head', `<div class="h1" style="font-size:96px">ძილი<br>ახლა<br>MEDICARD<br>AI-ში</div><div class="lede" style="max-width:450px;font-size:32px">ძილის რეჟიმი, ნაზი მაღვიძარა და დილის შეფასება — ერთ აპში.</div><div style="margin-top:34px">${tag('ახალი განყოფილება')}</div>`,
+        { top: '250px', right: '540px' }));
+    }
+    foot();
+  },
+  // S3 — the morning: what keeps you up (insights).
+  async s3() {
+    stars({ count: 120, streaks: 0, seed: 17, warm: false });
+    const w = STORY ? 410 : 420;
+    lockup();
+    if (STORY) {
+      add(el('div', 'head', `<div class="h1" style="font-size:78px;white-space:nowrap">გაიგე, რა გიშლის ძილს</div><div class="lede">ყავა, სტრესი თუ ეკრანი — <b>MEDICARD AI</b> დაგანახებს, რა მოქმედებს შენს ძილზე.</div>`, { top: '380px' }));
+      await phone('s-insights', { x: (W - w) / 2, y: 640, w, time: '09:00', glow: 'rgba(243,225,168,.24)' });
+    } else {
+      await phone('s-insights', { x: 590, y: 210, w, time: '09:00', glow: 'rgba(243,225,168,.24)' });
+      add(el('div', 'head', `<div class="h1" style="font-size:94px">გაიგე,<br>რა გიშლის<br>ძილს</div><div class="lede" style="max-width:460px;font-size:32px">ყავა, სტრესი თუ ეკრანი — <b>MEDICARD AI</b> დაგანახებს, რა მოქმედებს შენს ძილზე.</div><div style="margin-top:34px">${tag('ახალი განყოფილება')}</div>`,
+        { top: '280px', right: '530px' }));
+    }
+    foot();
+  },
+  // S4 — a single moon. Typographic, quiet.
+  async s4() {
+    stars({ count: 220, streaks: 2, seed: 29, warm: false });
+    const d = STORY ? 640 : 520, mx = W - d - (STORY ? 120 : 90), my = STORY ? 360 : 170;
+    // glow sits on its own layer, the crescent is the disc minus an offset circle (mask)
+    const glow = add(el('div', 'halo', '', { left: `${mx - d * .35}px`, top: `${my - d * .35}px`, width: `${d * 1.7}px`, height: `${d * 1.7}px`,
+      background: 'radial-gradient(circle at 42% 52%, rgba(243,225,168,.30) 0%, rgba(217,168,255,.14) 34%, transparent 64%)' }));
+    const moon = add(el('div', 'moon', ''));
+    const m = `radial-gradient(circle at ${d * 0.74}px ${d * 0.36}px, transparent ${d * 0.47}px, #000 ${d * 0.47 + 1.5}px)`;
+    Object.assign(moon.style, { left: `${mx}px`, top: `${my}px`, width: `${d}px`, height: `${d}px`, boxShadow: 'none', maskImage: m, webkitMaskImage: m });
+    lockup();
+    add(el('div', 'head', `${tag()}<div class="h1" style="margin-top:24px;font-size:${STORY ? 124 : 116}px">ღამე<br>მშვიდობისა</div><div class="lede">დაწექი დროზე, დაიძინე მშვიდი ხმით და დილით ნახე, როგორ გეძინა. ძილი ახლა <b>MEDICARD AI</b>-შია.</div>`,
+      { top: `${STORY ? 1080 : 700}px` }));
+    foot();
+  },
+};
+
+// Link previews (1200×630): the app name + the module, art on the right.
+V_['og-h'] = async () => {
+  stars({ count: 220, streaks: 2, seed: 11 });
+  astrolabe({ x: 560, y: -150, size: 900, rot: 12 });
+  add(el('div', 'fade', '', { top: 0, height: '630px', left: 0, width: '760px', background: 'linear-gradient(90deg, #060A1F 40%, rgba(6,10,31,0) 100%)' }));
+  lockup();
+  add(el('div', 'head', `${tag()}<div class="h1" style="margin-top:20px;font-size:84px">ჰოროსკოპი<br>MEDICARD AI-ში</div>`, { top: '220px', left: '72px', right: '420px' }));
+  document.querySelector('.news').style.display = 'none';
+};
+V_['og-s'] = async () => {
+  stars({ count: 160, streaks: 1, seed: 29, warm: false });
+  const d = 440, mx = 800, my = 90;
+  add(el('div', 'halo', '', { left: `${mx - d * .35}px`, top: `${my - d * .35}px`, width: `${d * 1.7}px`, height: `${d * 1.7}px`, background: 'radial-gradient(circle at 42% 52%, rgba(243,225,168,.30) 0%, rgba(217,168,255,.14) 34%, transparent 64%)' }));
+  const moon = add(el('div', 'moon', ''));
+  const m = `radial-gradient(circle at ${d * 0.74}px ${d * 0.36}px, transparent ${d * 0.47}px, #000 ${d * 0.47 + 1.5}px)`;
+  Object.assign(moon.style, { left: `${mx}px`, top: `${my}px`, width: `${d}px`, height: `${d}px`, boxShadow: 'none', maskImage: m, webkitMaskImage: m });
+  lockup();
+  add(el('div', 'head', `${tag()}<div class="h1" style="margin-top:20px;font-size:84px">ძილი<br>MEDICARD AI-ში</div>`, { top: '220px', left: '72px', right: '480px' }));
+  document.querySelector('.news').style.display = 'none';
+};
+await (V_[V] || V_.h1)();
+await document.fonts.ready;
+await Promise.all([...document.images].map((i) => i.decode().catch(() => {})));
+document.body.dataset.ready = '1';
+</script>
+</body>
+</html>
