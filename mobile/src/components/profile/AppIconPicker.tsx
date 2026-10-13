@@ -5,6 +5,7 @@ import * as Haptics from 'expo-haptics';
 import { Check, X } from 'lucide-react-native';
 import { APP_MODAL_OVERLAY, APP_MODAL_PROPS, Modal } from '@/components/ui/appModal';
 import { APP_ICON_GROUPS, APP_ICONS, currentAppIcon, setAppIcon, type AppIconId, type AppIconInfo } from '@/lib/appIcon';
+import { reportAppIcon } from '@/lib/appIconReport';
 import { useAuth } from '@/store/AuthContext';
 import { tx } from '@/i18n/locale';
 import { HUB, hubText } from '@/theme/hub';
@@ -56,6 +57,8 @@ export function AppIconPicker({
     setCurrent(now);
     onChanged(now);
     setBusy(false);
+    // Admin #/app-icons counts which icons people pick (icon id only).
+    void reportAppIcon();
   };
 
   const row = (icon: AppIconInfo, last: boolean) => {
