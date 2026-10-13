@@ -50,6 +50,32 @@ export function linkedConsultationIds(sessions) {
   return ids;
 }
 
+/**
+ * Deleting a Medi thread deletes the consultations its answers link to: otherwise they reappear in the
+ * list (only links from surviving threads hide them) and keep feeding Medi's context. A consultation that
+ * another of her threads still shows stays — that thread still holds the same answers.
+ */
+export function consultationsToDelete(thread, otherThreads) {
+  const ids = linkedConsultationIds([thread]);
+  for (const id of linkedConsultationIds(otherThreads)) ids.delete(id);
+  return [...ids];
+}
+
+/** Owner-scoped delete in one transaction; a Medi thread takes its linked DOCTOR/CONSILIUM sessions with it. */
+export async function deleteChatSession(db, userId, id) {
+  return db.$transaction(async (tx) => {
+    const session = await tx.chatSession.findFirst({ where: { id, userId }, select: { id: true, mode: true, messages: true } });
+    if (!session) return 0;
+    if (session.mode === ASSISTANT_CHAT_MODE) {
+      const others = await tx.chatSession.findMany({ where: { userId, mode: ASSISTANT_CHAT_MODE, id: { not: id } }, select: { mode: true, messages: true } });
+      const linked = consultationsToDelete(session, others);
+      if (linked.length) await tx.chatSession.deleteMany({ where: { userId, mode: { in: ['DOCTOR', 'CONSILIUM'] }, id: { in: linked } } });
+    }
+    const { count } = await tx.chatSession.deleteMany({ where: { id, userId } });
+    return count;
+  });
+}
+
 export function assistantTitle(turns, lang = 'ka') {
   const first = turns.find((t) => t.role === 'user')?.content?.replace(/\s+/g, ' ').trim() || t(lang, 'საუბარი Medi-სთან', 'Conversation with Medi');
   return first.length <= 60 ? first : first.slice(0, 57) + '…';
@@ -110,7 +136,7 @@ chatsRouter.delete(
   '/:id',
   asyncHandler(async (req, res) => {
     const { id } = idParam.parse(req.params);
-    const { count } = await prisma.chatSession.deleteMany({ where: { id, userId: req.user.id } });
+    const count = await deleteChatSession(prisma, req.user.id, id);
 
     if (count === 0) return res.status(404).json({ error: t(req, 'საუბარი ვერ მოიძებნა.', 'Conversation not found.') });
     return res.json({ deleted: true });

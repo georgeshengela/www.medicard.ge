@@ -66,6 +66,14 @@ test('consent save failure permits retry and never accepts optimistically',async
   await mod.decideAiSharing(true);assert.equal(mod.useAiSharingPrompt().busy,false);assert.ok(mod.useAiSharingPrompt().error);assert.equal(mod.useAiSharingPrompt().status.accepted,false);
   await mod.decideAiSharing(true);assert.equal(await promise,true);assert.equal(mod.useAiSharingPrompt(),null);
 });
+test('a decline that cannot be saved still closes the sheet as declined; nothing is accepted',async()=>{
+  const mod=loader({react:{useSyncExternalStore:(_,get)=>get()},'@/lib/localAccount':{localAccountId:()=> 'A'}})('src/lib/aiSharingConsent.ts');
+  let decision;const promise=mod.requestAiSharingPrompt('A',{version:'v1',accepted:false},async d=>{decision=d;throw Error('Offline');});
+  await mod.decideAiSharing(false);assert.equal(decision,'declined');assert.equal(await promise,false);assert.equal(mod.useAiSharingPrompt(),null);
+  // A revoke that fails keeps the sheet and its error: closing it would read as revoked.
+  const revoke=mod.requestAiSharingPrompt('A',{version:'v1',accepted:true},async()=>{throw Error('Offline');},true);
+  await mod.decideAiSharing(false);assert.ok(mod.useAiSharingPrompt().error);mod.cancelAiSharingPrompt();assert.equal(await revoke,false);
+});
 test('weather never relabels another city or exposes a late response across accounts',async()=>{
   let owner='A',resolveFetch;const disk=new Map();
   const mod=loader({'@/lib/localAccount':{localAccountId:()=>owner},'@/lib/storage':{getPreference:async k=>disk.get(k),setPreference:async(k,v)=>disk.set(k,v),deletePreference:async k=>disk.delete(k)},'./openMeteo.ts':{fetchOpenMeteoSnapshot:()=>new Promise(resolve=>{resolveFetch=resolve;})}})('src/lib/weather/cache.ts');

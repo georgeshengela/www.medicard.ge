@@ -40,6 +40,10 @@ export const WRITE_INVALIDATES: ReadonlyArray<readonly [prefix: string, keys: re
   // Medi answers, lab/image analyses and saved assistant chats create records and chat sessions.
   ['/api/ai', ['records']],
   ['/api/chats', ['records']],
+  // Medi saves through the server (medication, dose, visit, cycle, food, pet, profile, goals): the screens
+  // showing them refresh at once. Water and readings go to Health and refresh through requestHealthRefresh
+  // (never the 'health' keys here — see /api/health-metrics above). Plan / prepare are reads.
+  ['/api/assistant/execute', ['medications', 'visits', 'cycle', 'nutrition', 'pets', 'home', 'profile', 'quest']],
 ];
 
 /**

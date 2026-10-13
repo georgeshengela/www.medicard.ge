@@ -48,3 +48,18 @@ test('a voice question hears the start of the clinical answer; typed questions s
   // A new message stops a reply that is still speaking.
   assert.match(between('async function send(', 'async function afterSaved('), /speech\.stop\(\);/);
 });
+
+// 2026-10-13 audit: a cycle card read „სიმპტომები: cramps, back_pain“ — the registry ids, not her words.
+test('a cycle card shows symptom and mood words from the cycle log, in her language', () => {
+  const loader = require('./helpers/loadTs.cjs');
+  const cases = [
+    [{ tx: (ka) => ka }, 'სიმპტომები: სპაზმები, წელის ტკივილი\nგანწყობა: შფოთვა'],
+    [{ tx: (_ka, en) => en }, 'Symptoms: Cramps, Lower back pain\nMood: Anxious'],
+  ];
+  for (const [locale, expected] of cases) {
+    const { assistantDisplay } = loader({ './localAccount': {}, '../i18n/locale.js': locale })('src/lib/assistant.ts');
+    assert.equal(assistantDisplay({ symptoms: ['cramps', 'back_pain'], moods: ['anxious'] }), expected);
+    assert.equal(assistantDisplay('მუცლის ტკივილი', 'symptoms'), 'მუცლის ტკივილი', 'free text (pregnancy notes) stays as written');
+  }
+  assert.match(src, /humanCardValue\(assistantDisplay\(value, key\)\)/, 'the card passes the field');
+});

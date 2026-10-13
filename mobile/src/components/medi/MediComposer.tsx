@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import { ActivityIndicator, Animated, Easing, Pressable, Text, TextInput, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ArrowUp, Check, LayoutGrid, Mic, X } from 'lucide-react-native';
+import { ArrowUp, Check, LayoutGrid, Mic, Square, X } from 'lucide-react-native';
 import { useChatKeyboardOpen } from '@/components/chat/ChatScreenShell';
 import { CHAT_MESSAGE_LIMIT } from '@/lib/analysisFlow';
 import type { VoicePhase } from '@/lib/assistantVoiceSession';
@@ -21,9 +21,11 @@ export type ComposerVoice = {
  * the person always sees which voice will answer before sending.
  */
 export function MediComposer({
-  value, onChange, onSend, busy, disabled, placeholder, consilium, onConsilium, voice, onMore, accessory,
+  value, onChange, onSend, onStop, busy, disabled, placeholder, consilium, onConsilium, voice, onMore, accessory,
 }: {
   value: string; onChange: (text: string) => void; onSend: () => void;
+  /** While Medi plans or answers the send button is Stop (null: nothing to stop, e.g. a save). */
+  onStop?: (() => void) | null;
   busy: boolean; disabled?: boolean; placeholder?: string;
   /** null = consilium is paused from admin: no switch. */
   consilium: boolean; onConsilium: ((on: boolean) => void) | null;
@@ -79,11 +81,18 @@ export function MediComposer({
                   <Mic size={19} color={c.text100} />
                 </Pressable>
               ) : null}
-              <Pressable accessibilityRole="button" accessibilityLabel={busy ? tx('Medi პასუხს ამზადებს', 'Medi is preparing a reply') : tx('გაგზავნა', 'Send')}
-                accessibilityState={{ disabled: !canSend, busy }} onPress={onSend} disabled={!canSend}
-                style={{ width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', backgroundColor: canSend || busy ? accent : c.bg200 }}>
-                {busy ? <ActivityIndicator size="small" color="#FFFFFF" /> : <ArrowUp size={20} strokeWidth={2.4} color={canSend ? '#FFFFFF' : c.text300} />}
-              </Pressable>
+              {busy && onStop ? (
+                <Pressable accessibilityRole="button" accessibilityLabel={tx('შეჩერება', 'Stop')} onPress={onStop}
+                  style={{ width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', backgroundColor: accent }}>
+                  <Square size={14} color="#FFFFFF" fill="#FFFFFF" />
+                </Pressable>
+              ) : (
+                <Pressable accessibilityRole="button" accessibilityLabel={busy ? tx('Medi პასუხს ამზადებს', 'Medi is preparing a reply') : tx('გაგზავნა', 'Send')}
+                  accessibilityState={{ disabled: !canSend, busy }} onPress={onSend} disabled={!canSend}
+                  style={{ width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', backgroundColor: canSend || busy ? accent : c.bg200 }}>
+                  {busy ? <ActivityIndicator size="small" color="#FFFFFF" /> : <ArrowUp size={20} strokeWidth={2.4} color={canSend ? '#FFFFFF' : c.text300} />}
+                </Pressable>
+              )}
             </View>
           </>
         )}
