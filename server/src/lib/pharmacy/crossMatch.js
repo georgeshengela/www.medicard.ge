@@ -1,14 +1,45 @@
 import { prisma } from '../prisma.js';
-import { buildGeoLatinMap, buildLooseMatchSignature } from './normalize.js';
+import { cpuSlicer } from '../cpuSlice.js';
+import { buildGeoLatinMapSliced, buildLooseMatchSignature } from './normalize.js';
 import { SOURCES, SOURCE_ORDER, isOfferStale } from './constants.js';
-const CACHE_MS = 5 * 60 * 1000;
+/** Offers change only in a sync (which marks the index out of date); the hourly refresh only re-ranks old offers. */
+const CACHE_MS = 60 * 60 * 1000;
 
-let cache = { expires: 0, geoMap: null, index: null };
+let cache = { builtAt: 0, geoMap: null, index: null };
+/** Bumped when a sync or a repair changed offers; an index built before that is out of date. */
+let generation = 0;
+let cacheGeneration = -1;
+let building = null;
 
-/** Gamige-style index: loose drug key → cheapest in-stock offer per pharmacy. */
+/**
+ * Gamige-style index: loose drug key → cheapest in-stock offer per pharmacy.
+ *
+ * It covers the whole catalog (6 700 products, 10 800 offers on 2026-10-13). Rebuilding it inside a
+ * request every 5 minutes froze the single web CPU for ~1 s each time, so once an index exists a
+ * request never waits: an index older than an hour, or one a sync made out of date, is served while
+ * the next one builds in the background in slices of a few ms. Only the first request after a start
+ * waits for the (sliced) build. One unordered query on purpose: the row order decides which spelling
+ * wins in the Georgian→Latin map, and paging (ORDER BY) changed ~400 compare keys.
+ */
 export async function getCrossSourceIndex() {
-  if (cache.index && Date.now() < cache.expires) return cache;
+  if (cache.index && cacheGeneration === generation && Date.now() - cache.builtAt < CACHE_MS) return cache;
+  if (!building) {
+    const startedFor = generation;
+    building = buildCrossSourceIndex()
+      .then((next) => {
+        cache = next;
+        cacheGeneration = startedFor;
+        return next;
+      })
+      .finally(() => {
+        building = null;
+      });
+    building.catch((error) => console.warn('[pharmacy] compare index build failed:', error?.message || error));
+  }
+  return cache.index ? cache : building;
+}
 
+async function buildCrossSourceIndex() {
   const rows = await prisma.catalogProduct.findMany({
     where: { offerCount: { gt: 0 } },
     select: {
@@ -37,10 +68,12 @@ export async function getCrossSourceIndex() {
       if (offer.rawName) nameCorpus.push(offer.rawName);
     }
   }
-  const geoMap = buildGeoLatinMap(nameCorpus);
+  const geoMap = await buildGeoLatinMapSliced(nameCorpus);
   const index = new Map();
+  const slicer = cpuSlicer();
 
   for (const row of rows) {
+    if (slicer.due()) await slicer.pause();
     const key = buildLooseMatchSignature(row.name, geoMap);
     if (!key) continue;
 
@@ -53,8 +86,7 @@ export async function getCrossSourceIndex() {
     }
   }
 
-  cache = { expires: Date.now() + CACHE_MS, geoMap, index };
-  return cache;
+  return { builtAt: Date.now(), geoMap, index };
 }
 
 /**
@@ -69,8 +101,9 @@ function preferOffer(a, b) {
   return a.priceGel < b.priceGel;
 }
 
+/** Offers changed: the next request starts a rebuild (and is still answered from the current index). */
 export function invalidateCrossSourceIndex() {
-  cache = { expires: 0, geoMap: null, index: null };
+  generation += 1;
 }
 
 /** Merge direct offers on this row with cross-matched offers from sibling listings. */

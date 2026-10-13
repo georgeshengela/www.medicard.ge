@@ -1,3 +1,5 @@
+import { cpuSlicer } from '../cpuSlice.js';
+
 const FORM_ALIASES = [
   [/ტაბლ(?:ეტ)?(?:ი)?/gi, 'tablet'],
   [/კაფს(?:ულ)?(?:ა)?/gi, 'capsule'],
@@ -35,8 +37,11 @@ function stripReleaseQualifiers(phrase) {
     .join(' ');
 }
 
+const RELEASE_QUALIFIER_RES = RELEASE_QUALIFIERS.map((q) => [q, new RegExp(`(?:^|[^\\p{L}\\p{N}])${q}(?![\\p{L}\\p{N}])`, 'u')]);
+
 function releaseQualifiers(lowerName) {
-  return RELEASE_QUALIFIERS.filter((q) => new RegExp(`(?:^|[^\\p{L}\\p{N}])${q}(?![\\p{L}\\p{N}])`, 'u').test(lowerName));
+  // The Unicode regex only runs when the letters are there at all (most names carry none).
+  return RELEASE_QUALIFIER_RES.filter(([q, re]) => lowerName.includes(q) && re.test(lowerName)).map(([q]) => q);
 }
 
 /** Georgian spellings of the same modifiers — a Latin-named source writes "Forte", a
@@ -142,10 +147,18 @@ const NOISE_PATTERNS = [
 
 let geoLatinCache = null;
 
+/** One signature cleans the same text up to four times (brand, modifiers); the last answer is reused. */
+let lastCleanIn = null;
+let lastCleanOut = '';
+
 export function cleanRawName(raw) {
   let s = String(raw || '');
+  if (s === lastCleanIn) return lastCleanOut;
+  const input = s;
   for (const re of NOISE_PATTERNS) s = s.replace(re, ' ');
   s = s.replace(/\s+/g, ' ').trim();
+  lastCleanIn = input;
+  lastCleanOut = s;
   return s;
 }
 
@@ -185,7 +198,8 @@ export function extractQuantityCount(raw) {
 export function extractStrengthTokens(raw) {
   const tokens = [];
   let m;
-  const re = new RegExp(STRENGTH_RE.source, 'gi');
+  const re = STRENGTH_RE;
+  re.lastIndex = 0;
   while ((m = re.exec(String(raw || '')))) {
     tokens.push(m[1].replace(',', '.'));
   }
@@ -216,19 +230,36 @@ function canonicalizePhrase(phrase) {
   return phrase.toLowerCase().replace(/\s+/g, '');
 }
 
+const GEO_FIRST_RE = new RegExp(
+  `([\\u10a0-\\u10ff][\\u10a0-\\u10ff\\s®+-]{2,40}?${VARIANT_GAP_SRC})${QUALIFIER_GAP_SRC}\\s*-\\s*(${LATIN_PHRASE_SRC}${VARIANT_GAP_SRC})`,
+);
+const LATIN_FIRST_RE = new RegExp(
+  `(${LATIN_PHRASE_SRC}${VARIANT_GAP_SRC})\\s*-\\s*([\\u10a0-\\u10ff][\\u10a0-\\u10ff\\s®+-]{2,40}?${VARIANT_GAP_SRC})(?=\\s|$)`,
+);
+
 /** Build Georgian→Latin map from "ქართული - Latin …" *or* "Latin - ქართული …" product titles. */
 export function buildGeoLatinMap(names) {
   const map = new Map();
-  const geoFirst = new RegExp(
-    `([\\u10a0-\\u10ff][\\u10a0-\\u10ff\\s®+-]{2,40}?${VARIANT_GAP_SRC})${QUALIFIER_GAP_SRC}\\s*-\\s*(${LATIN_PHRASE_SRC}${VARIANT_GAP_SRC})`,
-  );
-  const latinFirst = new RegExp(
-    `(${LATIN_PHRASE_SRC}${VARIANT_GAP_SRC})\\s*-\\s*([\\u10a0-\\u10ff][\\u10a0-\\u10ff\\s®+-]{2,40}?${VARIANT_GAP_SRC})(?=\\s|$)`,
-  );
-  for (const name of names) {
-    const raw = String(name || '');
-    const m = raw.match(geoFirst);
-    const rev = !m ? raw.match(latinFirst) : null;
+  addGeoLatinNames(map, names, 0, names.length);
+  return map;
+}
+
+/** The same map, built a few hundred names at a time with pauses (cpuSlice.js) — for code inside the web server. */
+export async function buildGeoLatinMapSliced(names) {
+  const map = new Map();
+  const slicer = cpuSlicer();
+  for (let from = 0; from < names.length; from += 256) {
+    if (slicer.due()) await slicer.pause();
+    addGeoLatinNames(map, names, from, Math.min(names.length, from + 256));
+  }
+  return map;
+}
+
+function addGeoLatinNames(map, names, from, to) {
+  for (let i = from; i < to; i += 1) {
+    const raw = String(names[i] || '');
+    const m = raw.match(GEO_FIRST_RE);
+    const rev = !m ? raw.match(LATIN_FIRST_RE) : null;
     const geoPart = m ? m[1] : rev ? rev[2] : null;
     const latPart = m ? m[2] : rev ? rev[1] : null;
     if (!geoPart || !latPart) continue;
@@ -271,16 +302,57 @@ export function buildGeoLatinMap(names) {
       if (fullGeoKey.length >= 3 && !map.has(fullGeoKey)) map.set(fullGeoKey, latCanon);
     }
   }
-  return map;
 }
 
 export function setGeoLatinMap(map) {
   geoLatinCache = map;
 }
 
+const DASH_LATIN_RE = new RegExp(`\\s-\\s*(${LATIN_PHRASE_SRC}${VARIANT_GAP_SRC})`);
+
+/**
+ * canonicalBrand's last resort used to walk the whole Georgian→Latin map with startsWith for every
+ * Georgian-only name (~3 400 keys × every product on each pharmacy index build: most of the pharmacy
+ * CPU that froze the web server on 2026-10-13). These lookups give the same answer — the first key in
+ * map order whose own ≤8-letter prefix starts the word, or that starts with the word's ≤8-letter prefix.
+ * Built once per map; maps are only filled while being built, the size check guards anything else.
+ */
+const prefixIndexByMap = new WeakMap();
+
+function prefixIndexFor(map) {
+  const known = prefixIndexByMap.get(map);
+  if (known && known.size === map.size) return known;
+  const keyPrefixes = new Map();
+  const keyStarts = new Map();
+  let order = 0;
+  for (const [g, l] of map) {
+    order += 1;
+    if (g.length < 5) continue;
+    const own = g.slice(0, Math.min(8, g.length));
+    if (!keyPrefixes.has(own)) keyPrefixes.set(own, { order, latin: l });
+    for (let len = 4; len <= Math.min(8, g.length); len += 1) {
+      const start = g.slice(0, len);
+      if (!keyStarts.has(start)) keyStarts.set(start, { order, latin: l });
+    }
+  }
+  const built = { size: map.size, keyPrefixes, keyStarts };
+  prefixIndexByMap.set(map, built);
+  return built;
+}
+
+function prefixBrand(geo, map) {
+  const { keyPrefixes, keyStarts } = prefixIndexFor(map);
+  let best = keyStarts.get(geo.slice(0, Math.min(8, geo.length))) || null;
+  for (let len = 5; len <= Math.min(8, geo.length); len += 1) {
+    const hit = keyPrefixes.get(geo.slice(0, len));
+    if (hit && (!best || hit.order < best.order)) best = hit;
+  }
+  return best ? best.latin : null;
+}
+
 function canonicalBrand(raw, geoLatinMap = geoLatinCache) {
   const cleaned = cleanRawName(raw);
-  const dashLatin = cleaned.match(new RegExp(`\\s-\\s*(${LATIN_PHRASE_SRC}${VARIANT_GAP_SRC})`));
+  const dashLatin = cleaned.match(DASH_LATIN_RE);
   if (dashLatin) {
     const brand = canonicalizePhrase(stripReleaseQualifiers(dashLatin[1]));
     if (brand) return brand;
@@ -308,15 +380,13 @@ function canonicalBrand(raw, geoLatinMap = geoLatinCache) {
     // one price comparison. Require the shorter side to be fully covered by an
     // 8-char-or-more shared prefix before trusting the match, and skip very
     // short registered keys (they carry no useful prefix to compare).
-    for (const [g, l] of geoLatinMap) {
-      if (g.length < 5) continue;
-      if (geo.startsWith(g.slice(0, Math.min(8, g.length))) || g.startsWith(geo.slice(0, Math.min(8, geo.length)))) {
-        return l;
-      }
-    }
+    const latin = prefixBrand(geo, geoLatinMap);
+    if (latin != null) return latin;
   }
   return geo;
 }
+
+const MODIFIER_RES = new Map(MODIFIERS.map((m) => [m, new RegExp(`\\b${m}\\b`)]));
 
 function extractModifiers(raw) {
   const lower = normalizeDrugName(raw);
@@ -328,7 +398,7 @@ function extractModifiers(raw) {
   // a Georgian-only one writes "ფორტე" for the exact same product, and without
   // this only one side of the pair gets the modifier token.
   const mods = MODIFIERS.filter((m) => {
-    if (new RegExp(`\\b${m}\\b`).test(lower)) return true;
+    if (MODIFIER_RES.get(m).test(lower)) return true;
     const aliases = MODIFIER_ALIASES_GEO[m];
     return aliases?.some((geo) => cleaned.includes(geo));
   });

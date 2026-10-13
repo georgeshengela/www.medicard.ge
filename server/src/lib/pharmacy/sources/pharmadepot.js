@@ -1,3 +1,4 @@
+import { Worker } from 'node:worker_threads';
 import * as cheerio from 'cheerio';
 import { FETCH_HEADERS, SOURCES } from '../constants.js';
 
@@ -109,6 +110,51 @@ export function parsePharmadepotListingHtml(html, categoryId = null, platform = 
   return products;
 }
 
+/**
+ * A listing page is ~1 MB of HTML: cheerio.load plus 100 cards took 15–80 ms locally (2026-10-13), a
+ * few times that on Render, and the nightly crawl runs inside the web server. Pages are parsed on a
+ * worker thread with the same parser; if the worker is unavailable, the page is parsed here as before.
+ */
+function createListingParser() {
+  const pending = new Map();
+  let nextId = 0;
+  let worker = null;
+  const failAll = (error) => {
+    for (const p of pending.values()) p.reject(error);
+    pending.clear();
+    worker = null;
+  };
+  try {
+    worker = new Worker(new URL('./pharmadepotParseWorker.js', import.meta.url));
+    worker.on('message', ({ id, products, error }) => {
+      const p = pending.get(id);
+      if (!p) return;
+      pending.delete(id);
+      if (error) p.reject(new Error(error));
+      else p.resolve(products);
+    });
+    worker.on('error', failAll);
+    worker.on('exit', () => failAll(new Error('listing parse worker exited')));
+  } catch {
+    worker = null;
+  }
+  return {
+    parse(html, platform) {
+      const here = () => parsePharmadepotListingHtml(html, null, platform);
+      if (!worker) return Promise.resolve().then(here);
+      const id = (nextId += 1);
+      const parsed = new Promise((resolve, reject) => pending.set(id, { resolve, reject }));
+      worker.postMessage({ id, html, sourceId: platform.sourceId });
+      return parsed.catch(here);
+    },
+    close() {
+      const w = worker;
+      worker = null;
+      w?.terminate().catch(() => {});
+    },
+  };
+}
+
 export function totalFromListingHtml(html) {
   const m = html.match(/მოძებნილია\s+(\d+)\s+პროდუქტ/i) || html.match(/\((\d+)\s*შედეგი\)/);
   return m ? parseInt(m[1], 10) : null;
@@ -127,20 +173,25 @@ async function fetchPlatformProducts(platform, opts = {}) {
   const all = [];
   const seen = new Set();
   let emptyPages = 0;
-  for (let page = 1; page <= pages; page += 1) {
-    const html = page === 1 ? firstHtml : await fetchHtml(listUrl(page));
-    const batch = parsePharmadepotListingHtml(html, null, platform);
-    let added = 0;
-    for (const p of batch) {
-      if (seen.has(p.sourceProductId)) continue;
-      seen.add(p.sourceProductId);
-      all.push(p);
-      added += 1;
+  const parser = createListingParser();
+  try {
+    for (let page = 1; page <= pages; page += 1) {
+      const html = page === 1 ? firstHtml : await fetchHtml(listUrl(page));
+      const batch = await parser.parse(html, platform);
+      let added = 0;
+      for (const p of batch) {
+        if (seen.has(p.sourceProductId)) continue;
+        seen.add(p.sourceProductId);
+        all.push(p);
+        added += 1;
+      }
+      emptyPages = added ? 0 : emptyPages + 1;
+      if (emptyPages >= 3) break;
+      onProgress?.(all.length);
+      if (page < pages) await sleep(300);
     }
-    emptyPages = added ? 0 : emptyPages + 1;
-    if (emptyPages >= 3) break;
-    onProgress?.(all.length);
-    if (page < pages) await sleep(300);
+  } finally {
+    parser.close();
   }
 
   console.log(`[${platform.sourceId.toLowerCase()}] ${all.length} of ${total} listed products`);

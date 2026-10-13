@@ -1,7 +1,7 @@
 import { prisma } from '../prisma.js';
 import { randomUUID } from 'node:crypto';
 import {
-  buildGeoLatinMap,
+  buildGeoLatinMapSliced,
   buildLooseMatchSignature,
   buildNormalizedKey,
   signaturesCompatible,
@@ -14,6 +14,7 @@ import {
 import { MATCH_THRESHOLD, OFFER_STALE_MS } from './constants.js';
 import { inferCategorySlug } from './categoryKeywords.js';
 import { getCategoryIdBySlug } from './categories.js';
+import { cpuSlicer } from '../cpuSlice.js';
 
 let geoLatinCache = null;
 let geoLatinBuiltAt = 0;
@@ -35,7 +36,7 @@ async function getGeoLatinMap() {
     }
   }
 
-  geoLatinCache = buildGeoLatinMap(corpus);
+  geoLatinCache = await buildGeoLatinMapSliced(corpus);
   geoLatinBuiltAt = Date.now();
   return geoLatinCache;
 }
@@ -157,9 +158,13 @@ async function findMatchCandidate(rawName, meta, geoLatinMap) {
     if (candidates.length >= 3000) break;
   }
 
+  // Up to 3 000 candidates per listing, ~10 000 listings a night: the nightly sync runs inside the web
+  // server, so the scoring gives the CPU back every few ms (it froze requests for up to 0.7 s on 2026-10-13).
+  const slicer = cpuSlicer();
   let best = null;
   let bestScore = 0;
   for (const c of candidates) {
+    if (slicer.due()) await slicer.pause();
     const candidateLoose = candidateLooseSig(index, c, geoLatinMap);
     if (looseSig && candidateLoose === looseSig) return { id: c.id };
     // Never fuzzy-merge across a different strength, modifier or pack count.
