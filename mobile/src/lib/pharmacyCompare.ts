@@ -33,6 +33,37 @@ export function isBestSlot(slot: PharmacySourcePrice, bestPrice: number | null) 
   return slot.isBest || (bestPrice != null && slot.priceGel === bestPrice);
 }
 
+/** One line of the comparison: a pharmacy, or Pharmadepot and GPC together when their prices agree. */
+export type CompareRow = PharmacySourcePrice & { sourceIds: string[]; logos: { sourceId: string; logoUrl: string | null }[] };
+
+/**
+ * Pharmadepot and GPC are one company (GEPHA) with one price list: when both sell the box at the same
+ * price they are one line („ფარმადეპო · ჯიპისი“), so two identical prices never look like two offers.
+ * Rows with a price come first, cheapest first.
+ */
+export function compareRows(slots: PharmacySourcePrice[]): CompareRow[] {
+  const rows: CompareRow[] = slots.map((s) => ({ ...s, sourceIds: [s.sourceId], logos: [{ sourceId: s.sourceId, logoUrl: s.logoUrl }] }));
+  const pd = rows.find((r) => r.sourceId === 'PHARMADEPOT');
+  const gpc = rows.find((r) => r.sourceId === 'GPC');
+  if (pd && gpc && pd.priceGel === gpc.priceGel && pd.inStock === gpc.inStock && Boolean(pd.stale) === Boolean(gpc.stale)) {
+    const merged: CompareRow = {
+      ...pd,
+      nameKa: `${pd.nameKa} · ${gpc.nameKa}`,
+      isBest: pd.isBest || gpc.isBest,
+      sourceIds: ['PHARMADEPOT', 'GPC'],
+      logos: [...pd.logos, ...gpc.logos],
+    };
+    rows.splice(rows.indexOf(pd), 1, merged);
+    rows.splice(rows.indexOf(gpc), 1);
+  }
+  return rows.sort((a, b) => (a.priceGel ?? Infinity) - (b.priceGel ?? Infinity));
+}
+
+/** The pharmacies disagree on where the box is made (one sells the German Concor, another the Turkish). */
+export function countriesDiffer(slots: PharmacySourcePrice[]) {
+  return new Set(slots.filter((s) => s.priceGel != null && s.country).map((s) => s.country)).size > 1;
+}
+
 export function compareStats(slots: PharmacySourcePrice[], bestPrice: number | null) {
   const available = slots.filter((s) => s.priceGel != null);
   // Savings only between offers that are confirmed and orderable right now.

@@ -2896,6 +2896,14 @@ const kaStrings = {
     strength: 'დოზა',
     pack: 'შეფუთვა',
     offersCount: (n: number) => `${n} აფთიაქში`,
+    activeSubstance: 'მოქმედი ნივთიერება',
+    prescription: 'რეცეპტით',
+    noPrescription: 'ურეცეპტოდ',
+    unitPrice: (price: string, unit: string) => `1 ${unit} — ${price} ₾`,
+    otherPacksTitle: 'სხვა შეფუთვა',
+    analoguesTitle: 'იგივე ნივთიერება და დოზა',
+    analoguesNote: 'სხვა მწარმოებლის წამალზე გადასვლამდე ჰკითხე ექიმს ან ფარმაცევტს.',
+    madeIn: (country: string) => `წარმოება: ${country}`,
   },
 
   pets: {
