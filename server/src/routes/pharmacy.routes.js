@@ -245,19 +245,29 @@ pharmacyRouter.get(
     // Browsing: medicines (no syringes or condoms) unless a category asks for them. (A NULL kind — not
     // regrouped yet — is a medicine: SQL's `kind <> 'other'` alone would drop it.)
     if (!category) where.AND = [{ OR: [{ kind: null }, { kind: { not: 'other' } }] }];
-    const orderBy =
-      sort === 'name'
-        ? [{ name: 'asc' }]
-        : sort === 'price_asc'
-          ? [{ bestPriceGel: 'asc' }, { name: 'asc' }]
-          : sort === 'savings'
-            ? [{ savingsPercent: { sort: 'desc', nulls: 'last' } }, { name: 'asc' }]
-            : [{ chainCount: 'desc' }, { savingsPercent: { sort: 'desc', nulls: 'last' } }, { name: 'asc' }];
-
-    const [total, rows] = await Promise.all([
-      prisma.catalogProduct.count({ where }),
-      prisma.catalogProduct.findMany({ where, orderBy, skip: (page - 1) * limit, take: limit, include: PRODUCT_INCLUDE }),
-    ]);
+    const total = await prisma.catalogProduct.count({ where });
+    let rows;
+    if (sort === 'name' || sort === 'price_asc') {
+      const orderBy = sort === 'name' ? [{ name: 'asc' }] : [{ bestPriceGel: 'asc' }, { name: 'asc' }];
+      rows = await prisma.catalogProduct.findMany({ where, orderBy, skip: (page - 1) * limit, take: limit, include: PRODUCT_INCLUDE });
+    } else {
+      // What comparing saves, in lari: boxes sold by both chains first, then the biggest difference between
+      // pharmacies (best price × percent ÷ the rest) — 63 ₾ on Fraxiparine before 3.70 ₾ on an ampoule.
+      const categoryId = where.categoryId ?? null;
+      const ids = await prisma.$queryRaw`
+        SELECT id FROM "CatalogProduct"
+        WHERE "mergedIntoId" IS NULL AND "offerCount" > 0
+          AND (${categoryId}::text IS NULL OR "categoryId" = ${categoryId})
+          AND (${Boolean(category)} OR kind IS NULL OR kind <> 'other')
+        ORDER BY "chainCount" DESC,
+          COALESCE("bestPriceGel" * "savingsPercent" / NULLIF(100 - "savingsPercent", 0), 0) DESC,
+          name ASC
+        LIMIT ${limit} OFFSET ${(page - 1) * limit}`;
+      const order = new Map(ids.map((r, i) => [r.id, i]));
+      rows = (await prisma.catalogProduct.findMany({ where: { id: { in: [...order.keys()] } }, include: PRODUCT_INCLUDE })).sort(
+        (a, b) => order.get(a.id) - order.get(b.id),
+      );
+    }
 
     return res.json({
       products: rows.map((r) => mapProduct(r, lang)),
