@@ -2815,8 +2815,9 @@ export const api = {
         '/api/health-metrics/sync',
         { method: 'POST', body, timeoutMs: 30_000 },
       ),
-    hydrationGoalGet: () =>
-      request<{ goalMl: number | null; updatedAt: string | null }>('/api/health-metrics/hydration/goal'),
+    /** `timeoutMs`: Home's water card passes a short one so a stalled server never holds it on „…“. */
+    hydrationGoalGet: (opts: { timeoutMs?: number } = {}) =>
+      request<{ goalMl: number | null; updatedAt: string | null }>('/api/health-metrics/hydration/goal', { timeoutMs: opts.timeoutMs }),
     hydrationGoalPut: (goalMl: number) =>
       request<{ goalMl: number; updatedAt: string }>('/api/health-metrics/hydration/goal', {
         method: 'PUT',

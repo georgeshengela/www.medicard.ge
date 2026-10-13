@@ -9,9 +9,9 @@ import { HydrationContainerIcon } from '@/components/hydration/HydrationIcons';
 import { useFigmaHydration } from '@/constants/figmaHydrationLayout';
 import { useHydration } from '@/hooks/useHydration';
 import { ka } from '@/i18n/ka';
+import { formatTimeHm, formatYmd } from '@/lib/format';
 import { formatMl, todayYmd } from '@/lib/hydration';
 import type { HydrationLog } from '@/types/hydration';
-import { dateLocale } from '@/i18n/locale';
 
 export default function HydrationHistoryScreen() {
   const T = useFigmaHydration();
@@ -77,7 +77,7 @@ export default function HydrationHistoryScreen() {
                     </Text>
                   </View>
                   <Text style={{ fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 13, color: T.textTertiary }}>
-                    {new Date(log.at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
+                    {formatTimeHm(log.at)}
                   </Text>
                   <ChevronRight size={18} color={T.textTertiary} />
                 </Pressable>
@@ -102,10 +102,8 @@ function groupLogs(logs: HydrationLog[]) {
     map.set(log.date, list);
   }
   return [...map.entries()].map(([date, rows]) => ({
-    label:
-      date === today
-        ? ka.common.today
-        : new Date(`${date}T12:00:00`).toLocaleDateString(dateLocale(), { month: 'short', day: 'numeric', year: 'numeric' }),
+    // The app's own month names: RN's ka-GE locale can drop the day.
+    label: date === today ? ka.common.today : formatYmd(date, true),
     rows,
   }));
 }
