@@ -14,10 +14,11 @@ const SECTIONS = ['hub', 'chart', 'sign', 'compat', 'tarot', 'numerology', 'chin
 /**
  * Pure: builds the overview from rows. visits = [{ userId, day: 'YYYY-MM-DD', views, sections[] }],
  * births = Map(userId → 'YYYY-MM-DD'), oracle = [{ day, n }] (user messages per day), profiles = count of
- * people with a birth time, teamIds = Set (left out unless includeTeam).
+ * people with a birth time, teamIds = ids as loadTeamUserIds returns them (array or Set; left out unless includeTeam).
  */
-export function buildHoroscopeOverview({ days, now = new Date(), visits = [], births = new Map(), oracle = [], profilesWithTime = 0, teamIds = new Set(), includeTeam = false }) {
-  const keep = (v) => includeTeam || !teamIds.has(v.userId);
+export function buildHoroscopeOverview({ days, now = new Date(), visits = [], births = new Map(), oracle = [], profilesWithTime = 0, teamIds = [], includeTeam = false }) {
+  const team = new Set(teamIds || []);
+  const keep = (v) => includeTeam || !team.has(v.userId);
   const rows = visits.filter(keep);
   const dayKeys = Array.from({ length: days }, (_, i) => new Date(now.getTime() - (days - 1 - i) * DAY_MS).toISOString().slice(0, 10));
   const perDay = Object.fromEntries(dayKeys.map((d) => [d, new Set()]));

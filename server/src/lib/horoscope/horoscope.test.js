@@ -200,7 +200,8 @@ describe('MEDIHOROSCOPE catalogue, library and admin', () => {
       ],
       births: new Map([['a', '1990-05-15'], ['b', '1985-12-25']]),
       oracle: [{ day: '2026-10-13', n: 4 }],
-      teamIds: new Set(['t']),
+      // An array, as loadTeamUserIds returns it (a Set-only `.has` crashed #/horoscope on 2026-10-13).
+      teamIds: ['t'],
     });
     assert.equal(out.kpis.people, 2);
     assert.equal(out.kpis.today, 2);
