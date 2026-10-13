@@ -693,6 +693,8 @@ export type PharmacyOfferInfo = {
 
 export type PharmacySourcePrice = {
   sourceId: string;
+  /** PSP | GEPHA — Pharmadepot and GPC belong to one company with one price list. */
+  chain?: string;
   nameKa: string;
   logoUrl: string | null;
   priceGel: number | null;
@@ -704,6 +706,28 @@ export type PharmacySourcePrice = {
   isBest: boolean;
   sourceUrl: string | null;
   priceDiffGel?: number | null;
+  /** The maker's country as this pharmacy states it. */
+  country?: string | null;
+  prescription?: boolean | null;
+};
+
+/** Another box worth knowing about: the same box in another pack, or the same substance from another maker. */
+export type CatalogAlternative = {
+  id: string;
+  name: string;
+  latinName: string | null;
+  imageUrl: string | null;
+  bestPriceGel: number | null;
+  unitCount: number | null;
+  unitLabel: string | null;
+  /** „30 ტაბლეტი“ / „30 tablets“. */
+  packLabel?: string | null;
+  unitPriceGel: number | null;
+  strength: string | null;
+  manufacturer: string | null;
+  country: string | null;
+  chainCount: number;
+  prescription: boolean | null;
 };
 
 export type CatalogProductSummary = {
@@ -724,10 +748,29 @@ export type CatalogProductSummary = {
   savingsPercent: number | null;
   sourcePrices: PharmacySourcePrice[];
   lastSyncedAt: string | null;
+  latinName?: string | null;
+  formGroup?: string | null;
+  unitCount?: number | null;
+  unitLabel?: string | null;
+  /** „30 ტაბლეტი“ / „30 tablets“. */
+  packLabel?: string | null;
+  /** Best price of one tablet / capsule / sachet when the box holds several. */
+  unitPriceGel?: number | null;
+  /** Active substance, in Georgian when a pharmacy gave it. */
+  inn?: string | null;
+  innLatin?: string | null;
+  /** true = sold with a prescription, false = without; null = unknown. */
+  prescription?: boolean | null;
+  /** Pharmacy companies selling it now (PSP and GEPHA). */
+  chainCount?: number;
 };
 
 export type CatalogProductDetail = CatalogProductSummary & {
   offers: PharmacyOfferInfo[];
+  otherPacks?: CatalogAlternative[];
+  analogues?: CatalogAlternative[];
+  /** Older product ids folded into this one (a medicine may still point at one of them). */
+  aliases?: string[];
 };
 
 export type Upsell = { title: string; body: string; cta: string };
