@@ -127,6 +127,7 @@
     ['აქტივობა', [['today', 'აპში დღეს'], ['inactive7', '7+ დღე არ შემოსულა'], ['inactive30', '30+ დღე არ შემოსულა']]],
     ['მოდული', [['medi', 'Medi'], ['meds', 'მედიკამენტები'], ['cycle', 'ციკლი']]],
     ['აპი', [['ios', 'iOS'], ['android', 'Android'], ['notif_disabled', 'შეტყობინებები გამორთულია'], ['outdated', 'ძველი ვერსია']]],
+    ['ავატარი', [['photo', 'ატვირთული ფოტო']]],
     ['გადასახედი', [['under18', '18 წლამდე']]],
   ];
   const ACTIVITY_LABELS = Object.fromEntries(ACTIVITY_GROUPS.flatMap(([, items]) => items));

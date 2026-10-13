@@ -165,6 +165,11 @@ async function buildAdminUsersWhere(query = {}) {
   } else if (activity === 'inactive30') {
     const ids = await loadActiveUserIds(addDaysYmd(today, -29), today);
     where.AND.push({ id: { notIn: ids } });
+  } else if (activity === 'photo') {
+    // People who uploaded their own photo as the avatar (raw-SQL "UserAvatar", one row per person).
+    const rows = await prisma.$queryRaw`SELECT "userId" FROM "UserAvatar"`;
+    const ids = rows.map((row) => row.userId);
+    where.AND.push({ id: { in: ids.length ? ids : none } });
   } else if (activity === 'notif_disabled') {
     const perms = await loadPermissionRows();
     const ids = perms.filter((row) => row.status === 'disabled').map((row) => row.userId);

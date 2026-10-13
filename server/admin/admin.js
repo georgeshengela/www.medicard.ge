@@ -1317,6 +1317,8 @@ window.adminFlagImg = adminFlagImg;
  * A person's picture over their initials: the preset avatar they picked (static file) or their own photo.
  * Photos are private: <img data-ava-user> is filled by fetching /api/admin/users/:id/avatar with the admin
  * token (never a token in the URL) and caching the blob per user+version. The initials stay underneath.
+ * Only a loaded photo is cached: a failed download (deploy restart, slow server) is retried twice and then
+ * forgotten, so the next paint tries again — it never turns into an empty <img> over the initials.
  */
 const adminAvatarBlobs = new Map();
 function adminAvatarImg(user) {
@@ -1325,39 +1327,58 @@ function adminAvatarImg(user) {
   if (a?.kind === 'photo' && user.id) {
     const key = `${user.id}:${a.v || 0}`;
     const ready = adminAvatarBlobs.get(key);
-    return typeof ready === 'string'
+    return typeof ready === 'string' && ready
       ? `<img class="adm-ava" src="${ready}" alt="">`
       : `<img class="adm-ava" data-ava-user="${escapeAttr(user.id)}" data-ava-key="${escapeAttr(key)}" alt="" hidden>`;
   }
   return '';
 }
-async function hydrateAdminAvatars(root = document) {
-  for (const img of root.querySelectorAll('img[data-ava-user]:not([src])')) {
+async function fetchAdminAvatar(userId) {
+  for (const wait of [0, 1500, 5000]) {
+    if (wait) await new Promise((resolve) => setTimeout(resolve, wait));
+    try {
+      const r = await fetch(`${API}/api/admin/users/${encodeURIComponent(userId)}/avatar`, {
+        headers: state.token ? { Authorization: `Bearer ${state.token}` } : {},
+      });
+      if (r.status === 404 || r.status === 401 || r.status === 403) return '';
+      const blob = r.ok ? await r.blob() : null;
+      if (blob?.size) return URL.createObjectURL(blob);
+    } catch {
+      /* network blip: try again */
+    }
+  }
+  return '';
+}
+function hydrateAdminAvatars(root = document) {
+  // Every photo downloads at once (not one after another); each shows as soon as it arrives.
+  // Each <img> is asked for once (a failing photo is not re-fetched on every DOM change; a repaint asks again).
+  for (const img of root.querySelectorAll('img[data-ava-user]:not([src]):not([data-ava-asked])')) {
+    img.dataset.avaAsked = '1';
     const key = img.dataset.avaKey;
     let pending = adminAvatarBlobs.get(key);
     if (!pending) {
-      pending = fetch(`${API}/api/admin/users/${encodeURIComponent(img.dataset.avaUser)}/avatar`, {
-        headers: state.token ? { Authorization: `Bearer ${state.token}` } : {},
-      })
-        .then((r) => (r.ok ? r.blob() : null))
-        .then((blob) => {
-          const url = blob && blob.size ? URL.createObjectURL(blob) : '';
-          adminAvatarBlobs.set(key, url);
-          return url;
-        })
-        .catch(() => { adminAvatarBlobs.delete(key); return ''; });
+      pending = fetchAdminAvatar(img.dataset.avaUser).then((url) => {
+        if (url) adminAvatarBlobs.set(key, url);
+        else adminAvatarBlobs.delete(key);
+        return url;
+      });
       adminAvatarBlobs.set(key, pending);
     }
-    const url = typeof pending === 'string' ? pending : await pending;
-    if (url && img.isConnected) {
-      img.src = url;
-      img.hidden = false;
-    }
+    Promise.resolve(pending).then((url) => {
+      if (url && img.isConnected && !img.getAttribute('src')) {
+        img.src = url;
+        img.hidden = false;
+      }
+    });
   }
 }
+// A picture that cannot be shown (missing preset file, unreadable photo) hides itself: the initials stay.
+document.addEventListener('error', (e) => {
+  if (e.target instanceof HTMLImageElement && e.target.classList.contains('adm-ava')) e.target.hidden = true;
+}, true);
 // Any screen that renders [data-ava-user] gets its photos without wiring: watch the workspace once.
 new MutationObserver(() => {
-  if (document.querySelector('img[data-ava-user]:not([src])')) void hydrateAdminAvatars();
+  if (document.querySelector('img[data-ava-user]:not([src]):not([data-ava-asked])')) hydrateAdminAvatars();
 }).observe(document.documentElement, { childList: true, subtree: true });
 window.adminAvatarImg = adminAvatarImg;
 window.adminPlaceOf = adminPlaceOf;
