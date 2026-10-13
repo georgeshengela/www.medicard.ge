@@ -5,7 +5,7 @@ const EMAIL_KEY = 'medicard.admin.email';
 const TAB_KEY = 'medicard.admin.tab';
 const USERS_PAGE_SIZE = 15;
 const PAGE_SIZE = 25;
-const ADMIN_TABS = ['overview', 'orders', 'users', 'push', 'sms', 'pharmacy', 'rewards', 'ai', 'health', 'audit', 'quality', 'testing', 'nutrition', 'community', 'medipulsi', 'poster-studio', 'settings', 'features', 'quests', 'funnel', 'director', 'email', 'support', 'trainers', 'capacity', 'news', 'errors', 'social', 'campaigns', 'medirun-boxes', 'pets', 'family', 'cycle', 'pills', 'lab', 'sleep', 'horoscope'];
+const ADMIN_TABS = ['overview', 'orders', 'users', 'push', 'sms', 'pharmacy', 'rewards', 'ai', 'health', 'audit', 'quality', 'testing', 'nutrition', 'community', 'medipulsi', 'poster-studio', 'settings', 'features', 'quests', 'funnel', 'director', 'email', 'support', 'trainers', 'capacity', 'news', 'errors', 'social', 'campaigns', 'medirun-boxes', 'pets', 'family', 'cycle', 'pills', 'lab', 'sleep', 'horoscope', 'home-sections'];
 
 const state = {
   token: localStorage.getItem(TOKEN_KEY) || '',
@@ -661,6 +661,7 @@ async function switchTab(tab, opts = {}) {
     cycle: ['Health', 'MEDICYCLE', 'როგორ იყენებენ ციკლს — ანონიმურად, სახელების გარეშე.', ''],
     sleep: ['Health', 'MEDISLEEP', 'ძილის მოდული: ვინ იყენებს, ხმების ბიბლიოთეკა, რჩევები და პარამეტრები.', ''],
     horoscope: ['Health', 'MEDIHOROSCOPE', 'ჰოროსკოპი: დღევანდელი ცა, 12 ნიშნის ტექსტები, ბიბლიოთეკა, გამოყენება და პარამეტრები.', ''],
+    'home-sections': ['Product', 'მთავარი გვერდი', 'აპის მთავარი გვერდი ოთხივე ვარიანტში: რა ჩანს და რა თანმიმდევრობით. ცვლილება აპებში მაშინვე ჩანს.', ''],
     pills: ['Health', 'MEDIPILL', 'ვინ იწერს წამლებს, ნიშნავს დოზებს და ამოწმებს ფასებს.', ''],
     lab: ['Health', 'MEDILAB', 'ანალიზები, გამოსახულება და კანი: ვინ კითხულობს MEDISCAN-ით და როგორ.', ''],
     pets: ['Health', 'MEDIVET', 'ვინ იყენებს ცხოველების მოდულს და როგორ.', ''],
@@ -736,6 +737,7 @@ async function switchTab(tab, opts = {}) {
     if (tab === 'lab') await window.renderLabUsage?.();
     if (tab === 'sleep') await window.renderSleepHost?.();
     if (tab === 'horoscope') await window.renderHoroscopeHost?.();
+    if (tab === 'home-sections') await window.renderHomeSections?.();
   }
   startAdminLive();
 }

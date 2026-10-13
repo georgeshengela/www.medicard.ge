@@ -90,6 +90,11 @@ export function attachAdminRealtime(httpServer) {
   return io;
 }
 
+/** Admin changed what the apps should show (Home sections): every connected phone re-reads /api/app/status now. */
+export function broadcastAppConfig(version) {
+  io?.emit('app:config', { v: Number(version) || 0 });
+}
+
 export function notifyOpsActivity(row) {
   if (row?.userId) seen.set(row.userId, Date.now());
   if (!io) return;

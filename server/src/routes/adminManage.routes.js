@@ -15,6 +15,11 @@ import { validateQuestRewardAmounts } from '../lib/questEconomy.js';
 import { lockedQuestTemplateFields } from '../lib/questTemplates.js';
 import { getLevelForXp } from '../lib/questLevels.js';
 import { adjustCoins, ledgerBalance } from '../lib/adminCoins.js';
+import {
+  HOME_DEFAULT_ORDER, HOME_LAYOUT_LABELS, HOME_LAYOUTS, HOME_LOCKED, HOME_RECOMMENDED_ORDER, HOME_SECTIONS,
+  getHomeConfig, homeLayoutCounts, saveHomeLayout,
+} from '../lib/homeSections.js';
+import { broadcastAppConfig } from '../lib/adminRealtime.js';
 
 export const adminManageRouter = Router();
 adminManageRouter.use(requireAdmin);
@@ -40,6 +45,47 @@ adminManageRouter.put('/features/:key', asyncHandler(async (req, res) => {
     newValue: { enabled: feature.enabled, message: feature.message },
   });
   res.json({ feature });
+}));
+
+/* ───────── Home sections (#/home): per layout what shows and in which order, live in the apps ───────── */
+adminManageRouter.get('/home', asyncHandler(async (_req, res) => {
+  const [row, counts, flags] = await Promise.all([getHomeConfig(), homeLayoutCounts(), listFeatureFlags()]);
+  res.set('Cache-Control', 'no-store');
+  res.json({
+    layouts: HOME_LAYOUTS,
+    labels: HOME_LAYOUT_LABELS,
+    defaults: HOME_DEFAULT_ORDER,
+    recommended: HOME_RECOMMENDED_ORDER,
+    sections: HOME_SECTIONS,
+    locked: [...HOME_LOCKED],
+    config: row.config,
+    version: row.version,
+    updatedAt: row.updatedAt,
+    counts,
+    features: Object.fromEntries(flags.map((f) => [f.key, f.enabled])),
+  });
+}));
+
+const homeBody = z.object({
+  layout: z.enum(HOME_LAYOUTS),
+  order: z.array(z.string().max(40)).max(60).optional(),
+  hidden: z.array(z.string().max(40)).max(60).optional(),
+  reset: z.boolean().optional(),
+});
+adminManageRouter.put('/home', asyncHandler(async (req, res) => {
+  const body = homeBody.parse(req.body);
+  const before = await getHomeConfig();
+  const row = await saveHomeLayout(body, req.admin?.id);
+  await writeAdminAudit({
+    admin: req.admin,
+    action: 'home.sections',
+    targetType: 'homeLayout',
+    targetId: body.layout,
+    previousValue: before.config.layouts[body.layout] ?? null,
+    newValue: row.config.layouts[body.layout] ?? null,
+  });
+  broadcastAppConfig(row.version);
+  res.json({ config: row.config, version: row.version, updatedAt: row.updatedAt });
 }));
 
 /* ───────── MEDIQUEST templates ───────── */

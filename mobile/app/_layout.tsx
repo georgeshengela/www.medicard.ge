@@ -73,6 +73,7 @@ import { attachNavigationGuard } from '@/lib/navigationGuard';
 import { applyFeatureStatus, useFeature } from '@/lib/featureFlags';
 import { applyBrainConfig } from '@/lib/brainRemoteConfig';
 import { noteFeatureStatusFetched, startFeatureFlagSync } from '@/lib/featureFlagSync';
+import { applyHomeConfig } from '@/lib/home/homeRemoteConfig';
 import { holdOtaReloadWhile, setOtaPromptPolicy, startOtaUpdates } from '@/lib/otaUpdates';
 import { startRunLiveActivity } from '@/lib/run/liveActivity';
 import { isSleepAudioBusy } from '@/lib/sleep/sleepAudio';
@@ -124,6 +125,7 @@ function AuthGate({ children }: { children: React.ReactNode }) {
         rememberMapboxToken(status.mapboxToken);
         applyFeatureStatus(status.features, status.featureMessages);
         applyBrainConfig(status.brain);
+        applyHomeConfig((status as { home?: unknown }).home);
         noteFeatureStatusFetched();
         setOtaPromptPolicy(status.client.updatePrompt);
         if (status.settings.maintenanceMode) {

@@ -14,6 +14,7 @@ import { asyncHandler } from '../middleware/error.js';
 import { publicFeatureFlags, publicFeatureMessages } from '../lib/featureFlags.js';
 import { getUpdatePrompt, updatePromptForClient } from '../lib/updatePrompt.js';
 import { getNotificationBrainConfig, publicBrainConfig } from '../lib/notificationBrainConfig.js';
+import { getHomeConfig, publicHomeConfig } from '../lib/homeSections.js';
 
 export const appRouter = Router();
 
@@ -35,6 +36,8 @@ appRouter.get(
       features: await publicFeatureFlags(),
       featureMessages: await publicFeatureMessages(undefined, req.lang),
       brain: publicBrainConfig(await getNotificationBrainConfig()),
+      // Admin #/home: per Home layout hidden sections / order (the app's defaults when a layout is missing).
+      home: publicHomeConfig(await getHomeConfig()),
       packages: FREE_CONSUMER_RELEASE ? [freeConsumerPackage()] : packages.map(publicPackage),
       accessMode: FREE_CONSUMER_RELEASE ? 'free' : 'paid',
       mapboxToken: mapboxPublicToken(),

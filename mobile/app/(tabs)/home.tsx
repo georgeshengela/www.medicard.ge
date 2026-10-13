@@ -43,6 +43,8 @@ import { useStepsMetrics } from '@/hooks/useStepsMetrics';
 import { formatYmd } from '@/lib/format';
 import { requestHealthRefresh } from '@/lib/healthDataSync';
 import { buildHomeSectionOrder } from '@/lib/home/homeSectionOrder';
+import { useHomeRemoteLayout } from '@/lib/home/homeRemoteConfig';
+import { refreshFeatureFlags } from '@/lib/featureFlagSync';
 import { primaryGoalFromProfile } from '@/lib/assessmentForm';
 import { displayFirstName, nameInitials } from '@/lib/displayName';
 import { medicationToSetUp } from '@/lib/home/medicationSetup';
@@ -148,6 +150,7 @@ export default function Home() {
   const reduceMotion = usePrefersReducedMotion();
   // Which Home (women's / active / nutrition & weight / standard): synchronous on the first frame.
   const { layout, offer, cycleLocked } = useHomeLayout();
+  const remoteHome = useHomeRemoteLayout(layout);
   const accent = useMemo(() => homeAccentFor(layout, dark, c), [layout, dark, c]);
   const layoutsOn = isFeatureOn('homeLayouts', features);
   const stepsOn = isFeatureOn('steps', features);
@@ -293,6 +296,8 @@ export default function Home() {
     useCallback(() => {
       // Session (/auth/me) at most once a minute on focus; pull-to-refresh always re-reads.
       void refresh({ maxAgeMs: 60_000 }).catch(() => {});
+      // Module switches and the admin's Home sections (at most once a minute; a save also arrives by socket).
+      void refreshFeatureFlags();
       return () => {
         setOfferConfirm(false);
       };
@@ -580,6 +585,7 @@ export default function Home() {
             primaryGoal: primaryGoalFromProfile(healthProfile),
             hidden: hiddenSections,
             offer: offer || offerConfirm,
+            remote: remoteHome,
           }).map((id) => (
             <React.Fragment key={id}>{sections[id]}</React.Fragment>
           ))}

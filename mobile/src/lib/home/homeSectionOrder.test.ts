@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { buildHomeSectionOrder, HOME_LAYOUT_ORDER, HOME_LAYOUT_SPOTLIGHT } from './homeSectionOrder.ts';
+import { buildHomeSectionOrder, HOME_LAYOUT_ORDER, HOME_LAYOUT_SPOTLIGHT, mergeHomeOrder, sanitizeHomeRemote } from './homeSectionOrder.ts';
 
 test('women-only section is opt-in and does not reorder common destinations', () => {
   const standard = buildHomeSectionOrder();
@@ -154,4 +154,27 @@ test('at most one spotlight per layout', () => {
       if (other && other !== spot) assert.ok(!HOME_LAYOUT_ORDER[layout].includes(other), `${layout} also has ${other}`);
     }
   }
+});
+
+test('admin control (#/home): hidden sections drop, locked ones stay', () => {
+  const order = buildHomeSectionOrder({ layout: 'standard', remote: { hidden: ['horoscope', 'news', 'dashboard'] } });
+  assert.ok(!order.includes('horoscope') && !order.includes('news'));
+  assert.equal(order[0], 'dashboard');
+  assert.equal(order.at(-1), 'disclaimer');
+});
+
+test('admin control (#/home): the admin order wins, missing ids go back in place', () => {
+  const custom = HOME_LAYOUT_ORDER.active.filter((id) => id !== 'medirun');
+  custom.splice(2, 0, 'medirun');
+  const order = buildHomeSectionOrder({ layout: 'active', remote: { order: custom } });
+  assert.equal(order[2], 'medirun');
+  assert.equal(order[0], 'dashboard');
+  assert.equal(order.at(-1), 'disclaimer');
+  assert.deepEqual(mergeHomeOrder(['dashboard', 'ask', 'sleep', 'news', 'disclaimer'], ['news', 'ask']), ['dashboard', 'news', 'ask', 'sleep', 'disclaimer']);
+});
+
+test('admin control (#/home): sanitize keeps what this build knows', () => {
+  const cfg = sanitizeHomeRemote({ v: 4, layouts: { women: { hidden: ['horoscope', 'unknownNew', 'dashboard'] }, bogus: { hidden: ['news'] } } });
+  assert.deepEqual(cfg, { v: 4, layouts: { women: { hidden: ['horoscope'] } } });
+  assert.deepEqual(sanitizeHomeRemote(null), { v: 0, layouts: {} });
 });

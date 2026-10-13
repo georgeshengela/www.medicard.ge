@@ -22,6 +22,10 @@
  * News (admin „სიახლეები“) always sits directly above nutrition in standard — it travels with it —
  * and renders nothing when there is no live card. `hidden` drops sections of modules an admin paused.
  * `offer` inserts the one-time layout offer card right after the doses due.
+ *
+ * `remote` = the admin's choice for this layout (admin #/home, /api/app/status `home`): its own order and hidden
+ * sections. The greeting stays first and the disclaimer last; ids this build does not know are ignored, and ids
+ * the admin's order lacks go back after their default predecessor (server/src/lib/homeSections.js does the same).
  */
 import type { HomeLayoutId } from './homeLayout.ts';
 
@@ -168,21 +172,86 @@ export const HOME_LAYOUT_SPOTLIGHT: Record<HomeLayoutId, HomeSectionId | null> =
 /** Sections shown only to women (the cycle module is female-only on the server). */
 export const FEMALE_ONLY: ReadonlySet<HomeSectionId> = new Set(['cycle', 'cycleHero', 'cycleAhead', 'cycleTips', 'cycleStats', 'community']);
 
+/** Never hidden or moved by the admin: the greeting opens every Home, the disclaimer closes it. */
+export const HOME_LOCKED: ReadonlySet<HomeSectionId> = new Set(['dashboard', 'disclaimer']);
+
+export type HomeRemoteLayout = { order?: readonly HomeSectionId[]; hidden?: readonly HomeSectionId[] };
+export type HomeRemoteConfig = { v: number; layouts: Partial<Record<HomeLayoutId, HomeRemoteLayout>> };
+export const EMPTY_HOME_REMOTE: HomeRemoteConfig = { v: 0, layouts: {} };
+
+/** The `home` part of /api/app/status, kept to what this build knows. */
+export function sanitizeHomeRemote(raw: unknown): HomeRemoteConfig {
+  if (!raw || typeof raw !== 'object') return EMPTY_HOME_REMOTE;
+  const src = (raw as { layouts?: unknown }).layouts;
+  const layouts: HomeRemoteConfig['layouts'] = {};
+  if (src && typeof src === 'object') {
+    for (const layout of Object.keys(HOME_LAYOUT_ORDER) as HomeLayoutId[]) {
+      const entry = (src as Record<string, unknown>)[layout];
+      if (!entry || typeof entry !== 'object') continue;
+      const known = HOME_LAYOUT_ORDER[layout] as readonly string[];
+      const pick = (list: unknown): HomeSectionId[] =>
+        Array.isArray(list) ? list.filter((id): id is HomeSectionId => typeof id === 'string' && known.includes(id)) : [];
+      const order = pick((entry as { order?: unknown }).order);
+      const hidden = pick((entry as { hidden?: unknown }).hidden).filter((id) => !HOME_LOCKED.has(id));
+      const out: HomeRemoteLayout = {};
+      if (order.length) out.order = order;
+      if (hidden.length) out.hidden = hidden;
+      if (out.order || out.hidden) layouts[layout] = out;
+    }
+  }
+  const v = Number((raw as { v?: unknown }).v);
+  return { v: Number.isFinite(v) ? v : 0, layouts };
+}
+
+/** The admin's order over this build's defaults (same rule as the server's mergeOrder). */
+export function mergeHomeOrder(defaults: readonly HomeSectionId[], custom?: readonly HomeSectionId[]): HomeSectionId[] {
+  if (!custom?.length) return [...defaults];
+  const seen = new Set<HomeSectionId>();
+  const order: HomeSectionId[] = [];
+  for (const id of custom) {
+    if (defaults.includes(id) && !seen.has(id) && !HOME_LOCKED.has(id)) {
+      seen.add(id);
+      order.push(id);
+    }
+  }
+  defaults.forEach((id, i) => {
+    if (seen.has(id) || HOME_LOCKED.has(id)) return;
+    let at = 0;
+    for (let j = i - 1; j >= 0; j--) {
+      const k = order.indexOf(defaults[j]);
+      if (k >= 0) {
+        at = k + 1;
+        break;
+      }
+    }
+    order.splice(at, 0, id);
+    seen.add(id);
+  });
+  const head = defaults.filter((id, i) => HOME_LOCKED.has(id) && i === 0);
+  const tail = defaults.filter((id, i) => HOME_LOCKED.has(id) && i !== 0);
+  return [...head, ...order, ...tail];
+}
+
 export function buildHomeSectionOrder({
   layout = 'standard',
   includeCycle = false,
   primaryGoal,
   hidden,
   offer = false,
+  remote,
 }: {
   layout?: HomeLayoutId;
   includeCycle?: boolean;
   primaryGoal?: HomePrimaryGoal;
   hidden?: ReadonlySet<HomeSectionId>;
   offer?: boolean;
+  remote?: HomeRemoteLayout;
 } = {}): HomeSectionId[] {
+  const adminHidden = new Set(remote?.hidden ?? []);
   // NextDose owns schedule loading and hides itself when there are no pending doses.
-  let order = HOME_LAYOUT_ORDER[layout].filter((id) => (includeCycle || !FEMALE_ONLY.has(id)) && !hidden?.has(id));
+  let order = mergeHomeOrder(HOME_LAYOUT_ORDER[layout], remote?.order).filter(
+    (id) => (includeCycle || !FEMALE_ONLY.has(id)) && !hidden?.has(id) && !(adminHidden.has(id) && !HOME_LOCKED.has(id)),
+  );
   if (layout === 'standard') {
     const lead = primaryGoal ? GOAL_SECTION[primaryGoal] : undefined;
     if (lead && order.includes(lead)) {

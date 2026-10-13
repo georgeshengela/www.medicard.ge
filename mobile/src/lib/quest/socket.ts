@@ -111,6 +111,12 @@ export async function connectQuestSocket() {
       });
     },
   );
+  // The admin changed what Home shows (#/home): re-read /api/app/status now, spread over a few seconds.
+  socket.on('app:config', () => {
+    setTimeout(() => {
+      void import('@/lib/featureFlagSync').then(({ refreshFeatureFlags }) => refreshFeatureFlags({ force: true }));
+    }, Math.floor(Math.random() * 2500));
+  });
   socket.on('usage:reset', (payload: UsageResetPayload) => {
     usageResetListeners.forEach((fn) => fn(payload || {}));
   });

@@ -29,6 +29,8 @@ canvas#sky { position: absolute; inset: 0; }
 .mark span { font-weight: 800; font-size: 32px; color: #fff; letter-spacing: .01em; }
 .headline { position: absolute; left: 60px; right: 60px; text-align: center; font-family: SerifGeo; font-weight: 500; color: #F6EEDC; line-height: 1.12; z-index: 20; }
 .headline em { font-style: normal; color: #E9C77E; }
+.hmask { position: absolute; left: 60px; right: 60px; overflow: hidden; z-index: 20; }
+.hmask .headline { left: 0; right: 0; top: 0; bottom: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; will-change: transform; }
 .phone { position: absolute; z-index: 10; aspect-ratio: 390 / 844; background: #07070C; will-change: transform, opacity;
   box-shadow: 0 0 0 2px rgba(255,255,255,.10), 0 40px 90px rgba(0,0,0,.55), 0 0 160px rgba(233,199,126,.22); }
 .phone .screen { position: absolute; overflow: hidden; background: #0B1238; }
@@ -90,12 +92,13 @@ const SCREENS = {
 const SCENES = [
   { t0: 2.5, t1: 6.25, head: 'ყოველდღე<br><em>ახალი ჰოროსკოპი</em>', screen: 'hub', pan: [0, 150],
     lens: { t0: 4.35, t1: 6.0, screen: 'hub', crop: [8, 436, 374, 192] } },
-  { t0: 6.25, t1: 8.75, head: 'დღე, კვირა, თვე<br>და <em>მთელი წელი</em>', screen: 'sign', pan: [0, 1050] },
+  { t0: 6.25, t1: 8.75, head: 'დღე, კვირა, თვე<br>და <em>მთელი წელი</em>', screen: 'sign', pan: [0, 1050],
+    lens: { t0: 7.2, t1: 8.6, screen: 'sign', crop: [10, 1652, 370, 200] } },
   { t0: 8.75, t1: 11.25, head: 'შენი <em>ნატალური რუკა</em>', screen: 'chart', pan: [0, 40],
     lens: { t0: 9.6, t1: 11.05, screen: 'chart', crop: [6, 60, 378, 404], w: STORY ? 760 : 620, y: STORY ? 990 : 660 } },
   { t0: 11.25, t1: 15.0, head: 'ჰკითხე <em>ორაკულს</em>', screen: 'oracle', pan: [0, 0],
     lens: { t0: 12.5, t1: 14.8, screen: 'oracle', crop: [10, 196, 370, 268] } },
-  { t0: 15.0, t1: 18.125, head: 'ტარო, თავსებადობა<br>და <em>ცის კალენდარი</em>', screens: [['tarot', 15.0, 380], ['compat', 16.04, 0], ['sky', 17.08, 0]] },
+  { t0: 15.0, t1: 18.125, head: 'ტარო, თავსებადობა<br>და <em>ცის კალენდარი</em>', screens: [['tarot', 15.0, 552], ['compat', 16.04, 0], ['sky', 17.08, 0]] },
 ];
 const HOOK = { t1: 2.5, head: 'რას გეუბნება<br><em>ცა დღეს?</em>' };
 const END = 18.125, T = 20;
@@ -194,7 +197,21 @@ for (const [key, s] of Object.entries(SCREENS)) {
 const heads = document.getElementById('heads');
 const mkHead = (html, size, top) => { const d = document.createElement('div'); d.className = 'headline'; d.innerHTML = html; Object.assign(d.style, { fontSize: `${size}px`, top: `${top}px`, opacity: 0 }); heads.appendChild(d); return d; };
 const hookEl = mkHead(HOOK.head, L.hookSize, 0);
-const sceneHeads = SCENES.map((s) => mkHead(s.head, L.headSize, L.headTop));
+const hmask = document.createElement('div');
+hmask.className = 'hmask';
+const HM = Math.round(L.headSize * 1.12 * 2 + 16);
+Object.assign(hmask.style, { top: `${L.headTop - 8}px`, height: `${HM}px` });
+heads.appendChild(hmask);
+const sceneHeads = SCENES.map((s) => { const d = mkHead(`<span style="display:block">${s.head}</span>`, L.headSize, 0); hmask.appendChild(d); d.style.opacity = 1; return d; });
+
+// Screen shots in order; consecutive different screens push (the old one slides up, the new one follows) — no cross-fade.
+const SHOTS = [{ key: 'hub', t0: 0, t1: SCENES[0].t0, p0: 0, p1: 0 }];
+for (const sc of SCENES) {
+  if (sc.screens) sc.screens.forEach(([key, st, pan], j) => SHOTS.push({ key, t0: st, t1: sc.screens[j + 1]?.[1] ?? sc.t1, p0: pan, p1: pan }));
+  else SHOTS.push({ key: sc.screen, t0: sc.t0, t1: sc.t1, p0: sc.pan[0], p1: sc.pan[1] });
+}
+SHOTS.push({ key: 'sky', t0: END, t1: T + 1, p0: 0, p1: 0 });
+const PUSH = 0.4;
 
 // ── Lenses ───────────────────────────────────────────────────────────────────
 const lensBox = document.getElementById('lenses');
@@ -229,43 +246,36 @@ window.seek = (t) => {
   hookEl.style.opacity = hIn * (1 - hOut);
   hookEl.style.top = `${L.hookTop - 30 * hOut}px`;
   // phone: rises in after the hook, leaves before the end card
-  const pIn = out(ramp(t, 2.1, 2.95)), pOut = ease(ramp(t, END - 0.15, END + 0.35));
-  phone.style.opacity = pIn * (1 - pOut);
-  phone.style.transform = `translateY(${(1 - pIn) * 260 + pOut * 80}px) scale(${1 - 0.06 * pOut})`;
+  const off = H - L.py + 60;
+  const pIn = out(ramp(t, 2.05, 2.9)), pOut = ease(ramp(t, END - 0.1, END + 0.4));
+  phone.style.opacity = t < 2.05 ? 0 : 1;
+  phone.style.transform = `translateY(${(1 - pIn) * off + pOut * off}px)`;
   // scene headlines
   SCENES.forEach((s, i) => {
-    const a = ease(ramp(t, s.t0 + 0.02, s.t0 + 0.42)) * (1 - ease(ramp(t, s.t1 - 0.22, s.t1)));
-    sceneHeads[i].style.opacity = a;
-    sceneHeads[i].style.transform = `translateY(${(1 - ease(ramp(t, s.t0, s.t0 + 0.45))) * 18}px)`;
+    const last = i === SCENES.length - 1;
+    // one shared roll per cut: the outgoing and incoming headlines stay exactly one mask height apart
+    const roll = (x) => ease(ramp(t, x, x + 0.5));
+    const pin = roll(s.t0), pout = last ? roll(END - 0.1) : roll(s.t1);
+    const live = t >= s.t0 && t < (last ? END + 0.4 : s.t1 + 0.5);
+    sceneHeads[i].style.visibility = live ? 'visible' : 'hidden';
+    sceneHeads[i].style.transform = `translateY(${(1 - pin) * HM - pout * HM}px)`;
   });
   // screens
   for (const im of Object.values(imgs)) im.style.opacity = 0;
-  let current = null, panCss = 0;
-  for (const s of SCENES) {
-    if (t < s.t0 - 0.0001 || t >= s.t1) continue;
-    if (s.screens) {
-      for (let j = 0; j < s.screens.length; j++) {
-        const [key, st, pan] = s.screens[j];
-        const next = s.screens[j + 1]?.[1] ?? s.t1;
-        if (t >= st && t < next) { current = key; panCss = pan; }
-      }
-    } else {
-      current = s.screen;
-      panCss = s.pan[0] + (s.pan[1] - s.pan[0]) * ease(ramp(t, s.t0 + 0.3, s.t1 - 0.2));
-    }
-  }
-  if (t < SCENES[0].t0) current = 'hub';
-  if (t >= END) current = 'sky';
-  if (current) {
-    imgs[current].style.opacity = 1;
-    imgs[current].style.transform = `translateY(${-panCss * k}px)`;
-    // the outgoing screen fades over the first 0.25 s of a scene
-    const sc = SCENES.find((s) => t >= s.t0 && t < s.t0 + 0.25 && !s.screens);
-    const prev = sc && SCENES[SCENES.indexOf(sc) - 1];
-    if (prev) {
-      const pk = prev.screens ? prev.screens.at(-1)[0] : prev.screen;
-      if (pk !== current) { imgs[pk].style.opacity = 1 - ramp(t, sc.t0, sc.t0 + 0.25); imgs[current].style.opacity = ramp(t, sc.t0, sc.t0 + 0.25); }
-    }
+  const vh = shh - barH;
+  const panAt = (sh, x) => sh.p0 + (sh.p1 - sh.p0) * ease(ramp(x, sh.t0 + 0.3, sh.t1 - 0.2));
+  const i = Math.max(0, SHOTS.findIndex((sh) => t >= sh.t0 && t < sh.t1));
+  const cur = SHOTS[i], prev = SHOTS[i - 1];
+  let p = 1;
+  if (prev && prev.key !== cur.key) p = ease(ramp(t, cur.t0, cur.t0 + PUSH));
+  // content above a screen's scroll position is clipped, so a sliding screen starts where its shot starts
+  imgs[cur.key].style.opacity = 1;
+  imgs[cur.key].style.transform = `translateY(${-panAt(cur, t) * k + (1 - p) * vh}px)`;
+  imgs[cur.key].style.clipPath = `inset(${panAt(cur, t) * k}px 0 0 0)`;
+  if (p < 1) {
+    imgs[prev.key].style.opacity = 1;
+    imgs[prev.key].style.transform = `translateY(${-panAt(prev, cur.t0) * k - p * vh}px)`;
+    imgs[prev.key].style.clipPath = `inset(${panAt(prev, cur.t0) * k}px 0 0 0)`;
   }
   // lenses + phone dim
   let dimA = 0;
@@ -279,7 +289,7 @@ window.seek = (t) => {
   });
   dim.style.opacity = dimA;
   // end card
-  const e = out(ramp(t, END + 0.1, END + 0.6));
+  const e = out(ramp(t, END + 0.2, END + 0.65));
   endEl.style.opacity = e;
   endEl.style.transform = `translateY(${(1 - e) * 30}px)`;
   mark.style.opacity = 1 - ease(ramp(t, END, END + 0.3));
