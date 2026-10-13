@@ -50,8 +50,10 @@ async function applyFamily(key: RowKey, on: boolean, userId: string | undefined)
     }
     case 'visits': {
       await setReminderFamily('visits', on);
-      const { syncVisitReminders } = await import('@/lib/visitNotifications');
-      await syncVisitReminders((await api.visits.list()).visits).catch(() => undefined);
+      const { cancelVisitReminders, syncVisitReminders } = await import('@/lib/visitNotifications');
+      // Off: visit reminders go at once, before any request — a failed fetch must not leave them ringing.
+      if (!on) await cancelVisitReminders();
+      else await syncVisitReminders((await api.visits.list()).visits).catch(() => undefined);
       // MEDIBOOK bookings share this switch.
       const { syncBookReminders } = await import('@/lib/book/bookNotifications');
       await api.book.appointments().then((r) => syncBookReminders(r.upcoming)).catch(() => undefined);
@@ -71,6 +73,11 @@ async function applyFamily(key: RowKey, on: boolean, userId: string | undefined)
     }
     case 'nutrition': {
       await setReminderFamily('nutrition', on);
+      // Off: the meal reminders go at once, before any request (a fast's own goal alert is not this switch).
+      if (!on) {
+        await notifications.cancelNotificationsByPrefix(notifications.NOTIF_PREFIX.nutrition);
+        return;
+      }
       const { preferences } = await api.nutrition.preferences.get();
       await notifications.syncNutritionReminders(preferences.reminders);
       return;

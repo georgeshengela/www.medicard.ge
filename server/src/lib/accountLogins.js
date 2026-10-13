@@ -24,6 +24,7 @@ import { deleteUserAccount } from './deleteUser.js';
 import { evaluateOtpRow, OTP_MAX_ATTEMPTS } from './otpContract.js';
 import { isQaOtpEnabled } from './qaOtp.js';
 import { openSecret, sealSecret } from './socialAuth.js';
+import { readPasswordChange } from './sessionRevocation.js';
 import { t } from './i18n.js';
 
 export const CONFLICT_TTL = '15m';
@@ -175,22 +176,53 @@ export function realEmail(email) {
 
 async function identitiesOf(userId, db = prisma) {
   try {
-    return await db.$queryRaw`SELECT provider, subject, email FROM "AuthIdentity" WHERE "userId" = ${userId}`;
+    return await db.$queryRaw`SELECT provider, subject, email, "createdAt" FROM "AuthIdentity" WHERE "userId" = ${userId}`;
   } catch {
     return [];
   }
 }
 
+/** An Apple / Google sign-up writes its identity in the transaction that creates the account. */
+const SOCIAL_SIGNUP_WINDOW_MS = 2 * 60 * 1000;
+
+function timeMs(value) {
+  const ms = value instanceof Date ? value.getTime() : new Date(value ?? NaN).getTime();
+  return Number.isFinite(ms) ? ms : NaN;
+}
+
+/**
+ * Whether the person can sign in with email + password. Apple / Google and phone sign-ups store a random
+ * hash nobody knows (`unusablePasswordHash`, the phone route's `phone:` hash) and bcrypt cannot tell it
+ * from a chosen one, so it is read from how the account began: an address that came with an Apple /
+ * Google identity created together with the account has no password until a reset sets one
+ * (`passwordChangedAt`). A synthetic address never has one; email sign-up and add-email always set one.
+ * A reset before `passwordChangedAt` existed (2026-10-08) still reads as no password.
+ */
+export function hasUsablePassword(user, identities = [], passwordChangedAt = null) {
+  const email = realEmail(user?.email);
+  if (!email) return false;
+  if (Number.isFinite(timeMs(passwordChangedAt))) return true;
+  const created = timeMs(user?.createdAt);
+  if (!Number.isFinite(created)) return true;
+  return !identities.some((row) => {
+    const at = timeMs(row?.createdAt);
+    return normalizeEmail(row?.email) === email && Number.isFinite(at) && Math.abs(at - created) <= SOCIAL_SIGNUP_WINDOW_MS;
+  });
+}
+
 /** What the person can sign in with. Never the password itself, never another person's data. */
 export async function loginMethods(userId, db = prisma) {
-  const user = await db.user.findUnique({ where: { id: userId }, select: { email: true, phone: true } });
+  const user = await db.user.findUnique({ where: { id: userId }, select: { email: true, phone: true, createdAt: true } });
   if (!user) return null;
   const ids = await identitiesOf(userId, db);
+  const reset = await readPasswordChange(userId, db);
   return {
     phone: user.phone || null,
     email: realEmail(user.email),
     apple: ids.some((row) => row.provider === 'apple'),
     google: ids.some((row) => row.provider === 'google'),
+    // false: the email row is shown as „no password yet“ (Apple / Google / phone sign-ups).
+    password: hasUsablePassword(user, ids, reset.at),
   };
 }
 

@@ -2402,7 +2402,8 @@ function safeParse(text: string): Record<string, unknown> {
 
 type AuthResponse = { token: string; user: User; usage: Usage };
 
-export type SignInMethods = { phone: string | null; email: string | null; apple: boolean; google: boolean };
+/** `password`: false = the address has no password (Apple / Google sign-up); older servers leave it out. */
+export type SignInMethods = { phone: string | null; email: string | null; apple: boolean; google: boolean; password?: boolean };
 
 /** 409 body extra when a proven phone / email / Apple / Google already belongs to another account. */
 export type AccountConflict = {
@@ -2845,8 +2846,14 @@ export const api = {
   push: {
     register: (body: { token: string; platform: 'ios' | 'android' | 'web' }) =>
       request<{ ok: boolean }>('/api/push/register', { method: 'POST', body }),
-    unregister: (token: string) =>
-      request<{ ok: boolean }>('/api/push/register', { method: 'DELETE', body: { token } }),
+    /** `authToken`: the leaving session's token (sign-out sends this after the token was cleared). */
+    unregister: (token: string, opts: { authToken?: string; timeoutMs?: number } = {}) =>
+      request<{ ok: boolean }>('/api/push/register', {
+        method: 'DELETE',
+        body: { token },
+        ...(opts.authToken ? { token: opts.authToken } : {}),
+        ...(opts.timeoutMs ? { timeoutMs: opts.timeoutMs } : {}),
+      }),
     templates: () =>
       request<{
         templates: Array<{

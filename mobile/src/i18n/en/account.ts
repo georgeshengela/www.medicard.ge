@@ -335,7 +335,7 @@ export const enAccount: Pick<Strings, 'visits' | 'referral' | 'passport' | 'phon
     pushRegisterExpoGo: 'Remote notifications no longer work in Expo Go. Install a Medicard build.',
     pushRegisterToken: 'Couldn’t get an Expo token. Try again on iPhone in Expo Go, or in a Medicard build.',
     disableNotificationsTitle: 'Turn off notifications?',
-    disableNotificationsBody: 'Push notifications and scheduled reminders will be canceled.',
+    disableNotificationsBody: 'Push notifications will be turned off. Reminders have their own switches in Notifications.',
     openSettingsTitle: 'System settings',
     openSettingsAction: 'Open',
     revokeInSettingsHint: 'You can only turn this permission off in your phone’s settings.',
@@ -388,7 +388,7 @@ export const enAccount: Pick<Strings, 'visits' | 'referral' | 'passport' | 'phon
     resetRemindersBody: 'Scheduled medication, cycle and visit reminders will be deleted.',
     resetAllTitle: 'Reset everything',
     resetAllBody:
-      'Turns off health sync, push, location, biometrics, the cycle lock and all reminders.',
+      'Turns off health sync, push, location, biometrics and the cycle lock. Reminders have their own switches in Notifications.',
     resetAllHint: 'A full reset — if you want to turn off every connection and permission in one step.',
     resetAllConfirm: 'Reset everything',
     resetAllRowTitle: 'Reset',

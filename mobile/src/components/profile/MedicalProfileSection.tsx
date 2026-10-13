@@ -305,6 +305,15 @@ function MedicalEditSheet({ field, onClose }: { field: Field | null; onClose: ()
       const result = await api.healthProfile.update(body);
       setHealthProfile(result.profile);
       if (result.user) setUser(result.user);
+      // No longer FEMALE: the cycle and pregnancy-care switches hide and nothing re-plans them, so the
+      // reminders already on the phone go now instead of ringing on.
+      if (shown === 'gender' && (result.user?.gender ?? draft.gender) !== 'FEMALE') {
+        void import('@/lib/notifications')
+          .then(({ cancelCycleReminders, cancelPregnancyCareReminders }) =>
+            Promise.all([cancelCycleReminders(), cancelPregnancyCareReminders()]),
+          )
+          .catch(() => undefined);
+      }
       onClose();
     } catch (err) {
       setError(err instanceof ApiError ? err.message : ka.common.error);

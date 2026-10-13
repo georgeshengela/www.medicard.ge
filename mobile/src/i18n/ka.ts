@@ -3544,7 +3544,7 @@ const kaStrings = {
     pushRegisterExpoGo: 'Expo Go-ში დისტანციური შეტყობინებები აღარ მუშაობს. დააყენე Medicard-ის build.',
     pushRegisterToken: 'Expo token ვერ მივიღეთ. სცადე თავიდან iPhone-ზე Expo Go-ში, ან Medicard-ის build.',
     disableNotificationsTitle: 'შეტყობინებების გამორთვა?',
-    disableNotificationsBody: 'Push და დაგეგმილი შეხსენებები გაუქმდება.',
+    disableNotificationsBody: 'Push შეტყობინებები გამოირთვება. შეხსენებებს ცალ-ცალკე გამორთავ „შეტყობინებებში“.',
     openSettingsTitle: 'სისტემური პარამეტრები',
     openSettingsAction: 'გახსნა',
     revokeInSettingsHint: 'ამ ნებართვის გამორთვა მხოლოდ ტელეფონის პარამეტრებიდან შეიძლება.',
@@ -3597,7 +3597,7 @@ const kaStrings = {
     resetRemindersBody: 'მედიკამენტის, ციკლის და ვიზიტის დაგეგმილი შეხსენებები წაიშლება.',
     resetAllTitle: 'ყველაფრის განულება',
     resetAllBody:
-      'გათიშავს ჯანმრთელობის სინქრონიზაციას, push-ს, ლოკაციას, ბიომეტრიას, ციკლის ბლოკს და ყველა შეხსენებას.',
+      'გათიშავს ჯანმრთელობის სინქრონიზაციას, push-ს, ლოკაციას, ბიომეტრიას და ციკლის ბლოკს. შეხსენებებს ცალ-ცალკე გამორთავ „შეტყობინებებში“.',
     resetAllHint: 'სრული გადატვირთვა — თუ გინდა ყველა კავშირი და ნებართვა ერთი ნაბიჯით გამორთო.',
     resetAllConfirm: 'ყველაფრის განულება',
     resetAllRowTitle: 'გადატვირთვა',

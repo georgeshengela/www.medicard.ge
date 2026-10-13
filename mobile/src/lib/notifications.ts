@@ -30,7 +30,7 @@ import {
   notificationResponseStatus,
 } from '@/lib/notificationPermission.js';
 import { resolvePermissionsPageToggle } from '@/lib/pushOptIn';
-import { getPreference, setPreference } from '@/lib/storage';
+import { getPreference, getToken as getSessionToken, setPreference } from '@/lib/storage';
 import { dateLocale, tx } from '../i18n/locale.js';
 
 export const MED_CHANNEL_ID = 'medication-reminders';
@@ -471,7 +471,7 @@ function ensurePushTokenListener(native: {
   pushTokenListenerAttached = true;
 }
 
-async function fetchExpoPushToken(): Promise<string | null> {
+async function fetchExpoPushToken(waitMs = PUSH_TOKEN_WAIT_MS): Promise<string | null> {
   const native = expoNotificationsNative();
   const getToken = native.getExpoPushTokenAsync?.bind(native);
   if (typeof getToken !== 'function') {
@@ -484,7 +484,7 @@ async function fetchExpoPushToken(): Promise<string | null> {
   // a sandbox mint still returns a token, then admin send looks OK and Apple drops it.
   const tokenResult = await withTimeout(
     getToken({ projectId }),
-    PUSH_TOKEN_WAIT_MS,
+    waitMs,
     'expo push token timeout',
   );
   const token = typeof tokenResult === 'string' ? tokenResult : tokenResult && typeof tokenResult === 'object' && 'data' in tokenResult ? tokenResult.data : null;
@@ -493,6 +493,9 @@ async function fetchExpoPushToken(): Promise<string | null> {
 
 const PUSH_REREGISTER_MS = 6 * 60 * 60 * 1000;
 let lastPushRegistration: { token: string; account: string | null; at: number } | null = null;
+/** Sign-out's push unregister, sent in the background; never rejects. */
+let pendingSignOutUnregister: Promise<void> | null = null;
+const SIGN_OUT_PUSH_WAIT_MS = 8_000;
 
 /** Registers the device for admin broadcast push via Expo Push Service. */
 export async function registerPushTokenWithServer(
@@ -511,6 +514,9 @@ export async function registerPushTokenWithServer(
       console.warn('[medicard-push] unexpected token shape');
       return { ok: false, reason: 'token', detail: 'empty expo token' };
     }
+    // A sign-out's unregister still on its way (≤ 8 s) lands first, or it could switch off the
+    // registration of a quick sign-in back to the same account.
+    if (pendingSignOutUnregister) await pendingSignOutUnregister;
 
     const platform =
       Platform.OS === 'ios' ? 'ios' : Platform.OS === 'android' ? 'android' : 'web';
@@ -1024,6 +1030,31 @@ export async function unregisterPushFromServer(): Promise<void> {
   } catch {
     // Auth or network should not block the local opt-out.
   }
+}
+
+/**
+ * Sign-out: takes this device off the leaving account's push without making the sign-out wait on the
+ * network (minting a token could take 45 s and the DELETE up to 180 s). Resolves once the session token
+ * is read — before the caller clears it — and the request then runs in the background with that token,
+ * giving up after 8 s. The next registration waits for it (`pendingSignOutUnregister`).
+ */
+export async function unregisterPushInBackground(): Promise<void> {
+  forgetPushRegistration();
+  const [authToken, saved] = await Promise.all([
+    getSessionToken().catch(() => null),
+    readLastPushToken().catch(() => null),
+  ]);
+  if (!authToken) return;
+  const work = (async () => {
+    let token = saved;
+    if (!token && Device.isDevice) token = await fetchExpoPushToken(SIGN_OUT_PUSH_WAIT_MS).catch(() => null);
+    if (!token) return;
+    await api.push.unregister(token, { authToken, timeoutMs: SIGN_OUT_PUSH_WAIT_MS }).catch(() => undefined);
+  })().catch(() => undefined);
+  pendingSignOutUnregister = work;
+  void work.finally(() => {
+    if (pendingSignOutUnregister === work) pendingSignOutUnregister = null;
+  });
 }
 
 export async function cancelAllReminders(): Promise<void> {

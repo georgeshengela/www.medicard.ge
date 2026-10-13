@@ -88,11 +88,25 @@ function sameJson(a: unknown, b: unknown): boolean {
   }
 }
 
-/** Stops this device's push and local reminders for the account that is leaving. Best-effort. */
+/**
+ * Medi's notification planner forgets the leaving person (and its pending runs) before her reminders are
+ * cancelled, so nothing it plans for her lands after the cancel.
+ */
+async function forgetMediPlanner() {
+  await import('@/lib/mediNotificationBrain')
+    .then(({ resetMediNotificationBrain }) => resetMediNotificationBrain())
+    .catch(() => undefined);
+}
+
+/**
+ * Stops this device's push and local reminders for the account that is leaving. Best-effort; the push
+ * unregister goes in the background with the leaving session's token, as on sign-out.
+ */
 async function stopDeviceDelivery() {
+  await forgetMediPlanner();
   try {
-    const { cancelAllReminders, unregisterPushFromServer } = await import('@/lib/notifications');
-    await unregisterPushFromServer();
+    const { cancelAllReminders, unregisterPushInBackground } = await import('@/lib/notifications');
+    await unregisterPushInBackground();
     await cancelAllReminders();
   } catch {
     /* local cleanup still continues */
@@ -105,6 +119,7 @@ async function stopDeviceDelivery() {
  * call, so nothing delays the local cleanup that follows.
  */
 async function cancelDeviceReminders() {
+  await forgetMediPlanner();
   try {
     const { cancelAllReminders, forgetPushRegistration } = await import('@/lib/notifications');
     forgetPushRegistration();
@@ -181,6 +196,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setStats(null);
     setHealthProfile(null);
     void import('@/lib/accountSync').then(({ resetAccountSync }) => resetAccountSync());
+    void import('@/lib/mediNotificationBrain').then(({ resetMediNotificationBrain }) => resetMediNotificationBrain());
     void import('@/lib/healthDataSync').then(({ resetHealthPullCache }) => {
       resetHealthPullCache();
     });
@@ -309,13 +325,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         syncPushRegistration(),
       );
       void import('@/lib/pushCopy').then(({ loadPushTemplates }) => loadPushTemplates());
-      void import('@/lib/mediNotificationBrain').then(({ runMediNotificationBrain }) =>
-        runMediNotificationBrain(user, healthProfile),
-      );
       if (user?.id && user.gender === 'FEMALE') {
         void import('@/lib/cycleReminders').then(({ reconcileCycleReminders }) => reconcileCycleReminders(user.id));
       }
       if (user) {
+        // Medi's own notifications only for a signed-in person: a run with no user used to plan the
+        // previous person's from the brain's memory on a signed-out phone.
+        void import('@/lib/mediNotificationBrain').then(({ runMediNotificationBrain }) =>
+          runMediNotificationBrain(user, healthProfile),
+        );
         void import('@/lib/reminderReconcile').then(({ reconcileAllLocalReminders }) => reconcileAllLocalReminders());
         void import('@/lib/petCareReminders').then(({ reconcilePetCareReminders, flushPendingPetCareConfirms }) => {
           void flushPendingPetCareConfirms();
@@ -495,12 +513,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       signOut: async () => {
         const userId = user?.id;
         setQuestVisualSession(false);
+        await forgetMediPlanner();
         try {
-          const [{ onPetCareLogout }, { cancelAllReminders, unregisterPushFromServer }] = await Promise.all([
+          const [{ onPetCareLogout }, { cancelAllReminders, unregisterPushInBackground }] = await Promise.all([
             import('@/lib/petCareReminders'),
             import('@/lib/notifications'),
           ]);
-          await unregisterPushFromServer();
+          // Reads the session and push tokens now; the DELETE goes in the background (≤ 8 s), so
+          // sign-out never waits on the network.
+          await unregisterPushInBackground();
           await cancelAllReminders();
           await onPetCareLogout(userId);
         } catch {

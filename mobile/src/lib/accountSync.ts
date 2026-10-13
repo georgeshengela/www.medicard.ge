@@ -122,9 +122,7 @@ async function applyLocalState(state: AccountAppState): Promise<void> {
     state.stepsGoal
       ? setScopedPreference(STEPS_KEY, JSON.stringify(state.stepsGoal))
       : setScopedPreference(STEPS_KEY, ''),
-    setPreference(STEPS_KEY, state.stepsGoal ? JSON.stringify(state.stepsGoal) : ''),
     setScopedPreference(STEPS_HISTORY_KEY, JSON.stringify(state.stepsGoalHistory ?? [])),
-    setPreference(STEPS_HISTORY_KEY, JSON.stringify(state.stepsGoalHistory ?? [])),
     setScopedPreference(RUN_KEY, JSON.stringify(state.runHistory ?? [])),
     setScopedPreference(DOSE_LOG_KEY, JSON.stringify(state.doseLogs ?? [])),
     setScopedPreference(SYMPTOM_KEY, JSON.stringify(state.symptomHistory ?? [])),
