@@ -2918,3 +2918,32 @@ html[data-theme="dark"] #tab-home-sections .hs-block.is-l.is-mod { background: l
   #tab-home-sections .hs-dot.is-saving { animation: none; }
   #tab-home-sections .hs-row { transition: none; }
 }
+
+/* ───────────── #/app-icons „აპის აიქონები“ (owner 2026-10-13) — the icon wall is the page's bold element ───────────── */
+#tab-app-icons .ai-wall { display: grid; gap: 22px; }
+#tab-app-icons .ai-group .p2-h { display: flex; align-items: baseline; gap: 8px; }
+#tab-app-icons .ai-group .p2-h span { font-weight: 500; color: var(--s-faint); }
+#tab-app-icons .ai-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(128px, 1fr)); gap: 12px; padding-top: 6px; }
+#tab-app-icons .ai-tile { position: relative; display: grid; justify-items: center; gap: 10px; margin: 0; padding: 16px 12px 14px; border: 1px solid var(--s-line-soft); border-radius: var(--s-radius-lg, 14px); background: var(--s-surface); text-align: center; }
+#tab-app-icons .ai-tile.is-zero { background: var(--s-sunken); }
+#tab-app-icons .ai-tile.is-zero .ai-thumb { opacity: .55; filter: saturate(.5); }
+#tab-app-icons .ai-tile.is-top { border-color: var(--s-accent); box-shadow: 0 0 0 3px var(--s-accent-soft, transparent); }
+#tab-app-icons .ai-tile.is-top::before { content: "ყველაზე პოპულარული"; position: absolute; top: -9px; left: 50%; transform: translateX(-50%); padding: 1px 8px; border-radius: 99px; background: var(--s-accent); color: #fff; font-size: 10.5px; font-weight: 600; white-space: nowrap; }
+#tab-app-icons .ai-thumb { display: block; object-fit: cover; border-radius: 23%; box-shadow: 0 1px 2px rgb(0 0 0 / .12), 0 6px 14px -6px rgb(0 0 0 / .28); }
+#tab-app-icons .ai-thumb.is-m { width: 64px; height: 64px; }
+#tab-app-icons .ai-thumb.is-s { width: 28px; height: 28px; border-radius: 7px; box-shadow: 0 1px 2px rgb(0 0 0 / .14); }
+#tab-app-icons .ai-tile figcaption { display: grid; gap: 2px; min-width: 0; }
+#tab-app-icons .ai-tile figcaption b { overflow: hidden; font-size: 12.5px; font-weight: 600; color: var(--s-ink); white-space: nowrap; text-overflow: ellipsis; }
+#tab-app-icons .ai-tile figcaption span { font-size: 12px; color: var(--s-muted); font-variant-numeric: tabular-nums; }
+#tab-app-icons .ai-tile figcaption strong { font-size: 18px; font-weight: 650; color: var(--s-ink); letter-spacing: -0.01em; }
+#tab-app-icons .ai-tile em { font-size: 11px; font-style: normal; color: var(--s-faint); }
+#tab-app-icons .ai-bar { position: relative; width: 100%; height: 5px; overflow: hidden; border-radius: 99px; background: var(--s-sunken); }
+#tab-app-icons .ai-bar::after { content: ""; position: absolute; inset: 0 auto 0 0; width: var(--fill, 0%); border-radius: inherit; background: var(--s-accent); }
+#tab-app-icons .ai-pick { display: inline-flex; align-items: center; gap: 8px; }
+#tab-app-icons .ai-pick b { font-size: 12.5px; font-weight: 600; color: var(--s-ink); }
+#tab-app-icons .ai-people td { vertical-align: middle; }
+@media (max-width: 560px) {
+  #tab-app-icons .ai-grid { grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 10px; }
+  #tab-app-icons .ai-thumb.is-m { width: 52px; height: 52px; }
+  #tab-app-icons .ai-people th:last-child, #tab-app-icons .ai-people td:last-child { display: none; }
+}

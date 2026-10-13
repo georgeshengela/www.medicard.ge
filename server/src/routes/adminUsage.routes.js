@@ -10,10 +10,12 @@ import { loadFoodUsage } from '../lib/adminUsageFood.js';
 import { loadQuestUsage } from '../lib/adminUsageQuest.js';
 import { loadCoachUsage } from '../lib/adminUsageCoach.js';
 import { loadMediUsage } from '../lib/adminUsageMedi.js';
+import { loadAppIconOverview } from '../lib/appIcons.js';
 
 /**
  * Admin module-usage pages (owner 2026-10-11: „როგორც მედივეტი, ისე ყველა მოდული“): read-only „who uses it and how“
  * for MEDICYCLE, MEDIPILL, MEDILAB + MEDISCAN, MEDIFOOD, MEDIQUEST, MEDICOACH and Medi. MEDIVET lives at /api/admin/pets.
+ * `icons` = which home-screen icon the iPhones show (#/app-icons, owner 2026-10-13); it has no period.
  */
 const LOADERS = {
   cycle: loadCycleUsage,
@@ -23,6 +25,7 @@ const LOADERS = {
   quest: loadQuestUsage,
   coach: loadCoachUsage,
   medi: loadMediUsage,
+  icons: loadAppIconOverview,
 };
 
 export const adminUsageRouter = Router();

@@ -80,6 +80,10 @@ export function runPostLoginSideEffects(user, healthProfile, { force = false } =
   schedulePostLoginWork('ad-measurement', () =>
     import('@/lib/adMeasurement').then(({ startAdMeasurement }) => startAdMeasurement(healthProfile?.extraAnswers)),
   );
+  // Which home-screen icon this iPhone shows (admin #/app-icons) — only when it changed, or once a week.
+  schedulePostLoginWork('app-icon', () =>
+    import('@/lib/appIconReport').then(({ reportAppIcon }) => reportAppIcon()),
+  );
   // Goals restored from the server first, then every reminder family is put back on the device.
   schedulePostLoginWork('account', () =>
     import('@/lib/accountSync')

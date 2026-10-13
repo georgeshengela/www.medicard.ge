@@ -15,6 +15,8 @@ import { publicFeatureFlags, publicFeatureMessages } from '../lib/featureFlags.j
 import { getUpdatePrompt, updatePromptForClient } from '../lib/updatePrompt.js';
 import { getNotificationBrainConfig, publicBrainConfig } from '../lib/notificationBrainConfig.js';
 import { getHomeConfig, publicHomeConfig } from '../lib/homeSections.js';
+import { parseAppIcon, recordAppIcon } from '../lib/appIcons.js';
+import { requireAuth } from '../middleware/auth.js';
 
 export const appRouter = Router();
 
@@ -103,4 +105,33 @@ appRouter.post(
       console.warn('[errors] client report skipped:', error?.message || error);
     }
   },
+);
+
+/**
+ * The home-screen icon this iPhone shows (Profile → „აპის აიქონი“; lib/appIcons.js, admin #/app-icons). The app sends
+ * it after sign-in / start and right after a pick, only when it changed (or once a week). Icon id only.
+ */
+appRouter.post(
+  '/icon',
+  requireAuth,
+  rateLimit({
+    windowMs: 60_000,
+    limit: 20,
+    standardHeaders: 'draft-7',
+    legacyHeaders: false,
+    validate: RATE_LIMIT_VALIDATE,
+    keyGenerator: (req) => `app-icon:${req.user.id}`,
+    handler: attachRateLimitHandler('app-icon'),
+  }),
+  asyncHandler(async (req, res) => {
+    const icon = parseAppIcon(req.body?.icon);
+    if (!icon) return res.status(400).json({ error: 'unknown icon' });
+    await recordAppIcon({
+      userId: req.user.id,
+      icon,
+      platform: req.headers['x-medicard-platform'],
+      appVersion: req.headers['x-medicard-app-version'],
+    });
+    return res.json({ ok: true, icon });
+  }),
 );
