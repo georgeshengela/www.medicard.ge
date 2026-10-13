@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createSchema, medicationValidationError } from './medications.routes.js';
+import { createSchema, medicationValidationError, updateSchema } from './medications.routes.js';
 
 // The app's frequency sheet used to offer 1–12 doses a day; the server takes 1–8. Picking 9 let her fill
 // in the whole form and then fail with the generic „შევსებული მონაცემები არასწორია.“ (the reason sat
@@ -84,4 +84,13 @@ test('the validator’s own English text never becomes the top line; our reason 
   medicationValidationError(both, {}, res, () => assert.fail('a validation error is answered here'));
   assert.equal(res.body.error, 'დღეში დასაშვებია 1-დან 8 მიღებამდე');
   assert.equal(res.body.fields.length, 2);
+});
+
+// zod 4 fills `.default()` values in even under `.partial()`: the web /app edit (no `active` in the body)
+// switched a paused medicine back on, and its reminders came back on the phone.
+test('an edit without `active` leaves a paused medicine paused', () => {
+  const data = updateSchema.parse({ medName: 'ასპირინი', dosage: '1 ტაბლეტი', frequency: '09:00' });
+  assert.equal('active' in data, false);
+  assert.equal(updateSchema.parse({ active: false }).active, false);
+  assert.equal(createSchema.parse({ medName: 'ასპირინი', dosage: '1 ტაბლეტი', frequency: '09:00' }).active, true);
 });

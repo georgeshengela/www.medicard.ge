@@ -206,7 +206,15 @@ brain.post('/initiatives', requireOnShift, asyncHandler(async (req, res) => {
   await store.addJournal({ kind: 'note', summary: `ახალი იდეა: ${i.title}` });
   res.status(201).json(i);
 }));
+// No defaults in the patch: zod 4 fills them in even under `.partial()`, so a status-only PATCH used to wipe
+// the hypothesis, plan, metric and target and reset impact/effort to 3.
 const initiativePatch = initiativeBody.partial().extend({
+  hypothesis: z.string().trim().max(2000).optional(),
+  plan: z.string().trim().max(4000).optional(),
+  metric: z.string().trim().max(300).optional(),
+  target: z.string().trim().max(300).optional(),
+  impact: z.number().int().min(1).max(5).optional(),
+  effort: z.number().int().min(1).max(5).optional(),
   status: z.enum(store.INITIATIVE_STATUSES).optional(),
   progress: z.string().trim().max(4000).optional(),
   result: z.string().trim().max(4000).optional(),

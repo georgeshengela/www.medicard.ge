@@ -29,6 +29,8 @@ const APPLY_AFTER_AWAY_MS = 10 * 60 * 1000;
 let started = false;
 let lastCheck = 0;
 let ready = false;
+/** The last check found nothing newer than the bundle that runs now. */
+let upToDate = false;
 let backgroundedAt = 0;
 const busyChecks = new Set<() => boolean>();
 
@@ -79,6 +81,30 @@ export async function applyOtaNow(): Promise<'reloading' | 'busy' | 'none'> {
   }
 }
 
+/** This launch runs the bundle shipped inside the store binary (no OTA applied yet). */
+export function onStoreBundle(): boolean {
+  return !!Updates?.isEmbeddedLaunch;
+}
+
+/**
+ * A fresh install runs the bundle inside the store binary, which lags the OTAs by days (2026-10-13: 89 of
+ * 165 new people spent their whole first day on 1.0.0.21.0, with the old onboarding). Welcome's „Get
+ * started“ asks here: on that embedded bundle, an update that is downloaded (or becomes so within
+ * `waitMs`) is switched to at once. The caller saves where to continue first (`setPendingRoute`).
+ */
+export async function restartIntoFreshUpdate(waitMs = 2500): Promise<boolean> {
+  if (!Updates?.isEmbeddedLaunch) return false;
+  const deadline = Date.now() + waitMs;
+  while (!ready && !upToDate && Date.now() < deadline) await new Promise((resolve) => setTimeout(resolve, 250));
+  if (!ready) return false;
+  try {
+    await Updates.reloadAsync();
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 /** While `isBusy()` is true a downloaded update waits: a reload would drop live work (a MEDIRUN session). */
 export function holdOtaReloadWhile(isBusy: () => boolean): void {
   busyChecks.add(isBusy);
@@ -101,13 +127,15 @@ async function checkAndFetch() {
   lastCheck = Date.now();
   try {
     const found = await Updates.checkForUpdateAsync();
+    upToDate = !found.isAvailable;
     if (!found.isAvailable) return;
     // isNew is false when expo-updates already downloaded it at launch (ON_LOAD): it still waits to run.
     await Updates.fetchUpdateAsync();
     ready = true;
     emit();
   } catch {
-    /* offline or no update server — the next foreground retries */
+    // offline or no update server — the next foreground retries (at once while still on the store bundle)
+    if (Updates.isEmbeddedLaunch) lastCheck = 0;
   }
 }
 
@@ -116,8 +144,9 @@ export function startOtaUpdates() {
   Updates = loadUpdates();
   if (!Updates?.isEnabled) return;
   started = true;
-  // A first look shortly after launch, so an update can be offered in this very session.
-  setTimeout(() => void checkAndFetch(), 4000);
+  // A first look shortly after launch, so an update can be offered in this very session; on the store
+  // binary's own bundle (a fresh install) at once, so it can be ready before welcome's „Get started“.
+  setTimeout(() => void checkAndFetch(), Updates.isEmbeddedLaunch ? 500 : 4000);
   AppState.addEventListener('change', (next: AppStateStatus) => {
     if (next === 'background') {
       backgroundedAt = Date.now();

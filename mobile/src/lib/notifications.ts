@@ -568,6 +568,29 @@ export async function cancelNotificationsByPrefix(prefix: string): Promise<void>
 }
 
 /**
+ * „შემახსენე მოგვიანებით“ copies a reminder as a one-off `snooze:<ms>` notification. A medication's copy
+ * has to go when its dose is answered, the medication is paused or deleted, or its reminders are switched
+ * off — it used to ring 20 minutes later regardless.
+ */
+export async function cancelMedicationSnoozes(match: (medicationId: string, time: string) => boolean): Promise<void> {
+  if (!canScheduleNotifications()) return;
+  try {
+    const scheduled = await Notifications.getAllScheduledNotificationsAsync();
+    await Promise.all(
+      scheduled
+        .filter((n) => {
+          if (!n.identifier?.startsWith('snooze:')) return false;
+          const data = (n.content?.data ?? {}) as Record<string, unknown>;
+          return data.type === 'medication' && typeof data.medicationId === 'string' && match(data.medicationId, String(data.time ?? ''));
+        })
+        .map((n) => Notifications.cancelScheduledNotificationAsync(n.identifier)),
+    );
+  } catch {
+    // Native scheduler is unavailable (web / Expo Go without the module).
+  }
+}
+
+/**
  * A medication reminder's content. A dose moved with „გადატანა“ also names its day (`date`), so its
  * „მივიღე ✓“ and its tap reach that dose and not the day it happens to be delivered on. `owner` is the
  * account it was scheduled for: its „მივიღე ✓“ never marks a dose in another account (a delivered
@@ -655,9 +678,11 @@ export async function syncMedicationReminders(
   await cancelNotificationsByPrefix(NOTIF_PREFIX.med);
   if (localAccountId() !== expectedOwner) return 0;
   // Profile → შეტყობინებები → წამლის მიღება (on unless the person turned it off).
-  if (!(await isReminderFamilyOn('meds'))) return 0;
-
+  const familyOn = await isReminderFamilyOn('meds');
   const byId = new Map(medications.map((med) => [med.id, med]));
+  await cancelMedicationSnoozes((medicationId) => !familyOn || !byId.get(medicationId)?.active);
+  if (!familyOn) return 0;
+
   let scheduled = 0;
   const otherCount = (await Notifications.getAllScheduledNotificationsAsync()).length;
   const budget = Math.max(0, Math.min(48, 60 - otherCount));

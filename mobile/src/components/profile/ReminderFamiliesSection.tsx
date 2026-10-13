@@ -39,6 +39,11 @@ async function applyFamily(key: RowKey, on: boolean, userId: string | undefined)
   switch (key) {
     case 'meds': {
       await setReminderFamily('meds', on);
+      // Off works offline too: the reminders go now, before the list is fetched to re-plan them.
+      if (!on) {
+        await notifications.cancelNotificationsByPrefix(notifications.NOTIF_PREFIX.med);
+        await notifications.cancelMedicationSnoozes(() => true);
+      }
       const res = await api.medications.list();
       await notifications.syncMedicationReminders(res.schedule, res.medications);
       return;

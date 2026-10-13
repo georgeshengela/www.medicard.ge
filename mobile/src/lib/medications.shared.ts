@@ -254,6 +254,7 @@ export async function saveDoseLog(
     // The dose is answered now: its „გადატანა“ reminder must not ring before the queue is applied
     // (the id needs no account; nothing scheduled → nothing happens).
     if (!entry.rescheduledTo) cancelMovedDoseReminder(entry);
+    if (entry.status === 'taken' || entry.status === 'skipped') cancelDoseSnooze(entry);
     // Its dose event goes to the server when the queue is applied (there is no session to send it with now).
     return;
   }
@@ -276,6 +277,7 @@ export async function saveDoseLog(
   void import('@/lib/mediNotificationBrain').then(({ requestEngageRefresh }) => requestEngageRefresh());
   // A dose moved with „გადატანა“ and now answered (or undone) needs no moved reminder any more.
   if (previous?.rescheduledTo && !entry.rescheduledTo) cancelMovedDoseReminder(entry);
+  if (entry.status === 'taken' || entry.status === 'skipped') cancelDoseSnooze(entry);
   syncDoseMark(entry, source);
 }
 
@@ -284,6 +286,15 @@ export function cancelMovedDoseReminder(entry: Pick<MedicationDoseLog, 'medicati
   void Promise.all([import('@/lib/expoNotifications'), import('@/lib/notificationPlan')])
     .then(([{ Notifications }, { movedDoseReminderId }]) =>
       Notifications.cancelScheduledNotificationAsync(movedDoseReminderId(entry.medicationId, entry.date, entry.time)),
+    )
+    .catch(() => undefined);
+}
+
+/** An answered dose: a „შემახსენე მოგვიანებით“ copy of its reminder must not ring 20 minutes later. */
+export function cancelDoseSnooze(entry: Pick<MedicationDoseLog, 'medicationId' | 'time'>) {
+  void import('@/lib/notifications')
+    .then(({ cancelMedicationSnoozes }) =>
+      cancelMedicationSnoozes((medicationId, time) => medicationId === entry.medicationId && time === entry.time),
     )
     .catch(() => undefined);
 }

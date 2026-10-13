@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
+import { Alert, Pressable, RefreshControl, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CalendarDays, ChevronRight, FlaskConical, Plus, Search, Tag, type LucideIcon } from 'lucide-react-native';
@@ -24,7 +24,7 @@ import { tx } from '@/i18n/locale';
 import { api, type CatalogProductSummary, type Medication, type ScheduledDose } from '@/lib/api';
 import { isFeatureOn, useFeatureState } from '@/lib/featureFlags';
 import { computeTodayDoses } from '@/lib/home/todayDoses';
-import { findDoseLog, formatTime24h, parseFrequencyTimes, parseMedicationConfig, saveDoseLog, todayYmd } from '@/lib/medications.shared';
+import { daysSummaryKa, findDoseLog, formatTime24h, parseFrequencyTimes, parseMedicationConfig, saveDoseLog, todayYmd } from '@/lib/medications.shared';
 import { useIsDark, useThemeColors } from '@/theme/colors';
 import { HUB, hubText, type HubInk } from '@/theme/hub';
 
@@ -259,9 +259,17 @@ export function MedicationHubScreen() {
   );
 }
 
-async function apiToggle(med: Medication, reload: () => void) {
-  await api.medications.update(med.id, { active: !med.active }).catch(() => undefined);
-  reload();
+/** Pause / resume. A failed save says so and the row's switch goes back (it used to stay flipped offline). */
+async function apiToggle(med: Medication, reload: () => void): Promise<boolean> {
+  try {
+    await api.medications.update(med.id, { active: !med.active });
+    return true;
+  } catch {
+    Alert.alert(ka.common.error, ka.common.networkError);
+    return false;
+  } finally {
+    reload();
+  }
 }
 
 const MED_POPULAR_CHIPS = [
@@ -306,7 +314,7 @@ function MedicationRow({
   imageUrl?: string | null;
   showDivider: boolean;
   onOpen: () => void;
-  onToggle: () => void;
+  onToggle: () => Promise<boolean>;
 }) {
   const c = useThemeColors();
   const dark = useIsDark();
@@ -314,9 +322,13 @@ function MedicationRow({
   const times = parseFrequencyTimes(med.frequency);
   const [on, setOn] = useState(med.active);
   useEffect(() => setOn(med.active), [med.active]);
-  const when = times.length > 1
-    ? `${ka.meds.timesPerDayLabel(times.length)} · ${times.map(formatTime24h).join(', ')}`
-    : ka.meds.reminderSchedule(times[0] ? formatTime24h(times[0]) : '');
+  // Not every day (Mon–Fri, weekends): name the days instead of „ყოველდღე“.
+  const days = cfg.daysOfWeek?.length && cfg.daysOfWeek.length < 7 ? daysSummaryKa(cfg.daysOfWeek) : null;
+  const when = days
+    ? [days, times.map(formatTime24h).join(', ')].filter(Boolean).join(' · ')
+    : times.length > 1
+      ? `${ka.meds.timesPerDayLabel(times.length)} · ${times.map(formatTime24h).join(', ')}`
+      : ka.meds.reminderSchedule(times[0] ? formatTime24h(times[0]) : '');
   const line = when;
   return (
     <View>
@@ -337,7 +349,9 @@ function MedicationRow({
           value={on}
           onValueChange={() => {
             setOn(!on);
-            onToggle();
+            void onToggle().then((saved) => {
+              if (!saved) setOn(med.active);
+            });
           }}
           accessibilityLabel={`${med.medName}: ${on ? ka.meds.activeLabel : ka.meds.pausedLabel}`}
           trackColor={{ true: medsInk(dark), false: c.bg300 }}

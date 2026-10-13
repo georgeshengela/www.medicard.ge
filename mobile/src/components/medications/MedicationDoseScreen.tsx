@@ -28,6 +28,7 @@ import { tx } from '@/i18n/locale';
 import { api } from '@/lib/api';
 import { rescheduledTime } from '@/lib/doseAnswer';
 import { moveDose } from '@/lib/doseReschedule';
+import { computeTodayDoses } from '@/lib/home/todayDoses';
 import { deleteMedication } from '@/lib/medicationDelete';
 import { cancelNotificationsByPrefix } from '@/lib/notifications';
 import {
@@ -61,8 +62,21 @@ export function MedicationDoseScreen() {
   const med = medications.find((item) => item.id === id);
   const cfg = parseMedicationConfig(med?.config);
   const times = parseFrequencyTimes(med?.frequency ?? '');
-  const doseTime = time ?? times[0] ?? '09:00';
   const doseDate = date ?? todayYmd();
+  // Opened from her list („ჩემი წამლები“, no dose time): today's slots decide which dose the buttons
+  // answer — the next open one (at 20:00 „მიღება“ used to mark 08:00 again), else the last one; on a day
+  // without a dose (a Mon–Fri medicine on Saturday) there is nothing to answer.
+  const fromList = !time && !date;
+  const todayView = fromList ? computeTodayDoses(medications, schedule, doseLogs, doseDate) : null;
+  const scheduledToday = (todayView?.progressByMed.get(id)?.total ?? 0) > 0;
+  const nextOpen = todayView?.pending.find((dose) => dose.medicationId === id)?.time;
+  const lastSlot = schedule
+    .filter((row) => row.medicationId === id)
+    .map((row) => row.time)
+    .sort()
+    .at(-1);
+  const doseTime = time ?? nextOpen ?? (scheduledToday ? lastSlot : undefined) ?? times[0] ?? '09:00';
+  const showActions = !fromList || scheduledToday;
   const log = findDoseLog(doseLogs, id, doseDate, doseTime);
   const movedTo = rescheduledTime(log);
 
@@ -144,6 +158,8 @@ export function MedicationDoseScreen() {
   const form = ka.meds.formLabels[cfg.form ?? 'pills'];
   const amount = cfg.amount ?? 1;
   const knownAs = [cfg.genericName, cfg.strength].filter((v) => v && v !== med.medName).join(' · ') || null;
+  // „ყოველდღე“ only when it really is every day; chosen days are named in the „დღეები“ row below.
+  const someDays = !!cfg.daysOfWeek?.length && cfg.daysOfWeek.length < 7;
   const freqLabel =
     cfg.frequencyKind === 'weekly'
       ? ka.meds.frequencyWeekly
@@ -151,7 +167,9 @@ export function MedicationDoseScreen() {
         ? ka.meds.frequencyAsNeeded
         : cfg.frequencyKind === 'one_time'
           ? ka.meds.frequencyOneTime
-          : ka.meds.frequencyDaily;
+          : someDays
+            ? null
+            : ka.meds.frequencyDaily;
   const meal = cfg.mealTiming && cfg.mealTiming !== 'any' ? ka.meds.mealTiming[cfg.mealTiming] : null;
   const daysLabel = cfg.daysOfWeek?.length && cfg.daysOfWeek.length < 7 ? daysSummaryKa(cfg.daysOfWeek) : ka.meds.frequencyDaily;
   const course = cfg.startDate || cfg.endDate ? `${shortDate(cfg.startDate)} – ${shortDate(cfg.endDate)}` : null;
@@ -186,28 +204,30 @@ export function MedicationDoseScreen() {
             ) : null}
           </View>
           <View style={{ flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 8 }}>
-            <MedsChip label={formatTime24h(doseTime)} active />
-            <MedsChip label={freqLabel} />
+            <MedsChip label={showActions ? formatTime24h(doseTime) : times.map(formatTime24h).join(', ')} active />
+            {freqLabel ? <MedsChip label={freqLabel} /> : null}
             {meal ? <MedsChip label={meal} ink="amber" /> : null}
           </View>
           {movedTo ? (
             <MedsChip label={tx(`გადატანილია ${formatTime24h(movedTo)}-ზე`, `Moved to ${formatTime24h(movedTo)}`)} active />
-          ) : log ? (
+          ) : log && showActions ? (
             <MedsStatusPill status={log.status} />
           ) : null}
         </MedsCard>
 
-        <View>
-          <HomeSectionHeading title={ka.meds.doseActionsTitle} />
-          <MedsCard style={{ flexDirection: 'row', gap: 10, paddingVertical: 20 }}>
-            <DoseAction label={ka.meds.actionTake} fill={primary} color="#FFFFFF" icon={Check} onPress={() => void markDose('taken')} />
-            {/* A taken dose is not moved: that would open it again and remind her to take it a second time. */}
-            {log?.status === 'taken' ? null : (
-              <DoseAction label={ka.meds.actionReschedule} fill={hubTint(accent, dark)} color={accent} icon={Clock} onPress={() => setRescheduleOpen(true)} />
-            )}
-            <DoseAction label={ka.meds.actionSkip} fill={hubTint(doseAttentionInk(dark), dark)} color={doseAttentionInk(dark)} icon={X} onPress={() => void markDose('skipped')} />
-          </MedsCard>
-        </View>
+        {showActions ? (
+          <View>
+            <HomeSectionHeading title={ka.meds.doseActionsTitle} />
+            <MedsCard style={{ flexDirection: 'row', gap: 10, paddingVertical: 20 }}>
+              <DoseAction label={ka.meds.actionTake} fill={primary} color="#FFFFFF" icon={Check} onPress={() => void markDose('taken')} />
+              {/* A taken dose is not moved: that would open it again and remind her to take it a second time. */}
+              {log?.status === 'taken' ? null : (
+                <DoseAction label={ka.meds.actionReschedule} fill={hubTint(accent, dark)} color={accent} icon={Clock} onPress={() => setRescheduleOpen(true)} />
+              )}
+              <DoseAction label={ka.meds.actionSkip} fill={hubTint(doseAttentionInk(dark), dark)} color={doseAttentionInk(dark)} icon={X} onPress={() => void markDose('skipped')} />
+            </MedsCard>
+          </View>
+        ) : null}
 
         <View>
           <HomeSectionHeading title={ka.meds.detailsTitle} />
