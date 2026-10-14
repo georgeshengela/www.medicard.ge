@@ -21,14 +21,15 @@ type Props = {
 /**
  * The typed path's footer (owner 2026-10-04: compact; 2026-10-12: in the app's look): the body map one
  * tap away as a square module button, then „გაგრძელება · N“ in the accent. With nothing picked yet the
- * button puts the cursor in the search field.
+ * button puts the cursor in the search field. The row carries no padding of its own: it sits in
+ * `KeyboardFormShell`'s footer, which owns the gutter and the keyboard-aware bottom space.
  */
 export function SymptomComposer({ count, onFocusInput, onContinue, onAnatomy, disabled }: Props) {
   const c = useThemeColors();
   const accent = useToneAccent();
   const label = count ? `${ka.common.continue} · ${count}` : tx('ჩაწერე ან აირჩიე სიმპტომი', 'Type or pick a symptom');
   return (
-    <View style={[s.bar, { backgroundColor: c.bg100 }]}>
+    <View style={s.bar}>
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={ka.symptoms.browseAnatomy}
@@ -53,7 +54,7 @@ export function SymptomComposer({ count, onFocusInput, onContinue, onAnatomy, di
 }
 
 const s = StyleSheet.create({
-  bar: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 20, paddingTop: 10, paddingBottom: 12 },
+  bar: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   body: { width: 52, height: 52, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
   cta: {
     flex: 1,
