@@ -68,10 +68,10 @@ test('an admin-paused module drops its section and nothing else', () => {
   assert.ok(!buildHomeSectionOrder({ includeCycle: true, primaryGoal: 'nutrition', hidden: new Set(['nutrition']) }).includes('nutrition'));
 });
 
-test('standard (rebuilt 2026-10-04 for men first) in its exact order', () => {
+test('standard (rebuilt 2026-10-04 for men first, Home 2.0 on 2026-10-15) in its exact order', () => {
   const order = buildHomeSectionOrder({ includeCycle: true });
   assert.deepEqual(order, [
-    'dashboard', 'hero', 'ask', 'nextDose', 'attention', 'coach', 'cycle', 'week', 'sleep', 'horoscope', 'challenges', 'checkup', 'news', 'nutrition',
+    'dashboard', 'hero', 'ask', 'nextDose', 'attention', 'coach', 'cycle', 'week', 'challenges', 'checkup', 'sleep', 'news', 'nutrition', 'doors',
     'profileNudge', 'customize', 'disclaimer',
   ]);
   assert.deepEqual(buildHomeSectionOrder({ layout: 'standard', includeCycle: true }), order);
@@ -115,13 +115,15 @@ test('cycle sections are for women only, each layout leads with its own hero', (
   assert.ok(buildHomeSectionOrder({ layout: 'weight', includeCycle: true }).includes('cycle'));
 });
 
-test('women: the cycle, what is ahead and tips come before her day; numbers and check-ups after it', () => {
+test('women: the cycle, what is ahead and tips come before her day; her numbers, then check-ups, then doors', () => {
   const order = buildHomeSectionOrder({ layout: 'women', includeCycle: true });
   const at = (id: (typeof order)[number]) => order.indexOf(id);
   assert.ok(at('cycleHero') < at('cycleAhead') && at('cycleAhead') < at('cycleTips') && at('cycleTips') < at('dayPair'));
   assert.equal(at('nutritionLite'), at('dayPair') + 1);
-  // MEDISCAN (womenCare) sits right after her day; her cycle numbers follow.
-  assert.ok(at('nutritionLite') < at('womenCare') && at('womenCare') < at('cycleStats') && at('cycleStats') < at('customize'));
+  // Home 2.0: her cycle numbers right after her day (what she tracks most), MEDISCAN after them, sleep and the
+  // space (only with a fresh post) after that, news above the doors, the doors last before the profile nudge.
+  assert.ok(at('nutritionLite') < at('cycleStats') && at('cycleStats') < at('womenCare') && at('womenCare') < at('sleep'));
+  assert.ok(at('sleep') < at('community') && at('community') < at('news') && at('news') < at('doors') && at('doors') < at('profileNudge'));
   for (const layout of ['standard', 'active', 'weight'] as const) {
     assert.ok(!HOME_LAYOUT_ORDER[layout].includes('womenCare') && !HOME_LAYOUT_ORDER[layout].includes('cycleAhead'), layout);
   }
@@ -146,6 +148,22 @@ test('the one-time offer sits right after the doses due', () => {
   assert.equal(noDoses[noDoses.indexOf('ask') + 1], 'layoutOffer');
 });
 
+test('Home 2.0: doors sit after news and before the profile nudge; MEDIRUN is the third block on active', () => {
+  for (const layout of LAYOUTS) {
+    const order = buildHomeSectionOrder({ layout, includeCycle: true });
+    // News stays above the doors (on standard it still travels with MEDIFOOD, which sits between them).
+    assert.ok(order.indexOf('news') < order.indexOf('doors'), layout);
+    assert.equal(order[order.indexOf('doors') + 1], 'profileNudge', layout);
+    assert.ok(!order.includes('horoscope' as never), layout);
+    // Sleep never sits above a layout's own core (the hero and what is due today).
+    assert.ok(order.indexOf('sleep') > order.indexOf('attention'), layout);
+  }
+  const active = buildHomeSectionOrder({ layout: 'active', includeCycle: false, hidden: new Set(['coach']) });
+  assert.deepEqual(active.slice(0, 7), ['dashboard', 'moveHero', 'ask', 'nextDose', 'attention', 'medirun', 'waterOutdoor']);
+  const standard = buildHomeSectionOrder({ layout: 'standard', includeCycle: false });
+  assert.ok(standard.indexOf('challenges') < standard.indexOf('checkup') && standard.indexOf('checkup') < standard.indexOf('sleep'));
+});
+
 test('at most one spotlight per layout', () => {
   for (const layout of LAYOUTS) {
     const spot = HOME_LAYOUT_SPOTLIGHT[layout];
@@ -157,8 +175,8 @@ test('at most one spotlight per layout', () => {
 });
 
 test('admin control (#/home): hidden sections drop, locked ones stay', () => {
-  const order = buildHomeSectionOrder({ layout: 'standard', remote: { hidden: ['horoscope', 'news', 'dashboard'] } });
-  assert.ok(!order.includes('horoscope') && !order.includes('news'));
+  const order = buildHomeSectionOrder({ layout: 'standard', remote: { hidden: ['doors', 'news', 'dashboard'] } });
+  assert.ok(!order.includes('doors') && !order.includes('news'));
   assert.equal(order[0], 'dashboard');
   assert.equal(order.at(-1), 'disclaimer');
 });
@@ -174,7 +192,7 @@ test('admin control (#/home): the admin order wins, missing ids go back in place
 });
 
 test('admin control (#/home): sanitize keeps what this build knows', () => {
-  const cfg = sanitizeHomeRemote({ v: 4, layouts: { women: { hidden: ['horoscope', 'unknownNew', 'dashboard'] }, bogus: { hidden: ['news'] } } });
-  assert.deepEqual(cfg, { v: 4, layouts: { women: { hidden: ['horoscope'] } } });
+  const cfg = sanitizeHomeRemote({ v: 4, layouts: { women: { hidden: ['doors', 'horoscope', 'unknownNew', 'dashboard'] }, bogus: { hidden: ['news'] } } });
+  assert.deepEqual(cfg, { v: 4, layouts: { women: { hidden: ['doors'] } } });
   assert.deepEqual(sanitizeHomeRemote(null), { v: 0, layouts: {} });
 });

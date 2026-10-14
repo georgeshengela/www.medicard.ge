@@ -12,7 +12,7 @@ import { groupThousands, questSummary, summarizeRunWeek } from '@/lib/home/activ
 import { FRESH } from '@/lib/queryClient';
 import { tx } from '@/i18n/locale';
 import { HUB, hubText } from '@/theme/hub';
-import { moduleInk } from '@/theme/moduleBrand';
+import { moduleInk, type ModuleBrandId } from '@/theme/moduleBrand';
 import { useIsDark, useThemeColors } from '@/theme/colors';
 
 /**
@@ -37,13 +37,18 @@ export function HomeChallenges() {
   );
 }
 
-function Tile({ module, value, caption, accent, a11y, onPress }: {
-  module: 'run' | 'quest';
+/**
+ * The reverse brand tile (also the doors of „მეტი MEDICARD-ში“, HomeModuleDoors): the wordmark, one value and
+ * one caption. `valueSize` "number" is the 22 pt figure („12.4 კმ“); "text" keeps a short phrase on one line.
+ */
+export function HomeModuleTile({ module, value, caption, accent, a11y, onPress, valueSize = 'number' }: {
+  module: ModuleBrandId;
   value: string;
   caption: string;
   accent?: React.ReactNode;
   a11y: string;
   onPress: () => void;
+  valueSize?: 'number' | 'text';
 }) {
   const c = useThemeColors();
   const dark = useIsDark();
@@ -59,7 +64,7 @@ function Tile({ module, value, caption, accent, a11y, onPress }: {
       <ModuleWordmark module={module} size={15} />
       <View style={{ gap: 1 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-          <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75} style={[s.value, { color: c.text100 }]}>{value}</Text>
+          <Text numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75} style={[valueSize === 'text' ? s.valueText : s.value, { color: c.text100 }]}>{value}</Text>
           {accent}
         </View>
         <Text numberOfLines={2} style={[hubText.small, { color: c.text200 }]}>{caption}</Text>
@@ -68,7 +73,7 @@ function Tile({ module, value, caption, accent, a11y, onPress }: {
   );
 }
 
-function RunTile() {
+export function RunTile() {
   const router = useRouter();
   const { walks } = useHomeRunWeek();
   const week = walks ? summarizeRunWeek(walks) : null;
@@ -77,10 +82,10 @@ function RunTile() {
   const caption = week && km > 0
     ? tx(`ამ კვირაში · ${week.activeDays} დღე`, `this week · ${week.activeDays} ${week.activeDays === 1 ? 'day' : 'days'}`)
     : tx('გაანათე ქალაქი — დაიწყე გასეირნება', 'Light up the city — start a walk');
-  return <Tile module="run" value={value} caption={caption} a11y={`MEDIRUN. ${value}. ${caption}`} onPress={() => router.push('/run' as never)} />;
+  return <HomeModuleTile module="run" value={value} caption={caption} a11y={`MEDIRUN. ${value}. ${caption}`} onPress={() => router.push('/run' as never)} />;
 }
 
-function QuestTile() {
+export function QuestTile() {
   const router = useRouter();
   const dark = useIsDark();
   // Same key and freshness as the active Home's MEDIQUEST card: real changes invalidate 'quest'.
@@ -96,7 +101,7 @@ function QuestTile() {
         ? tx(`დღის მისიები · ${groupThousands(summary.coins)} მონეტა`, `daily missions · ${groupThousands(summary.coins)} coins`)
         : tx('Medi Coins', 'Medi Coins');
   return (
-    <Tile
+    <HomeModuleTile
       module="quest"
       value={value}
       caption={caption}
@@ -112,4 +117,5 @@ const s = StyleSheet.create({
   row: { flexDirection: 'row', gap: 10 },
   tile: { flex: 1, minHeight: 112, padding: 14, borderRadius: 20, borderWidth: 1, overflow: 'hidden', gap: 12 },
   value: { fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 22, lineHeight: 28, fontVariant: ['tabular-nums'] },
+  valueText: { fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 16, lineHeight: 22 },
 });

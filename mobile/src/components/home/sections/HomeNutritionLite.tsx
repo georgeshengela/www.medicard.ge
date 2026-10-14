@@ -54,6 +54,34 @@ export function HomeNutritionLite({
   const over = target != null && remaining != null && remaining < 0;
   const progress = target ? Math.min(1, eaten / target) : 0;
 
+  // Home 2.0 (owner 2026-10-15): inside „შენი დღე“ MEDIFOOD's calories and weight appear once she has logged a
+  // meal or set a plan; until then one quiet line — the camera is the door, no empty numbers on her page.
+  const everUsed = Boolean(data && (data.mealCount > 0 || (data.streak?.best ?? 0) > 0 || data.program || data.days?.some((day) => day.recorded)));
+  if (hub && bare && data && !everUsed) {
+    const title = photoOn ? tx('გადაიღე კერძი', 'Snap a meal') : tx('ჩაწერე კვება', 'Log food');
+    const line = photoOn ? tx('Medi კალორიებს დაითვლის', 'Medi counts the calories') : tx('კალორიები და წონა აქ გამოჩნდება', 'Calories and weight will show here');
+    return (
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel={`MEDIFOOD. ${title}. ${line}`}
+        onPress={photoOn ? openCamera : () => router.push('/nutrition/diary' as never)}
+        style={[s.bare, s.quiet, { backgroundColor: c.surface }]}
+      >
+        <View style={[s.quietIcon, { backgroundColor: accent.tint }]}>
+          {photoOn ? <Camera size={18} color={accent.ink} strokeWidth={2} /> : <Salad size={18} color={accent.ink} strokeWidth={2} />}
+        </View>
+        <View style={{ flex: 1, minWidth: 0, gap: 2 }}>
+          <Text numberOfLines={1} style={[hubText.cardTitle, { color: c.text100, fontSize: 14, lineHeight: 20 }]}>{title}</Text>
+          <View style={s.quietLine}>
+            <ModuleWordmark module="food" size={12} />
+            <Text numberOfLines={1} style={[hubText.caption, { color: c.text200, flexShrink: 1 }]}>{` · ${line}`}</Text>
+          </View>
+        </View>
+        <ChevronRight size={17} color={c.text300} />
+      </Pressable>
+    );
+  }
+
   const headline = logged
     ? target
       ? over
@@ -238,4 +266,7 @@ const s = StyleSheet.create({
   track: { height: 6, borderRadius: 3, overflow: 'hidden' },
   fill: { height: 6, borderRadius: 3 },
   camera: { width: 46, height: 46, borderRadius: 23, alignItems: 'center', justifyContent: 'center' },
+  quiet: { borderRadius: HUB.cardRadius, paddingVertical: 10, paddingHorizontal: 14, flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 60 },
+  quietIcon: { width: 36, height: 36, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  quietLine: { flexDirection: 'row', alignItems: 'center' },
 });

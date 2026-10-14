@@ -102,7 +102,9 @@ import { useIsDark } from '@/theme/colors';
 import { tx } from '@/i18n/locale';
 import { HomeSleep } from '@/components/home/sections/HomeSleep';
 import { useSleepHub } from '@/lib/sleep/useSleepData';
-import { HomeHoroscope } from '@/components/home/sections/HomeHoroscope';
+import { HomeModuleDoors } from '@/components/home/sections/HomeModuleDoors';
+import { useSleepSession } from '@/lib/sleep/sleepSession';
+import type { MedicalSourceId } from '@/constants/medicalSources';
 import { useAccountQuery } from '@/hooks/useAccountQuery';
 import { horoscopeApi, type HomeCard as HoroscopeHomeCard } from '@/lib/horoscope/horoscopeApi';
 import { horoscopeVisible } from '@/lib/horoscope/horoscopeAvailability';
@@ -124,6 +126,12 @@ export default function Home() {
   // MEDISLEEP: one subscriber for its card (Home rule), only while the module is on.
   const sleepOn = isFeatureOn('sleep', features);
   const sleepHub = useSleepHub(sleepOn).data;
+  // Home 2.0 (owner 2026-10-15): the MEDISLEEP card only while it has a job — sleep mode running, or a plan in
+  // the evening (from 20:00) and the morning (until 11:00). The rest of the day MEDISLEEP is a door in
+  // „მეტი MEDICARD-ში“ (Home remounts on every tab return, so the hour is read at render).
+  const sleepSession = useSleepSession();
+  const hour = new Date().getHours();
+  const sleepLive = sleepOn && Boolean(sleepHub) && (Boolean(sleepSession) || (Boolean(sleepHub?.plan) && (hour >= 20 || hour < 11)));
   // MEDIHOROSCOPE: one subscriber for its card, only when the binary ships it and the module is on.
   const horoscopeOn = horoscopeVisible() && isFeatureOn('horoscope', features);
   const horoscopeCard = useAccountQuery<HoroscopeHomeCard>({ key: ['horoscope', 'home'], fetch: () => horoscopeApi.home(), staleTime: HORO_FRESH.LONG, enabled: horoscopeOn }).data;
@@ -214,7 +222,7 @@ export default function Home() {
   const hiddenSections = useMemo(() => {
     const hidden = new Set<HomeSectionId>();
     if (!isFeatureOn('cycle', features)) hidden.add('cycle');
-    if (!isFeatureOn('sleep', features)) hidden.add('sleep');
+    if (!sleepLive) hidden.add('sleep');
     if (!isFeatureOn('nutrition', features)) hidden.add('nutrition');
     if (!isFeatureOn('coach', features)) hidden.add('coach');
     if (!isFeatureOn('medi', features)) {
@@ -223,7 +231,6 @@ export default function Home() {
     }
     if (!checkupOn) hidden.add('checkup');
     if (!isFeatureOn('news', features)) hidden.add('news');
-    if (!horoscopeOn || !horoscopeCard?.show) hidden.add('horoscope');
     // Reminders keep arriving while medications are paused; only the Home block goes.
     if (!medsOn) hidden.add('nextDose');
     if (!stepsOn && !waterOn && !showMedsRing) hidden.add('hero');
@@ -246,7 +253,7 @@ export default function Home() {
     if (!isFeatureOn('medirun', features) && !isFeatureOn('quest', features)) hidden.add('challenges');
     if (!isHrefAvailable('/visits', features) && !isHrefAvailable('/lab', features)) hidden.add('attention');
     return hidden;
-  }, [features, checkupOn, medsOn, stepsOn, waterOn, showMedsRing, cycleOn, nutritionOn, layoutsOn, foodInDay, horoscopeOn, horoscopeCard?.show]);
+  }, [features, checkupOn, medsOn, stepsOn, waterOn, showMedsRing, cycleOn, nutritionOn, layoutsOn, foodInDay, sleepLive]);
 
   // A new layout starts at its top, with a short fade (none under reduced motion).
   const scrollRef = useRef<ScrollView>(null);
@@ -404,6 +411,24 @@ export default function Home() {
     <HomeSectionHeading title={title} linkLabel={href ? linkLabel : undefined} onLink={href ? () => open(href) : undefined} />
   );
 
+  // Home 2.0: one picture per page — on the active Home the MEDIRUN spotlight already shows the lit city, so a
+  // MEDIRUN news card does not repeat it there. Other news stays.
+  const runOn = isFeatureOn('medirun', features);
+  const newsItems = useMemo(
+    () => (layout === 'active' && runOn ? news.items.filter((item) => !/medirun/i.test(item.badge ?? '')) : news.items),
+    [layout, runOn, news.items],
+  );
+  // Home 2.0: one „წყაროები“ for the whole page (the per-card links are gone) — every source the sections of
+  // this layout can cite, so the list is complete whatever is on the page today.
+  const pregnant = female && peekCycleView()?.display?.profile.mode === 'PREGNANCY';
+  const sourceIds: MedicalSourceId[] = [
+    ...(female && cycleOn ? (pregnant ? (['pregnancyDueDate', 'pregnancyWeeks'] as const) : (['menstrualCycle', 'heavyMenstrualBleeding'] as const)) : []),
+    ...(stepsOn ? (['dailySteps'] as const) : []),
+    ...(waterOn ? (['waterIntake'] as const) : []),
+    ...(nutritionOn ? (['energyTarget', 'macroRanges'] as const) : []),
+    ...(isHrefAvailable('/health-metrics/weight', features) ? (['bodyWeightPlanner', 'weightPace'] as const) : []),
+  ];
+
   const sections = {
     dashboard: (
       <View style={{ paddingTop: insets.top + 14 }}>
@@ -418,16 +443,7 @@ export default function Home() {
       </View>
     ),
     // Standard „დღეს“ (owner 2026-10-04, built for men first): one answer, the day's dials, one-tap actions.
-    hero: (
-      <>
-        <HomeTodayHero answer={answer} dials={dials} onAddWater={waterOn ? addGlass : undefined} onWeightSaved={() => void nutrition.load()} />
-        {stepsOn || waterOn ? (
-          <View style={{ paddingHorizontal: HUB.gutter }}>
-            <MedicalSourcesLink sourceIds={[...(stepsOn ? ['dailySteps' as const] : []), ...(waterOn ? ['waterIntake' as const] : [])]} />
-          </View>
-        ) : null}
-      </>
-    ),
+    hero: <HomeTodayHero answer={answer} dials={dials} onAddWater={waterOn ? addGlass : undefined} onWeightSaved={() => void nutrition.load()} />,
     ask: (
       <View style={[s.section, { marginTop: 12 }]}>
         <HomeAskMedi onPress={() => open('/assistant')} />
@@ -441,7 +457,18 @@ export default function Home() {
     week: <HomeWeekSteps todayTotal={stepsTotal} goal={stepsGoal} fetchedAt={stepsBundle?.fetchedAt ?? null} />,
     challenges: <HomeChallenges />,
     sleep: <HomeSleep hub={sleepHub} />,
-    horoscope: <HomeHoroscope card={horoscopeCard} />,
+    doors: (
+      <HomeModuleDoors
+        layout={layout}
+        sleepHub={sleepHub}
+        sleepLive={sleepLive}
+        // null = still loading (a static door meanwhile); undefined = module off or not in this binary (no door).
+        horoscope={horoscopeOn ? (horoscopeCard ?? null) : undefined}
+        medicationsCount={meds.medications.length}
+        scanKinds={scanKinds}
+        onAllModules={() => setModulesOpen(true)}
+      />
+    ),
     cycle: (
       <View style={s.section}>
         {heading(tx('ქალის ჯანმრთელობა', "Women's health"), '/cycle', tx('ციკლის ნახვა', 'View cycle'))}
@@ -456,7 +483,7 @@ export default function Home() {
         /> : null}
       </View>
     ),
-    news: <HomeNewsSection items={news.items} onDismiss={news.dismiss} />,
+    news: <HomeNewsSection items={newsItems} onDismiss={news.dismiss} />,
     // MEDIFOOD hub card (calories + weight with „აწონვა“), the same one the women's Home uses.
     nutrition: (
       <HomeNutritionLite
@@ -482,8 +509,14 @@ export default function Home() {
         />
       </View>
     ) : null,
+    // The page's one „წყაროები“ sits here, right above the care note.
     disclaimer: (
       <View style={s.section}>
+        {sourceIds.length ? (
+          <View style={{ marginBottom: 10 }}>
+            <MedicalSourcesLink sourceIds={sourceIds} />
+          </View>
+        ) : null}
         <HomeCareNote />
       </View>
     ),

@@ -21,22 +21,22 @@ export const HOME_LAYOUT_LABELS = {
 
 /** The app's default order per layout (same as HOME_LAYOUT_ORDER in the app). */
 export const HOME_DEFAULT_ORDER = {
-  standard: ['dashboard', 'hero', 'ask', 'nextDose', 'attention', 'coach', 'cycle', 'week', 'sleep', 'horoscope', 'challenges', 'checkup', 'news', 'nutrition', 'profileNudge', 'customize', 'disclaimer'],
-  women: ['dashboard', 'cycleHero', 'ask', 'nextDose', 'attention', 'coach', 'cycleAhead', 'community', 'cycleTips', 'dayPair', 'nutritionLite', 'sleep', 'horoscope', 'womenCare', 'news', 'cycleStats', 'profileNudge', 'customize', 'disclaimer'],
-  active: ['dashboard', 'moveHero', 'ask', 'nextDose', 'attention', 'coach', 'waterOutdoor', 'sleep', 'horoscope', 'medirun', 'quest', 'cycle', 'news', 'nutritionLite', 'profileNudge', 'customize', 'disclaimer'],
-  weight: ['dashboard', 'energy', 'quickLog', 'ask', 'nextDose', 'attention', 'coach', 'weightProgress', 'meals', 'waterSteps', 'sleep', 'horoscope', 'cycle', 'news', 'nutritionTools', 'profileNudge', 'customize', 'disclaimer'],
+  standard: ['dashboard', 'hero', 'ask', 'nextDose', 'attention', 'coach', 'cycle', 'week', 'challenges', 'checkup', 'sleep', 'news', 'nutrition', 'doors', 'profileNudge', 'customize', 'disclaimer'],
+  women: ['dashboard', 'cycleHero', 'ask', 'nextDose', 'attention', 'coach', 'cycleAhead', 'cycleTips', 'dayPair', 'nutritionLite', 'cycleStats', 'womenCare', 'sleep', 'community', 'news', 'doors', 'profileNudge', 'customize', 'disclaimer'],
+  active: ['dashboard', 'moveHero', 'ask', 'nextDose', 'attention', 'coach', 'medirun', 'waterOutdoor', 'quest', 'sleep', 'cycle', 'news', 'nutritionLite', 'doors', 'profileNudge', 'customize', 'disclaimer'],
+  weight: ['dashboard', 'energy', 'quickLog', 'ask', 'nextDose', 'attention', 'coach', 'weightProgress', 'meals', 'waterSteps', 'sleep', 'cycle', 'nutritionTools', 'news', 'doors', 'profileNudge', 'customize', 'disclaimer'],
 };
 
 /**
- * Recommended orders after MEDISLEEP + MEDIHOROSCOPE (analysis 2026-10-13): each layout's own core stays in the
- * first two screens, sleep follows the core, the horoscope (entertainment) moves below the health blocks, news
- * leaves the top. One click in the admin applies it; nothing is applied automatically.
+ * Home 2.0 (owner 2026-10-15): the recommendation became the default — each layout's core in the first two
+ * screens, sleep after the core (the app shows its card only in the evening and the morning), unused modules
+ * as doors at the end, news above the doors. One click in the admin restores it; nothing is applied automatically.
  */
 export const HOME_RECOMMENDED_ORDER = {
-  standard: ['dashboard', 'hero', 'ask', 'nextDose', 'attention', 'coach', 'cycle', 'week', 'challenges', 'checkup', 'sleep', 'nutrition', 'news', 'horoscope', 'profileNudge', 'customize', 'disclaimer'],
-  women: ['dashboard', 'cycleHero', 'ask', 'nextDose', 'attention', 'coach', 'cycleAhead', 'community', 'cycleTips', 'dayPair', 'sleep', 'nutritionLite', 'womenCare', 'horoscope', 'news', 'cycleStats', 'profileNudge', 'customize', 'disclaimer'],
-  active: ['dashboard', 'moveHero', 'ask', 'nextDose', 'attention', 'coach', 'medirun', 'waterOutdoor', 'quest', 'sleep', 'cycle', 'nutritionLite', 'news', 'horoscope', 'profileNudge', 'customize', 'disclaimer'],
-  weight: ['dashboard', 'energy', 'quickLog', 'ask', 'nextDose', 'attention', 'coach', 'weightProgress', 'meals', 'waterSteps', 'sleep', 'cycle', 'nutritionTools', 'news', 'horoscope', 'profileNudge', 'customize', 'disclaimer'],
+  standard: [...HOME_DEFAULT_ORDER.standard],
+  women: [...HOME_DEFAULT_ORDER.women],
+  active: [...HOME_DEFAULT_ORDER.active],
+  weight: [...HOME_DEFAULT_ORDER.weight],
 };
 
 /** Never hidden or moved: the greeting header opens every Home, the disclaimer closes it. */
@@ -55,8 +55,8 @@ export const HOME_SECTIONS = {
   coach: { label: 'ტრენერი', hint: 'მხოლოდ ტრენერთან დაკავშირებულს', size: 'm', module: 'coach', feature: 'coach' },
   cycle: { label: 'ქალის ჯანმრთელობა', hint: 'ციკლის მოკლე ბარათი (მხოლოდ ქალებს)', size: 'm', module: 'cycle', feature: 'cycle' },
   week: { label: 'შენი კვირა', hint: 'ნაბიჯები 7 დღეში', size: 'm', module: null, feature: 'steps' },
-  sleep: { label: 'MEDISLEEP', hint: 'დაწოლის დრო ან წუხანდელი ღამე', size: 's', module: 'sleep', feature: 'sleep' },
-  horoscope: { label: 'MEDIHOROSCOPE', hint: 'დღის ჰოროსკოპი შენი ნიშნისთვის', size: 's', module: 'horo', feature: 'horoscope' },
+  sleep: { label: 'MEDISLEEP', hint: 'საღამოს (20:00-დან) და დილით (11:00-მდე), როცა ძილის გეგმა აქვს; სხვა დროს კარია ბადეში', size: 's', module: 'sleep', feature: 'sleep' },
+  doors: { label: 'მეტი MEDICARD-ში', hint: 'კარები მოდულებზე, რომლებსაც ჯერ არ იყენებს: MEDIHOROSCOPE, MEDISLEEP, MEDIQUEST, MEDIRUN, MEDISCAN, MEDIPILL, MEDIVET — განლაგების მიხედვით, 4-მდე', size: 'm', module: null },
   challenges: { label: 'გამოწვევები', hint: 'MEDIRUN და MEDIQUEST ერთ რიგში', size: 'm', module: 'run' },
   checkup: { label: 'MEDISCAN და სიმპტომები', hint: 'გადაიღე ან ატვირთე, სად გტკივა?', size: 'l', module: 'scan' },
   news: { label: 'სიახლეები', hint: 'ადმინის სიახლეების ბარათები (#/news)', size: 'l', module: null, feature: 'news' },
@@ -66,10 +66,10 @@ export const HOME_SECTIONS = {
   disclaimer: { label: 'MEDICARD ექიმს არ ცვლის', hint: 'სამართლებრივი შენიშვნა, 112', size: 's', module: null },
   cycleHero: { label: 'ციკლი დღეს', hint: 'კვირის ზოლი, ციკლის ტალღა, მოქმედებები', size: 'l', module: 'cycle', feature: 'cycle' },
   cycleAhead: { label: 'წინ რა გელის', hint: 'მენსტრუაცია, ნაყოფიერი დღეები, ოვულაცია', size: 'm', module: 'cycle', feature: 'cycle' },
-  community: { label: 'ქალების სივრცე', hint: 'ბოლო პოსტები', size: 'm', module: 'cycle', feature: 'community' },
+  community: { label: 'ქალების სივრცე', hint: 'მხოლოდ ბოლო 7 დღის პოსტით', size: 'm', module: 'cycle', feature: 'community' },
   cycleTips: { label: 'დღეს შენთვის', hint: 'ფაზის რჩევები', size: 'm', module: 'cycle', feature: 'cycle' },
   dayPair: { label: 'შენი დღე', hint: 'ნაბიჯები და წყალი გვერდიგვერდ', size: 'm', module: null },
-  nutritionLite: { label: 'MEDIFOOD (მოკლედ)', hint: 'კალორიები და წონა ერთ რიგში', size: 's', module: 'food', feature: 'nutrition' },
+  nutritionLite: { label: 'MEDIFOOD (მოკლედ)', hint: 'კალორიები და წონა ერთ რიგში; ქალის გვერდზე „შენი დღის“ შიგნით, პირველ კერძამდე ერთი სტრიქონი', size: 's', module: 'food', feature: 'nutrition' },
   womenCare: { label: 'MEDISCAN და სიმპტომები', hint: 'ქალის გვერდზე', size: 'l', module: 'scan' },
   cycleStats: { label: 'ჩემი ციკლი', hint: 'ციკლის სიგრძე და ციფრები', size: 'm', module: 'cycle', feature: 'cycle' },
   moveHero: { label: 'დღევანდელი მოძრაობა', hint: 'ნაბიჯების რგოლი და 7 დღე', size: 'l', module: null, feature: 'steps' },

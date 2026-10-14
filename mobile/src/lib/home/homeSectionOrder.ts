@@ -1,18 +1,30 @@
 /**
  * Home hub composition — order and presence only, no UI.
  *
+ * Home 2.0 (owner 2026-10-15, after the analysis of all four layouts on real data: 73 % of accounts are on the
+ * women's Home, returns collapse in week two, and half of every page was cards of modules nobody used):
+ *  - three zones — ახლა (hero + Medi), დღეს (what is live: doses, a visit, what is ahead, her day), მეტი
+ *    (doors and news);
+ *  - live or door — a module keeps a card only while the person uses it; otherwise it is one tile in the
+ *    `doors` grid („მეტი MEDICARD-ში“, HomeModuleDoors) at the end. MEDIHOROSCOPE is always a door;
+ *    MEDISLEEP is a card only in the evening and the morning with a plan (home.tsx decides, `hidden`);
+ *  - nothing twice (the standard hero's caption vs its legend, MEDIRUN's art in the spotlight and in a news
+ *    card, empty MEDIFOOD rows) and one „წყაროები“ link at the bottom, above the disclaimer.
+ *
  * Four layouts (owner decision 2026-10-02, `homeLayout.ts`) arrange the same modules:
  *  - standard — rebuilt 2026-10-04 for men first (research: men track numbers, respond to
  *    challenges and rewards, want one-tap logging; in Georgia blood pressure, smoking and heart
  *    disease dominate). Each block has one job and the conditional ones vanish on ordinary days:
  *      greet → „დღეს“ (one answer, dials, one-tap actions) → ask Medi (men's questions) → doses due →
  *      „არ გამოგრჩეს“ (visit ≤ 7 days, lab ≤ 14 days) → trainer → women's health (opt-in) →
- *      „შენი კვირა“ (steps trend) → challenges (MEDIRUN + MEDIQUEST) → MEDISCAN → news → MEDIFOOD → legal
+ *      „შენი კვირა“ (steps trend) → challenges (MEDIRUN + MEDIQUEST) → MEDISCAN → sleep → news → MEDIFOOD →
+ *      doors → legal
  *    The one personal input is the onboarding goal („რისთვის გჭირდება MEDICARD?“): its section
  *    moves up to sit right after "ask Medi". Nothing is hidden because of it.
- *  - women — the cycle first, then what is ahead, today's tips, her day (steps, water, food),
- *    her cycle in numbers and the check-ups women reach for.
- *  - active — today's movement first, then water/outdoors, MEDIRUN, MEDIQUEST.
+ *  - women — the cycle first, then what is ahead, today's tips, her day (steps, water, food once she logs
+ *    it), her cycle in numbers, the check-ups women reach for, sleep (evening / morning), the space (only
+ *    with a fresh post), news, doors.
+ *  - active — today's movement first, then MEDIRUN (its spotlight, third block), water/outdoors, MEDIQUEST.
  *  - weight — the day's budget and logging first, then weight progress and meals.
  *
  * Every layout keeps "ask Medi" and the doses due near the top (a missed dose matters more than
@@ -45,8 +57,8 @@ export type HomeSectionId =
   | 'disclaimer'
   // MEDISLEEP (every layout)
   | 'sleep'
-  // MEDIHOROSCOPE (every layout; hidden until shipped + switched on, and by the person or admin)
-  | 'horoscope'
+  // „მეტი MEDICARD-ში“ — door tiles of the modules the person does not use yet (every layout)
+  | 'doors'
   // standard
   | 'hero'
   | 'cycle'
@@ -89,12 +101,12 @@ export const HOME_LAYOUT_ORDER: Record<HomeLayoutId, readonly HomeSectionId[]> =
     'coach',
     'cycle',
     'week',
-    'sleep',
-    'horoscope',
     'challenges',
     'checkup',
+    'sleep',
     'news',
     'nutrition',
+    'doors',
     'profileNudge',
     'customize',
     'disclaimer',
@@ -107,15 +119,15 @@ export const HOME_LAYOUT_ORDER: Record<HomeLayoutId, readonly HomeSectionId[]> =
     'attention',
     'coach',
     'cycleAhead',
-    'community',
     'cycleTips',
     'dayPair',
     'nutritionLite',
-    'sleep',
-    'horoscope',
-    'womenCare',
-    'news',
     'cycleStats',
+    'womenCare',
+    'sleep',
+    'community',
+    'news',
+    'doors',
     'profileNudge',
     'customize',
     'disclaimer',
@@ -127,14 +139,14 @@ export const HOME_LAYOUT_ORDER: Record<HomeLayoutId, readonly HomeSectionId[]> =
     'nextDose',
     'attention',
     'coach',
-    'waterOutdoor',
-    'sleep',
-    'horoscope',
     'medirun',
+    'waterOutdoor',
     'quest',
+    'sleep',
     'cycle',
     'news',
     'nutritionLite',
+    'doors',
     'profileNudge',
     'customize',
     'disclaimer',
@@ -151,10 +163,10 @@ export const HOME_LAYOUT_ORDER: Record<HomeLayoutId, readonly HomeSectionId[]> =
     'meals',
     'waterSteps',
     'sleep',
-    'horoscope',
     'cycle',
-    'news',
     'nutritionTools',
+    'news',
+    'doors',
     'profileNudge',
     'customize',
     'disclaimer',

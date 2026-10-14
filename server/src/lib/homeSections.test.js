@@ -31,13 +31,13 @@ test('home sections: every id has an admin label; recommended orders are permuta
 test('home sections: sanitize keeps only usable ids and drops defaults', () => {
   const cfg = sanitizeHomeConfig({
     layouts: {
-      standard: { hidden: ['horoscope', 'dashboard', 'cycleHero', 'nope', 'horoscope'] },
+      standard: { hidden: ['doors', 'dashboard', 'cycleHero', 'nope', 'doors'] },
       women: { order: [...HOME_DEFAULT_ORDER.women] },
       bogus: { hidden: ['news'] },
       active: { order: ['medirun', 'dashboard', 'medirun', 'x', ...HOME_DEFAULT_ORDER.active.filter((id) => id !== 'medirun')] },
     },
   });
-  assert.deepEqual(cfg.layouts.standard, { hidden: ['horoscope'] });
+  assert.deepEqual(cfg.layouts.standard, { hidden: ['doors'] });
   assert.equal(cfg.layouts.women, undefined, 'default order is no row');
   assert.equal(cfg.layouts.bogus, undefined);
   const order = cfg.layouts.active.order;
