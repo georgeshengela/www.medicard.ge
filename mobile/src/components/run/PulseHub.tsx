@@ -68,7 +68,8 @@ export default function PulseHub(){
  useFocusEffect(useCallback(()=>{
   let alive=true;
   // A live session stays on the hub (owner 2026-10-08): back from the map lands here; the top badge reopens the map.
-  void hydrateActiveRun().then(()=>{if(!alive)return;const phase=getRunState().phase;if(phase==='ready'||phase==='preparing')router.replace('/run/active' as never);});
+  // A prepare still in flight reopens the map on top of the hub (never a replace: the hub must stay underneath).
+  void hydrateActiveRun().then(()=>{if(!alive)return;const phase=getRunState().phase;if(phase==='ready'||phase==='preparing')router.push('/run/active' as never);});
   void loadRunHistory().then(list=>{if(alive)setHistory(list);});
   void getPulseClient().refresh().catch(e=>{if(alive)setError(e.message);});
   // Read-only: a last known (else one fresh) fix orders missions and box districts by distance. Never asks for permission here.

@@ -8,6 +8,7 @@
 // 31 December = the grand prize, visible only from 1% of Tbilisi.
 // Spots: server/src/data/medirun-spots-tbilisi.json (OpenStreetMap footway nodes inside public parks/squares).
 import {dispatchWaveAlerts} from './waveAlerts.js';
+import {finishStaleSessions} from './service.js';
 import {readFileSync} from 'node:fs';
 import {randomUUID} from 'node:crypto';
 import {prisma} from '../prisma.js';
@@ -130,15 +131,22 @@ export function planDay(date,{campaign=CAMPAIGN,spots=loadSpots().spots,golden=l
  let usedAll=usedBefore(campaign,date,false),usedLit=usedBefore(campaign,date,true),usedFocus=0;
  if(week)for(let d=week.from;d<date;d=dateAdd(d,1)){const o=dayOf(campaign,d);if(!o.off)usedFocus+=o.day.waves.reduce((s,w)=>s+w.focus,0);}
  const taken=new Set();
+ // A pick already used today (the lit rotation and the theme list overlap the city rotation; a theme week may have
+ // no spots at all) is replaced from the middle of the same rotation — far from yesterday's and tomorrow's picks —
+ // so every wave has its promised rotation + focus boxes (audit 2026-10-15: 140 of 264 waves came out short).
+ const refill=(order,from,want)=>{const extra=[];for(let k=0;extra.length<want&&k<order.length;k++){const s=order[(from+Math.floor(order.length/2)+k)%order.length];if(!taken.has(s.id)&&!extra.includes(s))extra.push(s);}return extra;};
  for(const wave of off?[]:day.waves){
   const start=stamp(date,wave.time,campaign.utcOffset),end=new Date(start.getTime()+wave.hours*3600_000);
-  const rot=wave.litOnly?pick(rotLit,usedLit,wave.rotation):pick(rotAll,usedAll,wave.rotation);
+  const order=wave.litOnly?rotLit:rotAll,from=wave.litOnly?usedLit:usedAll;
+  const rot=pick(order,from,wave.rotation);
   if(wave.litOnly)usedLit+=wave.rotation;else usedAll+=wave.rotation;
   const focusPool=wave.litOnly?focusOrder.filter(s=>lit.includes(s)):focusOrder;
   const foc=pick(focusPool,usedFocus,wave.focus);usedFocus+=wave.focus;
+  const picks=[];
+  for(const spot of [...rot,...foc]){if(taken.has(spot.id)||picks.includes(spot))continue;picks.push(spot);taken.add(spot.id);}
   let n=0;
-  for(const spot of [...rot,...foc]){
-   if(taken.has(spot.id))continue;taken.add(spot.id);n++;
+  for(const spot of [...picks,...refill(order,from,wave.rotation+wave.focus-picks.length)]){
+   taken.add(spot.id);n++;
    const [lo,hi]=day.stock;
    out.push(coinGift(campaign,{id:`glow-${date}-${wave.id}-${String(n).padStart(2,'0')}`,spot,start,end,coins:weighted(day.coins,r),stock:lo+Math.floor(r()*(hi-lo+1)),pulseRadius:day.pulseRadius,revealRadius:day.revealRadius,kind:wave.id}));
   }
@@ -152,7 +160,14 @@ export function planDay(date,{campaign=CAMPAIGN,spots=loadSpots().spots,golden=l
   const stock=Math.ceil(sat.points*sat.stock/points.length);
   points.forEach((spot,i)=>out.push(coinGift(campaign,{id:`glow-${date}-sat-${String(i+1).padStart(2,'0')}`,spot,start,end,coins:weighted(sat.coins,r),stock,pulseRadius:sat.pulseRadius,revealRadius:sat.revealRadius,kind:'saturday'})));
   if(sat.lantern&&date>=sat.lantern.from){
-   const far=shuffle(near.slice(sat.points),`${seed}:${date}:lantern`).slice(0,sat.lantern.points);
+   // Lanterns ring the rain: the nearest paths beyond the rain points — within twice the radius when there are
+   // enough, else the nearest anyway — so a park with few paths (Lisi: 7 within 700 m) still gets its promised
+   // lanterns (audit 2026-10-15: Lisi Saturdays had none, Vake one of two).
+   const rained=new Set(points.map(s=>s.id));
+   const ring=spots.filter(s=>!rained.has(s.id)).map(s=>({s,d:metersBetween(anchor,at(s))})).sort((a,b)=>a.d-b.d);
+   const inner=ring.filter(x=>x.d<=sat.radiusM*2);
+   const candidates=(inner.length>=sat.lantern.points?inner:ring).slice(0,Math.max(sat.lantern.points*3,sat.lantern.points)).map(x=>x.s);
+   const far=shuffle(candidates,`${seed}:${date}:lantern`).slice(0,sat.lantern.points);
    far.forEach((spot,i)=>out.push(coinGift(campaign,{id:`glow-${date}-lan-${String(i+1).padStart(2,'0')}`,spot,start,end,coins:sat.lantern.coins,stock:sat.lantern.stock,pulseRadius:sat.pulseRadius,revealRadius:sat.revealRadius,kind:'lantern',minPercent:sat.lantern.minPercent})));
   }
  }
@@ -216,10 +231,14 @@ export async function runAutopilot({db=prisma,now=Date.now(),force=false}={}){
  return {results,budget,prizes};
 }
 
-let timer=null;
+let timer=null,ticking=false;
 export function startMedirunAutopilot({intervalMs=10*60_000}={}){
  if(timer||process.env.NODE_ENV==='test')return timer;
  const tick=async()=>{
+  // One tick at a time on this instance: a slow city harvest (three Overpass mirrors, minutes each) must not let the
+  // next interval plan the same boxes again (duplicate ids, a second Monday prize notice).
+  if(ticking)return;
+  ticking=true;
   try{
    if(!(await acquireJobLease('medirun-autopilot',intervalMs+5*60_000)))return;
    const out=await runAutopilot();
@@ -228,7 +247,11 @@ export function startMedirunAutopilot({intervalMs=10*60_000}={}){
    // Stage 3 (owner 2026-10-09): „ყუთი შენთან ახლოსაა“ for waves that just started — same lease, one sender.
    const alerts=await dispatchWaveAlerts();
    if(alerts.sent)console.log(`[medirun-autopilot] wave alerts sent ${alerts.sent}`);
+   // Sessions no phone will ever finish (dead battery, deleted app, dropped outbox) end here, so they count.
+   const stale=await finishStaleSessions();
+   if(stale.finished.length)console.log(`[medirun-autopilot] finished ${stale.finished.length} abandoned sessions`,stale.finished.map(s=>`${s.id.slice(0,8)}:${s.meters}m`).join(' '));
   }catch(error){console.warn('[medirun-autopilot] run failed',error?.message);}
+  finally{ticking=false;}
  };
  timer=setInterval(tick,intervalMs);timer.unref?.();
  setTimeout(tick,30_000).unref?.();

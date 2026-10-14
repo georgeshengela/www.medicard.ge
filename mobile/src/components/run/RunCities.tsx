@@ -147,7 +147,7 @@ export default function RunCities(){
     </View>)}</Card>
    </Section>:null}
 
-   {!data.lit.length&&!data.visited.length?<Card style={{gap:10}}><Copy bold size={15}>{tx('აანთე პირველი ქალაქი','Light up your first city')}</Copy><Copy muted size={12}>{tx('დაიწყე გასეირნება MEDIRUN-ში — ყოველი ახალი ქუჩა შენს ქალაქს ანათებს და ის აქ გამოჩნდება.','Start a walk in MEDIRUN — every new street lights up your city and it appears here.')}</Copy><Action label={tx('გასეირნების დაწყება','Start a walk')} icon={Footprints} onPress={()=>router.replace('/run' as never)}/></Card>:null}
+   {!data.lit.length&&!data.visited.length?<Card style={{gap:10}}><Copy bold size={15}>{tx('აანთე პირველი ქალაქი','Light up your first city')}</Copy><Copy muted size={12}>{tx('დაიწყე გასეირნება MEDIRUN-ში — ყოველი ახალი ქუჩა შენს ქალაქს ანათებს და ის აქ გამოჩნდება.','Start a walk in MEDIRUN — every new street lights up your city and it appears here.')}</Copy><Action label={tx('გასეირნების დაწყება','Start a walk')} icon={Footprints} onPress={()=>router.dismissTo('/run' as never)}/></Card>:null}
    {data.pending?<Copy muted size={11} style={{textAlign:'center',color:teal}}>{tx('ზოგიერთი ქალაქი ჯერ იტვირთება — მალე გამოჩნდება.','Some cities are still loading — they’ll appear shortly.')}</Copy>:null}
   </>:null}
  </ScrollView>;

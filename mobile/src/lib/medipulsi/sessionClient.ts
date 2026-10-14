@@ -8,6 +8,11 @@ import {pruneSent,uploadWaitMs} from './uploadPace';
 import type {Snapshot,PulseFix,GiftSignal,PulseSettings,Claim} from './types';
 
 type Operation={path:string;body?:unknown};
+/** Disk writes while fixes stream in are at least this far apart. */
+export const WRITE_GAP_MS=2000;
+/** Upload back-off: 5 s → 5 min after repeated failures — but while a walk records, at most a minute, so the gift
+ * pulse (which needs the uploads) is back within a minute of the network, not five. */
+export const RETRY_CAP_MS={running:60_000,idle:300_000};
 export type SessionAdapter={request:<T>(path:string,method?:string,body?:unknown)=>Promise<T>;read:()=>Promise<string|null>;write:(value:string)=>Promise<void>;archive:(value:string)=>Promise<void>;id:()=>string};
 export type PulseView={snapshot:Snapshot|null;journey:ReturnType<typeof createJourney>;book:ReturnType<typeof emptyBook>;signal:GiftSignal;loading:boolean;running:boolean;pending:number;message:string;conflict:boolean};
 
@@ -19,7 +24,6 @@ export class PulseSessionClient {
  private seq=0;
  private task:Promise<void>|null=null;
  private opening:Promise<void>|null=null;
- private writes:Promise<void>=Promise.resolve();
  private disposed=false;
  /** Background uploads back off after a failure (5 s → 5 min) instead of retrying every tick forever. */
  private failures=0;
@@ -33,11 +37,29 @@ export class PulseSessionClient {
  getSnapshot=()=>this.view;
  subscribe=(listener:()=>void)=>{this.listeners.add(listener);return()=>{this.listeners.delete(listener);};};
  private set(patch:Partial<PulseView>){if(this.disposed)return;this.view={...this.view,...patch,pending:this.queue.length+Number(this.fixes.length>0)};this.listeners.forEach(fn=>fn());}
- private persist(){
-  const value=JSON.stringify({v:1,queue:this.queue,fixes:this.fixes,sessionId:this.sessionId,seq:this.seq,snapshot:this.view.snapshot,journey:this.view.journey,book:this.view.book});
-  this.writes=this.writes.catch(()=>{}).then(()=>this.adapter.write(value));
-  void this.writes.catch(()=>this.set({message:tx('მოწყობილობაზე შენახვა ვერ მოხერხდა. აღადგინე კავშირი.','Couldn’t save on this device. Reconnect and try again.')}));
-  return this.writes;
+ /** Dirty state waiting for the disk; one write at a time, the latest state wins (audit 2026-10-15: every GPS fix
+  * serialised the whole journey — all walks ever — and queued its own write, a second apart, for the whole walk). */
+ private dirty=false;
+ private writeTimer:ReturnType<typeof setTimeout>|null=null;
+ /** `soon`: a GPS fix — one write per couple of seconds is plenty; everything else (seal, pause, finish, claim) at once. */
+ private persist(soon=false):Promise<void>{
+  this.dirty=true;
+  if(this.writing)return this.writing;
+  if(soon){if(!this.writeTimer)this.writeTimer=setTimeout(()=>{this.writeTimer=null;void this.drain();},WRITE_GAP_MS);return Promise.resolve();}
+  if(this.writeTimer){clearTimeout(this.writeTimer);this.writeTimer=null;}
+  return this.drain();
+ }
+ private writing:Promise<void>|null=null;
+ private drain():Promise<void>{
+  if(this.writing)return this.writing;
+  this.writing=(async()=>{
+   while(this.dirty&&!this.disposed){
+    this.dirty=false;
+    const value=JSON.stringify({v:1,queue:this.queue,fixes:this.fixes,sessionId:this.sessionId,seq:this.seq,snapshot:this.view.snapshot,journey:this.view.journey,book:this.view.book});
+    try{await this.adapter.write(value);}catch{this.set({message:tx('მოწყობილობაზე შენახვა ვერ მოხერხდა. აღადგინე კავშირი.','Couldn’t save on this device. Reconnect and try again.')});}
+   }
+  })().finally(()=>{this.writing=null;});
+  return this.writing;
  }
  private apply(snapshot:Snapshot,replaceJourney=false){this.set({snapshot,...(replaceJourney?{journey:pauseJourney(snapshot.state.journey,'reload'),book:snapshot.state.book}:{}),loading:false});}
  async init(){
@@ -97,7 +119,7 @@ export class PulseSessionClient {
       this.queue=[];this.fixes=[];this.sessionId=null;this.seq=0;
       this.set({running:false,signal:EMPTY_SIGNAL,conflict:true,journey:pauseJourney(this.view.journey),message:tx('სესია სხვა მოწყობილობაზე შეიცვალა. ჩანაწერი ადგილობრივად დარჩა. გააგრძელე ერთი მოწყობილობიდან.','The session changed on another device. Your record stayed on this phone. Continue from one device.')});await this.persist();return;
      }
-     this.failures+=1;this.retryAt=Date.now()+Math.min(300_000,5_000*2**Math.min(this.failures-1,6));
+     this.failures+=1;this.retryAt=Date.now()+Math.min(this.view.running?RETRY_CAP_MS.running:RETRY_CAP_MS.idle,5_000*2**Math.min(this.failures-1,6));
      this.set({message:status===400?tx('GPS ჩანაწერის გაგზავნა ვერ მოხერხდა · ასლი ტელეფონში შენარჩუნებულია','Couldn’t send the GPS record · a copy is kept on your phone'):tx('კავშირი შეწყდა · ჩანაწერი გაგზავნას ელოდება','Connection lost · record waiting to be sent')});await this.persist();throw error;
     }
    }
@@ -105,11 +127,22 @@ export class PulseSessionClient {
    if(!this.view.conflict)this.set({message:tx('ანგარიშში შენახულია','Saved to your account')});
   })().finally(()=>{this.task=null;});return this.task;
  }
- async begin(){
+ /**
+  * `fresh`: a new walk from the hub. A session still open on the server (a dead phone, a dropped outbox, the other
+  * device) is finished first, so it reaches the history with its own metres — the new walk never starts at 3.5 km
+  * (audit 2026-10-15: 21 players carried such a session for days). A resume keeps continuing the open one.
+  */
+ async begin({fresh=false}:{fresh?:boolean}={}){
   await this.init();this.seal();await this.flush();
   const latest=await this.adapter.request<Snapshot>('/bootstrap');
   if(!latest.config.enabled)throw new Error(latest.config.message||tx('თამაში დროებით შეჩერებულია.','The game is paused for now.'));
-  const snapshot=latest.session?await this.adapter.request<Snapshot>(`/sessions/${latest.session.id}/resume`,'POST'):await this.adapter.request<Snapshot>('/sessions','POST',{id:this.adapter.id()});
+  let session=latest.session;
+  if(fresh&&session){
+   try{await this.adapter.request(`/sessions/${session.id}/finish`,'POST');}
+   catch(error){if(![404,409].includes((error as {status?:number}).status||0))throw error;}
+   session=null;
+  }
+  const snapshot=session?await this.adapter.request<Snapshot>(`/sessions/${session.id}/resume`,'POST'):await this.adapter.request<Snapshot>('/sessions','POST',{id:this.adapter.id()});
   if(this.disposed)throw new Error(tx('ანგარიში შეიცვალა.','The account changed.'));
   this.sessionId=snapshot.session!.id;this.seq=snapshot.session!.seq;this.apply(snapshot,true);this.set({running:true,conflict:false,message:tx('GPS მზადაა · იარე შენი მიმართულებით','GPS ready · walk your own way')});await this.persist();return this.view.journey;
  }
@@ -123,7 +156,7 @@ export class PulseSessionClient {
   const journey=fix.mocked?{...before,rejected:before.rejected+1,status:'invalid',speed:0}:acceptFix(before,fix,.72,fix.timestamp);
   const mission=this.view.snapshot?.missions.find(m=>m.id===this.view.book.selected)||null;
   const book=advanceMission(this.view.book,before,journey,fix.timestamp,mission);
-  this.set({journey,book,message:tx('გზა ინახება…','Saving your path…')});void this.persist();
+  this.set({journey,book,message:tx('გზა ინახება…','Saving your path…')});void this.persist(true);
   if(this.fixes.length>=5){this.seal();void this.backgroundFlush().catch(()=>{});}return journey;
  }
  stop(finish=false){
@@ -138,6 +171,6 @@ export class PulseSessionClient {
  async selectMission(id:string|null){this.seal();await this.flush();const snapshot=await this.adapter.request<Snapshot>('/mission','PUT',{id});this.apply(snapshot);this.set({book:snapshot.state.book});await this.persist();}
  async settings(value:PulseSettings|{handle:string;leaderboardOptIn:boolean}){const snapshot=await this.adapter.request<Snapshot>('/settings','PATCH',value);this.apply(snapshot);await this.persist();}
  async claim(id:string){this.seal();await this.flush();const claim=await this.adapter.request<Claim>(`/gifts/${id}/claim`,'POST');if(this.view.snapshot)this.apply({...this.view.snapshot,claims:[claim,...this.view.snapshot.claims.filter(c=>c.id!==claim.id)]});this.set({signal:EMPTY_SIGNAL});await this.persist();return claim;}
- dispose(){this.disposed=true;this.listeners.clear();}
+ dispose(){this.disposed=true;this.listeners.clear();if(this.writeTimer){clearTimeout(this.writeTimer);this.writeTimer=null;}}
 }
 

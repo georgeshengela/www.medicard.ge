@@ -26,8 +26,12 @@ async function main() {
   const { spots, golden } = ap.loadSpots();
   const spotById = (id) => golden?.[id] ? { id, ...golden[id] } : spots.find((s) => s.id === id);
 
+  // The live rules (admin „MEDIRUN ყუთები“ may have saved its own) — the same plan the autopilot places.
+  const { getCampaign } = await import('../src/lib/medipulsi/campaignStore.js');
+  const campaign = command === 'plan' || command === 'apply' ? await getCampaign().catch(() => ap.CAMPAIGN) : ap.CAMPAIGN;
+
   if (command === 'plan') {
-    const plan = ap.planDay(date);
+    const plan = ap.planDay(date, { campaign });
     if (!plan.length) { console.log(`${date}: no boxes (outside ${ap.CAMPAIGN.start}…${ap.CAMPAIGN.end} or no spots).`); return 0; }
     const coins = plan.reduce((s, p) => s + p.rule.coins * p.gift.stock, 0);
     console.log(`${date} — ${plan.length} boxes, up to ${plan.reduce((s, p) => s + p.gift.stock, 0)} openings, up to ${coins} coins\n`);
@@ -50,7 +54,7 @@ async function main() {
     if (command === 'apply') {
       const days = Math.max(1, Math.min(31, Number(flag('days', 1)) || 1));
       for (let i = 0; i < days; i++) {
-        const d = ap.dateAdd(date, i), r = await ap.applyDay(d, { db: prisma });
+        const d = ap.dateAdd(date, i), r = await ap.applyDay(d, { db: prisma, plan: ap.planDay(d, { campaign }) });
         console.log(`${d}: ${r.created} new, ${r.existing} already there (${r.total} planned)`);
       }
       return 0;

@@ -30,7 +30,8 @@ export async function resolveMapLocation(input,{fetchImpl=fetch}={}){
    const found=parseMapLocation(next);
    if(found)return found;
    url=new URL(next,url);
-   if(url.protocol!=='https:'||!/(^|\.)google\.[a-z.]+$|^maps\.app\.goo\.gl$|^goo\.gl$/.test(url.hostname))return null;
+   // Google's own hosts only (google.com, google.ge, google.co.uk, google.com.tr …), never google.evil.com.
+   if(url.protocol!=='https:'||!/(^|\.)google\.(com|[a-z]{2}|co\.[a-z]{2}|com\.[a-z]{2})$|^maps\.app\.goo\.gl$|^goo\.gl$/.test(url.hostname))return null;
    continue;
   }
   const body=await res.text().catch(()=>'');

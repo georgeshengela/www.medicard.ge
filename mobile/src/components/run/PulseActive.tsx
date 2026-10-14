@@ -41,6 +41,8 @@ import {Meteocon,meteoconSlugFor} from '@/components/weather/Meteocon';
 
 type Notice={text:string;tone:'info'|'success'|'warn';sticky?:boolean};
 const KEEP_AWAKE_TAG='medirun-session';
+/** The lit history goes to the map this often while a walk records (every fix otherwise re-sends every walk ever). */
+const PAINT_EVERY_MS=4000;
 
 export default function PulseActive(){
  const router=useRouter(),c=useThemeColors(),dark=useIsDark(),insets=useSafeAreaInsets(),{healthProfile,user}=useAuth(),run=useRunSession(),pulse=usePulse(),derived=runDerived(run);
@@ -116,7 +118,18 @@ export default function PulseActive(){
  useEffect(()=>{if(live)map.current?.send({type:'layout',top:insets.top+8+44+8+(pills?42:0),bottom:Math.max(12,insets.bottom)+dockHeight+12});},[live,mapEpoch,insets.top,insets.bottom,dockHeight,pills]);
  useEffect(()=>{if(live&&run.current)map.current?.send({type:'fix',lat:run.current.lat,lng:run.current.lng,heading:run.headingDeg,speed:running?run.speedKmh/3.6:0});},[live,mapEpoch,run.current,run.headingDeg]);
  const paint=useMemo(()=>[...(pulse.journey.trail||[]),...coverageFeatures(pulse.journey).features.map(f=>f.geometry.coordinates)], [pulse.journey.trail,pulse.journey.covered]);
- useEffect(()=>{if(live)map.current?.send({type:'paint',lines:paint});},[live,mapEpoch,paint]);
+ // Every walk ever lights the city (`paint`). While recording it changes with every GPS fix, so it goes to the WebView
+ // at most every PAINT_EVERY_MS (the engine re-walks every line each time); a fresh map, a pause or a finish get it at once.
+ const paintSentAt=useRef(0),paintEpoch=useRef(mapEpoch);
+ useEffect(()=>{
+  if(!live)return;
+  if(paintEpoch.current!==mapEpoch){paintEpoch.current=mapEpoch;paintSentAt.current=0;}
+  const send=()=>{paintSentAt.current=Date.now();map.current?.send({type:'paint',lines:paint});};
+  const wait=running?PAINT_EVERY_MS-(Date.now()-paintSentAt.current):0;
+  if(wait<=0){send();return;}
+  const t=setTimeout(send,wait);
+  return()=>clearTimeout(t);
+ },[live,mapEpoch,paint,running]);
  useEffect(()=>{if(live)map.current?.send({type:'mission',center:mission?.center||null,radius:mission?.radius});},[live,mapEpoch,mission]);
  // The walking way to the zone once the runner's position is known (a straight line when Directions fails).
  const needWay=Boolean(hunt&&!hunt.route&&huntFrom);
@@ -164,7 +177,10 @@ export default function PulseActive(){
  // The place's boxes ran out of time: the zone goes, the walk goes on.
  useEffect(()=>{
   if(!hunt?.endsAt)return;
-  const t=setTimeout(()=>{clearHunt();setNotice({text:tx('ამ ადგილის ყუთების დრო ამოიწურა — სიარული გრძელდება.','This place’s boxes ran out of time — your walk goes on.'),tone:'info'});},Math.max(0,Date.parse(hunt.endsAt)-Date.now()));
+  const at=Date.parse(hunt.endsAt);
+  if(!Number.isFinite(at))return;
+  // setTimeout overflows past ~24.8 days and fires at once: the delay is capped and the time re-checked when it fires.
+  const t=setTimeout(()=>{if(Date.now()<at)return;clearHunt();setNotice({text:tx('ამ ადგილის ყუთების დრო ამოიწურა — სიარული გრძელდება.','This place’s boxes ran out of time — your walk goes on.'),tone:'info'});},Math.min(2_000_000_000,Math.max(0,at-Date.now())));
   return()=>clearTimeout(t);
  },[hunt?.id]);// eslint-disable-line react-hooks/exhaustive-deps
  useEffect(()=>{if(live)map.current?.send({type:'gift',position:running&&pulse.signal.revealed?pulse.signal.gift?.position||null:null});},[live,mapEpoch,running,pulse.signal.revealed,pulse.signal.gift]);

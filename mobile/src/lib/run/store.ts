@@ -144,6 +144,8 @@ const initial: RunState = {
 
 /** A system pause continues on its own when the app is back within this window; after it the person decides. */
 const AUTO_RESUME_WINDOW_MS = 30 * 60_000;
+/** A saved live run older than this is finished on restore instead of offered as „Continue“ (audit 2026-10-15). */
+export const ACTIVE_RUN_MAX_AGE_MS = 24 * 3600_000;
 /** This long in a vehicle (driving, not walking) switches to drive mode: coarser GPS, the screen may sleep. */
 const DRIVE_MODE_AFTER_MS = 3 * 60_000;
 /** Seconds at a human pace inside vehicle mode that end drive mode (precise GPS before counting resumes). */
@@ -539,7 +541,8 @@ export async function startRun(): Promise<void> {
   const owner=generation;
   const client=getPulseClient();
   try {
-    const verified=await client.begin();
+    // A new walk (`ready`) never continues a session left open on the server; a resume (`paused`) does.
+    const verified=await client.begin({fresh:state.phase==='ready'});
     if(owner!==generation){client.stop();return;}
     // Locked or left while the session was opening (Start, then straight into the pocket): GPS cannot start from
     // the background, so the session waits as a system pause that continues on its own on return — never dropped.
@@ -715,6 +718,14 @@ export function hydrateActiveRun(): Promise<boolean> {
       heightCm: snap.heightCm,
     };
     listeners.forEach((fn) => fn());
+
+    // Left open for a day or more (phone died, app swiped away, forgotten): a walk to keep, not one to continue.
+    // It is finished with its own numbers — into the history when it was a real walk — and the hub starts clean.
+    if (now - (Number(snap.savedAt) || snap.startedAt) > ACTIVE_RUN_MAX_AGE_MS) {
+      await finishRun();
+      cancelRun();
+      return false;
+    }
 
     ensureAppStatePersist();
     startTimer();

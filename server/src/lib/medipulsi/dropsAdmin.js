@@ -48,9 +48,11 @@ export async function dayBoxes(date,{db=prisma,now=Date.now()}={}){
 export async function dayNumbers(from,to,{db=prisma}={}){
  const since=dayStart(from),until=new Date(+dayStart(to)+DAY);
  const [boxes,claims,coins]=await Promise.all([
-  db.$queryRaw`SELECT to_char(("startsAt" AT TIME ZONE 'Asia/Tbilisi'),'YYYY-MM-DD') AS d, count(*)::int AS boxes, coalesce(sum("stock"),0)::int AS capacity, coalesce(sum("allocated"),0)::int AS taken FROM "MedipulsiGift" WHERE "archived"=false AND "id" NOT LIKE 'starter-%' AND "startsAt">=${since} AND "startsAt"<${until} GROUP BY 1`,
-  db.$queryRaw`SELECT to_char(("createdAt" AT TIME ZONE 'Asia/Tbilisi'),'YYYY-MM-DD') AS d, count(*)::int AS opened, count(DISTINCT "userId")::int AS players FROM "MedipulsiClaim" WHERE "createdAt">=${since} AND "createdAt"<${until} GROUP BY 1`,
-  db.$queryRaw`SELECT to_char(("createdAt" AT TIME ZONE 'Asia/Tbilisi'),'YYYY-MM-DD') AS d, coalesce(sum("amount"),0)::int AS coins FROM "RewardLedger" WHERE "sourceType"='MEDIRUN' AND "currency"='COIN' AND "createdAt">=${since} AND "createdAt"<${until} GROUP BY 1`,
+  // The columns are naive UTC timestamps: say so before asking for Tbilisi wall time, or a box at 00:10 Tbilisi
+  // (20:10 UTC) lands on the day before (audit 2026-10-15 — Monday prizes counted as Sunday).
+  db.$queryRaw`SELECT to_char((("startsAt" AT TIME ZONE 'UTC') AT TIME ZONE 'Asia/Tbilisi'),'YYYY-MM-DD') AS d, count(*)::int AS boxes, coalesce(sum("stock"),0)::int AS capacity, coalesce(sum("allocated"),0)::int AS taken FROM "MedipulsiGift" WHERE "archived"=false AND "id" NOT LIKE 'starter-%' AND "startsAt">=${since} AND "startsAt"<${until} GROUP BY 1`,
+  db.$queryRaw`SELECT to_char((("createdAt" AT TIME ZONE 'UTC') AT TIME ZONE 'Asia/Tbilisi'),'YYYY-MM-DD') AS d, count(*)::int AS opened, count(DISTINCT "userId")::int AS players FROM "MedipulsiClaim" WHERE "createdAt">=${since} AND "createdAt"<${until} GROUP BY 1`,
+  db.$queryRaw`SELECT to_char((("createdAt" AT TIME ZONE 'UTC') AT TIME ZONE 'Asia/Tbilisi'),'YYYY-MM-DD') AS d, coalesce(sum("amount"),0)::int AS coins FROM "RewardLedger" WHERE "sourceType"='MEDIRUN' AND "currency"='COIN' AND "createdAt">=${since} AND "createdAt"<${until} GROUP BY 1`,
  ]);
  const by=(rows,key)=>new Map(rows.map(r=>[r.d,r[key]]));
  const b=new Map(boxes.map(r=>[r.d,r])),o=by(claims,'opened'),p=by(claims,'players'),c=by(coins,'coins');

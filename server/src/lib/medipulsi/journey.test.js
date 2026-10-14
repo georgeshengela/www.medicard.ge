@@ -5,7 +5,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {acceptFix,createJourney,lastSeen} from './core/journey.js';
 import {pauseJourney,resetSession} from './core/session.js';
-import {fresh} from './service.js';
+import {fresh,isStaleSession,STALE_SESSION_MS} from './service.js';
 
 const T0=Date.parse('2026-10-13T10:00:00+04:00');
 const BOX=[44.7930,41.6970];
@@ -70,4 +70,18 @@ test('a new walk never inherits the last walk’s vehicle',()=>{
  for(let i=0;i<=10;i++){const at=start+i*2000;k=acceptFix(k,fix(east(from,i*3),at),.72,at);}
  assert.equal(k.vehicle??null,null);
  assert.ok(k.meters>=25,`counted ${k.meters} m`);
+});
+
+test('an open session nobody touched for 36 h is abandoned; a live or finished one is not',()=>{
+ const now=T0;
+ const open=(ago,phase='ACTIVE')=>({phase,startedAt:new Date(now-ago-3600_000),updatedAt:new Date(now-ago)});
+ assert.equal(isStaleSession(open(37*3600_000),now),true);
+ assert.equal(isStaleSession(open(37*3600_000,'PAUSED'),now),true);
+ assert.equal(isStaleSession(open(35*3600_000),now),false);
+ assert.equal(isStaleSession(open(2*3600_000),now),false);
+ assert.equal(isStaleSession(open(100*3600_000,'FINISHED'),now),false);
+ assert.equal(isStaleSession(null,now),false);
+ // Without an updatedAt the start counts.
+ assert.equal(isStaleSession({phase:'ACTIVE',startedAt:new Date(now-40*3600_000)},now),true);
+ assert.equal(STALE_SESSION_MS>24*3600_000,true,'longer than the 24 h offline upload window');
 });

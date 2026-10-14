@@ -16,8 +16,10 @@ const int=(min,max)=>z.number().int().min(min).max(max);
 const words=(max=300)=>z.object({ka:z.string().trim().min(1).max(max),en:z.string().trim().min(1).max(max)});
 const coins=z.array(z.object({amount:int(1,10000),weight:z.number().min(0).max(1000)})).min(1).max(12)
  .refine(list=>list.some(o=>o.weight>0),'ქოინების ცხრილში ერთ ვარიანტს მაინც უნდა ჰქონდეს წილი');
-// Box ids are glow-<date>-<wave id>-NN; „sat“, „lan“ and „x“ belong to the Saturday rain, lanterns and manual drops.
-const wave=z.object({id:z.string().regex(/^[a-z0-9]{1,8}$/).refine(v=>!['sat','lan','x'].includes(v),'ტალღის ეს კოდი დაკავებულია'),time:hhmm,hours:z.number().min(.5).max(16),rotation:int(0,30),focus:int(0,30),litOnly:z.boolean().optional()});
+// Box ids are glow-<date>-<wave id>-NN; „sat“, „lan“ and „x“ belong to the Saturday rain, lanterns and manual drops,
+// and a letter + digits („a1“) is how other cities' ids are told apart (glow-<date>-<cityId>-…).
+const waveId=z.string().regex(/^[a-z0-9]{1,8}$/).refine(v=>!['sat','lan','x'].includes(v)&&!/^[a-z]\d+$/.test(v),'ტალღის ეს კოდი დაკავებულია');
+const wave=z.object({id:waveId,time:hhmm,hours:z.number().min(.5).max(16),rotation:int(0,30),focus:int(0,30),litOnly:z.boolean().optional()});
 const radii=v=>v.pulseRadius>v.revealRadius;
 const dayFields={note:z.string().max(300).optional(),waves:z.array(wave).max(8).refine(list=>new Set(list.map(w=>w.id)).size===list.length,'ტალღების კოდები არ უნდა მეორდებოდეს'),coins,stock:z.tuple([int(1,1000),int(1,1000)]).refine(([lo,hi])=>lo<=hi,'მარაგის „დან“ „მდე“-ზე დიდი ვერ იქნება'),pulseRadius:int(40,500),revealRadius:int(10,50),minDepthM:int(0,500)};
 const day=z.object(dayFields).refine(radii,'პულსის რადიუსი გახსნის რადიუსზე დიდი უნდა იყოს');
@@ -27,7 +29,7 @@ const saturday=z.object({time:hhmm,hours:z.number().min(.5).max(12),points:int(1
 const week=z.object({from:ymd,to:ymd,theme:z.string().trim().min(1).max(40),anchors:z.array(z.tuple([z.number().min(44.5).max(45.2),z.number().min(41.5).max(41.95),int(50,5000)])).max(10).optional(),districts:z.array(z.string().min(1).max(40)).max(10).optional(),kinds:z.array(z.string().min(1).max(30)).max(10).optional()}).refine(w=>w.from<=w.to,'კვირის დასაწყისი დასასრულზე გვიან ვერ იქნება');
 const level=z.object({id:z.string().regex(/^[a-z0-9-]{1,20}$/),percent:z.number().min(.001).max(100),name:words(60),unlocks:words(300)});
 const grand=z.object({id:z.string().regex(/^[a-zA-Z0-9_-]{1,80}$/),dropAt:z.string().regex(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2})?\+04:00$/,'დიდი საჩუქრის დრო თბილისის დროით'),hours:z.number().min(.5).max(24),minPercent:z.number().min(0).max(100),prize:words(80),detail:words(80),pulseRadius:int(40,500),revealRadius:int(10,50),spot:z.string().max(80).nullable()}).refine(radii,'დიდი საჩუქრის პულსის რადიუსი გახსნის რადიუსზე დიდი უნდა იყოს');
-const simpleWave=z.object({id:z.string().regex(/^[a-z0-9]{1,8}$/).refine(v=>!['sat','lan','x'].includes(v),'ტალღის ეს კოდი დაკავებულია'),time:hhmm,hours:z.number().min(.5).max(16)});
+const simpleWave=z.object({id:waveId,time:hhmm,hours:z.number().min(.5).max(16)});
 const cities=z.object({enabled:z.boolean(),minPlayers:int(1,10000),waves:z.array(simpleWave).max(6).refine(list=>new Set(list.map(w=>w.id)).size===list.length,'ტალღების კოდები არ უნდა მეორდებოდეს'),boxesPerWave:z.object({base:int(0,30),perPlayers:int(1,100000),max:int(0,30)}),weekendExtra:int(0,10),coins,weekendCoins:coins.optional(),stock:z.tuple([int(1,1000),int(1,1000)]).refine(([lo,hi])=>lo<=hi,'მარაგის „დან“ „მდე“-ზე დიდი ვერ იქნება'),pulseRadius:int(40,500),revealRadius:int(10,50),overrides:z.record(z.string().regex(/^[a-z]\d+$/),z.object({off:z.boolean().optional(),boxesPerWave:int(0,30).optional(),note:z.string().max(300).optional()})).optional()}).refine(radii,'ქალაქების პულსის რადიუსი გახსნის რადიუსზე დიდი უნდა იყოს');
 const override=z.object({off:z.boolean().optional(),as:z.enum(['weekday','weekend']).optional(),day:dayPatch.optional(),note:z.string().max(300).optional()});
 // Economy 2 (owner 2026-10-04): the first-finder ladder, the season coin budget and the Monday leaderboard prizes.
@@ -146,9 +148,12 @@ export async function saveCampaign(data,{revision,adminId,db=prisma}){
  const rows=await db.$queryRaw`SELECT "revision" FROM "MedirunCampaign" WHERE "id"=${FILE_CAMPAIGN.id}`;
  const current=rows[0]?.revision??0;
  if(current!==revision)throw Object.assign(new Error('წესები სხვამ შეცვალა. განაახლე გვერდი და თავიდან შეიტანე.'),{status:409,code:'CAMPAIGN_CHANGED'});
- await db.$executeRaw`INSERT INTO "MedirunCampaign" ("id","data","revision","updatedAt","updatedBy") VALUES (${FILE_CAMPAIGN.id},${JSON.stringify(campaign)}::jsonb,${current+1},now(),${adminId||null})
-  ON CONFLICT ("id") DO UPDATE SET "data"=EXCLUDED."data","revision"=EXCLUDED."revision","updatedAt"=now(),"updatedBy"=EXCLUDED."updatedBy"`;
+ // The revision is checked again inside the write (two tabs, or a day toggle racing a save): the loser gets a 409
+ // instead of silently overwriting the winner.
+ const changed=await db.$executeRaw`INSERT INTO "MedirunCampaign" ("id","data","revision","updatedAt","updatedBy") VALUES (${FILE_CAMPAIGN.id},${JSON.stringify(campaign)}::jsonb,${current+1},now(),${adminId||null})
+  ON CONFLICT ("id") DO UPDATE SET "data"=EXCLUDED."data","revision"=EXCLUDED."revision","updatedAt"=now(),"updatedBy"=EXCLUDED."updatedBy" WHERE "MedirunCampaign"."revision"=${current}`;
  clearCampaignCache();
+ if(!changed)throw Object.assign(new Error('წესები სხვამ შეცვალა. განაახლე გვერდი და თავიდან შეიტანე.'),{status:409,code:'CAMPAIGN_CHANGED'});
  return campaign;
 }
 

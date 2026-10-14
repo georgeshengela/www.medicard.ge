@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {planDay,dayKind,rotationOrder,CAMPAIGN,dateAdd} from './autopilot.js';
+import {planDay,dayKind,dayOf,rotationOrder,CAMPAIGN,dateAdd} from './autopilot.js';
 import {isUnlocked,normalizeRule,localizeGift,shareOfArea,ladderOf,maxPayout,payoutFor,normalizeDecay} from './giftRules.js';
 import {budgetState,weekStart,periodBounds,rankAmong,walletRows} from './economy.js';
 import {grandView} from './grand.js';
@@ -415,4 +415,22 @@ test('wave alerts: nearby opted-in homes only, one per wave, two a day, place + 
  assert.match(copy.body,/2 ყუთი სახლიდან ≈ 600 მ-ში — Parc de la Boverie/);
  assert.ok(!/\d+\.\d{4}/.test(copy.body+copy.title));
  assert.equal(inWindow(Date.parse('2026-10-09T03:59:00Z')),false);assert.equal(inWindow(Date.parse('2026-10-09T04:00:00Z')),true);assert.equal(inWindow(Date.parse('2026-10-09T17:31:00Z')),false);
+});
+
+test('every wave has its promised rotation + focus boxes, with and without a theme week (audit 2026-10-15)',()=>{
+ for(const campaign of [CAMPAIGN,{...CAMPAIGN,weeks:[]}])for(let d='2026-10-05';d<='2026-12-27';d=dateAdd(d,1)){
+  const day=planDay(d,{spots,golden,campaign}),{off,day:rules}=dayOf(campaign,d);
+  if(off)continue;
+  for(const w of rules.waves)assert.equal(day.filter(p=>p.rule.meta.kind===w.id).length,w.rotation+w.focus,`${d} ${w.id} ${campaign.weeks.length?'theme':'no theme'}`);
+  const ids=day.filter(p=>!['saturday','lantern','grand'].includes(p.rule.meta.kind)).map(p=>p.rule.meta.spot);
+  assert.equal(new Set(ids).size,ids.length,`duplicate spot on ${d}`);
+ }
+});
+test('lanterns come on every Saturday from November, also at a park with few paths around it',()=>{
+ for(const [date,park] of Object.entries(CAMPAIGN.saturday.dates)){
+  if(date<CAMPAIGN.saturday.lantern.from)continue;
+  const day=plan(date),lanterns=day.filter(p=>p.rule.meta.kind==='lantern'),rain=new Set(day.filter(p=>p.rule.meta.kind==='saturday').map(p=>p.rule.meta.spot));
+  assert.equal(lanterns.length,CAMPAIGN.saturday.lantern.points,`${date} ${park}`);
+  for(const p of lanterns)assert.ok(!rain.has(p.rule.meta.spot),'a lantern never sits on a rain point');
+ }
 });

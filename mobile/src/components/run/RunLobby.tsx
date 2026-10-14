@@ -55,8 +55,8 @@ function StatBadge({accent,icon,value,label,pulse,reduced,a11y}:{accent:string;i
    <View style={{width:28,height:28,borderRadius:14,backgroundColor:accent+'2E',borderWidth:1,borderColor:accent+'66',alignItems:'center',justifyContent:'center'}}>{icon}</View>
   </View>
   <View>
-   <Copy bold size={14} style={{color:'#fff',lineHeight:17,fontVariant:['tabular-nums']}}>{value}</Copy>
-   <Copy size={10} style={{color:'rgba(255,255,255,0.66)',lineHeight:13}}>{label}</Copy>
+   <Copy bold size={14} numberOfLines={1} style={{color:'#fff',lineHeight:17,fontVariant:['tabular-nums']}}>{value}</Copy>
+   <Copy size={10} numberOfLines={1} style={{color:'rgba(255,255,255,0.66)',lineHeight:13}}>{label}</Copy>
   </View>
  </View>;
 }

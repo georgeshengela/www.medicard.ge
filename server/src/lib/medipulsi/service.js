@@ -58,10 +58,46 @@ export async function control(userId,sessionId,action){return transaction(async 
  if(s.phase==='FINISHED'){if(action==='finish')return snapshot(userId,tx);fail(409,'სესია დასრულებულია.');}
  if(p.activeSessionId!==s.id)fail(409,'სესია აღარ არის აქტიური.');
  if(action==='resume')await enabled(tx);
- const finish=action==='finish',state={...p.state,journey:finish?resetSession(p.state.journey):pauseJourney(p.state.journey),lastSampleTime:null};
+ // A resume starts a new stretch (no shortcut is painted across the gap), but it is not a pause: it keeps no pause stamp.
+ const finish=action==='finish',journey=finish?resetSession(p.state.journey):action==='resume'?{...pauseJourney(p.state.journey),pauseReason:null,pausedAt:null}:pauseJourney(p.state.journey);
+ const state={...p.state,journey,lastSampleTime:null};
  await tx.medipulsiSession.update({where:{id:sessionId},data:{phase:finish?'FINISHED':action==='pause'?'PAUSED':'ACTIVE',...(finish?{endedAt:new Date()}:{} )}});
  await tx.medipulsiPlayer.update({where:{userId},data:{state,...(finish?{activeSessionId:null}:{}),revision:{increment:1}}});return snapshot(userId,tx);
 });}
+/** A session nobody touched for this long (no batch, pause or resume) is over: the phone died, the app was deleted
+ * or its outbox was dropped. Longer than the 24 h offline window, so a late upload still lands before the sweep. */
+export const STALE_SESSION_MS=36*3600_000;
+/** Pure: is this open session abandoned at `now`? `updatedAt` moves with every batch, pause and resume. */
+export function isStaleSession(session,now=Date.now(),maxAgeMs=STALE_SESSION_MS){
+ if(!session||session.phase==='FINISHED')return false;
+ const at=+new Date(session.updatedAt||session.startedAt||0);
+ return Number.isFinite(at)&&at>0&&now-at>=maxAgeMs;
+}
+/**
+ * Autopilot sweep (audit 2026-10-15: 21 of 188 players carried an open session from days ago — walks that never
+ * reached the leaderboard, the history or the Monday prizes, and that the next „Start“ resumed with their old metres).
+ * Finishes every abandoned session exactly like a „finish“ from the phone: the walk keeps its numbers, `endedAt` is
+ * its last activity, the player is free to start a new one. A late phone finds 409 and starts fresh.
+ */
+export async function finishStaleSessions({db=prisma,now=Date.now(),maxAgeMs=STALE_SESSION_MS,limit=100}={}){
+ const cutoff=new Date(now-maxAgeMs);
+ const rows=await db.$queryRaw`SELECT s."id", s."userId" FROM "MedipulsiSession" s JOIN "MedipulsiPlayer" p ON p."activeSessionId"=s."id" WHERE s."phase"<>'FINISHED' AND s."updatedAt"<${cutoff} ORDER BY s."updatedAt" ASC LIMIT ${limit}`;
+ const finished=[];
+ for(const row of rows){
+  try{
+   await db.$transaction(async tx=>{
+    const p=await playerLock(tx,row.userId),s=await tx.medipulsiSession.findUnique({where:{id:row.id}});
+    // Re-checked under the player lock: a phone that woke up meanwhile keeps its session.
+    if(!s||p.activeSessionId!==s.id||!isStaleSession(s,now,maxAgeMs))return;
+    await tx.medipulsiSession.update({where:{id:s.id},data:{phase:'FINISHED',endedAt:s.updatedAt}});
+    await tx.medipulsiPlayer.update({where:{userId:row.userId},data:{state:{...p.state,journey:resetSession(p.state.journey),lastSampleTime:null},activeSessionId:null,revision:{increment:1}}});
+    await tx.medipulsiAudit.create({data:{id:randomUUID(),actorId:'medirun-autopilot',action:'SESSION_AUTO_FINISH',entityId:s.id,details:{meters:Math.round(s.meters||0),lastActivity:s.updatedAt,startedAt:s.startedAt}}});
+    finished.push({id:s.id,meters:Math.round(s.meters||0)});
+   },{maxWait:10000,timeout:20000});
+  }catch(error){console.warn('[medirun] stale session not finished',row.id,error?.message);}
+ }
+ return {checked:rows.length,finished};
+}
 export async function batch(userId,sessionId,input,now=Date.now()){return transaction(async tx=>{
  const p=await playerLock(tx,userId),s=await owned(tx,userId,sessionId);
  const digest=createHash('sha256').update(JSON.stringify(input)).digest('hex');
@@ -105,7 +141,9 @@ export async function nearby(userId,now=Date.now(),lang='ka'){
  const extra={...(together?{together}:{}),...(starter?.pending?{starter:{pending:starter.pending}}:{})};
  if(!cfg.giftsEnabled)return {...noSignal,quality:true,...extra};
  const claimed=await prisma.medipulsiClaim.findMany({where:{userId},select:{giftId:true}});
- const gifts=(await prisma.medipulsiGift.findMany({where:{published:true,archived:false,startsAt:{lte:new Date(now)},endsAt:{gt:new Date(now)},id:{notIn:claimed.map(c=>c.giftId)},latitude:{gte:j.position[1]-.01,lte:j.position[1]+.01}}})).filter(g=>visibleTo(g.id,userId));
+ // Only boxes near the player: ±0.01° of latitude (~1.1 km) and ±0.02° of longitude (≥ 1.1 km up to 60° north) —
+ // far more than any pulse radius (≤ 500 m), far less than a latitude band around the whole world.
+ const gifts=(await prisma.medipulsiGift.findMany({where:{published:true,archived:false,startsAt:{lte:new Date(now)},endsAt:{gt:new Date(now)},id:{notIn:claimed.map(c=>c.giftId)},latitude:{gte:j.position[1]-.01,lte:j.position[1]+.01},longitude:{gte:j.position[0]-.02,lte:j.position[0]+.02}}})).filter(g=>visibleTo(g.id,userId));
  // Campaign rules: a gated box (grand prize, lantern boxes) does not exist for a player below its lit-city threshold.
  let rules=await giftRules();
  // A starter box just placed on this instance (or another) must show its coins at once.
