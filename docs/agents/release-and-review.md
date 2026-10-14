@@ -20,6 +20,8 @@ Before the first store build with MEDI COACH: nothing is shared with a trainer b
 
 ## OS permissions (iOS 26)
 
+**Permission texts in two languages (App Review 4.0, 1.24.0 on 2026-10-14, fixed in train 1.0.0.25):** an English app on the reviewer's iPad asked for the camera/photos in Georgian. Every iOS usage text (`NS…UsageDescription`) lives in `mobile/locales/en.json` + `ka.json` (`expo.locales` → `en.lproj` / `ka.lproj` `InfoPlist.strings`); the base strings in `app.json` (`ios.infoPlist` and the plugin options: camera, image-picker, calendar, HealthKit, location, local-authentication, audio) are the English fallback and must equal `en.json`. A new permission text = all three places, Georgian in `ka.json`; no `"` or `\` (Expo writes the .strings file unescaped). `src/i18n/locale.js` sets the iOS bundle language (`AppleLanguages`) to the app language, so a Georgian app on an English phone gets Georgian sheets from the next cold start. Guarded by `mobile/tests/permission-locales.test.cjs`. Native change → store build only, never OTA.
+
 Never call `requestPermissionsAsync` / HealthKit `requestAuthorization` / location request from `useEffect`, `InteractionManager`, or post-login background work. iOS 26 does not show the sheet (and can mark denied with no UI). Show `PermissionGateHost` after login and request only from the enable button. Setup **ნებართვის მიცემა** must call `requestNotificationPermission` on press. Background reminder code may only read `getNotificationPermissionGranted`. HealthKit step reads must not re-request authorization. `Linking.openSettings` has no Notifications row until the app has requested once.
 
 ## Dark theme

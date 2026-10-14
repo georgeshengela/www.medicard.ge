@@ -1,0 +1,17 @@
+{
+  "ios": {
+    "NSCameraUsageDescription": "MEDICARD AI uses the camera to scan meals, food labels and barcodes for your food diary, to photograph lab results, X-rays, skin and pets, for your profile photo, MEDICOACH progress photos and trainer certificate, to read QR codes, and to find virtual gifts in MEDIRUN.",
+    "NSPhotoLibraryUsageDescription": "MEDICARD AI needs access to your photos to upload the meal photos, medical documents, pet photos, profile photo, MEDICOACH progress photos, trainer certificate and women's space post photos that you choose.",
+    "NSMicrophoneUsageDescription": "The microphone is used only when you choose to, for the voice assistant and voice analysis.",
+    "NSFaceIDUsageDescription": "MEDICARD AI uses Face ID to protect your account and cycle data.",
+    "NSLocationWhenInUseUsageDescription": "MEDICARD AI uses your location for your city and weather, and in MEDIRUN to record the route you walk and find gifts nearby. A MEDIRUN session you start keeps recording your route after the screen locks (a blue indicator shows at the top) until you tap Pause or Finish.",
+    "NSLocationAlwaysAndWhenInUseUsageDescription": "MEDICARD AI uses your location in the background only during a MEDIRUN session you started, to record your route while the screen is locked. Outside a session no location is collected in the background.",
+    "NSLocationAlwaysUsageDescription": "MEDICARD AI uses your location in the background only during a MEDIRUN session you started, to record your route while the screen is locked. Outside a session no location is collected in the background.",
+    "NSMotionUsageDescription": "MEDICARD AI uses the motion sensors to show a virtual gift in the right place in the camera view in MEDIRUN.",
+    "NSCalendarsUsageDescription": "Calendar access is needed to add the entries you choose to your calendar.",
+    "NSCalendarsFullAccessUsageDescription": "Calendar access is needed to add the entries you choose to your calendar.",
+    "NSHealthShareUsageDescription": "MEDICARD AI reads Apple Health to sync steps, weight, blood pressure, heart rate, sleep, nutrition, hydration, cycle and workouts (duration, calories, heart rate) and, if you turn it on in cycle settings, basal and sleeping wrist temperature to estimate ovulation retrospectively. If you turn it on, activity and workouts are shared with the trainer you chose in MEDICOACH. It is never used for advertising.",
+    "NSHealthUpdateUsageDescription": "MEDICARD AI saves to Apple Health for the sync you turn on: cycle entries (period, spotting, BBT, cervical mucus) and the calories, protein, carbs and fat from your food diary.",
+    "NSAlarmKitUsageDescription": "MEDISLEEP uses alarms to wake you at the time you chose in sleep mode, even in silent mode and when the app is closed."
+  }
+}

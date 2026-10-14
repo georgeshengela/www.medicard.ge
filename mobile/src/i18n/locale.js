@@ -57,12 +57,38 @@ function writeStored(lang) {
   else if (typeof localStorage !== 'undefined') localStorage.setItem(STORAGE_KEY, lang);
 }
 
+/** The phone's own language list, saved before the app first overrides it (see syncIosBundleLanguage). */
+const IOS_SYSTEM_LANGS_KEY = '@medicard/pref/medicard.language.system';
+
+/**
+ * iOS writes the permission sheets (camera, photos, location, Health…) from the bundle's InfoPlist.strings
+ * (mobile/locales/en.json, ka.json) in the bundle language, which follows the phone unless the app sets its
+ * own AppleLanguages. Keep it equal to the app language: App Review 4.0 (1.24.0, 2026-10-14) refused an
+ * English app that asked for the camera in Georgian. iOS reads it at launch, so a change shows from the next
+ * cold start.
+ */
+function syncIosBundleLanguage(lang) {
+  const RN = rn();
+  if (!RN || RN.Platform?.OS !== 'ios' || typeof RN.Settings?.get !== 'function') return;
+  try {
+    const now = RN.Settings.get('AppleLanguages');
+    const list = Array.isArray(now) ? now.map(String) : [];
+    if (list[0] === lang) return;
+    if (!RN.Settings.get(IOS_SYSTEM_LANGS_KEY)) RN.Settings.set({ [IOS_SYSTEM_LANGS_KEY]: list.join(',') });
+    // The phone's other languages stay behind it, for system screens that have no Georgian.
+    RN.Settings.set({ AppleLanguages: [lang, ...list.filter((tag) => tag.split('-')[0] !== lang)] });
+  } catch {
+    /* the sheets follow the phone language */
+  }
+}
+
 function resolve() {
   if (current) return current;
   const stored = readStored();
   chosen = isLang(stored);
   // Existing users never chose a language and have always used Georgian — keep it.
   current = chosen ? stored : 'ka';
+  syncIosBundleLanguage(current);
   return current;
 }
 
@@ -100,9 +126,12 @@ export function dateLocale() {
 /** Language the phone itself uses (for the first-launch default highlight). */
 export function deviceLanguage() {
   try {
+    const RN = rn();
+    // Once the app set its own AppleLanguages, Intl reports the app language — use the phone's saved list.
+    const system = RN?.Platform?.OS === 'ios' ? RN.Settings?.get?.(IOS_SYSTEM_LANGS_KEY) : null;
+    if (typeof system === 'string' && system) return /^ka/i.test(system) ? 'ka' : 'en';
     const locale = Intl.DateTimeFormat().resolvedOptions().locale || '';
     if (/^ka\b/i.test(locale)) return 'ka';
-    const RN = rn();
     const constants = RN?.I18nManager?.getConstants?.();
     const native = String(
       constants?.localeIdentifier || RN?.NativeModules?.SettingsManager?.settings?.AppleLocale || '',
@@ -160,6 +189,7 @@ export function saveLanguage(lang) {
   if (!isLang(lang)) return;
   writeStored(lang);
   chosen = true;
+  syncIosBundleLanguage(lang);
 }
 
 /**
