@@ -151,10 +151,22 @@ test('back from Settings the permission is only re-read, and the location is fou
 test('MEDIRUN location screen: Settings only after a refusal, foreground re-check never requests, When-In-Use only',()=>{
  const screen=fs.readFileSync(path.join(root,'components/run/PulseActive.tsx'),'utf8'),store=fs.readFileSync(path.join(root,'lib/run/store.ts'),'utf8');
  assert.match(screen,/const locationOff=run\.error==='permission'&&run\.permissionBlocked/);
- assert.match(screen,/locationOff\?<Action label=\{primerSettingsLabel\(\)\} icon=\{Settings2\} onPress=\{\(\)=>void Linking\.openSettings\(\)/);
+ assert.match(screen,/locationOff\|\|precisionOff\?<Action label=\{primerSettingsLabel\(\)\} icon=\{Settings2\} onPress=\{\(\)=>void Linking\.openSettings\(\)/);
+ // Before the OS sheet: one „გაგრძელება“ button and no second one (App Review 5.1.1(iv)).
+ assert.match(screen,/label=\{askable\?tx\('გაგრძელება','Continue'\)/);
+ assert.match(screen,/\{locationOff\|\|precisionOff\|\|askable\?null:<Action secondary/);
+ // Approximate location only: explained before the walk with Settings, re-checked (never requested) on return.
+ assert.match(store,/error: 'precision'/);assert.match(screen,/run\.error!=='precision'\)\)return;return onReturnToForeground/);
  assert.match(screen,/onReturnToForeground\(\(\)=>void recheckLocationPermission\(/);
  assert.doesNotMatch(screen,/requestForegroundPermissionsAsync|requestLocationPermission|requestBackgroundPermissionsAsync/);
  const recheck=store.slice(store.indexOf('export async function recheckLocationPermission'),store.indexOf('export async function regeneratePin'));
  assert.match(recheck,/askOs: false/);assert.doesNotMatch(recheck,/requestLocationPermission|requestForegroundPermissionsAsync/);
  assert.doesNotMatch(store,/requestBackgroundPermissionsAsync|ACCESS_BACKGROUND_LOCATION/);
 });
+
+test('a new walk from the hub finishes a session left open on the server instead of continuing it (audit 2026-10-15)',async()=>{const h=harness();await h.client.begin();fixes(h.client);await h.client.flush();const old=h.server.session.id,meters=h.server.state.journey.meters;assert.ok(meters>15);h.client.dispose();
+ const next=new PulseSessionClient(h.adapter);await next.begin({fresh:true});assert.notEqual(h.server.session.id,old);assert.equal(h.server.history.length,1);assert.equal(h.server.history[0].meters,meters);assert.equal(next.getSnapshot().journey.meters,0);assert.ok(next.getSnapshot().running);next.dispose();});
+test('a resume keeps continuing the session that is open',async()=>{const h=harness();await h.client.begin();fixes(h.client);await h.client.flush();const old=h.server.session.id;h.client.stop();await h.client.flush();await h.client.begin();assert.equal(h.server.session.id,old);assert.equal(h.server.history.length,0);h.client.dispose();});
+test('GPS fixes coalesce into few disk writes; a pause writes at once',async()=>{const h=harness();let writes=0;const client=new PulseSessionClient({...h.adapter,write:async v=>{writes++;await h.adapter.write(v);}});await client.begin();const base=writes;fixes(client,[-73.97,40.77],4);await new Promise(r=>setTimeout(r,5));assert.equal(writes,base,'fixes wait for the write gap');client.stop();await new Promise(r=>setTimeout(r,20));assert.ok(writes>base);assert.ok(JSON.parse(h.stored).journey.meters>10,'the latest state reached the disk');client.dispose();});
+test('a run saved more than a day ago is finished into the history, not offered to continue',async()=>{const old={...persisted,distanceM:320,path:[{lat:40,lng:-73},{lat:40.001,lng:-73}],movingAccumMs:400000,startedAt:Date.now()-26*3600_000,savedAt:Date.now()-25*3600_000};const h=storeHarness(async()=>old);assert.equal(await h.store.hydrateActiveRun(),false);assert.equal(h.store.getRunState().phase,'idle');assert.equal(h.saved?.distanceM,320);h.store.resetRunMemory();});
+test('a run saved an hour ago is restored as paused',async()=>{const h=storeHarness(async()=>({...persisted,savedAt:Date.now()-3600_000}));assert.equal(await h.store.hydrateActiveRun(),true);assert.equal(h.store.getRunState().phase,'paused');h.store.resetRunMemory();});

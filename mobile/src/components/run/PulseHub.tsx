@@ -37,7 +37,7 @@ import {RunCrewCard} from './RunCrewCard';
 import {RunCityCard} from './RunCityCard';
 import {RunWrappedCard} from './RunWrappedCard';
 import {RunHubTabBar,useRunHubTabsInset,type RunHubTab} from './RunHubTabs';
-import {RunCitiesEntry} from './RunCities';
+import {RunCitiesEntry,useMyCities} from './RunCities';
 import {HubMoreRows,RecentWalks,RecordTiles,WeekSpotlight} from './RunProgress';
 
 /** The section the person was on: a walk detail and back, or a finished walk, opens the hub where they left it. */
@@ -68,7 +68,8 @@ export default function PulseHub(){
  useFocusEffect(useCallback(()=>{
   let alive=true;
   // A live session stays on the hub (owner 2026-10-08): back from the map lands here; the top badge reopens the map.
-  void hydrateActiveRun().then(()=>{if(!alive)return;const phase=getRunState().phase;if(phase==='ready'||phase==='preparing')router.replace('/run/active' as never);});
+  // A prepare still in flight reopens the map on top of the hub (never a replace: the hub must stay underneath).
+  void hydrateActiveRun().then(()=>{if(!alive)return;const phase=getRunState().phase;if(phase==='ready'||phase==='preparing')router.push('/run/active' as never);});
   void loadRunHistory().then(list=>{if(alive)setHistory(list);});
   void getPulseClient().refresh().catch(e=>{if(alive)setError(e.message);});
   // Read-only: a last known (else one fresh) fix orders missions and box districts by distance. Never asks for permission here.
@@ -92,7 +93,10 @@ export default function PulseHub(){
  const totals=pulse.snapshot?.totals,lifetimeKm=(totals?totals.meters:walks.reduce((s,w)=>s+w.meters,0))/1000,lifetimeWalks=totals?totals.walks:walks.length;
  // Stage 2 (owner 2026-10-09): the day at a glance and the first-walk steps.
  const todayKm=useMemo(()=>{const d=new Date(),from=new Date(d.getFullYear(),d.getMonth(),d.getDate()).getTime();return walks.filter(w=>Date.parse(w.startedAt)>=from).reduce((s,w)=>s+w.meters,0)/1000;},[walks]);
- const walkedOnce=lifetimeKm>=0.2||walks.some(w=>w.meters>=200),litOnce=Boolean((totals?.newMeters||0)>0||walks.some(w=>w.newMeters>0)),openedOnce=Boolean(pulse.snapshot?.claims.length);
+ // „აანთე პირველი ქუჩა“: any lit street anywhere — a painted trail line, lit city squares, or Vake park coverage
+ // (`newMeters` alone counts only the Vake park paths, so the step never ticked anywhere else).
+ const litCities=useMyCities().data?.summary;
+ const walkedOnce=lifetimeKm>=0.2||walks.some(w=>w.meters>=200),litOnce=Boolean((pulse.journey.trail?.length||0)>0||(litCities?.paintedKm2||0)>0||(litCities?.lit||0)>0||(totals?.newMeters||0)>0||walks.some(w=>w.newMeters>0)),openedOnce=Boolean(pulse.snapshot?.claims.length);
  const missions=pulse.snapshot?.missions||[],missionCount=missions.length||24;
  const stamps=Object.values(pulse.book.progress).filter(p=>p.completedAt).length;
  const active=missions.find(m=>m.id===pulse.book.selected);
