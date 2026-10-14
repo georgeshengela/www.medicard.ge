@@ -215,7 +215,7 @@
   const periodTitle = (period, days) => `<div class="s-section-title"><h3>ბოლო ${fmt(period.days)} დღე · ${esc(when(period.from, 'date'))} – ${esc(when(period.to, 'date'))}</h3>
       <div class="s-segment" role="tablist" aria-label="პერიოდი">${PERIODS.map((n) => `<button type="button" role="tab" aria-selected="${n === days}" data-uw-days="${n}">${n} დღე</button>`).join('')}</div></div>`;
 
-  const flagCallout = (flag, html) => (flag && flag.effective === false ? `<div class="s-callout is-warn">${ico('alert')}<p>${html} <a href="#/features">მოდულები</a></p></div>` : '');
+  const flagCallout = (flag, html) => (flag && flag.effective === false ? `<div class="s-callout is-warn">${ico('alert')}<p>${html} <a href="#/features">მოდულების ჩართვა</a></p></div>` : '');
 
   const definitions = (paragraphs) => `<section class="s-card"><details class="s-details s-uw-defs"><summary>${ico('info')} როგორ ითვლება</summary><div>
       ${paragraphs.map((p) => `<p>${p}</p>`).join('')}

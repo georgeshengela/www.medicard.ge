@@ -16,7 +16,7 @@
     '#/settings': 'აპის რეჟიმი',
     '#/sms': 'SMS',
     '#/pharmacy': 'ფარმაცია',
-    '#/health': 'ჯანმრთელობა',
+    '#/health': 'მოდულების გამოყენება',
     '#/users': 'მომხმარებლები',
   };
 
@@ -1122,7 +1122,7 @@
   }
 
   function paintFeatures(root, features) {
-    const healthBtn = '<button type="button" class="btn ghost compact" data-go="health">ჯანმრთელობა</button>';
+    const healthBtn = '<button type="button" class="btn ghost compact" data-go="health">მოდულების გამოყენება</button>';
     if (features.error) {
       $('ops-features').innerHTML = section({
         title: 'პროდუქტის სიგნალები',

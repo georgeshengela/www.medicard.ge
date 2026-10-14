@@ -679,7 +679,7 @@ async function renderCommandCenter() {
     const usable = (features.features || []).filter((f) => !f.unavailable).sort((a, b) => (b.users || 0) - (a.users || 0));
     featEl.innerHTML = `
       <div class="card-head">${opsTile('activity')}<div><h3>ფუნქციების გამოყენება</h3><p class="muted">${opsFmt(features.activeUsers)} აქტიური. აბსოლუტი და % აქტიურებიდან.</p></div>
-      <button class="btn tiny ghost" data-go="health">ჯანმრთელობა</button></div>
+      <button class="btn tiny ghost" data-go="health">მოდულების გამოყენება</button></div>
       ${opsBarChart(usable.map((f) => ({ ...f, count: f.users, label: `${f.label}${f.pctOfActive != null ? ` · ${f.pctOfActive}%` : ''}${f.delta?.show ? ` · ${f.delta.abs > 0 ? '+' : ''}${f.delta.abs}` : ''}`, href: `#/health?feature=${encodeURIComponent(f.key || '')}` })))}
       <p class="muted ops-footnote">${(features.features || []).filter((f) => f.unavailable).map((f) => f.note).join(' ')}</p>
     `;
@@ -1890,7 +1890,7 @@ function renderCommandPalette() {
     { tab: 'overview', label: 'ოპერაციები' },
     { tab: 'users', label: 'მომხმარებლები' },
     { tab: 'ai', label: 'Medi' },
-    { tab: 'health', label: 'ჯანმრთელობა' },
+    { tab: 'health', label: 'მოდულების გამოყენება' },
     { tab: 'push', label: 'შეტყობინებები / Push' },
     { tab: 'quality', label: 'ხარისხი / სისტემა' },
     { tab: 'push', label: 'Brain' },

@@ -152,10 +152,10 @@
   };
   // The admin page where each kind of object lives (the link in the details dialog).
   const PAGES = {
-    settings: ['#/settings', 'აპის რეჟიმი'], features: ['#/features', 'მოდულები'], quests: ['#/quests', 'MEDIQUEST'],
+    settings: ['#/settings', 'აპის რეჟიმი'], features: ['#/features', 'მოდულების ჩართვა'], quests: ['#/quests', 'MEDIQUEST'],
     capacity: ['#/capacity', 'სერვერის დატვირთვა'], push: ['#/push', 'Push & Brain'], news: ['#/news', 'სიახლეები'],
     email: ['#/email', 'ელფოსტა'], support: ['#/support', 'მხარდაჭერა'], director: ['#/director', 'დირექტორი'],
-    rewards: ['#/rewards', 'ჯილდოები'], trainers: ['#/trainers', 'ტრენერები'], nutrition: ['#/nutrition', 'კვების დღიური'],
+    rewards: ['#/rewards', 'ჯილდოები'], trainers: ['#/trainers', 'MEDICOACH'], nutrition: ['#/nutrition', 'კვების დღიური'],
     ai: ['#/ai', 'Medi'], errors: ['#/errors', 'შეცდომები'], sleep: ['#/sleep', 'MEDISLEEP'],
   };
   const TARGET_PAGE = {

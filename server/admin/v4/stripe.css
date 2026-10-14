@@ -260,6 +260,49 @@ html body .v3-sidebar .nav.active {
 }
 html body .v3-sidebar .nav.active .nav-label { font-weight: 600 !important; }
 html body .v3-sidebar .nav.active .icon { color: var(--s-accent); }
+/* Module brands in the sidebar (owner 2026-10-14: find a module by its colour). Same wordmark as the
+   app and ads — „MEDI“ upright in ink, the module part in its colour, skewed −16°, Exo 2 — with the
+   ink colours of mobile/src/theme/moduleBrand.ts (light / dark). Keep both in sync. */
+html body .v3-sidebar .nav[data-brand="medi"],
+html body .v3-sidebar .nav[data-brand="run"] { --nav-brand: #0D9488; }
+html body .v3-sidebar .nav[data-brand="cycle"] { --nav-brand: #C92A55; }
+html body .v3-sidebar .nav[data-brand="food"] { --nav-brand: #047857; }
+html body .v3-sidebar .nav[data-brand="pill"] { --nav-brand: #1D4ED8; }
+html body .v3-sidebar .nav[data-brand="quest"] { --nav-brand: #6D28D9; }
+html body .v3-sidebar .nav[data-brand="vet"] { --nav-brand: #0369A1; }
+html body .v3-sidebar .nav[data-brand="coach"] { --nav-brand: #475569; }
+html body .v3-sidebar .nav[data-brand="lab"] { --nav-brand: #4F46E5; }
+html body .v3-sidebar .nav[data-brand="sleep"] { --nav-brand: #8A35C2; }
+html body .v3-sidebar .nav[data-brand="family"] { --nav-brand: #C2410C; }
+html body .v3-sidebar .nav[data-brand="horo"] { --nav-brand: #8A6414; }
+html[data-theme="dark"] body .v3-sidebar .nav[data-brand="medi"],
+html[data-theme="dark"] body .v3-sidebar .nav[data-brand="run"] { --nav-brand: #2DD4BF; }
+html[data-theme="dark"] body .v3-sidebar .nav[data-brand="cycle"] { --nav-brand: #FF8FA8; }
+html[data-theme="dark"] body .v3-sidebar .nav[data-brand="food"] { --nav-brand: #34D399; }
+html[data-theme="dark"] body .v3-sidebar .nav[data-brand="pill"] { --nav-brand: #93C5FD; }
+html[data-theme="dark"] body .v3-sidebar .nav[data-brand="quest"] { --nav-brand: #C4B5FD; }
+html[data-theme="dark"] body .v3-sidebar .nav[data-brand="vet"] { --nav-brand: #7DD3FC; }
+html[data-theme="dark"] body .v3-sidebar .nav[data-brand="coach"] { --nav-brand: #CBD5E1; }
+html[data-theme="dark"] body .v3-sidebar .nav[data-brand="lab"] { --nav-brand: #A5B4FC; }
+html[data-theme="dark"] body .v3-sidebar .nav[data-brand="sleep"] { --nav-brand: #D9A8FF; }
+html[data-theme="dark"] body .v3-sidebar .nav[data-brand="family"] { --nav-brand: #FDBA74; }
+html[data-theme="dark"] body .v3-sidebar .nav[data-brand="horo"] { --nav-brand: #E9C77E; }
+html body .v3-sidebar .nav[data-brand] .icon,
+html body .v3-sidebar .nav[data-brand]:hover .icon,
+html body .v3-sidebar .nav[data-brand].active .icon { color: var(--nav-brand); }
+html body .v3-sidebar .nav[data-brand].active { background: color-mix(in srgb, var(--nav-brand) 12%, transparent); color: var(--s-ink); }
+html body .v3-sidebar .nav .nav-label.nav-wordmark {
+  font-family: 'Exo 2', var(--s-font);
+  font-weight: 700 !important;
+  font-size: 13.5px;
+  letter-spacing: 0.01em;
+  color: var(--s-text-2);
+}
+html body .v3-sidebar .nav:is(:hover, .active) .nav-label.nav-wordmark { color: var(--s-ink); }
+html body .v3-sidebar .nav-wordmark b { display: inline-block; font-family: 'Exo 2', var(--s-font); font-weight: 800; color: var(--nav-brand); transform: skewX(-16deg); }
+html body .v3-sidebar .nav-wordmark b.is-upright { transform: none; }
+html body .v3-sidebar .nav-wordmark .nav-tail { margin-left: 0.2em; font-family: var(--s-font); font-weight: 500; letter-spacing: 0; }
+html body .v3-sidebar .nav.active .nav-wordmark .nav-tail { font-weight: 600; }
 html body .v3-sidebar .nav.active::after { display: none; }
 html body .v3-sidebar .nav.active::before {
   content: "";
