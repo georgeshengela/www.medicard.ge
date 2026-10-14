@@ -2769,6 +2769,15 @@ model SupportSnippet {
   updatedAt   DateTime @default(now())
 }
 
+/// Support inbox blocked senders (2026-10-14) — raw-SQL table from prisma/20260928-support.sql,
+/// declared so nothing drops it. Access is raw SQL in src/lib/support/blocklist.js.
+model SupportBlockedSender {
+  pattern     String   @id
+  reason      String?
+  createdById String?
+  createdAt   DateTime @default(now())
+}
+
 /// MEDI COACH (2026-09-28) — raw-SQL tables from prisma/20260928-trainer.sql, declared so nothing
 /// drops them. Data access is raw SQL in src/lib/trainerStore.js; foreign keys live in the SQL file.
 model Gym {

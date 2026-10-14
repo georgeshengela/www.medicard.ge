@@ -60,6 +60,8 @@
       ['support.note', 'მხარდაჭერის საუბარი · შიდა შენიშვნა'],
       ['support.thread.status', 'მხარდაჭერის საუბარი · სტატუსის შეცვლა'],
       ['support.thread.assign', 'მხარდაჭერის საუბარი · პასუხისმგებლის შეცვლა'],
+      ['support.sender.block', 'მხარდაჭერა · გამომგზავნის დაბლოკვა'],
+      ['support.sender.unblock', 'მხარდაჭერა · გამომგზავნის განბლოკვა'],
       ['support.attachment.download', 'მხარდაჭერის საუბარი · დანართის ჩამოტვირთვა'],
       ['support.snippet.create', 'სწრაფი პასუხი · შექმნა'],
       ['support.snippet.update', 'სწრაფი პასუხი · შეცვლა'],

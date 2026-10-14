@@ -28,6 +28,7 @@ import {
 } from './support/inbound.js';
 import { renderSupportLetter, renderSupportReply, sendSupportLetter, sendSupportReply, senderForMailbox, snippetSchema, supportSenders, threadPatchSchema, replySchema } from './support/reply.js';
 import { isAllowedDownloadUrl } from './support/resendInbound.js';
+import { blockPatternsFor, blockSender, canBlockSender, isBlockedSender, unblockSender } from './support/blocklist.js';
 import { recordSentMessageId, resolveSentMessageIds } from './support/sentIds.js';
 import { renderEmail, signSvixPayload } from './email/index.js';
 import { dispatchEmailWebhookEvent } from './email/webhook.js';
@@ -758,4 +759,57 @@ it('buildSupportStats counts Tbilisi days, splits Director and team replies and 
   assert.deepEqual(s.now, { todo: 2, waiting: 1, oldestTodoAt: '2026-10-09T07:00:00.000Z', drafts: 2 });
   assert.deepEqual(s.director, { answered: 1, escalated: 2, deferred: 0, spam: 1, human: 0 });
   assert.deepEqual(s.topics, [{ key: 'account', count: 2 }, { key: 'help', count: 1 }, { key: 'other', count: 1 }]);
+});
+
+/* ───────── Blocked senders ───────── */
+describe('support blocked senders', () => {
+  const rawDb = (patterns) => {
+    const set = new Set(patterns);
+    return {
+      reads: 0,
+      async $queryRaw() { this.reads += 1; return [...set].map((pattern) => ({ pattern })); },
+      async $executeRaw(strings, ...values) {
+        if (/INSERT/.test(strings.join(''))) set.add(values[0]);
+        else set.delete(values[0]);
+        return 1;
+      },
+    };
+  };
+
+  it('matches the address and its domain; our own mailboxes cannot be blocked', () => {
+    assert.deepEqual(blockPatternsFor(' DonertPet@Gmail.com '), ['donertpet@gmail.com', '@gmail.com']);
+    assert.deepEqual(blockPatternsFor('not-an-address'), []);
+    assert.equal(canBlockSender('donertpet@gmail.com'), true);
+    assert.equal(canBlockSender('support@medicard.ge'), false);
+    assert.equal(canBlockSender(''), false);
+  });
+
+  it('reads through a cache, blocks by address or "@domain", and never blocks on a failed read', async () => {
+    const db = rawDb(['@ss.liaps.org']);
+    assert.equal(await isBlockedSender('ylpodwseolrzxla@ss.liaps.org', db), true);
+    assert.equal(await isBlockedSender('donertpet@gmail.com', db), false);
+    assert.equal(db.reads, 1);
+    await blockSender('DonertPet@gmail.com', { adminId: 'a1' }, db);
+    assert.equal(await isBlockedSender('donertpet@gmail.com', db), true);
+    assert.equal(await isBlockedSender('friend@gmail.com', db), false);
+    await unblockSender('donertpet@gmail.com', db);
+    assert.equal(await isBlockedSender('donertpet@gmail.com', db, { cached: false }), false);
+    await assert.rejects(blockSender('support@medicard.ge', {}, db), /დაბლოკვა არ შეიძლება/);
+    const broken = { async $queryRaw() { throw Object.assign(new Error('relation "SupportBlockedSender" does not exist'), { code: '42P01' }); } };
+    assert.equal(await isBlockedSender('donertpet@gmail.com', broken), false);
+    assert.equal(await isBlockedSender('donertpet@gmail.com', {}), false);
+  });
+
+  it('the webhook drops a blocked sender before storing anything', async () => {
+    const db = fakeDb();
+    let kicks = 0;
+    const blocked = async (email) => email === 'nino@example.com';
+    const r = await applyInboundEmailEvent(received('b1'), { db, now: NOW, kick: () => { kicks += 1; }, blocked });
+    assert.deepEqual(r, { ignored: true, reason: 'blocked' });
+    assert.equal(db.tables.threads.length, 0);
+    assert.equal(db.tables.messages.length, 0);
+    assert.equal(kicks, 0);
+    const other = await applyInboundEmailEvent(received('b2', { from: 'Giorgi <giorgi@example.com>' }), { db, now: NOW, kick: () => {}, blocked });
+    assert.equal(other.stored, true);
+  });
 });

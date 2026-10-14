@@ -1,4 +1,5 @@
-// Additive only; installs the support inbox tables (SupportThread, SupportMessage, SupportSnippet)
+// Additive only; installs the support inbox tables (SupportThread, SupportMessage, SupportSnippet,
+// SupportBlockedSender)
 // on the configured main database. Never changes or resets existing data.
 import 'dotenv/config';
 import { readFile } from 'node:fs/promises';

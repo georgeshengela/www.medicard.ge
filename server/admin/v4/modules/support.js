@@ -38,6 +38,7 @@
     add('check', '<path d="M20 6 9 17l-5-5"/>');
     add('undo', '<path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/>');
     add('copy', '<rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/>');
+    add('ban', '<circle cx="12" cy="12" r="9"/><path d="m5.6 5.6 12.8 12.8"/>');
     add('eye', '<path d="M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/>');
     add('zap', '<path d="M13 2 3 14h9l-1 8 10-12h-9Z"/>');
     add('clock', '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>');
@@ -697,10 +698,12 @@
           <label class="sx-select" title="პასუხისმგებელი">${ico('user')}<span>${esc(assignee ? authorLabel(assignee.name) : 'მიუბმელი')}</span><select data-assign aria-label="პასუხისმგებელი"><option value="">მიუბმელი</option>${admins.map((a) => `<option value="${esc(a.id)}" ${a.id === t.assignedAdminId ? 'selected' : ''}>${esc(a.name)}${a.id === d.me ? ' (მე)' : ''}</option>`).join('')}</select></label>
           <button type="button" class="btn compact ${closed ? '' : 'primary'}" data-close-toggle title="კლავიში e">${ico(closed ? 'undo' : 'check')}<span>${closed ? 'ხელახლა გახსნა' : 'დახურვა'}</span></button>
           <button type="button" class="sx-icon-btn" data-mark-unread title="წაუკითხავად მონიშვნა" aria-label="წაუკითხავად მონიშვნა">${ico('mail')}</button>
+          ${d.canBlock && !d.blocked ? `<button type="button" class="sx-icon-btn" data-block title="გამომგზავნის დაბლოკვა" aria-label="გამომგზავნის დაბლოკვა">${ico('ban')}</button>` : ''}
           <button type="button" class="sx-icon-btn sx-side-btn" data-side aria-label="ვინ წერს" title="ვინ წერს" aria-pressed="${st.sideOpen}">${ico('user')}</button>
         </div>
       </header>
       ${d.suppressed ? `<div class="sx-banner is-warn">${ico('alert')}<span>ეს მისამართი დაბლოკილია (წერილი დაბრუნდა ან სპამად მონიშნა) — პასუხი არ გაიგზავნება. <a href="#/email?tab=overview">შეამოწმე ელფოსტის გვერდზე</a>.</span></div>` : ''}
+      ${d.blocked ? `<div class="sx-banner is-warn">${ico('ban')}<span>${esc(t.counterpartEmail)} დაბლოკილია — მისი ახალი წერილები აღარ შემოვა.</span><button type="button" class="btn compact" data-unblock>განბლოკვა</button></div>` : ''}
       <div class="sx-timeline" data-timeline>${timelineHtml(d.messages || [], t)}${draftHtml(d.draft, d.suppressed)}</div>
       <footer class="sx-composer" data-composer></footer>`;
 
@@ -737,6 +740,27 @@
     box.querySelector('[data-status]').addEventListener('change', (e) => void patchThread({ status: e.target.value }, 'სტატუსი შეიცვალა'));
     box.querySelector('[data-assign]').addEventListener('change', (e) => void patchThread({ assignedAdminId: e.target.value || null }, 'პასუხისმგებელი შეიცვალა'));
     box.querySelector('[data-close-toggle]').onclick = () => void patchThread({ status: closed ? 'open' : 'closed' }, closed ? 'საუბარი ხელახლა გაიხსნა' : 'საუბარი დაიხურა');
+    box.querySelector('[data-block]')?.addEventListener('click', () => V().openConfirm?.({
+      title: `${t.counterpartEmail} — დაბლოკვა?`,
+      message: 'ამ მისამართიდან ახალი წერილები აღარ შემოვა, საუბარი დაიხურება. განბლოკვა ნებისმიერ დროს შეიძლება.',
+      confirmLabel: 'დაბლოკვა',
+      variant: 'danger',
+      onConfirm: async () => {
+        try {
+          await api(`/threads/${encodeURIComponent(t.id)}/block`, { method: 'POST' });
+          toast('გამომგზავნი დაიბლოკა', 'warn');
+          void refreshBadge();
+          await paintList(); await paintThread(); void paintPulse();
+        } catch (e) { toast(e.message, 'bad'); }
+      },
+    }));
+    box.querySelector('[data-unblock]')?.addEventListener('click', async () => {
+      try {
+        await api(`/threads/${encodeURIComponent(t.id)}/block`, { method: 'DELETE' });
+        toast('გამომგზავნი განიბლოკა', 'ok');
+        await paintThread();
+      } catch (e) { toast(e.message, 'bad'); }
+    });
     box.querySelector('[data-mark-unread]').onclick = async () => {
       await patchThread({ unread: true }, 'მოინიშნა წაუკითხავად', true);
       st.threadId = null; writeHash(); void paintThread(); void paintList();

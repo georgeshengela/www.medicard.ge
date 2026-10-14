@@ -84,6 +84,15 @@ CREATE INDEX IF NOT EXISTS "SupportMessage_thread_time_idx" ON "SupportMessage"(
 CREATE INDEX IF NOT EXISTS "SupportMessage_messageId_idx" ON "SupportMessage"("messageId");
 CREATE INDEX IF NOT EXISTS "SupportMessage_body_idx" ON "SupportMessage"("bodyStatus", "bodyNextAt");
 
+-- Blocked senders (2026-10-14): the inbound webhook drops their mail before storing it (Resend
+-- keeps the original). pattern = lowercased address, or "@domain" for a whole domain.
+CREATE TABLE IF NOT EXISTS "SupportBlockedSender" (
+  pattern TEXT PRIMARY KEY,
+  reason TEXT,
+  "createdById" TEXT,
+  "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
 -- Canned replies for the composer.
 CREATE TABLE IF NOT EXISTS "SupportSnippet" (
   id TEXT PRIMARY KEY,

@@ -12,6 +12,7 @@
  *                               key) → metadata-only until RESEND_INBOUND_API_KEY is set.
  *                             → owner notice to SUPPORT_NOTIFY_EMAIL: subject only, one digest per
  *                               10 minutes at most, never for auto/own-domain mail.
+ *   blocked senders (blocklist.js) → dropped here before anything is stored.
  *   daily (JobLease "support-retention") → deletes closed threads whose last message is > 2 years old.
  */
 import { randomUUID } from 'node:crypto';
@@ -22,6 +23,7 @@ import { isDeliverableEmail, SYNTHETIC_EMAIL_DOMAIN } from '../email/address.js'
 import { sendEmail } from '../email/mailer.js';
 import { capText, htmlToText, sanitizeEmailHtml } from './sanitize.js';
 import { createInboundClient } from './resendInbound.js';
+import { isBlockedSender } from './blocklist.js';
 import { resolveSentMessageIds } from './sentIds.js';
 import {
   headerValue,
@@ -135,7 +137,7 @@ export function threadAfterInbound(thread, at) {
 const inTx = (db, fn) => (typeof db.$transaction === 'function' ? db.$transaction(fn) : fn(db));
 
 /** Webhook `email.received`. Returns { duplicate } for a replay; never throws on bad input. */
-export async function applyInboundEmailEvent(event, { db = prisma, now = new Date(), kick = kickSupportInbound } = {}) {
+export async function applyInboundEmailEvent(event, { db = prisma, now = new Date(), kick = kickSupportInbound, blocked = isBlockedSender } = {}) {
   const d = event?.data || {};
   const resendId = String(d.email_id || d.id || '').trim().slice(0, 100);
   if (!resendId) return { ignored: true, reason: 'no_id' };
@@ -144,6 +146,7 @@ export async function applyInboundEmailEvent(event, { db = prisma, now = new Dat
 
   const from = parseAddress(d.from);
   if (!from.email) return { ignored: true, reason: 'no_from' };
+  if (await blocked(from.email, db)) return { ignored: true, reason: 'blocked' };
   const to = parseAddressList(d.to);
   const cc = parseAddressList(d.cc);
   const receivedFor = parseAddressList(d.received_for);

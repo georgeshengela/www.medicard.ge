@@ -21,6 +21,7 @@ import { EMAIL_FEATURE } from '../lib/email/mailer.js';
 import { hashEmail, isSuppressed } from '../lib/email/index.js';
 import { ATTACHMENT_MAX_BYTES, createInboundClient } from '../lib/support/resendInbound.js';
 import { previewText } from '../lib/support/quote.js';
+import { blockSender, canBlockSender, isBlockedSender, unblockSender } from '../lib/support/blocklist.js';
 import { SUPPORT_STATUSES, inboundHealth, isMissingSupportTable, kickSupportInbound, supportConfig, SUPPORT_RETENTION_DAYS } from '../lib/support/inbound.js';
 import { addSupportNote, letterSchema, noteSchema, renderSupportLetter, renderSupportReply, replySchema, sendSupportLetter, sendSupportReply, senderForMailbox, snippetSchema, supportSender, supportSenders, threadPatchSchema } from '../lib/support/reply.js';
 import { SUPPORT_STATS_DAYS, loadSupportStats, pendingDrafts, threadTriage } from '../lib/support/stats.js';
@@ -220,7 +221,7 @@ async function loadThread(id) {
 
 adminSupportRouter.get('/threads/:id', view, guarded(async (req, res) => {
   const thread = await loadThread(req.params.id);
-  const [messages, admins, user, suppressed, history, drafts, triage] = await Promise.all([
+  const [messages, admins, user, suppressed, history, drafts, triage, blocked] = await Promise.all([
     prisma.supportMessage.findMany({ where: { threadId: thread.id }, orderBy: { createdAt: 'asc' }, take: 500 }),
     adminDirectory(),
     // Basic account facts only — never health data.
@@ -235,6 +236,7 @@ adminSupportRouter.get('/threads/:id', view, guarded(async (req, res) => {
     }),
     pendingDrafts(),
     threadTriage([thread.id]),
+    isBlockedSender(thread.counterpartEmail, prisma, { cached: false }),
   ]);
   if (thread.unread) await prisma.supportThread.update({ where: { id: thread.id }, data: { unread: false } });
   res.json({
@@ -243,6 +245,8 @@ adminSupportRouter.get('/threads/:id', view, guarded(async (req, res) => {
     user,
     admins,
     suppressed,
+    blocked,
+    canBlock: canBlockSender(thread.counterpartEmail),
     history,
     draft: draftView(drafts[thread.id]),
     me: req.admin.id,
@@ -302,6 +306,27 @@ adminSupportRouter.patch('/threads/:id', manage, guarded(async (req, res) => {
     });
   }
   res.json({ thread: threadView(after) });
+}));
+
+/* ───────── Blocked senders ───────── */
+// Blocking drops every future letter from this address at the webhook and closes the thread;
+// what is already stored stays (closed threads are purged by retention as usual).
+adminSupportRouter.post('/threads/:id/block', manage, guarded(async (req, res) => {
+  const thread = await loadThread(req.params.id);
+  await blockSender(thread.counterpartEmail, { adminId: req.admin.id, reason: 'admin' });
+  await prisma.supportThread.update({
+    where: { id: thread.id },
+    data: { status: 'closed', closedAt: thread.closedAt || new Date(), unread: false, updatedAt: new Date() },
+  });
+  await writeAdminAudit({ admin: req.admin, action: 'support.sender.block', targetType: 'supportThread', targetId: thread.id, previousValue: { status: thread.status }, newValue: { status: 'closed', blocked: true } });
+  res.json({ blocked: true });
+}));
+
+adminSupportRouter.delete('/threads/:id/block', manage, guarded(async (req, res) => {
+  const thread = await loadThread(req.params.id);
+  await unblockSender(thread.counterpartEmail);
+  await writeAdminAudit({ admin: req.admin, action: 'support.sender.unblock', targetType: 'supportThread', targetId: thread.id, previousValue: { blocked: true }, newValue: { blocked: false } });
+  res.json({ blocked: false });
 }));
 
 adminSupportRouter.post('/threads/:id/preview', manage, guarded(async (req, res) => {

@@ -544,6 +544,7 @@ html body .workspace .sx-select select { position: absolute; inset: 0; width: 10
 .sx-banner.is-warn { background: var(--s-warn-soft); color: var(--s-warn); }
 .sx-banner a { color: inherit; font-weight: 600; text-decoration: underline; text-underline-offset: 2px; }
 .sx-banner .icon { flex: none; width: 16px; height: 16px; }
+.sx-banner .btn { flex: none; margin-left: auto; }
 .sx-timeline { position: relative; flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 14px; padding: 20px 22px 24px; background: var(--s-bg); }
 .sx-day { display: flex; align-items: center; gap: 12px; margin: 4px 0; font-size: 11.5px; font-weight: 600; color: var(--s-faint); }
 .sx-day::before, .sx-day::after { content: ""; flex: 1; height: 1px; background: var(--s-line); }
