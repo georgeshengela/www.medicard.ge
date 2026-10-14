@@ -181,6 +181,40 @@ html body .v3-cc-online .v3-cc-online-delta[hidden] { display: none; }
 html body .v3-cc-online .v3-cc-online-delta.is-up { color: #d1fae5 !important; background: rgba(167, 243, 208, 0.22); }
 html body .v3-cc-online .v3-cc-online-delta.is-down { color: #ffe4e6 !important; background: rgba(251, 113, 133, 0.30); }
 html body .v3-cc-online .v3-cc-online-delta.is-same { color: rgba(232, 255, 251, 0.88) !important; background: rgba(255, 255, 255, 0.12); font-weight: 600; }
+/* App Store chart place (owner 2026-10-14): a glass tile on the right of the live card; a tap opens Apple's chart.
+   The live number stays the card's one bold element — the tile is quieter (34px, glass, no colour of its own). */
+/* the card gets a little more of the hero row so the label and the live number never squeeze */
+html body .v3-cc-hero:has(.v3-cc-online.has-rank) { grid-template-columns: minmax(300px, 1.1fr) minmax(0, 3fr); }
+html body .v3-cc-online.has-rank { grid-template-columns: minmax(0, 1fr) auto; column-gap: 12px; }
+html body .v3-cc-online.has-rank > .v3-cc-online-top { grid-column: 1 / -1; grid-row: 1; }
+html body .v3-cc-online.has-rank > strong { grid-column: 1; grid-row: 2; align-self: end; }
+html body .v3-cc-online.has-rank > em { grid-column: 1; grid-row: 3; align-self: start; text-wrap: balance; }
+html body .v3-cc-online.has-rank > .v3-cc-online-today { grid-column: 1 / -1; grid-row: 4; }
+html body .v3-cc-online .v3-cc-rank {
+  grid-column: 2; grid-row: 2 / 4; align-self: stretch; position: relative; z-index: 1;
+  display: grid; align-content: center; justify-items: start; gap: 2px;
+  min-width: 104px; max-width: 128px; padding: 9px 11px; box-sizing: border-box;
+  border-radius: 12px; text-decoration: none; color: #fff !important; cursor: pointer;
+  background: rgba(255, 255, 255, 0.10); border: 1px solid rgba(255, 255, 255, 0.20);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16);
+  -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px);
+  transition: background-color 0.15s ease, border-color 0.15s ease, transform 0.15s ease;
+}
+html body .v3-cc-online .v3-cc-rank:hover { background: rgba(255, 255, 255, 0.17); border-color: rgba(255, 255, 255, 0.34); transform: translateY(-1px); }
+html body .v3-cc-online .v3-cc-rank:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
+html body .v3-cc-online .v3-cc-rank-label { display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; font-weight: 600; white-space: nowrap; color: rgba(232, 255, 251, 0.88) !important; }
+html body .v3-cc-online .v3-cc-rank-label .icon { width: 14px; height: 14px; flex: none; stroke: currentColor; fill: none; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+html body .v3-cc-online .v3-cc-rank.is-top .v3-cc-rank-label .icon { color: #fde68a; filter: drop-shadow(0 0 6px rgba(253, 230, 138, 0.55)); }
+html body .v3-cc-online .v3-cc-rank-num { margin-top: 3px; font-size: 32px; font-weight: 650; line-height: 1; letter-spacing: -0.03em; font-variant-numeric: tabular-nums; color: #fff; white-space: nowrap; }
+html body .v3-cc-online .v3-cc-rank-hash { margin-right: 1px; font-size: 0.55em; font-weight: 600; vertical-align: 0.6em; opacity: 0.72; }
+html body .v3-cc-online .v3-cc-rank-cat { font-size: 11px; line-height: 1.3; color: rgba(232, 255, 251, 0.78) !important; }
+html body .v3-cc-online .v3-cc-rank-move { display: inline-flex; align-items: center; gap: 6px; margin-top: 5px; font-size: 11px; white-space: nowrap; color: rgba(232, 255, 251, 0.78) !important; }
+html body .v3-cc-online .v3-cc-rank-move b { padding: 1px 7px; border-radius: 99px; font-weight: 700; font-variant-numeric: tabular-nums; }
+html body .v3-cc-online .v3-cc-rank-move b.is-up { color: #d1fae5; background: rgba(167, 243, 208, 0.22); }
+html body .v3-cc-online .v3-cc-rank-move b.is-down { color: #ffe4e6; background: rgba(251, 113, 133, 0.30); }
+html body .v3-cc-online .v3-cc-rank-move b.is-same { color: rgba(232, 255, 251, 0.9); background: rgba(255, 255, 255, 0.12); }
+html body .v3-cc-online .v3-cc-rank.is-stale { opacity: 0.72; }
+@media (prefers-reduced-motion: reduce) { html body .v3-cc-online .v3-cc-rank { transition: none; } html body .v3-cc-online .v3-cc-rank:hover { transform: none; } }
 html body .v3-cc-online .v3-cc-pulse { width: 8px; height: 8px; border-radius: 99px; background: #a7f3d0 !important; box-shadow: 0 0 0 0 rgba(167, 243, 208, .7); animation: s-live 1.8s ease-out infinite; }
 html body .v3-cc-online.is-empty .v3-cc-pulse { background: rgba(255,255,255,.45) !important; animation: none; }
 @keyframes s-live { 0% { box-shadow: 0 0 0 0 rgba(167, 243, 208, .7); } 100% { box-shadow: 0 0 0 10px rgba(167, 243, 208, 0); } }
@@ -362,7 +396,7 @@ html body .v3-cc #ops-geo .mapboxgl-map,
 html body .v3-cc #ops-geo [class*="geo-map"] { border-radius: 12px !important; overflow: hidden; }
 
 @media (max-width: 1200px) {
-  html body .v3-cc-hero { grid-template-columns: 1fr; }
+  html body .v3-cc-hero, html body .v3-cc-hero:has(.v3-cc-online.has-rank) { grid-template-columns: 1fr; }
   html body .v3-cc-infra { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
   html body .v3-cc-infra-card:nth-child(3) { border-left: 0 !important; }
   html body .v3-cc-infra-card:nth-child(n+3) { border-top: 1px solid var(--s-line-soft) !important; }

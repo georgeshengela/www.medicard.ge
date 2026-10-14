@@ -55,6 +55,7 @@ import { campaignMediaGate } from './lib/campaignMedia.js';
 import { errorMonitorEnabled, recordFatalError, startErrorPurge, stopErrorPurge } from './lib/errorMonitor.js';
 import { langMiddleware, t } from './lib/i18n.js';
 import { capacityMiddleware, startCapacityMonitor, stopCapacityMonitor } from './lib/capacity.js';
+import { startAppStoreRankMonitor, stopAppStoreRankMonitor } from './lib/appStoreRank.js';
 import { adminDirectorRouter, directorRouter } from './routes/director.routes.js';
 import { startDirectorWorkers } from './lib/director/supportAgent.js';
 import { adminEmailRouter, emailWebhookRouter, unsubscribeRouter } from './routes/email.routes.js';
@@ -553,6 +554,8 @@ if (env.NODE_ENV === 'production') startHoroscopeScheduler();
 if (env.NODE_ENV === 'production' && process.env.MEDIRUN_AUTOPILOT !== 'off') startMedirunAutopilot();
 // Production only: local servers point at the main DB and must not write samples or alert the owner.
 if (env.NODE_ENV === 'production' && process.env.CAPACITY_MONITOR !== 'off') startCapacityMonitor();
+// App Store chart place (admin home card): one read an hour under a lease, so „vs yesterday“ always has a sample.
+if (env.NODE_ENV === 'production') startAppStoreRankMonitor();
 // Error monitoring retention (30 days, daily under a lease); recording itself is production-only too.
 if (errorMonitorEnabled()) startErrorPurge();
 
@@ -575,6 +578,7 @@ for (const signal of ['SIGINT', 'SIGTERM']) {
     stopPharmacySyncScheduler();
     stopHoroscopeScheduler();
     stopCapacityMonitor();
+    stopAppStoreRankMonitor();
     stopErrorPurge();
     // Render sends SIGTERM on every deploy while the new instance takes traffic. Let in-flight
     // requests (a Medi answer takes 20–40 s) finish before the database goes away; Render

@@ -22,6 +22,7 @@ import { toDateOnly, calculateAge, genderSchema, MIN_USER_AGE } from '../lib/pat
 import { asyncHandler } from '../middleware/error.js';
 import { requireAdmin } from '../middleware/adminAuth.js';
 import { getProviderBalances } from '../lib/providerBalances.js';
+import { getAppStoreRank } from '../lib/appStoreRank.js';
 import { AI_ERROR_REVIEWED, getAiQualityStats } from '../lib/aiTelemetry.js';
 import { getEvalRun, listEvalRuns, runQualityScan } from '../lib/aiQuality.js';
 import {
@@ -442,6 +443,16 @@ adminRouter.get(
   asyncHandler(async (req, res) => {
     const fresh = String(req.query.fresh ?? '') === '1';
     res.json(await getProviderBalances({ fresh }));
+  }),
+);
+
+// Admin home „ახლა აპში“ card: our App Store chart place in Georgia (lib/appStoreRank.js, cached 20 min).
+adminRouter.get(
+  '/app-store-rank',
+  requireAdmin,
+  asyncHandler(async (req, res) => {
+    const fresh = String(req.query.fresh ?? '') === '1';
+    res.json(await getAppStoreRank({ fresh }));
   }),
 );
 

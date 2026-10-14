@@ -23,6 +23,7 @@
   let ccLive = { status: 'live', at: null, error: null };
   let ccLastUsers = null;
   let ccLastBalances = null;
+  let ccLastRank = null;
   let geoMap = null;
   let geoMapboxP = null;
   let geoLast = null;
@@ -322,9 +323,10 @@
     const q = typeof opsQs === 'function' ? opsQs() : `range=${opsState.range}`;
     const grain = opsState.grain || 'dau';
     const freshQs = opts && opts.fresh === true ? '&fresh=1' : '';
-    const [bundle, balances, flags] = await Promise.all([
+    const [bundle, balances, storeRank, flags] = await Promise.all([
       api(`/analytics/dashboard?${q}&grain=${grain}${freshQs}`).catch((err) => ({ error: err.message })),
       api('/balances').catch((err) => ({ error: err.message })),
+      api(`/app-store-rank${opts && opts.fresh === true ? '?fresh=1' : ''}`).catch((err) => ({ error: err.message })),
       api('/manage/features').catch(() => null),
     ]);
     const overview = bundle.overview || { error: bundle.error };
@@ -347,6 +349,7 @@
     if (freshHost) freshHost.outerHTML = liveChip();
 
     if (!balances.error) ccLastBalances = balances;
+    if (storeRank && !storeRank.error) ccLastRank = storeRank;
 
     const settings = overview.settings || system.settings || {};
     const mergedAttention = [
@@ -365,7 +368,7 @@
       failedCampaigns24h: 0,
       attention: mergedAttention,
     });
-    paintLiveHero(root, overview, system);
+    paintLiveHero(root, overview, system, storeRank && !storeRank.error ? storeRank : ccLastRank);
     paintStatus(root, resolved, system, overview, balances.error ? ccLastBalances : balances, flags?.features);
     paintAttention(root, resolved);
     paintInfra(root, overview, system, balances.error ? ccLastBalances : balances);
@@ -720,7 +723,43 @@
   }
   global.paintSignupDelta = paintSignupDelta;
 
-  function paintLiveHero(root, overview, system) {
+  /**
+   * Our App Store place (lib/appStoreRank.js, owner 2026-10-14): a glass tile on the right of „ახლა აპში“.
+   * A smaller number is better, so ▲ = climbed. A tap opens Apple's chart in a new tab.
+   */
+  function storeRankTile(r) {
+    if (!r || r.error || !r.chartUrl) return '';
+    const inList = r.rank != null;
+    const place = (n) => (n == null ? '100+' : `#${n}`);
+    const d = r.delta;
+    const move = d === 'entered' ? ['is-up', '▲']
+      : d === 'left' ? ['is-down', '▼']
+      : typeof d === 'number' ? (d > 0 ? ['is-up', `▲ ${d}`] : d < 0 ? ['is-down', `▼ ${-d}`] : ['is-same', '='])
+      : null;
+    const lines = [
+      `App Store · საქართველო · უფასო iPhone აპები`,
+      `${r.genre || 'კატეგორია'}: ${inList ? `${r.rank}-ე ადგილი ${r.size || 100}-დან` : 'ტოპ 100-ს გარეთ'}`,
+      r.ahead ? `ჩვენზე წინ: ${r.ahead}` : '',
+      `ყველა კატეგორია: ${r.overallRank != null ? `#${r.overallRank}` : 'ტოპ 100-ს გარეთ'}`,
+      r.yesterday ? `გუშინ: ${place(r.yesterday.rank)}` : 'გუშინდელთან შედარება ხვალ გამოჩნდება',
+      r.weekAgo ? `კვირის წინ: ${place(r.weekAgo.rank)}` : '',
+      r.best ? `საუკეთესო: #${r.best.rank} (${V3().formatDate ? V3().formatDate(r.best.at, 'date') : r.best.at.slice(0, 10)})` : '',
+      r.stale ? 'Apple ახლა არ პასუხობს — ეს ბოლო ცნობილი ადგილია' : '',
+      r.chartUpdatedAt ? `Apple-მა განაახლა: ${when(r.chartUpdatedAt)}` : '',
+      'დააჭირე — Apple-ის ჩარტი გაიხსნება',
+    ].filter(Boolean);
+    const cls = `v3-cc-rank${inList && r.rank <= 10 ? ' is-top' : ''}${r.stale ? ' is-stale' : ''}`;
+    return `
+          <a class="${cls}" href="${esc(r.chartUrl)}" target="_blank" rel="noopener noreferrer" title="${esc(lines.join('\n'))}"
+             aria-label="${esc(`App Store-ის ჩარტი: ${inList ? `${r.rank}-ე ადგილი` : 'ტოპ 100-ს გარეთ'}, ${r.genre || ''}`)}">
+            <span class="v3-cc-rank-label">${ico('award')} App Store</span>
+            <span class="v3-cc-rank-num">${inList ? `<span class="v3-cc-rank-hash">#</span>${fmt(r.rank)}` : '100+'}</span>
+            <span class="v3-cc-rank-cat">${esc(r.genre || '')}</span>
+            ${move ? `<span class="v3-cc-rank-move"><b class="${move[0]}">${move[1]}</b>გუშინ ${esc(place(r.yesterday?.rank))}</span>` : ''}
+          </a>`;
+  }
+
+  function paintLiveHero(root, overview, system, storeRank) {
     if (overview.error) {
       $('ops-live-hero').innerHTML = section({
         title: 'ცოცხალი მდგომარეობა',
@@ -735,9 +774,10 @@
       ?? overview.charts?.growth?.newUsers?.find((d) => d.day === overview.today)?.count;
     const aiErr = system.ai?.errors24h ?? 0;
     const sp = (series, tone) => (global.AdminCharts && series?.length ? global.AdminCharts.spark(series, { tone }) : '');
+    const rankTile = storeRankTile(storeRank);
     $('ops-live-hero').innerHTML = `
       <section class="v3-cc-hero" aria-label="ცოცხალი მდგომარეობა">
-        <article class="v3-cc-online${Number(global.__opsLiveSnap?.onlineNow) > 0 ? '' : ' is-empty'}" data-ops-kpi="onlineNow" title="მომხმარებლები, რომელთა AppActivity lastAt ≤ 90 წამია. Socket.IO ops:live.">
+        <article class="v3-cc-online${Number(global.__opsLiveSnap?.onlineNow) > 0 ? '' : ' is-empty'}${rankTile ? ' has-rank' : ''}" data-ops-kpi="onlineNow" title="მომხმარებლები, რომელთა AppActivity lastAt ≤ 90 წამია. Socket.IO ops:live.">
           <div class="v3-cc-online-top">
             <span class="v3-cc-pulse" aria-hidden="true"></span>
             <span class="v3-cc-online-label">${ico('activity')} ახლა აპში</span>
@@ -745,6 +785,7 @@
           </div>
           <strong>${seedOnline()}</strong>
           <em>რეალურ დროში · ბოლო 90 წამი</em>
+          ${rankTile}
           <div class="v3-cc-online-today" data-ops-kpi="newUsersToday" title="ახალი ანგარიშები დღეს, თბილისის დროით. ცოცხლად ახლდება (ops:live).">
             <span>${ico('user')} დღეს დარეგისტრირდა</span>
             <span class="v3-cc-online-delta" data-ops-signup-delta hidden></span>
