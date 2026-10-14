@@ -1,7 +1,7 @@
 import React from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Baby, Feather, HeartHandshake, Leaf, MessageCircle, MessagesSquare, Orbit, PenLine, type LucideIcon } from 'lucide-react-native';
+import { Baby, Feather, Leaf, MessageCircle, MessagesSquare, Orbit, PenLine, type LucideIcon } from 'lucide-react-native';
 import { HomeSectionHeading } from '@/components/home/HomeSectionHeading';
 import { useAccountQuery } from '@/hooks/useAccountQuery';
 import { communityRequest } from '@/lib/api';
@@ -21,7 +21,11 @@ type PreviewPost = {
   comments: number;
   likes: number;
   reactions?: Record<string, number>;
+  createdAt?: string;
 };
+
+/** Home 2.0 (owner 2026-10-15): the section shows only with a post this recent. */
+const FRESH_DAYS = 7;
 
 const CARD_W = 248;
 const CARD_GAP = 10;
@@ -60,28 +64,17 @@ export function HomeCommunitySection({ visible, pregnant }: { visible: boolean; 
 
   const open = (path: string) => router.push(path as never);
   const title = tx('ქალების სივრცე', "Women's space");
-  const notMember = feed.isError;
   const posts = feed.data ?? [];
+  // With a few posts a month the preview cards read stale: the section shows only with a post from the last
+  // seven days, and a non-member (the feed answers 403) sees none — the „ჰკითხე სხვა ქალებს“ chip in Medi's
+  // row stays the way in. Nothing renders while the feed loads.
+  const fresh = posts.some((post) => post.createdAt && Date.now() - Date.parse(post.createdAt) <= FRESH_DAYS * 86_400_000);
+  if (feed.isError || !fresh) return null;
 
   return (
     <View style={s.section}>
       <HomeSectionHeading title={title} linkLabel={tx('ყველა', 'All')} onLink={() => open('/community')} />
-      {notMember ? (
-        <Pressable
-          accessibilityRole="button"
-          onPress={() => open('/community')}
-          style={[s.join, { backgroundColor: c.surface }]}
-        >
-          <View style={[s.tile, { backgroundColor: accent.soft }]}>
-            <HeartHandshake size={21} color={accent.ink} strokeWidth={1.9} />
-          </View>
-          <View style={{ flex: 1, gap: 2 }}>
-            <Text style={[s.joinTitle, { color: c.text100 }]}>{tx('შემოუერთდი სხვა ქალებს', 'Join other women')}</Text>
-            <Text style={[s.meta, { color: c.text200 }]}>{tx('ჰკითხე, გაუზიარე — შეგიძლია ანონიმურად', 'Ask and share — anonymously if you like')}</Text>
-          </View>
-        </Pressable>
-      ) : (
-        <ScrollView
+      <ScrollView
           horizontal
           nestedScrollEnabled
           showsHorizontalScrollIndicator={false}
@@ -92,9 +85,7 @@ export function HomeCommunitySection({ visible, pregnant }: { visible: boolean; 
           style={{ marginHorizontal: -HUB.gutter }}
           contentContainerStyle={{ gap: CARD_GAP, paddingHorizontal: HUB.gutter }}
         >
-          {feed.isPending && !posts.length
-            ? [0, 1].map((i) => <View key={i} style={[s.card, { backgroundColor: c.surface }]} />)
-            : posts.map((post) => {
+          {posts.map((post) => {
                 const t = TOPIC[post.topic ?? ''] ?? { label: title, icon: MessagesSquare };
                 const Icon = t.icon;
                 const reactions = Object.values(post.reactions ?? {}).reduce((a, b) => a + b, 0) || post.likes;
@@ -140,7 +131,6 @@ export function HomeCommunitySection({ visible, pregnant }: { visible: boolean; 
             </Text>
           </Pressable>
         </ScrollView>
-      )}
     </View>
   );
 }
@@ -154,7 +144,4 @@ const s = StyleSheet.create({
   meta: { fontFamily: 'NotoSansGeorgian_500Medium', fontSize: 12, lineHeight: 16 },
   write: { width: 150, alignItems: 'center', justifyContent: 'center', gap: 4 },
   writeTitle: { fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 14, lineHeight: 19 },
-  join: { borderRadius: HUB.cardRadius, padding: HUB.cardPad, flexDirection: 'row', alignItems: 'center', gap: 14 },
-  joinTitle: { fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 15, lineHeight: 21 },
-  tile: { width: HUB.tile, height: HUB.tile, borderRadius: HUB.tileRadius, alignItems: 'center', justifyContent: 'center' },
 });

@@ -4,7 +4,6 @@ import { useRouter } from 'expo-router';
 import Animated, { Easing, useAnimatedProps, useReducedMotion, useSharedValue, withTiming } from 'react-native-reanimated';
 import Svg, { Circle, Line } from 'react-native-svg';
 import { HomeSectionHeading } from '@/components/home/HomeSectionHeading';
-import { MedicalSourcesLink } from '@/components/health/MedicalSourcesLink';
 import { Bone } from '@/components/ui/Skeleton';
 import { QUEST_ART } from '@/constants/appArt';
 import { useHomeStepsWeek } from '@/hooks/useHomeActive';
@@ -154,7 +153,6 @@ function MoveHero({ steps, first }: { steps: Props['steps']; first: boolean }) {
           {card}
         </Pressable>
       )}
-      <MedicalSourcesLink sourceIds={['dailySteps']} />
     </View>
   );
 }

@@ -98,6 +98,8 @@ import { chooseHomeLayout } from '@/lib/home/homeLayoutStore';
 import { HomeAccentContext, homeAccentFor } from '@/theme/homeAccent';
 import { useIsDark } from '@/theme/colors';
 import { tx } from '@/i18n/locale';
+import { HomeModuleDoors } from '@/components/home/sections/HomeModuleDoors';
+import type { MedicalSourceId } from '@/constants/medicalSources';
 
 
 
@@ -384,6 +386,24 @@ export default function Home() {
     <HomeSectionHeading title={title} linkLabel={href ? linkLabel : undefined} onLink={href ? () => open(href) : undefined} />
   );
 
+  // Home 2.0: one picture per page — on the active Home the MEDIRUN spotlight already shows the lit city, so a
+  // MEDIRUN news card does not repeat it there. Other news stays.
+  const runOn = isFeatureOn('medirun', features);
+  const newsItems = useMemo(
+    () => (layout === 'active' && runOn ? news.items.filter((item) => !/medirun/i.test(item.badge ?? '')) : news.items),
+    [layout, runOn, news.items],
+  );
+  // Home 2.0: one „წყაროები“ for the whole page (the per-card links are gone) — every source the sections of
+  // this layout can cite, so the list is complete whatever is on the page today.
+  const pregnant = female && peekCycleView()?.display?.profile.mode === 'PREGNANCY';
+  const sourceIds: MedicalSourceId[] = [
+    ...(female && cycleOn ? (pregnant ? (['pregnancyDueDate', 'pregnancyWeeks'] as const) : (['menstrualCycle', 'heavyMenstrualBleeding'] as const)) : []),
+    ...(stepsOn ? (['dailySteps'] as const) : []),
+    ...(waterOn ? (['waterIntake'] as const) : []),
+    ...(nutritionOn ? (['energyTarget', 'macroRanges'] as const) : []),
+    ...(isHrefAvailable('/health-metrics/weight', features) ? (['bodyWeightPlanner', 'weightPace'] as const) : []),
+  ];
+
   const sections = {
     dashboard: (
       <View style={{ paddingTop: insets.top + 14 }}>
@@ -398,16 +418,7 @@ export default function Home() {
       </View>
     ),
     // Standard „დღეს“ (owner 2026-10-04, built for men first): one answer, the day's dials, one-tap actions.
-    hero: (
-      <>
-        <HomeTodayHero answer={answer} dials={dials} onAddWater={waterOn ? addGlass : undefined} onWeightSaved={() => void nutrition.load()} />
-        {stepsOn || waterOn ? (
-          <View style={{ paddingHorizontal: HUB.gutter }}>
-            <MedicalSourcesLink sourceIds={[...(stepsOn ? ['dailySteps' as const] : []), ...(waterOn ? ['waterIntake' as const] : [])]} />
-          </View>
-        ) : null}
-      </>
-    ),
+    hero: <HomeTodayHero answer={answer} dials={dials} onAddWater={waterOn ? addGlass : undefined} onWeightSaved={() => void nutrition.load()} />,
     ask: (
       <View style={[s.section, { marginTop: 12 }]}>
         <HomeAskMedi onPress={() => open('/assistant')} />
@@ -420,6 +431,14 @@ export default function Home() {
     attention: <HomeAttention />,
     week: <HomeWeekSteps todayTotal={stepsTotal} goal={stepsGoal} fetchedAt={stepsBundle?.fetchedAt ?? null} />,
     challenges: <HomeChallenges />,
+    doors: (
+      <HomeModuleDoors
+        layout={layout}
+        medicationsCount={meds.medications.length}
+        scanKinds={scanKinds}
+        onAllModules={() => setModulesOpen(true)}
+      />
+    ),
     cycle: (
       <View style={s.section}>
         {heading(tx('ქალის ჯანმრთელობა', "Women's health"), '/cycle', tx('ციკლის ნახვა', 'View cycle'))}
@@ -434,7 +453,7 @@ export default function Home() {
         /> : null}
       </View>
     ),
-    news: <HomeNewsSection items={news.items} onDismiss={news.dismiss} />,
+    news: <HomeNewsSection items={newsItems} onDismiss={news.dismiss} />,
     // MEDIFOOD hub card (calories + weight with „აწონვა“), the same one the women's Home uses.
     nutrition: (
       <HomeNutritionLite
@@ -460,8 +479,14 @@ export default function Home() {
         />
       </View>
     ) : null,
+    // The page's one „წყაროები“ sits here, right above the care note.
     disclaimer: (
       <View style={s.section}>
+        {sourceIds.length ? (
+          <View style={{ marginBottom: 10 }}>
+            <MedicalSourcesLink sourceIds={sourceIds} />
+          </View>
+        ) : null}
         <HomeCareNote />
       </View>
     ),

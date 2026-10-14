@@ -4,7 +4,6 @@ import { useRouter } from 'expo-router';
 import Svg, { Circle } from 'react-native-svg';
 import { Droplets, Footprints, Plus, type LucideIcon } from 'lucide-react-native';
 import { HomeSectionHeading } from '@/components/home/HomeSectionHeading';
-import { MedicalSourcesLink } from '@/components/health/MedicalSourcesLink';
 import type { useHydration } from '@/hooks/useHydration';
 import type { useStepsMetrics } from '@/hooks/useStepsMetrics';
 import { HYDRATION_DROP_ML } from '@/types/hydration';
@@ -145,10 +144,6 @@ export function HomeDayPair({ steps, hydration, onAddWater, stepsOn, waterOn, ti
         ) : null}
       </View>
       {children}
-      <MedicalSourcesLink
-        sourceIds={[...(stepsOn ? ['dailySteps' as const] : []), ...(waterOn ? ['waterIntake' as const] : [])]}
-        tint={rings ? c.text200 : undefined}
-      />
     </View>
   );
 }

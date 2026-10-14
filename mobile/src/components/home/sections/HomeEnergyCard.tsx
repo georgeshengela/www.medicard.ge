@@ -4,7 +4,6 @@ import { useRouter } from 'expo-router';
 import Animated, { Easing, useAnimatedProps, useReducedMotion, useSharedValue, withDelay, withTiming } from 'react-native-reanimated';
 import Svg, { Circle } from 'react-native-svg';
 import { ArrowUpRight, RotateCw, Target } from 'lucide-react-native';
-import { MedicalSourcesLink } from '@/components/health/MedicalSourcesLink';
 import { HomeSectionHeading } from '@/components/home/HomeSectionHeading';
 import type { useNutritionDashboard } from '@/components/nutrition/ProgramUI';
 import { GOAL_ART } from '@/constants/appArt';
@@ -280,7 +279,6 @@ export function HomeEnergyCard({ nutrition, first = false }: { nutrition: HomeNu
           {view.kind !== 'budget' ? <CtaRow label={goalCta} a11y={goalCta} onPress={openGoal} /> : null}
         </View>
       </View>
-      {view.kind === 'budget' ? <MedicalSourcesLink sourceIds={['energyTarget', 'macroRanges']} /> : null}
     </View>
   );
 }

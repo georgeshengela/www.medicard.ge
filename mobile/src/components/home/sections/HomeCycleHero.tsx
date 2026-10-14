@@ -3,8 +3,6 @@ import { Pressable, StyleSheet, Text, useWindowDimensions, View } from 'react-na
 import { useRouter } from 'expo-router';
 import { Baby, CalendarHeart, Check, Droplet, Flower2, Heart, Lock, PencilLine, Plus, RotateCcw, type LucideIcon } from 'lucide-react-native';
 import { HomeSectionHeading } from '@/components/home/HomeSectionHeading';
-import { MedicalSourcesLink } from '@/components/health/MedicalSourcesLink';
-import type { MedicalSourceId } from '@/constants/medicalSources';
 import { CyclePeriodToast } from '@/components/cycle/CyclePeriodToast';
 import { CycleHeavyBleedingCard } from '@/components/cycle/CycleHeavyBleedingCard';
 import { CycleStillBleedingRow } from '@/components/cycle/CycleStillBleedingRow';
@@ -23,7 +21,6 @@ import type { CycleView } from '@/lib/cycleOffline';
 import { cycleToday, phaseFromBundle, usedCycleLength } from '@/lib/cycleCanonical';
 import { expectationLine, expectationsFromBundle } from '@/lib/cycleExpectations';
 import { displayPhaseLabel } from '@/lib/cycleHonesty';
-import { showHeavyBleedingCard } from '@/lib/cycleHeavyBleeding';
 import { heroPeriodState, heroPlanWhileAsking } from '@/lib/cyclePeriodStatus';
 import { cycleModeCapabilities } from '@/lib/cycleModes';
 import { POSTPARTUM_OVULATION_NOTE } from '@/lib/cycleTone';
@@ -31,6 +28,7 @@ import { bleedingIsUncertain, showFertilityUi, showOvulationUi } from '@/lib/cyc
 import { forecastPresentationAllowed, suppressCycleLengthChrome } from '@/lib/cycleForecastEligibility';
 import { cycleBundleCapabilities } from '@/lib/cycleModes';
 import { trackingCopy } from '@/lib/cycleTrackingCopy';
+import { showHeavyBleedingCard } from '@/lib/cycleHeavyBleeding';
 import { isBleedFlow } from '@/lib/cycleLogSave';
 import { cycleLoggedBleedLabel } from '@/lib/cycleHistoryCopy';
 import { cycleSetupStart, needsCycleOnboarding } from '@/lib/cycleExperience';
@@ -140,7 +138,6 @@ export function HomeCycleHero({ cycle, locked, userId, first }: HomeCycleHeroPro
   const card = [s.card, { backgroundColor: theme.surface }];
 
   let body: React.ReactNode = null;
-  let sourceIds: MedicalSourceId[] | null = null;
 
   if (variant === 'lockUnknown') {
     body = <View style={[card, { height: heroMinHeight }]} />;
@@ -198,7 +195,6 @@ export function HomeCycleHero({ cycle, locked, userId, first }: HomeCycleHeroPro
     const due = !pregnancy?.reviewRequired && pregnancy?.dueDate ? `${ka.cycle.dueDate} · ${formatYmd(pregnancy.dueDate)}` : null;
     const openWeek = () =>
       router.push((age ? `/cycle/week/${age.week}` : '/cycle/pregnancy/timeline') as never);
-    sourceIds = ['pregnancyDueDate', 'pregnancyWeeks'];
     body = (
       <View style={card}>
         <Pressable
@@ -232,7 +228,6 @@ export function HomeCycleHero({ cycle, locked, userId, first }: HomeCycleHeroPro
         ? ka.cycle.postpartumElapsed(elapsed.week, elapsed.day)
         : ka.cycle.postpartumNoReference;
     const Icon = peri ? Flower2 : Baby;
-    sourceIds = ['menstrualCycle'];
     body = (
       <View style={card}>
         <Pressable accessibilityRole="button" accessibilityLabel={`${title}. ${detail}`} onPress={openCycle} style={s.row}>
@@ -264,7 +259,6 @@ export function HomeCycleHero({ cycle, locked, userId, first }: HomeCycleHeroPro
       </View>
     );
   } else if (bundle && variant === 'tracking') {
-    sourceIds = ['menstrualCycle'];
     body = (
       <TrackingCard
         bundle={bundle}
@@ -281,8 +275,7 @@ export function HomeCycleHero({ cycle, locked, userId, first }: HomeCycleHeroPro
       />
     );
   } else if (bundle && variant === 'cycle') {
-    // The heavy-bleeding inset card has no link of its own on Home: ACOG joins the hero's one „წყაროები“.
-    sourceIds = showHeavyBleedingCard(bundle.logs, today) ? ['menstrualCycle', 'heavyMenstrualBleeding'] : ['menstrualCycle'];
+    // Sources (incl. ACOG for the heavy-bleeding inset) are listed once at the end of Home (Home 2.0).
     body = (
       <ClassicCycleCard
         bundle={bundle}
@@ -310,7 +303,6 @@ export function HomeCycleHero({ cycle, locked, userId, first }: HomeCycleHeroPro
         onLink={openCycle}
       />
       {body}
-      {sourceIds ? <MedicalSourcesLink sourceIds={sourceIds} align="center" tint={theme.text200} /> : null}
       {variant !== 'cycle' && variant !== 'tracking' && actions.error ? (
         <Text accessibilityRole="alert" style={[hubText.caption, { color: theme.danger, marginTop: 6 }]}>
           {actions.error}

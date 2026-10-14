@@ -73,6 +73,9 @@ export function HomeTodayHero({
   const [weighIn, setWeighIn] = useState(false);
   const tones = ringTones(dark);
   const ringSize = width < 360 ? 112 : 136;
+  // Home 2.0 (owner 2026-10-15): for the steps and water answers the caption said what the legend beside the
+  // rings already shows („6 400 / 7 000“ twice on one screen) — it stays only where it adds something (doses).
+  const captionRepeatsLegend = (answer.kind === 'steps' || answer.kind === 'water') && dials.some((dial) => dial.key === answer.kind);
 
   const actions: { key: string; label: string; a11y: string; icon: LucideIcon; ink: string; onPress: () => void }[] = [];
   if (onAddWater) {
@@ -105,9 +108,11 @@ export function HomeTodayHero({
         <Text numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.8} style={[s.title, { color: c.text100 }]}>
           {answer.title}
         </Text>
-        <Text numberOfLines={2} style={[s.caption, { color: c.text200 }]}>
-          {answer.caption}
-        </Text>
+        {captionRepeatsLegend ? null : (
+          <Text numberOfLines={2} style={[s.caption, { color: c.text200 }]}>
+            {answer.caption}
+          </Text>
+        )}
       </View>
 
       {dials.length ? (

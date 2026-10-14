@@ -3,7 +3,6 @@ import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import Svg, { Circle, Polyline } from 'react-native-svg';
 import { ChevronRight, Scale } from 'lucide-react-native';
-import { MedicalSourcesLink } from '@/components/health/MedicalSourcesLink';
 import { HomeSectionHeading } from '@/components/home/HomeSectionHeading';
 import { HomeWeightLogSheet } from '@/components/home/HomeWeightLogSheet';
 import type { HomeNutritionState } from '@/components/home/sections/HomeEnergyCard';
@@ -131,7 +130,6 @@ export function HomeWeightProgress({ nutrition, first = false }: { nutrition: Ho
 
   const points = chartWidth > 0 && series.length >= SPARKLINE_MIN_POINTS ? sparklinePoints(series.map((p) => p.kg), chartWidth, CHART_H) : [];
   const etaDate = eta ? formatYmd(eta.date, daysBetween(today, eta.date) > 300) : '';
-  const showSources = view != null && view.kind !== 'none';
 
   return (
     <View style={{ paddingHorizontal: HUB.gutter, marginTop: first ? 22 : HUB.sectionGap }}>
@@ -248,7 +246,6 @@ export function HomeWeightProgress({ nutrition, first = false }: { nutrition: Ho
           </Pressable>
         ) : null}
       </View>
-      {showSources ? <MedicalSourcesLink sourceIds={['bodyWeightPlanner', 'weightPace']} /> : null}
 
       <HomeWeightLogSheet
         visible={sheetOpen}
