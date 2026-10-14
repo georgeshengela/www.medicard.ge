@@ -872,15 +872,6 @@ body.v3-sidebar-compact .v3-sidebar .sidebar-foot { flex-direction: column; }
   color: var(--v3-muted);
 }
 
-.v3-palette-group {
-  padding: 8px 10px 4px;
-  font-size: 10px;
-  font-weight: 700;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: var(--v3-muted);
-}
-
 @media (prefers-reduced-motion: reduce) {
   .v3-skel i, .sk { animation: none; }
 }

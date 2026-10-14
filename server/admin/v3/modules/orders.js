@@ -8,7 +8,7 @@
   const V = () => global.AdminV3 || {};
   const $ = (id) => document.getElementById(id);
 
-  const DOCTOR_TYPE_KA = global.DOCTOR_TYPE_KA || {
+  const DOCTOR_TYPE_KA = {
     GP: 'ოჯახის ექიმი',
     DENTIST: 'სტომატოლოგი',
     CARDIO: 'კარდიოლოგი',
@@ -49,7 +49,6 @@
     return V().infoButton ? V().infoButton(key) : '';
   }
   function doctorLabel(type) {
-    if (typeof global.doctorLabel === 'function') return global.doctorLabel(type);
     return DOCTOR_TYPE_KA[String(type || '').toUpperCase()] || type || 'ვიზიტი';
   }
   function openUser(id) {

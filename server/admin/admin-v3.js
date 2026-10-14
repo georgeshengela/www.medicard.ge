@@ -817,53 +817,6 @@
     }
   }
 
-  function paletteSections() {
-    return [
-      { group: 'Overview', tab: 'overview', label: 'ოპერაციები' },
-      { group: 'People', tab: 'users', label: 'მომხმარებლები' },
-      { group: 'Engagement', tab: 'push', label: 'Push · Brain', hash: '#/push?tab=brain' },
-      { group: 'Engagement', tab: 'push', label: 'Push · გაგზავნა', hash: '#/push?tab=compose' },
-      { group: 'Engagement', tab: 'community', label: 'ქალების სივრცე' },
-      { group: 'Engagement', tab: 'medipulsi', label: 'MEDIRUN' },
-      { group: 'Health & Medi', tab: 'health', label: 'მოდულების გამოყენება' },
-      { group: 'Health & Medi', tab: 'ai', label: 'Medi' },
-      { group: 'Commerce', tab: 'rewards', label: 'ჯილდოები' },
-      { group: 'Commerce', tab: 'rewards', label: 'კამპანიები', hash: '#/rewards?tab=campaigns' },
-      { group: 'Commerce', tab: 'rewards', label: 'პარტნიორები', hash: '#/rewards?tab=partners' },
-      { group: 'Operations', tab: 'orders', label: 'ოპერაციული რიგი' },
-      { group: 'Operations', tab: 'sms', label: 'SMS' },
-      { group: 'Operations', tab: 'pharmacy', label: 'ფარმაცია' },
-      { group: 'Production', tab: 'quality', label: 'ხარისხი' },
-      { group: 'Production', tab: 'testing', label: 'ტესტირება' },
-      { group: 'Production', tab: 'audit', label: 'აუდიტი' },
-      { group: 'Production', tab: 'settings', label: 'რეჟიმი' },
-      { group: 'Help', tab: 'overview', label: 'როგორ მუშაობს ადმინი', helpKey: 'global.howAdminWorks' },
-    ];
-  }
-
-  function renderPaletteList(q) {
-    const sections = paletteSections();
-    const query = String(q || '').trim().toLowerCase();
-    const filtered = query
-      ? sections.filter((s) => `${s.label} ${s.group}`.toLowerCase().includes(query))
-      : sections;
-    let html = '';
-    let last = '';
-    filtered.forEach((s) => {
-      if (s.group !== last) {
-        html += `<div class="v3-palette-group">${esc(s.group)}</div>`;
-        last = s.group;
-      }
-      const attrs = [
-        s.tab ? `data-tab="${esc(s.tab)}"` : '',
-        s.hash ? `data-hash="${esc(s.hash)}"` : '',
-        s.helpKey ? `data-v3-help="${esc(s.helpKey)}"` : '',
-      ].filter(Boolean).join(' ');
-      html += `<button type="button" ${attrs}>${esc(s.label)}</button>`;
-    });
-    return html;
-  }
-
   global.AdminV3 = {
     dirty: false,
     humanLabel,
@@ -902,8 +855,6 @@
     syncHeader,
     setHeaderActions,
     enhanceA11y,
-    paletteSections,
-    renderPaletteList,
     statusTone,
   };
 

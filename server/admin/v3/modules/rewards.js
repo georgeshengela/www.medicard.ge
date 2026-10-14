@@ -1,7 +1,8 @@
 /**
- * MediCard Admin V3 — Rewards (overrides renderRewards from rewards-admin.js).
+ * MediCard Admin V3 — Rewards.
  * URL: #/rewards?tab=overview|campaigns|partners|redemptions|codes|referrals&edit=new
- * Loaded after rewards-admin.js + admin-v3.js + AdminV3Shell. Markup: v4 s-* components.
+ * Loaded after admin-v3.js + AdminV3Shell. Markup: v4 s-* components.
+ * Exposes STATUS_KA / CATEGORY_KA on window: admin-v3.js humanLabel('status' | 'rewardStatus' | 'category') and the audit journal read them.
  */
 (function adminV3Rewards(global) {
   const Shell = () => global.AdminV3Shell || {};
@@ -54,6 +55,8 @@
     CLINIC: 'კლინიკა',
     OTHER: 'სხვა',
   };
+  /** Status → Georgian word only (no tone), for admin-v3.js humanLabel and v3/modules/audit.js. */
+  const STATUS_KA = Object.fromEntries(Object.entries(STATUS).map(([key, [word]]) => [key, word]));
   const FUNDING_KA = {
     PER_REDEMPTION: 'თითო გაცვლაზე',
     PER_USED: 'თითო გამოყენებაზე',
@@ -241,7 +244,6 @@
   }
 
   async function apiRewards(path, options = {}) {
-    if (typeof global.apiRewards === 'function') return global.apiRewards(path, options);
     return api(`/rewards${path}`, options);
   }
 
@@ -1631,6 +1633,8 @@
   }
 
   global.renderRewards = renderRewards;
+  global.STATUS_KA = STATUS_KA;
+  global.CATEGORY_KA = CATEGORY_KA;
   global.AdminRewardsV3 = {
     render: renderRewards,
     openCampaignCreate,
