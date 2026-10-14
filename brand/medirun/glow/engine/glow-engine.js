@@ -861,7 +861,7 @@ const BRIDGE_W = { motorway: 20, trunk: 20, primary: 18, secondary: 14, tertiary
 /**
  * createGlow({ mapboxgl, map, token, assetBase, detailBase, hero, onLit, lite, bloom, adaptive, onQuality }) — call after the map's 'load'.
  * detailBase: where the city detail tiles live (default `${assetBase}detail/`; '' turns them off).
- * Returns { setTrail, setPaint, setRunner, setActivity, setHero, setRunnerVisible, setBloom, runner(), litCount(), dispose }.
+ * Returns { setTrail, setPaint, setRunner, setActivity, setHero, setRunnerVisible, setBloom, runner(), litCount(), litStats(), dispose }.
  */
 export function createGlow({ mapboxgl, map, token, assetBase = '', detailBase, hero = 'm', onLit, lite = false, bloom = true, adaptive = true, onQuality }) {
   if (detailBase == null) detailBase = `${assetBase}detail/`;
@@ -2133,18 +2133,32 @@ export function createGlow({ mapboxgl, map, token, assetBase = '', detailBase, h
       for (const rec of list) { const d = recDist(rec, x, y); if (d < LIGHT_R) light(rec, t + d / WAVE, d, true, x, y); }
     }
   }
-  /** Earlier walks ([[lng, lat], ...] per line): their streets are simply lit, no animation. */
-  let paintSig = '';
+  /** Earlier walks ([[lng, lat], ...] per line): their streets are simply lit, no animation.
+   *  The app sends the whole history on every GPS fix, so the work is incremental: per line index we remember how many
+   *  points were walked and the first and last of them, and a call walks only the points appended to a line and any new
+   *  lines. Fewer lines, a shorter line, or a first/last point that moved means a different history: everything is walked
+   *  again (walked points stay and lights never go out, as before). */
+  let paintDone = [];                 // per line index: { n: points walked, first: [lng, lat], last: [lng, lat] }
+  const samePoint = (a, b) => Boolean(a && b) && Math.abs(a[0] - b[0]) < 1e-7 && Math.abs(a[1] - b[1]) < 1e-7;
   function setPaint(lines) {
-    const sig = (lines || []).length + ':' + (lines || []).reduce((n, l) => n + l.length, 0);
-    if (sig === paintSig) return;
-    paintSig = sig;
-    for (const line of lines || []) {
-      const pts = line.map((c) => toLocal(c[0], c[1]));
-      for (let i = 1; i < pts.length; i++) {
-        const [ax, ay] = pts[i - 1], [bx, by] = pts[i], len = Math.hypot(bx - ax, by - ay), steps = Math.max(1, Math.ceil(len / 8));
+    lines = (lines || []).map((l) => (Array.isArray(l) ? l : []));
+    let restart = lines.length < paintDone.length;
+    for (let i = 0; !restart && i < paintDone.length; i++) {
+      const d = paintDone[i], l = lines[i];
+      if (l.length < d.n || (d.n > 0 && (!samePoint(l[0], d.first) || !samePoint(l[d.n - 1], d.last)))) restart = true;
+    }
+    if (restart) paintDone = [];
+    for (let li = 0; li < lines.length; li++) {
+      const line = lines[li], done = paintDone[li] ? paintDone[li].n : 0;
+      if (line.length <= done) continue;
+      const from = Math.max(1, done);   // the segment into the first new point starts at the last walked one
+      let [ax, ay] = toLocal(line[from - 1][0], line[from - 1][1]);
+      for (let i = from; i < line.length; i++) {
+        const [bx, by] = toLocal(line[i][0], line[i][1]), len = Math.hypot(bx - ax, by - ay), steps = Math.max(1, Math.ceil(len / 8));
         for (let k = 0; k <= steps; k++) { const x = ax + ((bx - ax) * k) / steps, y = ay + ((by - ay) * k) / steps; addWalked(walkedPaint, x, y); lightAround(x, y, ALWAYS, false, true); }
+        ax = bx; ay = by;
       }
+      paintDone[li] = { n: line.length, first: [line[0][0], line[0][1]], last: [line[line.length - 1][0], line[line.length - 1][1]] };
     }
   }
 
@@ -2609,6 +2623,15 @@ export function createGlow({ mapboxgl, map, token, assetBase = '', detailBase, h
     onHeroReady(cb) { heroReadyCb = cb; if (heroes[heroKey]?.holder) cb(heroKey); },
     runner() { if (!runner.pos) return null; const ll = toLngLat(runner.pos[0], runner.pos[1]); return { lng: ll.lng, lat: ll.lat, heading: runner.heading == null ? null : ((Math.atan2(Math.sin(runner.heading), -Math.cos(runner.heading)) * 180) / Math.PI + 360) % 360, speed: runner.speed, activity: runner.activity }; },
     litCount: () => litKeys.size,
+    /** Bookkeeping for tests (no look): every lit record with its strength and distance, and the walked-point stores. */
+    litStats() {
+      let records = 0, paintPts = 0, trailPts = 0;
+      const lit = [];
+      for (const list of grid.values()) for (const rec of list) { records++; if (rec.strength > 0) lit.push([(rec.key || '') + '@' + Math.round(rec.cx * 10) + ',' + Math.round(rec.cy * 10), Math.round(rec.strength * 1e4) / 1e4, Math.round((rec.dist ?? -1) * 100) / 100]); }
+      for (const p of walkedPaint.values()) paintPts += p.length / 2;
+      for (const p of walkedTrail.values()) trailPts += p.length / 2;
+      return { records, lit, paintPts, trailPts };
+    },
     debug: { THREE, scene, camera, U, tiles, details, roofInfo, heroModels, heroes, runner, grid, insideBuilding, deckZ, toLngLat, toLocal, post: () => post },
     dispose() { disposed = true; cancelAnimationFrame(raf); if (post) post.dispose(); try { map.removeLayer('medirun-glow'); } catch { /* map already gone */ } },
   };
