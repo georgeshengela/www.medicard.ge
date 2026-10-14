@@ -42,7 +42,7 @@ import {Meteocon,meteoconSlugFor} from '@/components/weather/Meteocon';
 type Notice={text:string;tone:'info'|'success'|'warn';sticky?:boolean};
 const KEEP_AWAKE_TAG='medirun-session';
 /** The lit history goes to the map this often while a walk records (every fix otherwise re-sends every walk ever). */
-const PAINT_EVERY_MS=4000;
+const PAINT_EVERY_MS=1000;
 
 export default function PulseActive(){
  const router=useRouter(),c=useThemeColors(),dark=useIsDark(),insets=useSafeAreaInsets(),{healthProfile,user}=useAuth(),run=useRunSession(),pulse=usePulse(),derived=runDerived(run);
@@ -118,8 +118,8 @@ export default function PulseActive(){
  useEffect(()=>{if(live)map.current?.send({type:'layout',top:insets.top+8+44+8+(pills?42:0),bottom:Math.max(12,insets.bottom)+dockHeight+12});},[live,mapEpoch,insets.top,insets.bottom,dockHeight,pills]);
  useEffect(()=>{if(live&&run.current)map.current?.send({type:'fix',lat:run.current.lat,lng:run.current.lng,heading:run.headingDeg,speed:running?run.speedKmh/3.6:0});},[live,mapEpoch,run.current,run.headingDeg]);
  const paint=useMemo(()=>[...(pulse.journey.trail||[]),...coverageFeatures(pulse.journey).features.map(f=>f.geometry.coordinates)], [pulse.journey.trail,pulse.journey.covered]);
- // Every walk ever lights the city (`paint`). While recording it changes with every GPS fix, so it goes to the WebView
- // at most every PAINT_EVERY_MS (the engine re-walks every line each time); a fresh map, a pause or a finish get it at once.
+ // Every walk ever lights the city (`paint`). While recording it changes with every GPS fix; the engine's setPaint walks only
+ // the appended points, so PAINT_EVERY_MS is just a floor for the WebView bridge; a fresh map, a pause or a finish get it at once.
  const paintSentAt=useRef(0),paintEpoch=useRef(mapEpoch);
  useEffect(()=>{
   if(!live)return;
