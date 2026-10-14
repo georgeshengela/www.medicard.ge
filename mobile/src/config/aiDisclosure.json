@@ -43,7 +43,8 @@
   ],
   "routing": {
     "google/gemini-3.8-flash": [
-      "google-vertex/global"
+      "google-vertex/global",
+      "google-vertex/global/priority"
     ],
     "inclusionai/ling-3.0-flash-sante:free": [
       "novita"

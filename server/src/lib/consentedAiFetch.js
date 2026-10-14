@@ -3,10 +3,17 @@ import { aiLanguageDirective, getUserLanguage, parseLang, t } from './i18n.js';
 import { withReasoningHeadroom } from './reasoningBudget.js';
 
 const ORIGINS = { openrouter: 'https://openrouter.ai', evidencemd: 'https://evidencemd.ai' };
-export function approvedProviderRouting(model) {
+/**
+ * Only the disclosed hosts, tried in manifest order (Gemini: Vertex standard, then Vertex priority when
+ * standard errors). `route: 'priority'` puts the priority-tier host first — the same Google Vertex
+ * recipient on its faster queue, used when the standard one stalls (aiEngine `askGeminiRaced`).
+ */
+export function approvedProviderRouting(model, route) {
   const only = AI_DISCLOSURE.routing[model];
   if (!only) throw Object.assign(new Error(t(currentAiLanguage(), 'არჩეული AI მოდელი ამ ვერსიაში ხელმისაწვდომი არ არის.', 'The selected AI model is not available in this version.')), { status: 503, code: 'AI_PROVIDER_NOT_APPROVED' });
-  return { only, order: only, allow_fallbacks: false, data_collection: 'deny', zdr: true };
+  const isPriority = (slug) => slug.endsWith('/priority');
+  const order = route === 'priority' ? [...only.filter(isPriority), ...only.filter((slug) => !isPriority(slug))] : only;
+  return { only, order, allow_fallbacks: false, data_collection: 'deny', zdr: true };
 }
 /**
  * Reading language of the current AI request. Routers bind it from X-Medicard-Lang (bindAiLanguage /
@@ -21,6 +28,8 @@ export async function resolveAiLanguage(userId = currentAiAccount()) {
 
 /** Per-call override header (stripped before sending): `off` skips the directive (pure data extraction), `ka|en` forces one. */
 export const AI_LANGUAGE_HEADER = 'x-medicard-ai-language';
+/** Per-call host preference (stripped before sending): `priority` = the approved priority-tier host first. */
+export const AI_ROUTE_HEADER = 'x-medicard-ai-route';
 
 const DIRECTIVE_MARK = 'RESPONSE LANGUAGE: English.';
 
@@ -51,12 +60,14 @@ export function consentedAiFetch(provider, { check = assertAiConsent, account = 
     }
     let body = init.body;
     if (body == null && typeof input?.clone === 'function') body = await input.clone().text();
+    const headers = new Headers(init.headers ?? (typeof input === 'object' ? input.headers : undefined));
+    const route = String(headers.get(AI_ROUTE_HEADER) || '').trim().toLowerCase();
+    headers.delete(AI_ROUTE_HEADER);
     if (provider === 'openrouter') {
       const payload = JSON.parse(String(body || '{}'));
-      body = JSON.stringify({ ...withReasoningHeadroom(payload), provider: approvedProviderRouting(payload.model) });
+      body = JSON.stringify({ ...withReasoningHeadroom(payload), provider: approvedProviderRouting(payload.model, route) });
     }
     await check(account());
-    const headers = new Headers(init.headers ?? (typeof input === 'object' ? input.headers : undefined));
     headers.delete('content-length');
     const override = String(headers.get(AI_LANGUAGE_HEADER) || '').trim().toLowerCase();
     headers.delete(AI_LANGUAGE_HEADER);

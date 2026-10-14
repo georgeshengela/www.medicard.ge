@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { AI_CONSENT_VERSION, readAiConsent, recordAiConsent, withAiAccount, currentAiAccount } from './aiConsent.js';
-import { consentedAiFetch } from './consentedAiFetch.js';
+import { approvedProviderRouting, consentedAiFetch } from './consentedAiFetch.js';
 import { aiConsentBodySchema } from '../routes/ai-consent.routes.js';
 
 test('consent version is an explicit epoch, not a hash of UI copy', () => {
@@ -33,12 +33,24 @@ test('concurrent async request contexts preserve each account', async () => {
 test('every provider attempt rechecks consent, and revoked retry sends no data', async () => {
   let accepted=true, sends=0, checks=0;
   const guarded=consentedAiFetch('openrouter',{account:()=> 'A',check:async id=>{checks++;assert.equal(id,'A');if(!accepted)throw Object.assign(Error('revoked'),{code:'AI_CONSENT_REQUIRED'});},transport:async(input,init)=>{
-    sends++;const body=JSON.parse(init.body);assert.equal(body.provider.allow_fallbacks,false);assert.equal(body.provider.zdr,true);assert.equal(body.provider.data_collection,'deny');assert.deepEqual(body.provider.only,['google-vertex/global']);assert.equal(init.redirect,'error');return new Response('{}');
+    sends++;const body=JSON.parse(init.body);assert.equal(body.provider.allow_fallbacks,false);assert.equal(body.provider.zdr,true);assert.equal(body.provider.data_collection,'deny');assert.deepEqual(body.provider.only,['google-vertex/global','google-vertex/global/priority']);assert.deepEqual(body.provider.order,['google-vertex/global','google-vertex/global/priority']);assert.equal(init.redirect,'error');return new Response('{}');
   }});
   const payload={method:'POST',body:JSON.stringify({model:'google/gemini-3.8-flash',messages:[{role:'user',content:'Synthetic'}],provider:{allow_fallbacks:true}})};
   await guarded('https://openrouter.ai/api/v1/chat/completions',payload); accepted=false;
   await assert.rejects(()=>guarded('https://openrouter.ai/api/v1/chat/completions',payload),{code:'AI_CONSENT_REQUIRED'});
   assert.equal(checks,2); assert.equal(sends,1);
+});
+test('a priority request puts the disclosed priority host first and never leaks the route header', async () => {
+  let sent=null;
+  const guarded=consentedAiFetch('openrouter',{account:()=> 'A',check:async()=>{},transport:async(_input,init)=>{sent=init;return new Response('{}');}});
+  await guarded('https://openrouter.ai/api/v1/chat/completions',{method:'POST',headers:{'x-medicard-ai-route':'priority'},body:JSON.stringify({model:'google/gemini-3.8-flash',messages:[{role:'user',content:'Synthetic'}]})});
+  const body=JSON.parse(sent.body);
+  assert.deepEqual(body.provider.only,['google-vertex/global','google-vertex/global/priority']);
+  assert.deepEqual(body.provider.order,['google-vertex/global/priority','google-vertex/global']);
+  assert.equal(body.provider.allow_fallbacks,false); assert.equal(body.provider.zdr,true); assert.equal(body.provider.data_collection,'deny');
+  assert.equal(sent.headers.get('x-medicard-ai-route'),null);
+  // A model without a priority host keeps its single disclosed host.
+  assert.deepEqual(approvedProviderRouting('inclusionai/ling-3.0-flash-sante:free','priority').order,['novita']);
 });
 test('unknown model, direct providers and redirected destinations cannot transmit', async () => {
   const opts={check:async()=>{},account:()=> 'A',transport:()=>assert.fail('No outbound request permitted')};

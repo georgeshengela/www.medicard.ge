@@ -36,6 +36,19 @@ export class AiEngineError extends Error {
   }
 }
 
+let creditsAlertAt = 0;
+/**
+ * EvidenceMD is Medi's last resort. On 2026-10-14 it was found empty only when Gemini stalled and a person got
+ * an error — so the owner hears about it (Director Telegram) the first time, then at most every 6 hours.
+ */
+function alertCreditsExhausted() {
+  if (Date.now() - creditsAlertAt < 6 * 60 * 60 * 1000) return;
+  creditsAlertAt = Date.now();
+  import('./director/service.js')
+    .then(({ notifyOwner }) => notifyOwner('⚠️ EvidenceMD-ის კრედიტი ამოიწურა — Medi-ს სათადარიგო გზა არ მუშაობს. შევსება: https://evidencemd.ai/developers/dashboard', { direction: 'system' }))
+    .catch(() => undefined);
+}
+
 /**
  * @param {object} opts
  * @param {keyof typeof SYSTEM_PROMPTS} opts.mode
@@ -146,6 +159,7 @@ export async function askEvidenceMd({
     if (status === 402) {
       // The upstream account is out of credits — an operator problem, not a user error.
       console.error('[medicard] EvidenceMD credits exhausted:', error?.error?.message ?? error?.message);
+      alertCreditsExhausted();
       throw new AiEngineError(
         'სამედიცინო ანალიზის სერვისი დროებით მიუწვდომელია. ვმუშაობთ აღდგენაზე — სცადე მოგვიანებით.',
         { status: 503, cause: error, messageEn: 'The medical analysis service is temporarily unavailable. We are working on it — please try again later.' },

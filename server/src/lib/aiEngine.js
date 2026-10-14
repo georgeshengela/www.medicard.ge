@@ -1,4 +1,4 @@
-import { AI_LANGUAGE_HEADER, consentedAiFetch } from './consentedAiFetch.js';
+import { AI_LANGUAGE_HEADER, AI_ROUTE_HEADER, consentedAiFetch } from './consentedAiFetch.js';
 import OpenAI from 'openai';
 import { env } from '../config/env.js';
 import { looksLikeBrokenDoctorReply } from './prompts.js';
@@ -116,7 +116,7 @@ export async function withOpenRouterModelFallback(primary, run) {
       return await run(model);
     } catch (error) {
       lastError = error;
-      console.warn('[medicard] openrouter model failed', model, error?.message ?? error);
+      console.warn('[medicard] openrouter model failed', model, error?.adminDetail || error?.message || error);
     }
   }
   throw lastError ?? new AiEngineError('სამედიცინო ანალიზის სერვისთან დაკავშირება ვერ მოხერხდა.', { status: 502, messageEn: 'We could not reach the medical analysis service.' });
@@ -203,7 +203,33 @@ export function truncatedReplyError() {
   );
 }
 
+/**
+ * The provider's own reason in a few words (status · error name · host · message) for logs and admin.
+ * The user-facing copy hides it; before 2026-10-14 the log hid it too, so a 142 s stall left no cause.
+ */
+export function upstreamDetail(error) {
+  if (!error) return '';
+  const inner = error.cause ?? error;
+  const body = inner?.error && typeof inner.error === 'object' ? inner.error : null;
+  const parts = [
+    inner?.status ?? body?.code,
+    inner?.name && !['Error', 'AiEngineError'].includes(inner.name) ? inner.name : null,
+    body?.metadata?.provider_name,
+    String(body?.message || inner?.message || '').replace(/\s+/g, ' ').trim().slice(0, 140),
+  ].filter((part) => part != null && part !== '');
+  return [...new Set(parts.map(String))].join(' · ');
+}
+
 function mapOpenRouterError(error) {
+  try {
+    mapOpenRouterErrorCopy(error);
+  } catch (mapped) {
+    if (mapped !== error && !mapped.adminDetail) mapped.adminDetail = upstreamDetail(error);
+    throw mapped;
+  }
+}
+
+function mapOpenRouterErrorCopy(error) {
   if (error instanceof AiEngineError) throw error;
   const status = error?.status ?? 502;
   if (status === 401 || status === 403) {
@@ -255,6 +281,7 @@ export async function askOpenRouterPrepared({
   reasoningEffort,
   reasoningExclude,
   languageDirective = true,
+  route,
 }) {
   if (typeof globalThis.__medicardAskOpenRouterPrepared === 'function') {
     return globalThis.__medicardAskOpenRouterPrepared({
@@ -269,6 +296,7 @@ export async function askOpenRouterPrepared({
       reasoningEffort,
       reasoningExclude,
       languageDirective,
+      route,
     });
   }
   if (!openrouter) {
@@ -277,7 +305,10 @@ export async function askOpenRouterPrepared({
   try {
     const stream = typeof onDelta === 'function';
     // languageDirective:false = verbatim/data output (transcripts); the reply-language line is not added.
-    const headers = languageDirective === false ? { [AI_LANGUAGE_HEADER]: 'off' } : undefined;
+    // route:'priority' = the approved priority-tier host first (consentedAiFetch strips both headers).
+    const headers = languageDirective === false || route
+      ? { ...(languageDirective === false ? { [AI_LANGUAGE_HEADER]: 'off' } : {}), ...(route ? { [AI_ROUTE_HEADER]: route } : {}) }
+      : undefined;
     const extra = signal || headers ? { ...(signal ? { signal } : {}), ...(headers ? { headers } : {}) } : undefined;
     const payload = buildOpenRouterChatPayload({
       model,
@@ -365,6 +396,7 @@ export async function askOpenRouterChat({
   signal,
   responseFormat,
   reasoningEffort,
+  route,
 }) {
   return askOpenRouterPrepared({
     model,
@@ -375,12 +407,138 @@ export async function askOpenRouterChat({
     onDelta,
     signal,
     responseFormat,
-  reasoningEffort,
+    reasoningEffort,
+    route,
   });
 }
 
 /**
- * Default Gemini Flash: OpenRouter Gemini → EvidenceMD. Ling only if the user picked it.
+ * How long a Medi answer may stay silent (2026-10-14: the Vertex standard queue wrote nothing for 142 s,
+ * then failed, and the EvidenceMD safety net was out of credits). That week DOCTOR answers took p50 10.5 s,
+ * p95 27 s in total, so a stream with no word after 20 s is stuck far more often than it is thinking.
+ */
+export const AI_ANSWER_TIMING = Object.freeze({
+  hedgeAfterMs: 20_000, // streamed: no word yet → the priority queue is asked too, the first to write wins
+  firstTextDeadlineMs: 60_000, // streamed: neither wrote → Gemini is given up, EvidenceMD answers
+  streamIdleMs: 45_000, // streamed: words started, then silence → stopped (the app puts the question back)
+  wholeAnswerHedgeMs: 45_000, // unstreamed: no answer yet → the priority queue too
+  wholeAnswerDeadlineMs: 120_000,
+  evidenceMdMs: 60_000, // the last resort gets its own bounded wait
+});
+
+function stalledError(started) {
+  return Object.assign(
+    started
+      ? new AiEngineError('Medi-ს პასუხი შუაში შეწყდა. სცადე თავიდან.', { status: 504, messageEn: 'Medi’s answer stopped partway. Please try again.' })
+      : new AiEngineError('Medi-მ დროულად ვერ უპასუხა. სცადე თავიდან.', { status: 504, messageEn: 'Medi did not answer in time. Please try again.' }),
+    { code: 'AI_STALLED' },
+  );
+}
+
+/**
+ * One OpenRouter answer that cannot hang. The standard Vertex queue is asked first; when it has written
+ * nothing after `hedgeAfterMs` — or fails before writing — the same request also goes to the priority queue
+ * (the same disclosed Google Vertex host, ~1.8× the price, only on these rare turns). The first attempt to
+ * write a word (unstreamed: to return a usable answer) wins and the other is cancelled. A failure after words
+ * were shown is final (`aiStarted`): she already read them, so nothing else is swapped in.
+ */
+function askOpenRouterRaced({ opts, model, onDelta, signal, timing, usable }) {
+  const streamed = typeof onDelta === 'function';
+  const began = Date.now();
+  return new Promise((resolve, reject) => {
+    const attempts = [];
+    const timers = new Set();
+    let winner = null;
+    let settled = false;
+    let lastError = null;
+    let idle = null;
+    const later = (ms, fn) => {
+      const id = setTimeout(fn, ms);
+      timers.add(id);
+      return id;
+    };
+    const settle = (finish) => {
+      if (settled) return;
+      settled = true;
+      for (const id of timers) clearTimeout(id);
+      for (const a of attempts) if (a !== winner) a.ctrl.abort();
+      finish();
+    };
+    const fail = (error) => settle(() => reject(error));
+    const routeName = (a) => a.route || 'standard';
+
+    const failed = (a) => {
+      a.failed = true;
+      if (signal?.aborted) return fail(lastError);
+      start('priority'); // failed before writing: no reason to wait for the hedge timer
+      if (attempts.every((x) => x.failed)) fail(lastError);
+    };
+
+    const start = (route) => {
+      if (settled || signal?.aborted || attempts.some((a) => a.route === route)) return;
+      const a = { route, ctrl: new AbortController(), wrote: false, failed: false, stalled: false, at: Date.now() };
+      attempts.push(a);
+      if (route) console.warn('[medicard] ai hedge → priority', { model, afterMs: a.at - began });
+      const relay = streamed
+        ? (text) => {
+            if (!winner && !settled) {
+              winner = a;
+              for (const other of attempts) if (other !== a) other.ctrl.abort();
+            }
+            if (winner !== a) return;
+            a.wrote = true;
+            if (idle) clearTimeout(idle);
+            idle = later(timing.streamIdleMs, () => {
+              a.stalled = true;
+              a.ctrl.abort();
+            });
+            onDelta(text);
+          }
+        : undefined;
+      const attemptSignal = signal ? AbortSignal.any([signal, a.ctrl.signal]) : a.ctrl.signal;
+      askOpenRouterChat({ ...opts, model, route, onDelta: relay, signal: attemptSignal }).then(
+        (result) => {
+          if (settled || (winner && winner !== a)) return;
+          if (!a.wrote && !usable(result)) {
+            console.warn('[medicard] discarding broken Georgian reply from', model, routeName(a));
+            lastError = new AiEngineError('AI-მ გაუგებარი ქართული დააბრუნა.', { status: 502, messageEn: 'The AI returned an unclear answer. Please try again.' });
+            return failed(a);
+          }
+          winner = a;
+          if (attempts.length > 1) console.warn('[medicard] ai answered after hedge', { model, route: routeName(a), ms: Date.now() - began });
+          settle(() => resolve({ ...result, route: routeName(a) }));
+        },
+        (error) => {
+          if (settled || (winner && winner !== a)) return;
+          const detail = error?.adminDetail || upstreamDetail(error);
+          console.warn('[medicard] openrouter attempt failed', { model, route: routeName(a), ms: Date.now() - a.at, wrote: a.wrote, stalled: a.stalled, detail });
+          if (a.wrote) {
+            const final = a.stalled ? stalledError(true) : error;
+            return fail(Object.assign(final, { aiStarted: true, adminDetail: final.adminDetail || `${routeName(a)}: ${a.stalled ? `silent ${timing.streamIdleMs / 1000} s mid-answer` : detail}` }));
+          }
+          lastError = Object.assign(error, { adminDetail: `${routeName(a)}: ${detail}` });
+          failed(a);
+        },
+      );
+    };
+
+    later(streamed ? timing.hedgeAfterMs : timing.wholeAnswerHedgeMs, () => {
+      if (!winner) start('priority');
+    });
+    later(streamed ? timing.firstTextDeadlineMs : timing.wholeAnswerDeadlineMs, () => {
+      if (winner || settled) return;
+      const waited = Math.round((Date.now() - began) / 1000);
+      console.warn('[medicard] ai no answer in time', { model, routes: attempts.map(routeName), waitedS: waited });
+      for (const a of attempts) a.ctrl.abort();
+      fail(Object.assign(stalledError(false), { adminDetail: `${attempts.map(routeName).join(' + ')}: no answer in ${waited} s${lastError ? `; ${lastError.adminDetail || upstreamDetail(lastError)}` : ''}` }));
+    });
+    start(undefined);
+  });
+}
+
+/**
+ * Default Gemini Flash: OpenRouter Gemini (standard queue, raced with the priority queue when it stalls)
+ * → EvidenceMD. Ling only if the user picked it.
  */
 export async function askAi({
   user,
@@ -395,6 +553,7 @@ export async function askAi({
   signal,
   responseFormat,
   reasoningEffort,
+  timing = AI_ANSWER_TIMING,
 }) {
   const engine = resolveAiEngine(user);
   const opts = { mode, messages, context, trustedContext, temperature, maxTokens, skipDisclaimer, onDelta, signal, responseFormat, reasoningEffort };
@@ -410,41 +569,26 @@ export async function askAi({
   }
 
   let lastError = null;
-  const models = openRouterFallbackModels(engine.model);
-  for (const model of models) {
-    let started = false;
-    const wrappedDelta =
-      typeof onDelta === 'function'
-        ? (text) => {
-            started = true;
-            onDelta(text);
-          }
-        : undefined;
+  const usable = (result) => mode !== 'DOCTOR' || !looksLikeBrokenDoctorReply(result.content);
+  for (const model of openRouterFallbackModels(engine.model)) {
     try {
-      const result = await askOpenRouterChat({ ...opts, model, onDelta: wrappedDelta });
-      if (
-        !started &&
-        mode === 'DOCTOR' &&
-        looksLikeBrokenDoctorReply(result.content)
-      ) {
-        console.warn('[medicard] discarding broken Georgian reply from', model);
-        lastError = new AiEngineError('AI-მ გაუგებარი ქართული დააბრუნა.', { status: 502, messageEn: 'The AI returned an unclear answer. Please try again.' });
-        continue;
-      }
+      const result = await askOpenRouterRaced({ opts, model, onDelta, signal, timing, usable });
       return { ...result, engine: 'openrouter', engineId: engine.id };
     } catch (error) {
       lastError = error;
-      if (started || signal?.aborted) throw error;
-      console.warn('[medicard] openrouter model failed', model, error?.message ?? error);
+      if (error?.aiStarted || signal?.aborted) throw error;
     }
   }
 
+  const budget = AbortSignal.timeout(timing.evidenceMdMs);
   try {
-    const result = await askEvidenceMd(opts);
+    const result = await askEvidenceMd({ ...opts, signal: signal ? AbortSignal.any([signal, budget]) : budget });
     return { ...result, engine: 'evidencemd', engineId: engine.id, fallback: true };
-  } catch {
-    if (lastError) throw lastError;
-    throw new AiEngineError('სამედიცინო ანალიზის სერვისთან დაკავშირება ვერ მოხერხდა.', { status: 502, messageEn: 'We could not reach the medical analysis service.' });
+  } catch (error) {
+    console.warn('[medicard] EvidenceMD fallback failed', upstreamDetail(error));
+    const evidence = `EvidenceMD: ${budget.aborted ? `no answer in ${timing.evidenceMdMs / 1000} s` : upstreamDetail(error.cause ?? error)}`;
+    if (lastError) throw Object.assign(lastError, { adminDetail: [lastError.adminDetail, evidence].filter(Boolean).join('; ') });
+    throw Object.assign(new AiEngineError('სამედიცინო ანალიზის სერვისთან დაკავშირება ვერ მოხერხდა.', { status: 502, messageEn: 'We could not reach the medical analysis service.' }), { adminDetail: evidence });
   }
 }
 

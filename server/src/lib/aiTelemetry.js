@@ -86,7 +86,8 @@ export async function runTrackedAi({
       assistantReply: result.content,
       visionProvider,
       visionModel,
-      reasoningModel: result.model ?? null,
+      // An answer from Vertex's priority queue (the standard one stalled) counts apart in admin's model list.
+      reasoningModel: result.model ? (result.route === 'priority' ? `${result.model} · priority` : result.model) : null,
       latencyMs: Date.now() - started,
       tokenUsage: result.usage ?? null,
     });
@@ -98,7 +99,8 @@ export async function runTrackedAi({
       userId,
       mode,
       status: 'ERROR',
-      errorMessage: error?.message ?? 'Unknown AI error',
+      // The person's copy plus the provider's own reason (aiEngine `adminDetail`), so admin sees the cause.
+      errorMessage: [error?.message ?? 'Unknown AI error', error?.adminDetail].filter(Boolean).join(' — '),
       chatSessionId,
       medicalRecordId,
       userPrompt,
