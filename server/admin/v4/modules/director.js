@@ -521,14 +521,17 @@
 
   const repaint = () => { const root = $('tab-director'); if (root && data) paint(root); };
 
+  /** Runs an action, repaints and reports; resolves true when it went through. */
   async function act(fn, okMsg) {
     try {
       const next = await fn();
       if (next && next.state) data = next;
       if (okMsg) toast(okMsg, 'ok');
       repaint();
+      return true;
     } catch (e) {
       toast(e.message || 'ვერ შესრულდა', 'bad');
+      return false;
     }
   }
 
@@ -579,8 +582,9 @@
       const btn = e.currentTarget;
       btn.disabled = true;
       const note = $('dr-reject-note').value.trim();
-      await act(() => api(`/proposals/${encodeURIComponent(id)}/decide`, { method: 'POST', body: { approve: false, ...(note ? { note } : {}) } }), 'უარყოფილია');
-      dlg?.close();
+      const ok = await act(() => api(`/proposals/${encodeURIComponent(id)}/decide`, { method: 'POST', body: { approve: false, ...(note ? { note } : {}) } }), 'უარყოფილია');
+      if (ok) dlg?.close();
+      else btn.disabled = false; // the rejection did not go through: the dialog stays so the admin can retry
     };
   }
 
@@ -612,11 +616,20 @@
       toast(r.lastError ? 'ტელეგრამმა შეცდომა დააბრუნა — სცადე ცოტა ხანში თავიდან' : 'ბოტი მიერთდა', r.lastError ? 'warn' : 'ok');
       return api('');
     }));
-    root.querySelector('[data-pair]')?.addEventListener('click', () => void act(async () => {
-      pairing = await api('/telegram/pair', { method: 'POST' });
-      global.open?.(pairing.link, '_blank', 'noopener');
-      return api('');
-    }));
+    root.querySelector('[data-pair]')?.addEventListener('click', () => {
+      // Open the tab inside the click (popup blockers refuse a window opened after the request) and point it at the link.
+      const win = global.open?.('', '_blank');
+      void act(async () => {
+        try {
+          pairing = await api('/telegram/pair', { method: 'POST' });
+        } catch (e) {
+          win?.close();
+          throw e;
+        }
+        if (win) { win.opener = null; win.location = pairing.link; } else global.open?.(pairing.link, '_blank', 'noopener');
+        return api('');
+      });
+    });
     root.querySelector('[data-unpair]')?.addEventListener('click', () => V().openConfirm?.({
       title: 'ტელეგრამის გათიშვა?',
       message: 'დირექტორი ტელეგრამში აღარ მოგწერს, სანამ ხელახლა არ დააკავშირებ.',

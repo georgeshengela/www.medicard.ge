@@ -165,7 +165,13 @@
         draw();
         box.querySelector(`[data-item="${draft.items.length - 1}"][data-key="name"]`)?.focus();
       };
-      box.querySelectorAll("[data-item]").forEach((el) => el.addEventListener("change", () => { read(); draw(); }));
+      // An edited cell only refreshes the totals row: a full redraw would drop the keyboard user's focus.
+      box.querySelectorAll("[data-item]").forEach((el) => el.addEventListener("change", () => {
+        read();
+        const keys = ["grams", "calories", "protein", "carbs", "fat"];
+        const t = draft.items.reduce((acc, it) => { keys.forEach((k) => (acc[k] += Number(it[k]) || 0)); return acc; }, { grams: 0, calories: 0, protein: 0, carbs: 0, fat: 0 });
+        box.querySelectorAll(".s-nutri-items tfoot td.num b").forEach((cell, k) => { cell.textContent = fmt(Math.round(t[keys[k]] * 10) / 10); });
+      }));
       V().watchDirty?.(box);
     }
     const read = () => {

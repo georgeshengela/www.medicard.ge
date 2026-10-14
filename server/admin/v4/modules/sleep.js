@@ -388,7 +388,7 @@
     const status = s.status === 'LIVE'
       ? '<button type="button" class="btn compact ghost" data-act="hide">დამალვა</button>'
       : `<button type="button" class="btn compact" data-act="publish" ${s.audio ? '' : 'disabled title="ჯერ ხმის ფაილი ატვირთე"'}>გამოქვეყნება</button>`;
-    const up = (slot, label, accept, enabled = true) => `<label class="btn compact ghost s-sl-up${enabled ? '' : ' is-disabled'}"${enabled ? '' : ' title="ჯერ ხმის ფაილი ატვირთე"'}>${ico('upload')} ${label}<input type="file" hidden data-up="${slot}" accept="${accept}" ${enabled ? '' : 'disabled'}></label>`;
+    const up = (slot, label, accept, enabled = true) => `<label class="btn compact ghost s-sl-up${enabled ? '' : ' is-disabled'}"${enabled ? ' tabindex="0"' : ' title="ჯერ ხმის ფაილი ატვირთე"'}>${ico('upload')} ${label}<input type="file" hidden data-up="${slot}" accept="${accept}" ${enabled ? '' : 'disabled'}></label>`;
     return `<article class="s-sl-sound${s.status === 'LIVE' ? '' : ' is-off'}" data-sound="${esc(s.id)}" data-focus="${esc(s.id)}">
       <div class="s-sl-art" style="--tint:${esc(hex(s.tint))}">${art}</div>
       <div class="s-sl-main">

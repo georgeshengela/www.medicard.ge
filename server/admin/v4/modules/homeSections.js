@@ -218,27 +218,32 @@
   }
 
   let timer = null;
+  let queued = null;
+  async function send(body) {
+    try {
+      const res = await api('', { method: 'PUT', body });
+      S.data.config = res.config;
+      S.data.version = res.version;
+      S.data.updatedAt = res.updatedAt;
+      S.saving = null;
+      paintLive();
+      toast('შენახულია — აპებში უკვე ჩანს', 'ok');
+    } catch (err) {
+      S.saving = null;
+      toast(say(err, 'ვერ შეინახა. სცადე თავიდან.'), 'bad');
+      await load();
+    }
+  }
   function save({ reset = false } = {}) {
     S.saving = S.layout;
     paintLive();
-    clearTimeout(timer);
     const layout = S.layout;
     const body = reset ? { layout, reset: true } : { layout, order: S.order, hidden: [...S.hidden] };
-    timer = setTimeout(async () => {
-      try {
-        const res = await api('', { method: 'PUT', body });
-        S.data.config = res.config;
-        S.data.version = res.version;
-        S.data.updatedAt = res.updatedAt;
-        S.saving = null;
-        paintLive();
-        toast('შენახულია — აპებში უკვე ჩანს', 'ok');
-      } catch (err) {
-        S.saving = null;
-        toast(say(err, 'ვერ შეინახა. სცადე თავიდან.'), 'bad');
-        await load();
-      }
-    }, reset ? 0 : 450);
+    // A change on another layout is still waiting in the debounce: send it now instead of dropping it.
+    if (queued && queued.layout !== layout) { clearTimeout(timer); void send(queued); }
+    clearTimeout(timer);
+    queued = body;
+    timer = setTimeout(() => { const b = queued; queued = null; void send(b); }, reset ? 0 : 450);
   }
 
   function paintLive() {
@@ -293,7 +298,8 @@
       loadLayout(S.layout);
       render();
     } catch (err) {
-      el.innerHTML = `<div class="s-card"><div class="s-empty"><strong>ვერ ჩაიტვირთა</strong><span>${esc(say(err, 'სერვერი არ პასუხობს. სცადე ცოტა ხანში.'))}</span></div></div>`;
+      el.innerHTML = `<div class="s-card"><div class="s-empty"><strong>ვერ ჩაიტვირთა</strong><span>${esc(say(err, 'სერვერი არ პასუხობს. სცადე ცოტა ხანში.'))}</span><button type="button" class="btn" data-retry>ხელახლა ცდა</button></div></div>`;
+      el.querySelector('[data-retry]')?.addEventListener('click', () => void load());
     }
   }
 

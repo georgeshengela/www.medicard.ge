@@ -276,6 +276,12 @@
         helpKey: 'rewards.page',
         actionsHtml: refresh,
       },
+      store: {
+        title: 'მაღაზია',
+        purpose: 'რა იყიდება Medi Coins-ზე: საჩუქრები, მარაგი და გადაცემა.',
+        helpKey: 'rewards.page',
+        actionsHtml: refresh,
+      },
       campaigns: {
         title: 'კამპანიები',
         purpose: 'რა ჩანს აპში, რა ფასად და ვადით.',
@@ -1013,12 +1019,16 @@
     };
     rewardSel?.addEventListener('change', syncNew);
     syncNew();
-    keyEl?.addEventListener('input', () => {
-      keyEl.value = sanitizeKey(keyEl.value);
-    });
-    rkeyEl?.addEventListener('input', () => {
-      rkeyEl.value = sanitizeKey(rkeyEl.value);
-    });
+    // Clean the key without throwing the caret to the end on every keystroke.
+    const keepCaret = (el, clean) => () => {
+      const next = clean(el.value);
+      if (next === el.value) return;
+      const at = el.selectionStart;
+      el.value = next;
+      try { el.setSelectionRange(at, at); } catch { /* not a text control */ }
+    };
+    keyEl?.addEventListener('input', keepCaret(keyEl, sanitizeKey));
+    rkeyEl?.addEventListener('input', keepCaret(rkeyEl, sanitizeKey));
     V().setDirty?.(false);
     V().watchDirty?.(form);
 
@@ -1271,7 +1281,11 @@
       }
     };
     keyEl?.addEventListener('input', () => {
-      keyEl.value = keyEl.value.toUpperCase().replace(/[^A-Z0-9_]/g, '_');
+      const next = keyEl.value.toUpperCase().replace(/[^A-Z0-9_]/g, '_');
+      if (next === keyEl.value) return;
+      const at = keyEl.selectionStart;
+      keyEl.value = next;
+      try { keyEl.setSelectionRange(at, at); } catch { /* not a text control */ }
     });
     $('rw-p-cancel')?.addEventListener('click', () => void dlg?.close?.());
     const save = async () => {

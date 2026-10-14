@@ -10,7 +10,8 @@
 
   /** Mirrors the PATCH /settings validation, so a bad value is caught at its field before the request. */
   const FIELD_RULES = {
-    'set-msg': (v) => (v.length >= 3 && v.length <= 500 ? '' : 'შეტყობინება უნდა იყოს 3-დან 500 სიმბოლომდე.'),
+    // An empty text is fine while maintenance is off (it is then not sent); with maintenance on people must see 3–500 characters.
+    'set-msg': (v) => (!v && !$('set-maint')?.checked ? '' : v.length >= 3 && v.length <= 500 ? '' : 'შეტყობინება უნდა იყოს 3-დან 500 სიმბოლომდე.'),
     'set-minver': (v) => (/^\d+\.\d+\.\d+(?:\.\d+){0,2}$/.test(v) ? '' : 'ჩაწერე ვერსია ციფრებითა და წერტილებით, მაგ. 1.0.0.13.0.'),
     'set-email': (v) => (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v) ? '' : 'ჩაწერე სწორი ელფოსტა, მაგ. support@medicard.ge.'),
   };
@@ -85,7 +86,7 @@
   function readBody() {
     return {
       maintenanceMode: Boolean($('set-maint')?.checked),
-      maintenanceMessage: ($('set-msg')?.value || '').trim(),
+      ...(($('set-msg')?.value || '').trim() ? { maintenanceMessage: ($('set-msg')?.value || '').trim() } : {}),
       minAppVersion: ($('set-minver')?.value || '').trim(),
       forceUpdate: Boolean($('set-force')?.checked),
       allowRegistrations: Boolean($('set-reg')?.checked),

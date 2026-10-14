@@ -217,10 +217,13 @@
     }
     paint(root, data);
     clearTimeout(refreshTimer);
-    refreshTimer = setTimeout(() => {
+    const tick = () => {
       const panel = $('tab-capacity');
-      if (panel && !panel.classList.contains('hidden') && doc.visibilityState === 'visible') void renderCapacity({ silent: true });
-    }, 60_000);
+      const busy = typeof adminIsTyping === 'function' && adminIsTyping();
+      if (panel && !panel.classList.contains('hidden') && doc.visibilityState === 'visible' && !busy) { void renderCapacity({ silent: true }); return; }
+      refreshTimer = setTimeout(tick, 60_000); // another page is open or the admin types: try again in a minute
+    };
+    refreshTimer = setTimeout(tick, 60_000);
   }
 
   global.renderCapacity = renderCapacity;

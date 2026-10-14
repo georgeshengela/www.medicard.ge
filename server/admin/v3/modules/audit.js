@@ -568,7 +568,9 @@
     $('audit-search')?.addEventListener('click', applySearch);
     $('audit-action')?.addEventListener('change', applySearch);
     $('audit-q')?.addEventListener('keydown', (e) => {
-      if (e.key === 'Enter') applySearch();
+      if (e.key !== 'Enter') return;
+      clearTimeout(qTimer); // the debounce from the last keystroke would fire the same search again
+      applySearch();
     });
     $('audit-q')?.addEventListener('input', () => {
       clearTimeout(qTimer);
@@ -584,8 +586,9 @@
     });
     $('audit-export')?.addEventListener('click', () => {
       const qs = new URLSearchParams();
+      // The same filters as the table: the text search and the action picker.
       if (state.q) qs.set('q', state.q);
-      else if (state.action) qs.set('q', state.action);
+      if (state.action) qs.set('action', state.action);
       const path = `/export/audit${qs.toString() ? `?${qs}` : ''}`;
       if (typeof opsDownload === 'function') void opsDownload(path, 'audit.csv');
     });

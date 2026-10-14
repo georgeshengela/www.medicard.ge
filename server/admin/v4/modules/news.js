@@ -88,14 +88,10 @@
   const pct = (a, b) => (b ? `${Math.round((a / b) * 1000) / 10}%` : '—');
   /** "დღეს, 14:05" · "28 სექ, 18:30" · "28 სექ 2025, 18:30" — Tbilisi time, like every other admin table. */
   const when = (iso) => (iso ? V().formatDate?.(iso, 'datetime') || '' : '');
-  /** ISO → value for <input type="datetime-local"> in the browser's zone (the owner works in Tbilisi). */
-  const toLocalInput = (iso) => {
-    if (!iso) return '';
-    const d = new Date(iso);
-    const p = (n) => String(n).padStart(2, '0');
-    return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
-  };
-  const fromLocalInput = (v) => (v ? new Date(v).toISOString() : null);
+  /** ISO ↔ <input type="datetime-local"> in Tbilisi time (UTC+4 all year), whatever zone the admin's browser is in. */
+  const TBILISI_MS = 4 * 3600000;
+  const toLocalInput = (iso) => (iso ? new Date(new Date(iso).getTime() + TBILISI_MS).toISOString().slice(0, 16) : '');
+  const fromLocalInput = (v) => (v ? new Date(Date.parse(`${v.length === 16 ? `${v}:00` : v}Z`) - TBILISI_MS).toISOString() : null);
   const imgSrc = (path) => (path && path.startsWith('/') ? `${typeof API === 'string' ? API : ''}${path}` : path || '');
   const audienceText = (a = {}) => {
     const g = { FEMALE: 'ქალები', MALE: 'კაცები' }[a.gender] || 'ყველა';
@@ -383,7 +379,7 @@
               </div>
               <div class="s-field"><span>სურათი (არასავალდებულო)</span>
                 <div class="p1-upload">
-                  <label class="btn compact">${ico('upload')} ატვირთვა<input type="file" accept="image/jpeg,image/png,image/webp" data-file hidden></label>
+                  <label class="btn compact" tabindex="0">${ico('upload')} ატვირთვა<input type="file" accept="image/jpeg,image/png,image/webp" data-file hidden></label>
                   <button type="button" class="btn compact ghost" data-remove-image ${a.image || a.imageUrl ? '' : 'hidden'}>სურათის მოშორება</button>
                   <span class="p1-upload-state" data-image-state></span>
                 </div>

@@ -69,3 +69,18 @@ The header bell / ⇧A sheet has three tabs: „აპში“ (live module fee
 ## App Store place on the live card (owner 2026-10-14)
 
 „ჩარტში რომელ ადგილზე ვართ“ — a glass tile on the right of „ახლა აპში“ (admin home) shows MEDICARD AI's place in Apple's Georgia chart (top 100 free iPhone apps in our category, from Apple's lookup: Health & Fitness 6013), ▲/▼ vs yesterday, a gold medal in the top 10, „100+“ outside the list; the title tooltip adds the app just ahead, the overall top-100 place, a week ago and the best. A tap opens Apple's chart page in a new tab (owner: must always open). Server `server/src/lib/appStoreRank.js` (iTunes RSS + lookup, public data only), `GET /api/admin/app-store-rank` (20 min memo, `?fresh=1` from the refresh button), hourly read under the `app-store-rank` lease (production) into `"AppStoreRankSample"` (`install-app-store-rank.mjs` in `db:install`, 400 days). Client `storeRankTile` in `command-center-v3.js`, styles `.v3-cc-rank*` in `v4/overview.css` (the card takes `minmax(300px, 1.1fr)` of the hero while it has the tile). Apple keeps no chart history — the samples start 2026-10-14.
+
+## Polish pass (2026-10-15)
+
+Rules that came out of the full admin review (every page on real data + a code audit); keep them when adding pages:
+
+- **Shared range bar.** `bindOpsRange` binds inside the open `.panel` only: the overview, health, Medi, Push and quality pages all paint `#ops-from / #ops-to / #ops-custom-apply` and every panel stays in the DOM, so a document-wide `$('ops-from')` reads the overview's hidden inputs.
+- **Module copy buttons** never use `data-copy` — `admin-v3.js` has a global `[data-copy]` clipboard handler that would copy a second value and toast twice. Use `data-<module>-copy` (campaigns `data-cp-copy`, support `data-sx-copy`).
+- **Hash round-trip.** Page tabs, usage panes and filters write their state to the hash before re-rendering (`AdminV3Shell.writeModuleHash`), and `render()` reads the hash when `AdminFocus.take` returns nothing — MEDIRUN `tab/status`, community `section`, usage hosts `pane`. A reload, a pasted link and the palette land on the same view.
+- **Native dialogs are gone**: the last `confirm()` (MEDIRUN boxes, unsaved rules) goes through the module's `confirmDialog`. `AdminV3.openConfirm` traps focus, returns it to the opener and starts a `danger` confirm on „გაუქმება“; `openDialog` starts in the first form field.
+- **Quiet refresh loops** (capacity, errors, push campaign watcher, MEDIRUN countdown) keep ticking while another page is open and skip while the admin types or a dialog is open — they must never die on a hidden panel.
+- **Filters are `.s-segment`** (SMS status/type, pharmacy run status); the selected pill is `aria-selected="true"`, never only a class.
+- **Upload buttons** are `<label class="btn" tabindex="0">` around the hidden file input; `admin-v3.js` opens the picker on Enter/Space.
+- **Escape** with nothing open leaves the page's unsaved-changes flag alone; `community:changed` and the 60 s refreshes check `#v3-dialog` / `#v3-confirm` (there is no `<dialog>` in the admin).
+- Dates in the bell and feed come from `AdminV3.formatDate` (Tbilisi „დღეს / გუშინ“), the recents key ignores the period, feed attention toasts are `warn`.
+- Local preview: `scripts/admin-dev-proxy.mjs` also forwards `/press/` and strips `Secure`/`Domain` from the media cookie, so `#/campaigns` posters and the plan load on localhost.

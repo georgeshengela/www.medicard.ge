@@ -223,6 +223,10 @@
       if (exact.get('section')) section = exact.get('section');
       offset = 0;
       render.focus = exact.get('focus');
+    } else {
+      // A reloaded or pasted link keeps its section.
+      const here = global.AdminV3Shell?.hashParams?.().get('section');
+      if (here && labels[here]) section = here;
     }
     const gen = ++generation;
     urls.forEach(URL.revokeObjectURL);
@@ -270,7 +274,7 @@
         if (global.AdminFocus && !global.AdminFocus.flash(root, render.focus)) global.toast?.('ეს ჩანაწერი ამ სიაში ვეღარ მოიძებნა — შესაძლოა ძველია ან წაიშალა.', 'bad');
         render.focus = null;
       }
-      root.querySelectorAll('[data-section]').forEach((b) => (b.onclick = () => { section = b.dataset.section; offset = 0; void render(); }));
+      root.querySelectorAll('[data-section]').forEach((b) => (b.onclick = () => { section = b.dataset.section; offset = 0; global.AdminV3Shell?.writeModuleHash?.('community', { section }); void render(); }));
       root.querySelector('[data-refresh]').onclick = () => void render();
       root.querySelectorAll('[data-page]').forEach((b) => (b.onclick = () => { offset += Number(b.dataset.page); void render(); }));
       root.querySelector('[data-launch-toggle]')?.addEventListener('click', (e) => toggleLaunch(e.currentTarget.dataset.launchToggle === 'open', !!launch.readiness?.ready));

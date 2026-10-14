@@ -42,11 +42,13 @@
   const refreshBtn = `<button type="button" class="btn ghost compact" data-refresh>${ico('refresh')} განახლება</button>`;
 
   async function openCertificate(file, title) {
-    const dialog = V().openDialog?.({ title: title || 'სერტიფიკატი', description: 'ფაილი ჩანს მხოლოდ ადმინებს. კლიენტები ხედავენ დასახელებას, გამცემს და წელს.', body: '<div class="s-empty">იტვირთება…</div>', wide: true });
+    let blobUrl = null;
+    const dialog = V().openDialog?.({ title: title || 'სერტიფიკატი', description: 'ფაილი ჩანს მხოლოდ ადმინებს. კლიენტები ხედავენ დასახელებას, გამცემს და წელს.', body: '<div class="s-empty">იტვირთება…</div>', wide: true, onClose: () => { if (blobUrl) URL.revokeObjectURL(blobUrl); } });
     try {
       const res = await fetch(`${API}/api/admin/trainers/certificates/${encodeURIComponent(file)}`, { headers: { Authorization: `Bearer ${state.token}` } });
       if (!res.ok) throw new Error(res.status === 404 ? 'ფაილი ვერ მოიძებნა (შესაძლოა სერვერის დისკიდან წაიშალა).' : 'ფაილი ვერ ჩაიტვირთა.');
       const url = URL.createObjectURL(await res.blob());
+      blobUrl = url; // released when the dialog closes
       const body = doc.querySelector('#v3-dialog .v3-overlay-body');
       if (body) body.innerHTML = `<img class="s-coach-cert-img" src="${url}" alt="${esc(title)}">`;
     } catch (err) {
@@ -342,7 +344,7 @@
     }
     if (!root.querySelector('[data-body]')) {
       root.innerHTML = `<div class="s-stack v3-tab-shell s-coach">
-        <div class="v3-tabs s-coach-tabs" role="tablist" aria-label="განყოფილება">${VIEWS.map(([key, label]) => `<button type="button" class="v3-tab" role="tab" data-view="${key}">${label}</button>`).join('')}</div>
+        <div class="s-tabbar s-coach-tabs"><nav class="v3-subnav" role="tablist" aria-label="განყოფილება">${VIEWS.map(([key, label]) => `<button type="button" class="v3-subnav-btn" role="tab" data-view="${key}">${label}</button>`).join('')}</nav></div>
         <div class="s-stack" data-body>${skel()}</div></div>`;
       root.querySelectorAll('[data-view]').forEach((b) => b.addEventListener('click', () => {
         if (view === b.dataset.view) return;
@@ -352,6 +354,7 @@
     }
     root.querySelectorAll('[data-view]').forEach((b) => {
       const on = b.dataset.view === view;
+      b.classList.toggle('is-active', on);
       b.setAttribute('aria-selected', String(on));
       b.tabIndex = on ? 0 : -1;
     });

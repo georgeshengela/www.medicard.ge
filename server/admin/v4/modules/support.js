@@ -432,7 +432,7 @@
         ${pvText ? `<span class="sx-row-preview">${out ? `<em class="${who === DIRECTOR ? 'is-director' : ''}">${who === DIRECTOR ? ico('director') : ''}${esc(who)}:</em> ` : ''}${esc(pvText)}</span>` : ''}
         ${meta ? `<span class="sx-row-meta">${meta}</span>` : ''}
       </span>
-      ${t.unread ? '<i class="sx-unread" aria-label="წაუკითხავი"></i>' : ''}
+      ${t.unread ? '<i class="sx-unread" aria-hidden="true"></i><span class="sr-only">წაუკითხავი</span>' : ''}
     </button></li>`;
   }
 
@@ -840,7 +840,7 @@
         ${avatar(t.counterpartEmail, nameOf(t), 'is-lg')}
         <div>
           <b>${esc(t.counterpartName || t.counterpartEmail)}</b>
-          <button type="button" class="sx-copy" data-copy="${esc(t.counterpartEmail)}" title="მისამართის კოპირება">${esc(t.counterpartEmail)}${ico('copy')}</button>
+          <button type="button" class="sx-copy" data-sx-copy="${esc(t.counterpartEmail)}" title="მისამართის კოპირება">${esc(t.counterpartEmail)}${ico('copy')}</button>
         </div>
       </div>
       <section class="sx-side-sec">
@@ -870,8 +870,9 @@
         ${history.length ? `<ul class="sx-history">${history.map((h) => `<li><button type="button" data-open-thread="${esc(h.id)}"><span>${esc(h.subject || '(უსათაურო)')}</span><small>${badge(h.status)} ${esc(shortWhen(h.lastMessageAt))}</small></button></li>`).join('')}</ul>` : '<p class="sx-muted">ეს პირველი საუბარია ამ ადამიანთან.</p>'}
       </section>`;
     side.querySelectorAll('[data-open-thread]').forEach((b) => b.addEventListener('click', () => openThread(b.dataset.openThread)));
-    side.querySelector('[data-copy]')?.addEventListener('click', async (e) => {
-      try { await navigator.clipboard.writeText(e.currentTarget.dataset.copy); toast('მისამართი დაკოპირდა', 'ok'); } catch { /* clipboard blocked */ }
+    // data-sx-copy, not data-copy: the global [data-copy] handler would copy and toast a second time.
+    side.querySelector('[data-sx-copy]')?.addEventListener('click', async (e) => {
+      try { await navigator.clipboard.writeText(e.currentTarget.dataset.sxCopy); toast('მისამართი დაკოპირდა', 'ok'); } catch { /* clipboard blocked */ }
     });
   }
 

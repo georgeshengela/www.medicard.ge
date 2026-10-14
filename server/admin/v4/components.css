@@ -1688,6 +1688,9 @@ html body table.s-quest-table input[data-f="defaultTarget"] { width: 100px; }
 .s-insights .s-insight-note { margin: 4px 0 10px; font-size: 12.5px; line-height: 1.55; color: var(--s-muted); }
 .s-coins-form { gap: 14px; }
 .s-coins-dialog .v3-overlay-foot .s-form-msg { margin-right: auto; }
+/* Push campaign drawer (admin.js): the lead text and the id line under the title. */
+.push-drawer-lead { font-size: 13px; margin: 6px 0 0; }
+.push-drawer-id { font-size: 11px; }
 /* ─── [/P5] ─── */
 /* ─── [P6] მომხმარებლები · ფუნელი · ტრენერები ─── */
 /* Shared bits these pages need: a red callout (blocked account) and focus for clickable table rows. */

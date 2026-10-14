@@ -318,6 +318,8 @@
         root.querySelectorAll('[data-uw-pane-btn]').forEach((b) => b.addEventListener('click', () => {
           if (b.dataset.uwPaneBtn === st.active) return;
           st.active = b.dataset.uwPaneBtn;
+          // The pane lives in the hash, so a reload or a copied link reopens it (a feed focus does not survive a pane change).
+          global.AdminV3Shell?.writeModuleHash?.(tab, { pane: st.active, focus: null });
           void show();
         }));
       }

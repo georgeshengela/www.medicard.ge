@@ -313,7 +313,11 @@
     const page = pageOf(tab);
     if (!page) return;
     const sub = subLabel(tab);
-    pushRecent({ key: `page:${location.hash.split('&range')[0]}`, kind: 'page', tab, hash: location.hash, icon: page.icon, label: sub ? `${page.label} · ${sub}` : page.label, hint: page.group });
+    // One recent per page / sub-page: the period (range, from, to, grain) is not part of the key.
+    const [path, qs] = location.hash.split('?');
+    const p = new URLSearchParams(qs || '');
+    ['range', 'from', 'to', 'grain'].forEach((k) => p.delete(k));
+    pushRecent({ key: `page:${path}${p.toString() ? `?${p}` : ''}`, kind: 'page', tab, hash: location.hash, icon: page.icon, label: sub ? `${page.label} · ${sub}` : page.label, hint: page.group });
   }
 
   /* ─────────────── Command palette ─────────────── */
@@ -683,16 +687,14 @@
     const target = TARGETS[entry.targetType] || String(entry.targetType || action.split(/[._]/)[0] || '').replace(/([a-z])([A-Z])/g, '$1 $2');
     return { text: `${target}${hit ? ` · ${hit[1]}` : ''}`, icon: hit ? hit[2] : 'file', danger: /DELETE|BLOCK/i.test(action) };
   }
+  /** „დღეს“ · „გუშინ“ · „28 სექ“ in Tbilisi time (AdminV3.formatDate), never the browser's local day. */
   function dayLabel(iso) {
-    const d = new Date(iso);
-    const today = new Date();
-    const y = new Date(); y.setDate(today.getDate() - 1);
-    if (d.toDateString() === today.toDateString()) return 'დღეს';
-    if (d.toDateString() === y.toDateString()) return 'გუშინ';
-    return typeof global.fmtDateShort === 'function' ? global.fmtDateShort(iso) : d.toLocaleDateString('ka-GE');
+    if (global.AdminV3?.formatDate) return global.AdminV3.formatDate(iso, 'date');
+    return typeof global.fmtDateShort === 'function' ? global.fmtDateShort(iso) : String(iso || '');
   }
   function timeOf(iso) {
-    return typeof global.fmtRelative === 'function' ? global.fmtRelative(iso) : new Date(iso).toLocaleTimeString('ka-GE', { hour: '2-digit', minute: '2-digit' });
+    if (typeof global.fmtRelative === 'function') return global.fmtRelative(iso);
+    return global.AdminV3?.formatDate ? global.AdminV3.formatDate(iso, 'datetime') : '';
   }
 
   /** Activity sheet (bell, ⇧A): „აპში“ — the live module feed (v4/modules/liveFeed.js), „ადმინში“ — the audit, „სისტემა“ — health. */

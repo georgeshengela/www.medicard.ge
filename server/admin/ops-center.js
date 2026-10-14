@@ -440,15 +440,19 @@ function opsRangeBar() {
 }
 
 function bindOpsRange(onChange) {
-  document.querySelectorAll('[data-ops-range]').forEach((btn) => {
+  // Several pages paint this bar (overview, health, Medi, Push, quality) and every panel stays in the DOM,
+  // so bind inside the page that is open: the first #ops-from in the document belongs to the overview.
+  const scope = document.querySelector('.panel:not(.hidden)') || document;
+  const q = (sel) => scope.querySelector(sel);
+  scope.querySelectorAll('[data-ops-range]').forEach((btn) => {
     btn.onclick = () => {
       // A custom period needs both dates first: open the date fields instead of loading an empty range.
       if (btn.dataset.opsRange === 'custom' && !(opsState.from && opsState.to)) {
-        document.querySelectorAll('[data-ops-range]').forEach((b) => b.classList.toggle('active', b === btn));
+        scope.querySelectorAll('[data-ops-range]').forEach((b) => b.classList.toggle('active', b === btn));
         const box = btn.parentElement?.querySelector('.ops-range-custom');
         box?.classList.remove('hidden');
-        const from = $('ops-from');
-        const to = $('ops-to');
+        const from = q('#ops-from');
+        const to = q('#ops-to');
         const ymd = (d) => new Date(d.getTime() + 4 * 3600000).toISOString().slice(0, 10);
         if (to && !to.value) to.value = ymd(new Date());
         if (from && !from.value) from.value = ymd(new Date(Date.now() - 29 * 86400000));
@@ -460,9 +464,9 @@ function bindOpsRange(onChange) {
       onChange();
     };
   });
-  $('ops-custom-apply')?.addEventListener('click', () => {
-    const from = $('ops-from').value;
-    const to = $('ops-to').value;
+  q('#ops-custom-apply')?.addEventListener('click', () => {
+    const from = q('#ops-from')?.value || '';
+    const to = q('#ops-to')?.value || '';
     if (!from || !to || from > to) {
       if (typeof toast === 'function') toast(!from || !to ? 'აირჩიე ორივე თარიღი.' : 'საწყისი თარიღი ბოლოზე ადრე უნდა იყოს.', 'bad');
       return;
@@ -473,7 +477,7 @@ function bindOpsRange(onChange) {
     opsPersistRange();
     onChange();
   });
-  $('ops-range-clear')?.addEventListener('click', () => {
+  q('#ops-range-clear')?.addEventListener('click', () => {
     opsState.range = '7d';
     opsState.from = '';
     opsState.to = '';
@@ -1643,7 +1647,7 @@ async function openDecisionDrawer(id) {
           <div class="umodal-hero-copy">
             <p class="kicker">Medi-ს შეტყობინება</p>
             <h3>${opsEscape(brainFamilyLabel(decision.family || decision.candidate))}</h3>
-            <p class="muted">${opsEscape(decision.userName || decision.userId || 'უცნობი მომხმარებელი')} · ${decision.createdAt ? when(decision.createdAt) : 'დრო უცნობია'}</p>
+            <p class="muted">${opsEscape(brainPerson(decision))} · ${decision.createdAt ? when(decision.createdAt) : 'დრო უცნობია'}</p>
             <p>${(() => { const [label, tone, hint] = brainPlanStatus(decision); return `<span class="s-badge ${tone}" title="${opsEscape(hint)}">${opsEscape(label)}</span>`; })()}</p>
           </div>
           <button type="button" class="btn icon-only ghost umodal-close" id="drawer-cancel" aria-label="დახურვა">${icon('x')}</button>
@@ -1666,7 +1670,7 @@ async function openDecisionDrawer(id) {
           <section class="dec-section">
             <h4>ადამიანი და ტელეფონი</h4>
             <div class="inv-grid">
-              <div class="inv-row"><span>მომხმარებელი</span><strong><button type="button" class="inv-link" id="dec-open-user">${opsEscape(decision.userName || decision.userId || 'უცნობია')}</button></strong></div>
+              <div class="inv-row"><span>მომხმარებელი</span><strong><button type="button" class="inv-link" id="dec-open-user">${opsEscape(brainPerson(decision))}</button></strong></div>
               <div class="inv-row"><span>პლატფორმა</span><strong>${platform || '<span class="unknown">უცნობია</span>'}</strong></div>
               <div class="inv-row"><span>აპის ვერსია</span><strong>${decUnknown(client.appVersion)}</strong></div>
               <div class="inv-row"><span>აგზავნის გადაწყვეტილებებს</span><strong>${yesNo(tel.brainSync)}</strong></div>
@@ -1774,7 +1778,8 @@ async function opsDownload(path, filename) {
   a.href = url;
   a.download = filename;
   a.click();
-  URL.revokeObjectURL(url);
+  // Firefox and Safari start the download asynchronously: revoke the URL later.
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 async function renderQualityOps() {

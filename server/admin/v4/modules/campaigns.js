@@ -95,13 +95,14 @@
     if (SUBS.some(([k]) => k === want)) st.sub = want;
     root.innerHTML = `<div class="s-stack v3-tab-shell cp-page">${skel()}</div>`;
     try {
-      const [list, social] = await Promise.all([
-        global.api('/campaigns'),
-        global.api('/social?campaign=medirun-glow-2026&limit=2000').catch(() => ({ installed: false, posts: [] })),
-        ensureMedia(),
-      ]);
+      const list = await global.api('/campaigns');
       st.campaigns = list.campaigns || [];
       st.campaign = st.campaigns[0] || null;
+      // The posts belong to the campaign the page shows; the media session only unlocks thumbnails, so it must not fail the page.
+      const [social] = await Promise.all([
+        global.api(`/social?campaign=${encodeURIComponent(st.campaign?.id || 'medirun-glow-2026')}&limit=2000`).catch(() => ({ installed: false, posts: [] })),
+        ensureMedia().catch(() => null),
+      ]);
       st.posts = (social.posts || []).slice().sort((a, b) => Date.parse(a.scheduledAt) - Date.parse(b.scheduledAt));
     } catch (err) {
       root.innerHTML = `<div class="s-stack v3-tab-shell cp-page">${failHtml(err)}</div>`;
@@ -136,7 +137,7 @@
       <div class="cp-hero-id">
         <span class="cp-brand">MEDIRUN</span>
         <h2>${esc(c.name)}</h2>
-        <p>${esc(shortDay(c.start))} – ${esc(shortDay(c.end))} 2026 · თბილისი. ქალაქში დამალული ყუთები Medi Coins-ით, ფინალში წითელი iPhone 18 Pro Max მათთვის, ვინც თბილისის 1% გაანათა.</p>
+        <p>${esc(shortDay(c.start))} – ${esc(shortDay(c.end))} ${esc(String(c.end || '').slice(0, 4))} · თბილისი.${c.id === 'medirun-glow-2026' ? ' ქალაქში დამალული ყუთები Medi Coins-ით, ფინალში წითელი iPhone 18 Pro Max მათთვის, ვინც თბილისის 1% გაანათა.' : ''}</p>
       </div>
       <div class="cp-hero-side">
         <span class="s-badge ${p.tone}">${esc(p.label)}</span>
@@ -317,7 +318,7 @@
         ${p.title && !story ? `<h4>${esc(p.title)}</h4>` : ''}
         ${preview ? `<p class="cp-row-text">${esc(preview)}</p>` : ''}
         ${canCopy ? `<div class="cp-row-actions">
-          <button type="button" class="cp-link" data-copy="${esc(p.id)}">${ico('copy')}<span>კოპირება</span></button>
+          <button type="button" class="cp-link" data-cp-copy="${esc(p.id)}">${ico('copy')}<span>კოპირება</span></button>
           <button type="button" class="cp-link" data-more aria-expanded="false">${ico('rows')}<span>მთლიანი ტექსტი</span></button>
         </div>` : ''}
       </div>
@@ -364,10 +365,11 @@
       b.setAttribute('aria-expanded', String(open));
       b.querySelector('span').textContent = open ? 'დაკეცვა' : 'მთლიანი ტექსტი';
     }));
-    pane.querySelectorAll('[data-copy]').forEach((b) => b.addEventListener('click', async () => {
+    // data-cp-copy, not data-copy: the global [data-copy] handler would copy the post id over the caption.
+    pane.querySelectorAll('[data-cp-copy]').forEach((b) => b.addEventListener('click', async () => {
       const label = b.querySelector('span');
       try {
-        await navigator.clipboard.writeText(st.texts.get(b.dataset.copy) || '');
+        await navigator.clipboard.writeText(st.texts.get(b.dataset.cpCopy) || '');
         label.textContent = 'დაკოპირდა ✓';
         setTimeout(() => { label.textContent = 'კოპირება'; }, 1500);
       } catch {

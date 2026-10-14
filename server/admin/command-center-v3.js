@@ -559,8 +559,13 @@
       list.addEventListener('focusin', (e) => { const t = e.target.closest('.cc-st[data-user]'); if (t) showPop(t); });
       list.addEventListener('focusout', hidePop);
       list.addEventListener('click', hidePop);
-      host.closest('.workspace, .s-scrolled')?.addEventListener('scroll', hidePop, { passive: true });
-      window.addEventListener('scroll', hidePop, { passive: true });
+      // The workspace and the window outlive every repaint: bind their scroll listeners once.
+      if (!window.__ccOnlineScrollBound) {
+        window.__ccOnlineScrollBound = true;
+        const hideFloating = () => document.getElementById('cc-st-floating')?.classList.remove('is-on');
+        host.closest('.workspace, .s-scrolled')?.addEventListener('scroll', hideFloating, { passive: true });
+        window.addEventListener('scroll', hideFloating, { passive: true });
+      }
       list.addEventListener('keydown', (e) => {
         const row = e.target.closest('[data-user]');
         if (row && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); row.click(); }

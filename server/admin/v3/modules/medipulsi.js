@@ -18,6 +18,8 @@
   const request = (path, options) => api('/medipulsi' + path, options);
   const PAGE = 50;
   let selected = 'overview', offset = 0, filter = '', rows = [], ticket = 0, focusId = null;
+  /** The tab and its filter live in the hash, so a reload, a pasted link or the palette lands on the same view. */
+  const writeHash = () => global.AdminV3Shell?.writeModuleHash?.('medipulsi', { tab: selected, status: filter || null });
 
   // Asia/Tbilisi is UTC+4 all year: editors show local time and save the same UTC instant as before.
   const TBILISI_MS = 4 * 3600000;
@@ -134,7 +136,8 @@
     if (i.prizes.pending || i.prizes.toHandOver) alerts.push(`<div class="s-callout is-warn">${ico('gift')}<p><b>${fmt(i.prizes.pending)} პრიზი ელოდება შემოწმებას${i.prizes.toHandOver ? `, ${fmt(i.prizes.toHandOver)} — გადაცემას` : ''}.</b> გაცემამდე გადაამოწმე მოთამაშე და GPS-ის მონაცემები.</p><button type="button" class="btn compact" data-run-pending>გახსნა</button></div>`);
     const flag = (on, label) => `<span class="s-badge ${on ? 'is-ok' : 'is-bad'}">${label}: ${on ? 'ჩართულია' : 'გამორთულია'}</span>`;
     const C = global.AdminCharts;
-    const series = (key) => i.trend.map((t) => ({ day: shortDay(t.date), count: t[key] }));
+    // The chart formats the day itself and needs YYYY-MM-DD to draw today's unfinished day lighter.
+    const series = (key) => i.trend.map((t) => ({ day: t.date, count: t[key] }));
     const topLevel = Math.max(1, ...i.levels.map((l) => l.players));
     return `${alerts.join('')}
       <div class="s-callout s-run-link">${ico('box')}<p><b>ყუთები ცალკე გვერდზეა.</b> წესები, დღეები, ქალაქები, ხელით დაგდება და ყუთების ციფრები — „MEDIRUN ყუთები“.</p><a class="btn compact" href="#/medirun-boxes">გახსნა</a></div>
@@ -294,6 +297,11 @@
       offset = 0;
       filter = exact.get('status') || '';
       focusId = exact.get('focus');
+    } else {
+      const here = global.AdminV3Shell?.hashParams?.() || new URLSearchParams();
+      const tab = here.get('tab');
+      if (tab && TABS.some(([id]) => id === tab)) selected = tab;
+      if (here.has('status')) filter = here.get('status') || '';
     }
     const version = ++ticket;
     root.innerHTML = `<div class="s-stack v3-tab-shell s-run">
@@ -303,7 +311,7 @@
       </div>
       <div class="s-stack s-run-body" aria-live="polite"><div class="v3-skel" aria-hidden="true">${'<i></i>'.repeat(5)}</div></div>
     </div>`;
-    root.querySelectorAll('[data-run-tab]').forEach((b) => (b.onclick = () => { selected = b.dataset.runTab; offset = 0; filter = ''; void render(); }));
+    root.querySelectorAll('[data-run-tab]').forEach((b) => (b.onclick = () => { selected = b.dataset.runTab; offset = 0; filter = ''; writeHash(); void render(); }));
     root.querySelector('[data-run-refresh]').onclick = () => { render.fresh = true; void render(); };
     const body = root.querySelector('.s-run-body');
     try {
@@ -326,10 +334,10 @@
         config: () => configHtml(data),
         audit: () => auditHtml(data),
       }[selected]();
-      body.querySelectorAll('[data-run-filter]').forEach((b) => (b.onclick = () => { filter = b.dataset.runFilter; offset = 0; void render(); }));
+      body.querySelectorAll('[data-run-filter]').forEach((b) => (b.onclick = () => { filter = b.dataset.runFilter; offset = 0; writeHash(); void render(); }));
       body.querySelectorAll('[data-run-page]').forEach((b) => (b.onclick = () => { offset += Number(b.dataset.runPage) * PAGE; void render(); }));
-      body.querySelectorAll('[data-run-go]').forEach((b) => (b.onclick = () => { selected = b.dataset.runGo; offset = 0; filter = ''; void render(); }));
-      body.querySelector('[data-run-pending]')?.addEventListener('click', () => { selected = 'claims'; offset = 0; filter = 'PENDING'; void render(); });
+      body.querySelectorAll('[data-run-go]').forEach((b) => (b.onclick = () => { selected = b.dataset.runGo; offset = 0; filter = ''; writeHash(); void render(); }));
+      body.querySelector('[data-run-pending]')?.addEventListener('click', () => { selected = 'claims'; offset = 0; filter = 'PENDING'; writeHash(); void render(); });
       global.AdminCharts?.hydrate?.();
       if (focusId) {
         if (global.AdminFocus && !global.AdminFocus.flash(body, focusId)) global.toast?.('ეს ჩანაწერი ამ სიაში ვეღარ მოიძებნა — შესაძლოა ძველია ან წაიშალა.', 'bad');

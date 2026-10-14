@@ -110,7 +110,10 @@
         clearPoll();
         return;
       }
-      if (!document.hidden) void renderPharmacyV3();
+      // Not while the admin is in the sync form or the history filters: a repaint would drop focus and selection.
+      const active = document.activeElement;
+      const typing = Boolean(active && active.closest?.('#tab-pharmacy') && active.matches('input, select, textarea'));
+      if (!document.hidden && !typing) void renderPharmacyV3();
     }, 8000);
   }
 
@@ -371,12 +374,7 @@
         <section class="s-card" data-v3-pharmacy="history">
           <header class="s-card-head">
             <div><h3>სინქის ისტორია</h3><p id="pharm-log-meta"></p></div>
-            <select id="pharm-filter-status" aria-label="სტატუსი" class="p2-select-sm">
-              <option value="ALL"${logState.status === 'ALL' ? ' selected' : ''}>ყველა სტატუსი</option>
-              <option value="DONE"${logState.status === 'DONE' ? ' selected' : ''}>დასრულდა</option>
-              <option value="FAILED"${logState.status === 'FAILED' ? ' selected' : ''}>ჩავარდა</option>
-              <option value="RUNNING"${logState.status === 'RUNNING' ? ' selected' : ''}>მიმდინარეობს</option>
-            </select>
+            <div class="s-segment" role="group" aria-label="სტატუსი">${[['ALL', 'ყველა'], ['DONE', 'დასრულდა'], ['FAILED', 'ჩავარდა'], ['RUNNING', 'მიმდინარეობს']].map(([v, l]) => `<button type="button" role="tab" aria-selected="${logState.status === v}" data-pharm-status="${v}">${l}</button>`).join('')}</div>
           </header>
           <div class="s-table-wrap">
             <table class="s-table">
@@ -408,11 +406,12 @@
     if (prevPages != null && $('pharm-pages')) $('pharm-pages').value = prevPages;
     paintHistory();
 
-    $('pharm-filter-status')?.addEventListener('change', (e) => {
-      logState.status = e.target.value || 'ALL';
+    root.querySelectorAll('[data-pharm-status]').forEach((b) => b.addEventListener('click', () => {
+      b.parentElement?.querySelectorAll('button').forEach((x) => x.setAttribute('aria-selected', String(x === b)));
+      logState.status = b.dataset.pharmStatus || 'ALL';
       logState.offset = 0;
       paintHistory();
-    });
+    }));
     $('pharm-log-prev')?.addEventListener('click', () => {
       logState.offset = Math.max(0, logState.offset - logState.limit);
       paintHistory();

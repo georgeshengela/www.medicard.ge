@@ -279,8 +279,12 @@
     root.querySelector('[data-lab-log]')?.addEventListener('click', () => {
       // Medi's log (#/ai) keeps its filter in admin.js `aiLog`; open it on lab explanations.
       if (typeof aiLog === 'object' && aiLog) Object.assign(aiLog, { mode: 'LAB', status: '', offset: 0 });
-      const ai = document.getElementById('tab-ai');
-      if (ai) ai.innerHTML = '';
+      // Open the „ხარისხი და ჟურნალი“ pane itself: the host would otherwise reopen its last pane.
+      if (window.renderAiHost) void window.renderAiHost.select('quality', { fresh: true });
+      else {
+        const ai = document.getElementById('tab-ai');
+        if (ai) ai.innerHTML = '';
+      }
       location.hash = '#/ai';
     });
   }

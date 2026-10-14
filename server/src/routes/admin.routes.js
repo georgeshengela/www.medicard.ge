@@ -1870,6 +1870,7 @@ adminRouter.get(
     const data = await listAdminAudit({
       limit: 2000,
       offset: 0,
+      action: req.query.action,
       q: req.query.q,
     });
     sendCsv(

@@ -84,7 +84,7 @@
   const who = (e) => e.user?.name || e.who || '';
   function notify(e) {
     const label = `${who(e) ? `${who(e)} — ` : ''}${e.text}`;
-    if (typeof global.toast === 'function') global.toast(label, 'ok');
+    if (typeof global.toast === 'function') global.toast(label, 'warn'); // something to act on, not a success
     if (read(NOTIFY_KEY, '0') === '1' && doc.hidden && 'Notification' in global && Notification.permission === 'granted') {
       try { new Notification(`MEDICARD · ${MODULES[e.module]?.[0] || 'აქტივობა'}`, { body: label, tag: e.id }); } catch { /* ignore */ }
     }
@@ -109,14 +109,10 @@
   global.addEventListener('admin:feed', (ev) => ingest(ev.detail?.events || []));
 
   /* ─────────────── Pane ─────────────── */
+  /** „დღეს“ · „გუშინ“ · „28 სექ“ in Tbilisi time, never the browser's local day. */
   function dayLabel(iso) {
-    const d = new Date(iso);
-    const today = new Date();
-    const y = new Date();
-    y.setDate(today.getDate() - 1);
-    if (d.toDateString() === today.toDateString()) return 'დღეს';
-    if (d.toDateString() === y.toDateString()) return 'გუშინ';
-    return global.AdminV3?.formatDate ? global.AdminV3.formatDate(iso, 'date') : d.toISOString().slice(0, 10);
+    if (global.AdminV3?.formatDate) return global.AdminV3.formatDate(iso, 'date');
+    return typeof global.fmtDateShort === 'function' ? global.fmtDateShort(iso) : String(iso || '');
   }
   function clock(iso) {
     const ago = Date.now() - time(iso);

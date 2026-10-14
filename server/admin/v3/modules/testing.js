@@ -217,7 +217,7 @@
     if (!root) return;
     const revision = ++ticket;
     release();
-    global.AdminV3Shell?.mountHeader?.({ tab: 'testing', kicker: 'Production', title: 'ტესტირება', purpose: 'ტესტირების სესიები, ეტაპები, შედეგები და ხარვეზები.' });
+    global.AdminV3Shell?.mountHeader?.({ tab: 'testing', kicker: 'Production', title: 'ტესტირება', purpose: 'ტესტირების სესიები, ეტაპები, შედეგები და ხარვეზები.', helpKey: 'quality.page' });
     root.classList.add('v3-workspace-wide');
     root.innerHTML = `<div class="s-stack v3-tab-shell" role="status" aria-label="იტვირთება"><div class="v3-skel" aria-hidden="true">${'<i></i>'.repeat(6)}</div></div>`;
     if (!can('QA_VIEW')) {

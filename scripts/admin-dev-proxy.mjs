@@ -1,5 +1,5 @@
-// Local admin preview: serves server/admin from disk and forwards /api, /socket.io
-// and /fonts to the main MEDICARD API (https://medicard.ge). No local server,
+// Local admin preview: serves server/admin from disk and forwards /api, /socket.io,
+// /fonts, /uploads and /press (campaign posters + plan) to the main MEDICARD API (https://medicard.ge). No local server,
 // no schedulers — only the static admin changes locally.
 //   node scripts/admin-dev-proxy.mjs   →  http://localhost:4380/admin/
 //   ADMIN_UPSTREAM=http://localhost:4390 … → against scripts/admin-local-server.mjs
@@ -25,7 +25,11 @@ function forward(req, res) {
   const lib = UPSTREAM.protocol === 'http:' ? http : https;
   const port = UPSTREAM.port || (UPSTREAM.protocol === 'http:' ? 80 : 443);
   const up = lib.request({ hostname: UPSTREAM.hostname, port, path: req.url, method: req.method, headers }, (r) => {
-    res.writeHead(r.statusCode || 502, r.headers);
+    // The campaign media cookie (/press) is Secure and scoped to the upstream host; the plain-http localhost
+    // preview could not keep it, so drop those two attributes on the way back.
+    const out = { ...r.headers };
+    if (out['set-cookie']) out['set-cookie'] = [].concat(out['set-cookie']).map((c) => c.replace(/;\s*secure/gi, '').replace(/;\s*domain=[^;]*/gi, ''));
+    res.writeHead(r.statusCode || 502, out);
     r.pipe(res);
   });
   up.on('error', (e) => { res.writeHead(502); res.end(String(e.message)); });
@@ -34,7 +38,7 @@ function forward(req, res) {
 
 const server = http.createServer((req, res) => {
   const url = new URL(req.url, 'http://x');
-  if (/^\/(api|socket\.io|fonts|uploads)\//.test(url.pathname)) return forward(req, res);
+  if (/^\/(api|socket\.io|fonts|uploads|press)\//.test(url.pathname)) return forward(req, res);
   if (url.pathname === '/' || url.pathname === '/admin') { res.writeHead(302, { location: `/admin/${url.hash}` }); return res.end(); }
   const rel = decodeURIComponent(url.pathname.replace(/^\/admin\/?/, '')) || 'index.html';
   const file = path.join(ROOT, rel);

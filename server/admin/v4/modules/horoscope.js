@@ -54,10 +54,13 @@
 
   const state = { status: null, kind: 'day', key: null, sign: 'aries', readings: [] };
 
+  /** sign:aries → „ნიშანი · ვერძი“: a library key in words. */
+  const keyLabel = (key) => { const [ns, ...rest] = String(key || '').split(':'); return [NS[ns] || ns, ...rest.map((r) => SIGNS[r] || PLANETS[r] || r)].join(' · '); };
+
   /* ═════════════ ჰოროსკოპები ═════════════ */
   function skyStrip(sky) {
     if (!sky) return '';
-    const bodies = sky.bodies.map((b) => `<span class="s-badge is-plain${b.retro ? ' is-warn' : ''}" title="${esc(`${PLANETS[b.key]} ${SIGN_IN[b.sign]} ${b.degree}°${b.retro ? ' · რეტროგრადული' : ''}`)}">${esc(PLANETS[b.key])} · ${esc(SIGN_IN[b.sign])} ${b.degree}°${b.retro ? ' ℞' : ''}</span>`).join('');
+    const bodies = sky.bodies.map((b) => `<span class="s-badge is-plain${b.retro ? ' is-warn' : ''}" title="${esc(`${(PLANETS[b.key] || b.key)} ${(SIGN_IN[b.sign] || b.sign || '')} ${b.degree}°${b.retro ? ' · რეტროგრადული' : ''}`)}">${esc((PLANETS[b.key] || b.key))} · ${esc((SIGN_IN[b.sign] || b.sign || ''))} ${b.degree}°${b.retro ? ' ℞' : ''}</span>`).join('');
     const events = sky.events.slice(0, 5).map((e) => `<li><b>${esc(when(e.at, 'datetime'))}</b> — ${esc(eventText(e))}</li>`).join('');
     return card('ცა ახლა', `${esc(PHASES[sky.moon.key])} · განათება ${pct(sky.moon.illumination * 100)} · მთვარე ${esc(SIGN_IN[sky.moon.sign])} · მთვარის მე-${fmt(sky.moon.lunarDay)} დღე. პლანეტები ასტრონომიულად ზუსტია (თბილისი, შუადღე).`,
       `<div class="s-uw-chips">${bodies}</div>${events ? `<ul class="hz-events">${events}</ul>` : ''}`);
@@ -72,7 +75,7 @@
       case 'station_direct': return `${PLANETS[e.body]} პირდაპირ სვლაზე გადადის (${SIGN_IN[e.sign]})`;
       case 'lunar_eclipse': return `მთვარის დაბნელება ${SIGN_IN[e.sign]}`;
       case 'solar_eclipse': return `მზის დაბნელება ${SIGN_IN[e.sign]}`;
-      default: return e.type;
+      default: return 'ასტრონომიული მოვლენა';
     }
   }
 
@@ -217,7 +220,7 @@
   function editDialog(r) {
     if (!r) return;
     const b = r.body || {};
-    const field = (lang, k, label, rows = 2) => `<label class="s-field"><span>${esc(label)}</span><textarea name="${lang}.${k}" rows="${rows}" maxlength="${k === 'general' ? 4000 : 2000}">${esc(b[lang]?.[k] || '')}</textarea></label>`;
+    const field = (lang, k, label, rows = 2) => `<label class="s-field"><span>${esc(label)}</span><textarea name="${lang}.${k}" rows="${rows}" maxlength="${k === 'general' ? 4000 : k === 'tip' ? 600 : 2000}">${esc(b[lang]?.[k] || '')}</textarea></label>`;
     const langBlock = (lang, title) => `<fieldset class="s-stack"><legend><b>${title}</b></legend>
       <label class="s-field"><span>სათაური</span><input name="${lang}.headline" maxlength="200" value="${esc(b[lang]?.headline || '')}"></label>
       ${field(lang, 'general', 'ზოგადი', 6)}${field(lang, 'love', 'სიყვარული')}${field(lang, 'money', 'საქმე და ფული')}${field(lang, 'mood', 'განწყობა')}${field(lang, 'tip', 'დღის რჩევა', 1)}</fieldset>`;
@@ -288,7 +291,7 @@
       const ka = langs.ka?.data || {};
       const head = ka.title || ka.word || ka.headline || key.split(':').slice(1).join(' · ');
       const edited = langs.ka?.source === 'admin' || langs.en?.source === 'admin';
-      return `<li class="hz-lib-row"><div><b>${esc(head)}</b> <small class="s-muted">${esc(key)}</small>${edited ? ' <span class="s-badge is-warn">რედ.</span>' : ''}<p>${esc(String(ka.text || '').slice(0, 220))}${String(ka.text || '').length > 220 ? '…' : ''}</p></div>
+      return `<li class="hz-lib-row"><div><b>${esc(head)}</b> <small class="s-muted">${esc(keyLabel(key))}</small>${edited ? ' <span class="s-badge is-warn">რედ.</span>' : ''}<p>${esc(String(ka.text || '').slice(0, 220))}${String(ka.text || '').length > 220 ? '…' : ''}</p></div>
         <button type="button" class="btn small" data-hz-lib-edit="${esc(key)}">რედაქტირება</button></li>`;
     }).join('');
     host.innerHTML = `<div class="s-stack">
@@ -299,10 +302,16 @@
         ${list ? `<ul class="hz-lib">${list}</ul>` : empty('ამ განყოფილებაში ჯერ ტექსტი არ არის.')}`)}
     </div>`;
     host.querySelector('[data-hz-ns]')?.addEventListener('change', (e) => { libState.ns = e.target.value; void renderLibrary({ quiet: true }); });
+    // The search repaints the pane: put the caret back so typing continues.
+    if (libState.refocus) {
+      libState.refocus = false;
+      const q = host.querySelector('[data-hz-q]');
+      if (q) { q.focus(); try { q.setSelectionRange(q.value.length, q.value.length); } catch { /* ignore */ } }
+    }
     let t = null;
     host.querySelector('[data-hz-q]')?.addEventListener('input', (e) => {
       clearTimeout(t);
-      t = setTimeout(() => { libState.q = e.target.value.trim(); void renderLibrary({ quiet: true }); }, 350);
+      t = setTimeout(() => { libState.q = e.target.value.trim(); libState.refocus = true; void renderLibrary({ quiet: true }); }, 350);
     });
     host.querySelector('[data-hz-fill]')?.addEventListener('click', async (e) => {
       e.currentTarget.disabled = true;
@@ -327,7 +336,7 @@
       }).join('')}</fieldset>`;
     };
     const dialog = V().openDialog?.({
-      title: `ტექსტი · ${key}`,
+      title: `ტექსტი · ${keyLabel(key)}`,
       description: 'რედაქტირებულ ტექსტს ავტომატური შევსება აღარ შეცვლის.',
       wide: true,
       body: `<form id="hz-lib-form" class="hz-two" novalidate>${block('ka', 'ქართული')}${block('en', 'English')}</form>`,
@@ -382,7 +391,7 @@
     const signRows = Object.entries(d.signs).sort((a, b) => b[1] - a[1]).map(([s, n]) => [SIGNS[s], n]);
     const sectionRows = Object.entries(d.sections).sort((a, b) => b[1] - a[1]).map(([s, n]) => [SECTIONS[s] || s, n]);
     host.innerHTML = `<div class="s-stack">
-      <div class="s-segment" role="group" aria-label="პერიოდი">${[7, 30, 90].map((n) => `<button type="button" class="${useState.days === n ? 'is-active' : ''}" data-hz-days="${n}">${n} დღე</button>`).join('')}
+      <div class="s-segment" role="group" aria-label="პერიოდი">${[7, 30, 90].map((n) => `<button type="button" role="tab" aria-selected="${useState.days === n}" class="${useState.days === n ? 'is-active' : ''}" data-hz-days="${n}">${n} დღე</button>`).join('')}
         <label class="s-switch-row hz-team"><span>გუნდის ჩათვლით</span><input class="s-switch" type="checkbox" role="switch" data-hz-team ${useState.team ? 'checked' : ''}></label></div>
       ${metrics([
         metric('ადამიანი', fmt(k.people), `ბოლო ${fmt(d.days)} დღეში გახსნა მოდული`),

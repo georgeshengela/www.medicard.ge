@@ -98,7 +98,7 @@
         <td class="mono p2-nowrap">${esc(fmtPhone(row.destination))}</td>
         <td class="p2-sms-cell">
           <div class="p2-sms-line">
-            <div class="p2-sms-text" data-sms-text="${i}" title="${esc(text)}">${esc(text)}</div>
+            <div class="p2-sms-text" data-sms-text="${i}" role="button" tabindex="0" aria-expanded="false" title="${esc(text)}">${esc(text)}</div>
           </div>
         </td>
         <td><span class="s-badge is-plain">${esc(PURPOSE_KA[row.purpose] || row.purpose || '—')}</span></td>
@@ -115,11 +115,21 @@
     return `${fmt(from)}–${fmt(to)} / ${fmt(total)}`;
   }
 
+  /** Filter pills (.s-segment): data-<name>="<value>", the selected one carries aria-selected. */
+  function segment(name, label, options, current) {
+    return `<div class="s-segment" role="group" aria-label="${esc(label)}">${options.map(([v, l]) => `<button type="button" role="tab" aria-selected="${current === v}" data-${name}="${v}">${l}</button>`).join('')}</div>`;
+  }
+  function selectSegment(btn) {
+    btn.parentElement?.querySelectorAll('button').forEach((x) => x.setAttribute('aria-selected', String(x === btn)));
+  }
+
   function bindLogRows() {
     const body = $('sms-log-body');
     if (!body) return;
     body.querySelectorAll('[data-sms-text]').forEach((cell) => {
-      cell.addEventListener('click', () => cell.classList.toggle('is-open'));
+      const flip = () => cell.setAttribute('aria-expanded', String(cell.classList.toggle('is-open')));
+      cell.addEventListener('click', flip);
+      cell.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); flip(); } });
     });
   }
 
@@ -346,26 +356,15 @@
 
         <section class="s-card" data-v3-sms="logs">
           <header class="s-card-head">
-            <div><h3>გაგზავნილი SMS</h3><p>ყველა SMS, შესვლის კოდების ჩათვლით. კოდი დაფარულია — თვალის ხატულა აჩენს.</p></div>
+            <div><h3>გაგზავნილი SMS</h3><p>ყველა SMS, შესვლის კოდების ჩათვლით; თვითონ კოდები დაფარულია.</p></div>
             <div class="p2-row-end">
               ${helpBtn('sms.logs')}
               <button type="button" class="btn ghost compact icon-only" id="sms-reload-logs" title="ჟურნალის განახლება" aria-label="ჟურნალის განახლება">${ico('refresh')}</button>
             </div>
           </header>
           <div class="p2-card-tools">
-            <select id="sms-filter-status" aria-label="სტატუსი">
-              <option value="ALL"${logState.status === 'ALL' ? ' selected' : ''}>ყველა სტატუსი</option>
-              <option value="SENT"${logState.status === 'SENT' ? ' selected' : ''}>გაიგზავნა</option>
-              <option value="FAILED"${logState.status === 'FAILED' ? ' selected' : ''}>ვერ გაიგზავნა</option>
-              <option value="QUEUED"${logState.status === 'QUEUED' ? ' selected' : ''}>რიგში</option>
-            </select>
-            <select id="sms-filter-purpose" aria-label="მიზანი">
-              <option value="ALL"${logState.purpose === 'ALL' ? ' selected' : ''}>ყველა ტიპი</option>
-              <option value="OTP"${logState.purpose === 'OTP' ? ' selected' : ''}>კოდი (OTP)</option>
-              <option value="ADMIN"${logState.purpose === 'ADMIN' ? ' selected' : ''}>ადმინი</option>
-              <option value="MARKETING"${logState.purpose === 'MARKETING' ? ' selected' : ''}>მარკეტინგი</option>
-              <option value="TEST"${logState.purpose === 'TEST' ? ' selected' : ''}>ტესტი</option>
-            </select>
+            ${segment('sms-status', 'სტატუსი', [['ALL', 'ყველა'], ['SENT', 'გაიგზავნა'], ['FAILED', 'ვერ გაიგზავნა'], ['QUEUED', 'რიგში']], logState.status)}
+            ${segment('sms-purpose', 'ტიპი', [['ALL', 'ყველა ტიპი'], ['OTP', 'კოდი (OTP)'], ['ADMIN', 'ადმინი'], ['MARKETING', 'მარკეტინგი'], ['TEST', 'ტესტი']], logState.purpose)}
             <label class="p2-search">
               <span class="sr-only">ძებნა</span>
               ${ico('search')}
@@ -401,16 +400,18 @@
     $('sms-reload-logs')?.addEventListener('click', () => void reloadLogsOnly());
 
     let qTimer = null;
-    $('sms-filter-status')?.addEventListener('change', (e) => {
-      logState.status = e.target.value || 'ALL';
+    root.querySelectorAll('[data-sms-status]').forEach((b) => b.addEventListener('click', () => {
+      selectSegment(b);
+      logState.status = b.dataset.smsStatus || 'ALL';
       logState.offset = 0;
       void reloadLogsOnly();
-    });
-    $('sms-filter-purpose')?.addEventListener('change', (e) => {
-      logState.purpose = e.target.value || 'ALL';
+    }));
+    root.querySelectorAll('[data-sms-purpose]').forEach((b) => b.addEventListener('click', () => {
+      selectSegment(b);
+      logState.purpose = b.dataset.smsPurpose || 'ALL';
       logState.offset = 0;
       void reloadLogsOnly();
-    });
+    }));
     $('sms-filter-q')?.addEventListener('input', (e) => {
       clearTimeout(qTimer);
       qTimer = setTimeout(() => {

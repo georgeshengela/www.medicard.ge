@@ -21,6 +21,8 @@
   const esc = (v) => String(v ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
   const ico = (n) => (typeof global.icon === 'function' ? global.icon(n) : '');
   const num = (n) => (Number.isFinite(Number(n)) ? Number(n).toLocaleString('ka-GE') : '—');
+  /** OpenStreetMap place kinds in words (spots table). */
+  const SPOT_KIND = { park: 'პარკი', garden: 'ბაღი', square: 'სკვერი', forest: 'ტყე', wood: 'ტყე', playground: 'სათამაშო მოედანი', recreation_ground: 'დასასვენებელი ზონა', nature_reserve: 'ნაკრძალი', pitch: 'სპორტული მოედანი', path: 'ბილიკი', footway: 'ბილიკი', pedestrian: 'საფეხმავლო ზონა', waterfront: 'სანაპირო', embankment: 'სანაპირო', grass: 'გაზონი', meadow: 'მინდორი', boulevard: 'ბულვარი', cemetery: 'სასაფლაო' };
   const say = (err, fallback) => (/[ა-ჿ]/.test(err?.message || '') ? err.message : fallback);
   const when = (iso, mode = 'datetime') => (V().formatDate ? V().formatDate(iso, mode) : String(iso || ''));
   const skel = () => '<div class="p4-skel" aria-busy="true" aria-label="იტვირთება"><i class="is-bar"></i><i class="is-tiles"></i><i class="is-block"></i></div>';
@@ -146,8 +148,8 @@
       <div data-mb-body></div>
     </div>`;
     bindHead(root);
-    root.querySelectorAll('[data-mb-sub]').forEach((b) => b.addEventListener('click', () => {
-      if (st.sub === 'rules' && st.dirty && b.dataset.mbSub !== 'rules' && !global.confirm?.('წესებში შეუნახავი ცვლილებებია. მაინც გადახვალ?')) return;
+    root.querySelectorAll('[data-mb-sub]').forEach((b) => b.addEventListener('click', async () => {
+      if (st.sub === 'rules' && st.dirty && b.dataset.mbSub !== 'rules' && !(await confirmDialog('შეუნახავი ცვლილებები', 'წესებში შეუნახავი ცვლილებებია. მაინც გადახვალ?', 'გადასვლა', true))) return;
       st.sub = b.dataset.mbSub;
       writeSub(st.sub);
       root.querySelectorAll('[data-mb-sub]').forEach((x) => { const on = x === b; x.classList.toggle('is-active', on); x.setAttribute('aria-selected', String(on)); });
@@ -156,7 +158,7 @@
     await paintSub();
     clearInterval(st.timer);
     st.timer = setInterval(() => {
-      if (!doc.getElementById('tab-medirun-boxes')?.offsetParent) { clearInterval(st.timer); return; }
+      if (!doc.getElementById('tab-medirun-boxes')?.offsetParent) return; // another page is open: keep the clock, it repaints on return
       const el = doc.querySelector('[data-mb-next-left]');
       if (el && st.o?.next) el.textContent = leftText(st.o.next.startsAt);
     }, 30_000);
@@ -509,8 +511,8 @@
         <label class="s-field"><span>სახელი (ინგლ.)</span><input type="text" name="titleEn" maxlength="100"></label>`,
       place: `<div class="s-form-grid">
         ${locationField()}
-        <label class="s-field"><span>Latitude</span><input type="number" name="latitude" step="0.000001" min="-90" max="90" value="${box.latitude}" required></label>
-        <label class="s-field"><span>Longitude</span><input type="number" name="longitude" step="0.000001" min="-180" max="180" value="${box.longitude}" required></label></div>
+        <label class="s-field"><span>განედი (lat)</span><input type="number" name="latitude" step="0.000001" min="-90" max="90" value="${box.latitude}" required></label>
+        <label class="s-field"><span>გრძედი (lng)</span><input type="number" name="longitude" step="0.000001" min="-180" max="180" value="${box.longitude}" required></label></div>
         <small class="s-muted">მხოლოდ საჯარო, უსაფრთხო საფეხმავლო ადგილი. გახსნილ ყუთს ადგილი აღარ ეცვლება.</small>`,
       time: `<div class="s-form-grid">
         <label class="s-field"><span>დაწყება (თბილისი)</span><input type="datetime-local" name="startsAt" value="${tb(box.startsAt).slice(0, 16)}" ${box.allocated ? 'disabled' : ''} required></label>
@@ -582,8 +584,8 @@
         </select></label></div>
         <div data-where-pane="point" hidden class="s-form-grid">
           ${locationField()}
-          <label class="s-field"><span>Latitude</span><input type="number" name="latitude" step="0.000001" min="-90" max="90" placeholder="41.7098"></label>
-          <label class="s-field"><span>Longitude</span><input type="number" name="longitude" step="0.000001" min="-180" max="180" placeholder="44.7509"></label>
+          <label class="s-field"><span>განედი (lat)</span><input type="number" name="latitude" step="0.000001" min="-90" max="90" placeholder="41.7098"></label>
+          <label class="s-field"><span>გრძედი (lng)</span><input type="number" name="longitude" step="0.000001" min="-180" max="180" placeholder="44.7509"></label>
           <label class="s-field"><span>ადგილის სახელი</span><input type="text" name="place" maxlength="80" placeholder="მაგ. ვაკის პარკი, შადრევანთან"></label>
         </div>
         <div class="s-form-grid">
@@ -1187,7 +1189,7 @@
         <div class="s-card-body is-flush"><div class="s-table-wrap"><table class="s-table mb-table">
           <thead><tr><th>ადგილი</th><th>უბანი</th><th>ტიპი</th><th>განათება</th><th class="num">სიღრმე</th><th class="num">ყუთი იყო</th><th>აქტიური</th><th></th></tr></thead>
           <tbody>${rows.map((s) => `<tr${s.excluded ? ' class="is-past"' : ''}>
-            <td><b>${esc(s.place)}</b><br><small class="s-muted">${esc(s.id)}</small></td><td>${esc(s.district || '—')}</td><td>${esc(s.kind || '—')}</td><td>${s.lit ? 'განათებული' : '<span class="s-muted">—</span>'}</td>
+            <td><b>${esc(s.place)}</b><br><small class="s-muted">${esc(s.id)}</small></td><td>${esc(s.district || '—')}</td><td>${esc(SPOT_KIND[s.kind] || s.kind || '—')}</td><td>${s.lit ? 'განათებული' : '<span class="s-muted">—</span>'}</td>
             <td class="num">${s.depthM != null ? `${num(Math.round(s.depthM))} მ` : '—'}</td><td class="num">${num(s.used)}</td>
             <td><input type="checkbox" class="s-switch" data-spot="${esc(s.id)}" ${s.excluded ? '' : 'checked'} aria-label="ადგილი აქტიურია"></td>
             <td><a class="btn compact" href="https://www.google.com/maps?q=${s.latitude},${s.longitude}" target="_blank" rel="noopener" aria-label="რუკაზე ნახვა">${ico('pin')}</a></td></tr>`).join('')}</tbody></table></div></div></section>

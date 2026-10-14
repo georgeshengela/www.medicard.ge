@@ -201,7 +201,8 @@
   function openHelp(helpKey, anchor) {
     const entry = global.AdminHelp?.get?.(helpKey);
     if (!entry) {
-      toast(`ახსნა ვერ მოიძებნა: ${helpKey}`, 'warn');
+      toast('ამ სექციის ახსნა ჯერ არ არის.', 'warn');
+      console.warn('AdminHelp: no entry for', helpKey);
       return;
     }
     const long = String(entry.howItWorks || '').length + String(entry.interpretation || '').length > 420;
@@ -475,7 +476,9 @@
     const sel = 'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
     const nodes = [...panel.querySelectorAll(sel)].filter((n) => !n.disabled && n.offsetParent);
     if (!nodes.length) return;
-    nodes[0].focus();
+    // Start in the first field of the form, not on the × in the header.
+    const field = nodes.find((n) => n.matches('input:not([type="hidden"]), select, textarea') && n.closest('.v3-overlay-body'));
+    (field || nodes[0]).focus();
     V3._trap = (e) => {
       if (e.key !== 'Tab') return;
       const first = nodes[0];
@@ -496,7 +499,7 @@
     if (V3._trapPanel && V3._trap) V3._trapPanel.removeEventListener('keydown', V3._trap);
     V3._trap = null;
     V3._trapPanel = null;
-    if (V3.lastFocus && typeof V3.lastFocus.focus === 'function') {
+    if (V3.lastFocus && typeof V3.lastFocus.focus === 'function' && V3.lastFocus.isConnected) {
       try { V3.lastFocus.focus(); } catch { /* ignore */ }
     }
     V3.lastFocus = null;
@@ -551,6 +554,9 @@
     const host = el('v3-confirm-root') || document.body;
     el('v3-confirm')?.remove();
     V3.confirmOpen = true;
+    // Keyboard: focus stays inside the confirm and returns to the opener; a dialog underneath keeps its own trap.
+    const under = { lastFocus: V3.lastFocus, trap: V3._trap, trapPanel: V3._trapPanel };
+    const opener = document.activeElement;
     const tone = variant === 'danger' ? 'danger' : variant === 'warning' ? 'warn' : 'neutral';
     host.insertAdjacentHTML('beforeend', `
       <div id="v3-confirm" class="v3-overlay" role="dialog" aria-modal="true" aria-labelledby="v3-confirm-title">
@@ -568,9 +574,19 @@
           </footer>
         </div>
       </div>`);
+    const panel = document.querySelector('#v3-confirm .v3-dialog-panel');
+    trapFocus(panel);
+    const letGo = () => {
+      if (V3._trapPanel === panel && V3._trap) panel.removeEventListener('keydown', V3._trap);
+      V3._trap = under.trap;
+      V3._trapPanel = under.trapPanel;
+      V3.lastFocus = under.lastFocus;
+      if (opener?.isConnected && typeof opener.focus === 'function') { try { opener.focus(); } catch { /* ignore */ } }
+    };
     const finish = (ok) => {
       V3.confirmOpen = false;
       el('v3-confirm')?.remove();
+      letGo();
       if (ok) onConfirm?.();
       else onCancel?.();
     };
@@ -597,13 +613,15 @@
         document.removeEventListener('keydown', onEsc, true);
         V3.confirmOpen = false;
         el('v3-confirm')?.remove();
+        letGo();
       } catch (err) {
         btn.disabled = false;
         btn.classList.remove('is-loading');
         toast(err.message || 'შეცდომა', 'bad');
       }
     };
-    el('v3-confirm-ok')?.focus();
+    // A destructive confirm starts on „გაუქმება“, so Enter cannot delete by accident.
+    (variant === 'danger' ? el('v3-confirm-cancel') : el('v3-confirm-ok'))?.focus();
   }
 
   function openDialog({
@@ -890,6 +908,15 @@
   };
 
   function bindGlobalClicks() {
+    // An upload button is a <label class="btn" tabindex="0"> around a hidden file input: Enter / Space open the picker from the keyboard.
+    document.addEventListener('keydown', (e) => {
+      if (e.key !== 'Enter' && e.key !== ' ') return;
+      const label = e.target instanceof Element ? e.target.closest('label.btn[tabindex]') : null;
+      const input = label?.querySelector('input[type="file"]');
+      if (!input || input.disabled) return;
+      e.preventDefault();
+      input.click();
+    });
     document.addEventListener('click', async (e) => {
       const copyBtn = e.target.closest('[data-copy]');
       if (!copyBtn) return;

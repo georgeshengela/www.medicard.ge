@@ -238,7 +238,7 @@
     $('v3-dialog')?.querySelector('[data-dialog-review], [data-dialog-reopen]')?.addEventListener('click', async (e) => {
       const btn = e.currentTarget;
       btn.disabled = true;
-      if (await setReviewed([group.fingerprint], btn.hasAttribute('data-dialog-review'))) V?.closeDialog?.();
+      if (await setReviewed([group.fingerprint], btn.hasAttribute('data-dialog-review'))) void V?.requestCloseOverlay?.(); // AdminV3 exports no closeDialog
       else btn.disabled = false;
     });
     global.AdminCharts?.hydrate?.();
@@ -259,10 +259,13 @@
     }
     paint(root, data);
     clearTimeout(refreshTimer);
-    refreshTimer = setTimeout(() => {
+    const tick = () => {
       const panel = $('tab-errors');
-      if (panel && !panel.classList.contains('hidden') && doc.visibilityState === 'visible' && !$('v3-dialog')) void renderErrorsAdmin({ silent: true });
-    }, 60_000);
+      const busy = $('v3-dialog') || (typeof adminIsTyping === 'function' && adminIsTyping());
+      if (panel && !panel.classList.contains('hidden') && doc.visibilityState === 'visible' && !busy) { void renderErrorsAdmin({ silent: true }); return; }
+      refreshTimer = setTimeout(tick, 60_000); // another page, a dialog or typing: try again in a minute
+    };
+    refreshTimer = setTimeout(tick, 60_000);
   }
 
   global.renderErrorsAdmin = renderErrorsAdmin;

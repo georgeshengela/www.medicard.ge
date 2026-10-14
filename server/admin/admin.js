@@ -485,6 +485,8 @@ async function boot() {
         const ok = await window.AdminV3.requestCloseOverlay();
         if (!ok) return;
       }
+      // Nothing open: a stray Escape must not reset the page's unsaved-changes flag (closeDrawer does).
+      if ($('drawer')?.classList.contains('hidden')) return;
       closeDrawer();
     }
     if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
@@ -833,7 +835,10 @@ function connectAdminRealtime() {
     if (typeof window.patchOnlineUsers === 'function') window.patchOnlineUsers(snap);
   });
   adminSocket.on('community:changed', () => {
-    if (location.hash.includes('/community') && !document.querySelector('dialog[open]')) window.renderCommunity?.();
+    if (!location.hash.includes('/community')) return;
+    // Not under an open dialog or confirm and not while the admin types (AdminV3.openDialog renders #v3-dialog, never <dialog>).
+    if (document.getElementById('v3-dialog') || document.getElementById('v3-confirm') || window.AdminV3?.confirmOpen || adminIsTyping()) return;
+    window.renderCommunity?.();
   });
   adminSocket.on('brain:sync', () => {
     if (state.tab !== 'push' || pushStudioTab !== 'brain') return;
@@ -1830,7 +1835,8 @@ function watchPushCampaigns(ids, onFinished) {
   if (!pending.length) return;
   const tick = async () => {
     pushProgressTimer = null;
-    if (!document.getElementById('push-compose-form')) return; // left the push page
+    if (!document.getElementById('push-compose-form')) return; // the push page was repainted or closed
+    if (state.tab !== 'push' || document.hidden) { pushProgressTimer = setTimeout(tick, 3000); return; } // another page is open: wait without polling
     const finished = [];
     await Promise.all(pending.map(async (id) => {
       try {
@@ -1897,13 +1903,33 @@ function pushPhoneHtml({ title, body, segmentLabel, reachHint }) {
 }
 
 async function renderPush() {
-  const [stats, { campaigns }, templatesRes, eventsRes, segmentsRes] = await Promise.all([
-    api('/push/stats'),
-    api('/push/campaigns'),
-    api('/push/templates').catch(() => ({ templates: [] })),
-    api('/push/events').catch(() => ({ events: [] })),
-    api('/push/segments').catch(() => ({ counts: null })),
-  ]);
+  let stats = {};
+  let campaigns = [];
+  let templatesRes;
+  let eventsRes;
+  let segmentsRes;
+  try {
+    let campaignsRes;
+    [stats, campaignsRes, templatesRes, eventsRes, segmentsRes] = await Promise.all([
+      api('/push/stats'),
+      api('/push/campaigns'),
+      api('/push/templates').catch(() => ({ templates: [] })),
+      api('/push/events').catch(() => ({ events: [] })),
+      api('/push/segments').catch(() => ({ counts: null })),
+    ]);
+    stats = stats || {};
+    campaigns = Array.isArray(campaignsRes?.campaigns) ? campaignsRes.campaigns : [];
+  } catch (err) {
+    // One failed call must not leave the page blank or reject switchTab: show the error with a retry.
+    const root = $('tab-push');
+    if (root) {
+      root.innerHTML = window.AdminV3?.errorState
+        ? window.AdminV3.errorState('Push ვერ ჩაიტვირთა', err?.message || '', 'push-retry')
+        : `<p role="alert">${escapeHtml(err?.message || 'Push ვერ ჩაიტვირთა')}</p>`;
+      $('push-retry')?.addEventListener('click', () => void renderPush());
+    }
+    return;
+  }
   const segmentCounts = segmentsRes.counts || null;
   const templates = templatesRes.templates || [];
   const events = eventsRes.events || [];
@@ -2078,7 +2104,7 @@ async function renderPush() {
                       <strong>${escapeHtml(c.title)}</strong>
                       ${campaignStatus(c)}
                     </div>
-                    <div class="push-recent-meta">${SEGMENT_LABELS[c.segment] || c.segment} · ${window.AdminV3?.formatDate ? window.AdminV3.formatDate(c.sentAt || c.createdAt, 'datetime') : fmtDateShort(c.sentAt || c.createdAt)}</div>
+                    <div class="push-recent-meta">${SEGMENT_LABELS[c.segment] || 'სხვა სეგმენტი'} · ${window.AdminV3?.formatDate ? window.AdminV3.formatDate(c.sentAt || c.createdAt, 'datetime') : fmtDateShort(c.sentAt || c.createdAt)}</div>
                     ${deliveryBar(c.sentCount || 0, c.targetCount || 0, c.failedCount || 0)}
                   </button>
                 `).join('')}
@@ -2222,7 +2248,7 @@ async function renderPush() {
                       ${campaignStatus(c)}
                     </div>
                     <p class="push-history-body">${escapeHtml((c.body || '').slice(0, 140))}${(c.body || '').length > 140 ? '…' : ''}</p>
-                    <div class="push-recent-meta">${SEGMENT_LABELS[c.segment] || c.segment} · ${window.AdminV3?.formatDate ? window.AdminV3.formatDate(c.sentAt || c.createdAt, 'datetime') : fmtDateShort(c.sentAt || c.createdAt)} · ${escapeHtml(c.createdBy?.fullName || '—')}</div>
+                    <div class="push-recent-meta">${SEGMENT_LABELS[c.segment] || 'სხვა სეგმენტი'} · ${window.AdminV3?.formatDate ? window.AdminV3.formatDate(c.sentAt || c.createdAt, 'datetime') : fmtDateShort(c.sentAt || c.createdAt)} · ${escapeHtml(c.createdBy?.fullName || '—')}</div>
                     ${deliveryBar(c.sentCount || 0, c.targetCount || 0, c.failedCount || 0)}
                   </button>
                 `).join('')}
@@ -2572,10 +2598,10 @@ async function viewPushCampaign(id) {
   openDrawer(`
     <p class="kicker">Push კამპანია</p>
     <h3>${escapeHtml(campaign.title)}</h3>
-    <p class="muted" style="font-size:13px;margin:6px 0 0">${escapeHtml((campaign.body || '').slice(0, 180))}${(campaign.body || '').length > 180 ? '…' : ''}</p>
-    <p class="muted mono" style="font-size:11px">${escapeHtml(campaign.id)}</p>
+    <p class="muted push-drawer-lead">${escapeHtml((campaign.body || '').slice(0, 180))}${(campaign.body || '').length > 180 ? '…' : ''}</p>
+    <p class="muted mono push-drawer-id">${escapeHtml(campaign.id)}</p>
     <div class="drawer-stats">
-      <div class="drawer-stat"><div class="label">სეგმენტი</div><strong>${SEGMENT_LABELS[campaign.segment] || campaign.segment}</strong></div>
+      <div class="drawer-stat"><div class="label">სეგმენტი</div><strong>${SEGMENT_LABELS[campaign.segment] || 'სხვა სეგმენტი'}</strong></div>
       <div class="drawer-stat"><div class="label">სტატუსი</div><strong>${escapeHtml(pushCampaignStatusText(campaign))}</strong></div>
       <div class="drawer-stat"><div class="label">მიწოდება</div><strong>${campaign.sentCount}/${campaign.targetCount}</strong></div>
       <div class="drawer-stat"><div class="label">შეცდომა</div><strong>${campaign.failedCount}</strong></div>
@@ -2588,7 +2614,7 @@ async function viewPushCampaign(id) {
         <div class="push-device-list">
           ${campaign.data.deliveries.map((d) => `
             <div class="push-device-row">
-              <span class="badge ${d.status === 'ok' ? 'ok' : 'bad'}">${d.status === 'ok' ? 'OK' : 'ERR'}</span>
+              <span class="badge ${d.status === 'ok' ? 'ok' : 'bad'}">${d.status === 'ok' ? 'მივიდა' : 'ვერ მივიდა'}</span>
               <div class="stack">
                 <strong>${escapeHtml(d.tokenPreview || '—')}</strong>
                 <span class="sub muted">${escapeHtml(d.ticketId || d.error || '')}</span>

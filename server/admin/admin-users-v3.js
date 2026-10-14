@@ -732,7 +732,7 @@
     const onKey = (e) => { if (e.key === 'Escape') { close(); anchor.focus(); } };
     setTimeout(() => { document.addEventListener('mousedown', outside, true); document.addEventListener('keydown', onKey, true); }, 0);
     menu.querySelectorAll('[data-act]').forEach((btn) => {
-      btn.onclick = () => { close(); items.find((it) => it.key === btn.dataset.act)?.run(); };
+      btn.onclick = () => { close(); anchor.focus(); items.find((it) => it.key === btn.dataset.act)?.run(); };
     });
     menu.querySelector('button')?.focus();
   }
@@ -981,12 +981,12 @@
           }) },
         { key: 'delete', icon: 'trash', label: 'ანგარიშის წაშლა', danger: true, run: () => V.openConfirm?.({
           title: 'მომხმარებლის წაშლა',
-          message: `სამუდამოდ წავშალოთ „${name}"? წაიშლება პროფილი და დაკავშირებული მონაცემები. შეუქცევადია.`,
+          message: `სამუდამოდ წავშალოთ „${name}“? წაიშლება პროფილი და დაკავშირებული მონაცემები. შეუქცევადია.`,
           confirmLabel: 'წაშლა',
           variant: 'danger',
           onConfirm: async () => {
             await api(`/users/${id}`, { method: 'DELETE' });
-            toast('მომხმარებელი წაიშალა', 'bad');
+            toast('მომხმარებელი წაიშალა', 'ok');
             location.hash = typeof usersListHref === 'function' ? usersListHref() : '#/users';
           },
         }) },
