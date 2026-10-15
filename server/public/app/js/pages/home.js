@@ -2,7 +2,7 @@
 // homeSectionOrder.ts): „ქალის ჯანმრთელობა“ (cycle first), „აქტიური“, „კვება და წონა“ and „სტანდარტული“.
 // The layout is the person's own choice (`extraAnswers.homeLayout`, written only from a click); an admin can
 // switch the feature off (`homeLayouts`) and a layout whose core modules are paused falls back to standard.
-import { h, mount, icon, section, card, button, fmtDate, greeting, stat, errorBox, skeleton, tile, fmtNum, openModal, toast, ymd } from '../ui.js';
+import { h, mount, icon, section, card, button, fmtDate, fmtTime, greeting, stat, errorBox, skeleton, tile, fmtNum, openModal, toast, ymd } from '../ui.js';
 import { session, firstName, featureOn, isFemale, profileExtra, setProfile } from '../session.js';
 import { get, put } from '../api.js';
 import { t } from '../i18n.js';
@@ -86,7 +86,7 @@ function askMedi(navigate, layout) {
     }, c))));
 }
 
-/* ── „არ გამოგრჩეს“ (mobile HomeAttention): only while true — a visit in 7 days, a lab result from the last 14 ── */
+/* ── „არ გამოგრჩეს“ (mobile HomeAttention): only while true — a MEDIBOOK booking or a visit in 7 days, a lab result from the last 14 ── */
 function attentionSection(navigate) {
   const slot = h('div');
   const today = ymd();
@@ -97,9 +97,18 @@ function attentionSection(navigate) {
     featureOn('visits') ? get('/api/visits').then((r) => r.visits || []).catch(() => []) : [],
     featureOn('labs') ? get('/api/account/app-state').then((r) => r.state?.labPanels || []).catch(() => []) : [],
     featureOn('visits') ? import('./visits.js').catch(() => null) : null,
-  ]).then(([visits, panels, visitsMod]) => {
+    featureOn('book') ? get('/api/book/appointments').then((r) => r.upcoming || []).catch(() => []) : [],
+  ]).then(([visits, panels, visitsMod, bookings]) => {
     const rows = [];
     const until = addDays(today, 7);
+    const booking = bookings.find((a) => a.startsAt && daysUntil(ymd(new Date(a.startsAt))) <= 7);
+    if (booking) {
+      rows.push(h('a', { class: 'card hover home-attn', href: `/book/appointments/${encodeURIComponent(booking.id)}`, 'data-link': '' }, tile('calendarCheck', 'book', 40),
+        h('div', { class: 'row-main' },
+          h('div', { class: 'card-title' }, t(`ჯავშანი: ${booking.serviceName}`, `Booking: ${booking.serviceName}`)),
+          h('div', { class: 'card-sub' }, `${booking.business?.name ? `${booking.business.name} · ` : ''}${when(ymd(new Date(booking.startsAt)))}, ${fmtTime(booking.startsAt)}`)),
+        icon('chevronRight', { size: 18 })));
+    }
     const visit = visits.filter((v) => v.active !== false && v.visitDate >= today && v.visitDate <= until)
       .sort((a, b) => a.visitDate.localeCompare(b.visitDate) || String(a.visitTime).localeCompare(String(b.visitTime)))[0];
     if (visit) {
@@ -164,6 +173,7 @@ function toolsGrid() {
   const tools = [
     featureOn('labs') ? { href: '/lab', icon: 'flask', ink: 'violet', title: t('ანალიზები', 'Lab results'), body: t('შედეგები, ნორმები და მაჩვენებლების დინამიკა ჩარტებზე.', 'Results, reference ranges and trends on charts.') } : null,
     featureOn('records') ? { href: '/records', icon: 'folder', ink: 'blue', title: t('ჩანაწერები', 'Records'), body: t('დოკუმენტები, დასკვნები და Medi-სთან საუბრები ერთ ადგილას.', 'Documents, doctor reports and your Medi conversations in one place.') } : null,
+    featureOn('book') ? { href: '/book', icon: 'calendarCheck', ink: 'book', title: 'MEDIBOOK', body: t('სტომატოლოგი, სალონი, კლინიკა — ირგვლივ ყველა ადგილი და ჯავშანი ორ შეხებაში.', 'Dentists, salons, clinics — every place around you, booked in two taps.') } : null,
     featureOn('visits') ? { href: '/visits', icon: 'stethoscope', ink: 'sky', title: t('ვიზიტები', 'Visits'), body: t('ექიმთან ვიზიტების კალენდარი და ისტორია.', 'Your doctor visit calendar and history.') } : null,
     trackersOn() ? { href: '/health', icon: 'activity', ink: 'green', title: t('მაჩვენებლები', 'Health metrics'), body: t('წონა, ნაბიჯები და წყალი — ტენდენციები დროში.', 'Weight, steps and water: trends over time.') } : null,
     featureOn('pets') ? { href: '/pets', icon: 'paw', ink: 'amber', title: t('ჩემი ცხოველები', 'My pets'), body: t('მოვლა, წონა და MEDIVET შენი ცხოველებისთვის.', 'Care, weight and MEDIVET for your pets.') } : null,

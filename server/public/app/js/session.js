@@ -10,6 +10,8 @@ export const session = {
   checkIn: null,
   features: {},
   featureMessages: {},
+  /** Mapbox public token from /api/app/status (MEDIBOOK map); null until the status loads. */
+  mapboxToken: null,
 };
 
 export function onSession(fn) { listeners.add(fn); return () => listeners.delete(fn); }
@@ -39,6 +41,7 @@ export async function loadSession() {
   if (status) {
     session.features = status.features || {};
     session.featureMessages = status.featureMessages || {};
+    session.mapboxToken = status.mapboxToken || null;
   }
   // Trainer workspace entry: only for trainers (any application status); never blocks boot.
   if (featureOn('coach')) {

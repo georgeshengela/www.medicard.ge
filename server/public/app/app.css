@@ -213,6 +213,7 @@ p { margin: 0; }
 .ink-teal { --ink: var(--ink-teal); } .ink-blue { --ink: var(--ink-blue); } .ink-violet { --ink: var(--ink-violet); }
 .ink-rose { --ink: var(--ink-rose); } .ink-amber { --ink: var(--ink-amber); } .ink-green { --ink: var(--ink-green); }
 .ink-sky { --ink: var(--ink-sky); } .ink-neutral { --ink: var(--ink-neutral); }
+.ink-book { --ink: #a21caf; } :root[data-theme='dark'] .ink-book { --ink: #f0abfc; } /* MEDIBOOK fuchsia (moduleBrand book) */
 .tile[class*='ink-'] { color: var(--ink); background: color-mix(in srgb, var(--ink) var(--tint), transparent); }
 
 .feature { display: flex; flex-direction: column; gap: 12px; height: 100%; }
@@ -618,6 +619,7 @@ p { margin: 0; }
 .wm-suffix { display: inline-block; transform: skewX(-16deg); color: var(--wm-ink, var(--brand)); margin-left: .02em; }
 .wm-run { --wm-ink: #0d9488; } .wm-cycle { --wm-ink: #c92a55; } .wm-food { --wm-ink: #047857; } .wm-pill { --wm-ink: #1d4ed8; }
 .wm-quest { --wm-ink: #6d28d9; } .wm-vet { --wm-ink: #0369a1; } .wm-coach { --wm-ink: #475569; } .wm-scan { --wm-ink: #22d3ee; } .wm-lab { --wm-ink: #4f46e5; }
+.wm-book { --wm-ink: #a21caf; } :root[data-theme=dark] .wm-book { --wm-ink: #f0abfc; }
 :root[data-theme=dark] .wm-run { --wm-ink: #2dd4bf; } :root[data-theme=dark] .wm-cycle { --wm-ink: #ff8fa8; } :root[data-theme=dark] .wm-food { --wm-ink: #34d399; }
 :root[data-theme=dark] .wm-pill { --wm-ink: #93c5fd; } :root[data-theme=dark] .wm-quest { --wm-ink: #c4b5fd; } :root[data-theme=dark] .wm-vet { --wm-ink: #7dd3fc; }
 :root[data-theme=dark] .wm-coach { --wm-ink: #cbd5e1; } :root[data-theme=dark] .wm-scan { --wm-ink: #67e8f9; } :root[data-theme=dark] .wm-lab { --wm-ink: #a5b4fc; }

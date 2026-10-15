@@ -13,6 +13,7 @@ export const MODULE_BRANDS = {
   coach: { suffix: 'COACH', name: 'MEDICOACH' },
   scan: { suffix: 'SCAN', name: 'MEDISCAN' },
   lab: { suffix: 'LAB', name: 'MEDILAB' },
+  book: { suffix: 'BOOK', name: 'MEDIBOOK' },
 };
 
 /** A page title: the wordmark, read by screen readers as the module name. */

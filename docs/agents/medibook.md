@@ -85,6 +85,32 @@ booking row, directory and modules sheet entries. `api.book.*` in `api.ts`; `/ap
 `book` + `home` (events are read-only). Version 1.0.0.25.5 on main — a new module is review-worthy (2.5.2): it
 ships with the next store build, not by OTA.
 
+## Web app (`server/public/app/js/pages/book.js`, `css/book.css`, routes in `main.js` with `feature: 'book'`)
+
+The same module on https://medicard.ge/app (owner rule: every app feature exists on the web). One page module serves
+`/book` (hub: fuchsia hero with the next booking or the search prompt, live search + category chips — the term stays
+on the page, only `?category=` is in the URL —, „ახლოს შენთან“ from the browser position after the one-button ask,
+else the profile's saved city (`extraAnswers.location` coordinates or the town centre from the catalogue's city table),
+else Tbilisi; upcoming / past bookings, saved places, „ვიზიტები ხელით“ → `/visits`, „შენი ბიზნესია?“ → `/business`),
+`/book/map` (Mapbox GL JS, token from `/api/app/status` kept as `session.mapboxToken`; pins by category, clusters,
+bottom card; `?focus=<id>` centres a place; without a token a calm note), `/book/:slug` (gallery, facts, call / route /
+site / share / save with the same `BookEvent` kinds, discounts, services with „ჩაწერა“, team, hours, about, reviews;
+unclaimed → call + hand-typed visit + owner hint), `/book/:slug/book?serviceId=` (service → person → 14-day strip with
+paging inside `horizonDays` → slots by part of day → note → confirm; the 403 phone gate opens quest.js
+`offerPhoneVerification` and retries once verified; `SLOT_TAKEN` reloads the slots) and `/book/appointments/:id?review=1`
+(call, route, `.ics` download, cancel with the late warning, review sheet, „ისევ ჩაწერა“). `X-Medicard-Platform: web`
+makes these bookings `source: WEB`. Free-slot reads bypass the 30 s client cache (`api.days` / `api.availability`
+invalidate first). Home: MEDIBOOK door in the tools grid and the next booking (≤ 7 days) in „არ გამოგრჩეს“; nav item
+in the Health group. Shared bits added for it: icons (`scissors`, `hand`, `waves`, `glasses`, `heartPulse`, `badgeCheck`,
+`navigation`, `percent`, `globe`, `instagram`, `store`, `calendarPlus`, `locate`, `map`), `wordmark('book')`,
+`.ink-book` / `.wm-book`. Preview: `node scripts/web-app-dev.mjs 4401` → http://localhost:4401/app/book (the owner signs
+in). QA without an account: `node scripts/web-app-dev.mjs 4403 --mock scripts/web-app-mock` — `medibook.mjs` mocks the
+person (one claimed bookable business, bookings, the phone gate with dev code 1234, cancel, review) and proxies the
+public catalogue reads to the main API; set `localStorage.medicard.web.token` to any value to be „signed in“. Verified
+2026-10-15 in the built-in browser: hub, search, business page, booking flow through the gate, cancel, review, Home,
+phone layout, light theme, English. The map loads Mapbox + style but the hidden pane never ran its render loop, so
+pins were not seen drawn — check once in a normal browser.
+
 ## Business panel (`server/public/business/`, served at /business and /business/*)
 
 Vanilla ES modules on the /app toolkit (`/app/js/api.js` token `medicard.web.token`, `ui.js`, `i18n.js`,
