@@ -84,8 +84,8 @@ redirects to `/book`; `/visits/editor` stays. Home: MEDIBOOK door in every layou
 booking row, directory and modules sheet entries. `api.book.*` in `api.ts`; `/api/book` writes invalidate
 `book` + `home` (events are read-only). Version 1.0.0.25.5 on main — a new module is review-worthy (2.5.2): it
 ships with the next store build, not by OTA.
-**Clocks and days are the business's — Georgia, fixed UTC+4 — never the phone's zone** (1.0.0.25.14, after the
-web's 6ca6f336): `bookFormat.ts` `tbilisi()` shifts an instant by +4 h and reads UTC fields (`clockOf`,
+**Clocks and days are the business's — Georgia, fixed UTC+4 — never the phone's zone** (1.0.0.25.14; the web does
+the same, see its section): `bookFormat.ts` `tbilisi()` shifts an instant by +4 h and reads UTC fields (`clockOf`,
 `tbilisiYmd`, `tbilisiWeekday`, `dayLabel`, `whenLabel`, `todayHoursLine`, `weekHours`); `dayLabel` /
 `weekdayShort` take a `YYYY-MM-DD` civil day as it is or an instant in Tbilisi — never pass `dateFromYmd(x)` to
 them (its local midnight can be another Tbilisi day). `discountFor` matches weekday / day / clock in Tbilisi like
@@ -122,6 +122,16 @@ frame, so Mapbox never fires `load`): tiles, pins by category, clusters, the cou
 `MutationObserver` on `data-theme` (`setStyle` + re-added layers from the kept features); the pill says „500+“ at the
 server cap (`MAP_LIMIT`); a chip that excludes the selected place closes its card; on phones the Mapbox logo / attribution
 sit above the bottom nav, the +/- buttons are hidden (pinch zooms) and the card hides the „ჩაწერა“ pill.
+**Clocks are Tbilisi's (fixed UTC+4), never the browser's zone** — the rule of the app's `bookFormat.ts`, the server's
+`lib/book/time.js` and the panel's `shared.js`: in `book.js` `tbilisi()` shifts an instant by +4 h and reads UTC fields
+(`clockOf`, `tbilisiYmd`, `tbilisiWeekday`, `dayLabel`, `whenLabel`, `todayHoursLine`, `weekHours`); `civil()` reads a
+`YYYY-MM-DD` from `/days` as it is (the day strip, `st.date`, `today`) and an instant in Tbilisi — no local midnight
+anywhere, `/days` and `/availability` keep the server's Tbilisi civil dates. Home's „არ გამოგრჩეს“ booking row uses the
+same +4 h for its day and clock (visits by hand and lab dates stay the person's own days). The `.ics` keeps UTC stamps.
+Checked 2026-10-16 with the mock from a Brussels browser: the tomorrow-15:00 booking reads „ხვალ · 15:00“ in the hub
+hero, the appointment page, the cancel dialog and Home („ხვალ, 15:00“); in the flow the 15:00 chip gives „დღეს · 15:00“
+in the summary; the hours card marks Tbilisi's today (the done card shares `whenLabel`, not exercised behind the mock's
+phone gate). The same block runs under five TZ values in a scratch harness (clock, civil day, DST, day boundaries).
 
 ## Business panel (`server/public/business/`, served at /business and /business/*)
 

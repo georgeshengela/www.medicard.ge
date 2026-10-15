@@ -23,27 +23,52 @@ function ensureCss() {
   return cssReady;
 }
 
-/* ── Formatting (mobile src/lib/book/bookFormat.ts): clocks in the browser's own zone, like a calendar app ── */
+/* ── Formatting (mobile src/lib/book/bookFormat.ts): every clock and day is the business's own — Georgia, a fixed
+   UTC+4, the rule of the server's lib/book/time.js and the business panel's shared.js — never the browser's zone.
+   The slots arrive as Tbilisi labels („15:00“), so the day strip, the summary, the done card, the hub, the appointment
+   page, the cancel dialog and Home must say the same time wherever the browser is (a person booking from Belgium
+   picked „11:30“ and read „ხვალ · 09:30“ before). Two kinds of value travel here: an instant (ISO / Date — startsAt,
+   endsAt, now), shifted by +4 h and read through its UTC fields, and a civil day (YYYY-MM-DD from the strip, `from`,
+   `date`), read as it is. The .ics keeps UTC stamps. ── */
 const MONTHS = isEn ? ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'] : ['იან', 'თებ', 'მარ', 'აპრ', 'მაი', 'ივნ', 'ივლ', 'აგვ', 'სექ', 'ოქტ', 'ნოე', 'დეკ'];
 const DAYS = isEn ? ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] : ['კვი', 'ორშ', 'სამ', 'ოთხ', 'ხუთ', 'პარ', 'შაბ'];
 const DAYS_LONG = isEn ? ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'] : ['კვირა', 'ორშაბათი', 'სამშაბათი', 'ოთხშაბათი', 'ხუთშაბათი', 'პარასკევი', 'შაბათი'];
 const pad = (n) => String(n).padStart(2, '0');
-const ymdLocal = (d = new Date()) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
-const dateFromYmd = (s) => { const [y, m, d] = String(s).split('-').map(Number); return new Date(y, m - 1, d); };
-const addDaysYmd = (s, n) => { const [y, m, d] = String(s).split('-').map(Number); return ymdLocal(new Date(y, m - 1, d + n)); };
-const daysBetween = (a, b) => Math.round((dateFromYmd(b) - dateFromYmd(a)) / 86400000);
-const clockOf = (iso) => { const d = new Date(iso); return `${pad(d.getHours())}:${pad(d.getMinutes())}`; };
+/** Georgia has kept UTC+4 all year since 2005, so a fixed offset is exact and needs no tz database. */
+const TBILISI_OFFSET_MS = 4 * 3600_000;
+const YMD = /^\d{4}-\d{2}-\d{2}$/;
+/** The instant shifted so that its UTC fields read as Tbilisi wall-clock fields. */
+const tbilisi = (at) => new Date((at instanceof Date ? at.getTime() : new Date(at).getTime()) + TBILISI_OFFSET_MS);
+/** YYYY-MM-DD of an instant (default: now) in Tbilisi. */
+const tbilisiYmd = (at = new Date()) => tbilisi(at).toISOString().slice(0, 10);
+/** 0 = Sunday … 6 = Saturday of an instant (default: now) in Tbilisi. */
+const tbilisiWeekday = (at = new Date()) => tbilisi(at).getUTCDay();
+/** HH:mm of an instant in Tbilisi — the same label the server's slots carry. */
+const clockOf = (at) => { const d = tbilisi(at); return `${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}`; };
+/** Civil-day arithmetic on YYYY-MM-DD, free of any zone (and of the browser's DST days). */
+const addDaysYmd = (s, n) => { const [y, m, d] = String(s).split('-').map(Number); return new Date(Date.UTC(y, m - 1, d + n)).toISOString().slice(0, 10); };
+const daysBetween = (a, b) => Math.round((Date.parse(`${b}T00:00:00Z`) - Date.parse(`${a}T00:00:00Z`)) / 86400000);
+/** The calendar fields of a value: a YYYY-MM-DD as it is, an instant in Tbilisi. */
+function civil(v) {
+  if (typeof v === 'string' && YMD.test(v)) {
+    const [y, m, d] = v.split('-').map(Number);
+    return { ymd: v, weekday: new Date(Date.UTC(y, m - 1, d)).getUTCDay(), date: d, month: m - 1 };
+  }
+  const d = tbilisi(v);
+  return { ymd: d.toISOString().slice(0, 10), weekday: d.getUTCDay(), date: d.getUTCDate(), month: d.getUTCMonth() };
+}
 
-/** „ორშ, 19 ოქტ“ / „Mon, 19 Oct“; today, tomorrow and yesterday by name. */
+/** „ორშ, 19 ოქტ“ / „Mon, 19 Oct“; today, tomorrow and yesterday by name — all on Tbilisi's calendar. */
 function dayLabel(v) {
-  const d = v instanceof Date ? v : new Date(v);
-  const diff = daysBetween(ymdLocal(), ymdLocal(d));
+  const c = civil(v);
+  const diff = daysBetween(tbilisiYmd(), c.ymd);
   if (diff === 0) return t('დღეს', 'Today');
   if (diff === 1) return t('ხვალ', 'Tomorrow');
   if (diff === -1) return t('გუშინ', 'Yesterday');
-  return `${DAYS[d.getDay()]}, ${d.getDate()} ${MONTHS[d.getMonth()]}`;
+  return `${DAYS[c.weekday]}, ${c.date} ${MONTHS[c.month]}`;
 }
-const whenLabel = (iso) => `${dayLabel(iso)} · ${clockOf(iso)}`;
+/** „ორშ, 19 ოქტ · 15:00“ — the day and the clock of an instant, both in Tbilisi. */
+const whenLabel = (at) => `${dayLabel(at)} · ${clockOf(at)}`;
 const money = (v) => (Number.isInteger(v) ? String(v) : Number(v).toFixed(2));
 function priceLabel(price, priceTo, currency = 'GEL') {
   if (price == null) return t('ფასი ადგილზე', 'Price on site');
@@ -74,14 +99,16 @@ const STATUS = {
 const statusBadge = (s) => badge(STATUS[s]?.[0] || s, STATUS[s]?.[1] || 'neutral');
 const hasHours = (hours) => Boolean(hours) && Object.values(hours).some((l) => Array.isArray(l) && l.length);
 const rangesText = (list) => list.map((r) => `${r.from}–${r.to}`).join(', ');
+/** Today's opening line (Tbilisi's today): „დღეს 10:00–19:00“ / „დღეს დახურულია“ / unknown → null. */
 function todayHoursLine(hours) {
   if (!hasHours(hours)) return null;
-  const list = hours[String(new Date().getDay())] ?? [];
+  const list = hours[String(tbilisiWeekday())] ?? [];
   return list.length ? t(`დღეს ${rangesText(list)}`, `Today ${rangesText(list)}`) : t('დღეს დახურულია', 'Closed today');
 }
+/** Seven rows for the hours card, Monday first; „today“ is Tbilisi's. */
 const weekHours = (hours) => [1, 2, 3, 4, 5, 6, 0].map((d) => {
   const list = hours[String(d)] ?? [];
-  return { day: DAYS_LONG[d], ranges: list.length ? rangesText(list) : t('დახურულია', 'Closed'), today: d === new Date().getDay() };
+  return { day: DAYS_LONG[d], ranges: list.length ? rangesText(list) : t('დახურულია', 'Closed'), today: d === tbilisiWeekday() };
 });
 const ratingLabel = (rating, count) => (rating == null || !count
   ? t('ჯერ შეფასება არ აქვს', 'No ratings yet')
@@ -422,7 +449,7 @@ async function hubView(root, ctx) {
           tile('stethoscope', 'sky', 44),
           h('div', { class: 'bk-biz-main' },
             h('div', { class: 'bk-name' }, h('span', null, label(v))),
-            h('div', { class: 'bk-meta' }, `${dayLabel(dateFromYmd(v.visitDate))}${v.visitTime ? `, ${String(v.visitTime).slice(0, 5)}` : ''}${place(v) ? ` · ${place(v)}` : ''}`)),
+            h('div', { class: 'bk-meta' }, `${dayLabel(v.visitDate)}${v.visitTime ? `, ${String(v.visitTime).slice(0, 5)}` : ''}${place(v) ? ` · ${place(v)}` : ''}`)),
           icon('chevronRight', { size: 17, className: 'bk-chev' }))))
         : h('a', { class: 'bk-biz-row bk-solo', href: '/visits', 'data-link': '' },
           tile('plus', 'teal', 44),
@@ -598,9 +625,9 @@ async function flowView(root, ctx, slug) {
   const st = {
     serviceId: services.some((s) => s.id === ctx.query.serviceId) ? ctx.query.serviceId : services[0].id,
     staffId: typeof ctx.query.staffId === 'string' && ctx.query.staffId ? ctx.query.staffId : null,
-    from: ymdLocal(), date: ymdLocal(), strip: null, slots: null, slot: null, seq: 0, daySeq: 0,
+    from: tbilisiYmd(), date: tbilisiYmd(), strip: null, slots: null, slot: null, seq: 0, daySeq: 0,
   };
-  const today = ymdLocal();
+  const today = tbilisiYmd(); // the business's today — /days and /availability count in Tbilisi civil dates
   const horizon = Number(b.settings?.horizonDays) || 30;
   const service = () => services.find((s) => s.id === st.serviceId) || services[0];
   const eligibleStaff = () => (b.staff || []).filter((p) => p.bookable && (!p.serviceIds.length || p.serviceIds.includes(service().id)));
@@ -658,11 +685,11 @@ async function flowView(root, ctx, slug) {
     prevBtn.disabled = daysBetween(today, st.from) <= 0;
     nextBtn.disabled = daysBetween(today, st.from) + 14 > horizon;
     mount(daysEl, days.map((d) => {
-      const dt = dateFromYmd(d.date);
+      const c = civil(d.date); // the server's Tbilisi civil day, read as it is — never a local midnight
       const on = d.date === st.date;
       const none = d.count === 0 || d.closed;
-      return h('button', { type: 'button', class: `bk-day ${on ? 'on' : ''}`, disabled: none, 'aria-pressed': on ? 'true' : 'false', 'aria-label': `${DAYS_LONG[dt.getDay()]}, ${dt.getDate()} ${MONTHS[dt.getMonth()]}`, onClick: () => { st.date = d.date; paintDays(); loadSlots(); } },
-        h('span', null, DAYS[dt.getDay()]), h('b', null, String(dt.getDate())), h('small', null, MONTHS[dt.getMonth()]));
+      return h('button', { type: 'button', class: `bk-day ${on ? 'on' : ''}`, disabled: none, 'aria-pressed': on ? 'true' : 'false', 'aria-label': `${DAYS_LONG[c.weekday]}, ${c.date} ${MONTHS[c.month]}`, onClick: () => { st.date = d.date; paintDays(); loadSlots(); } },
+        h('span', null, DAYS[c.weekday]), h('b', null, String(c.date)), h('small', null, MONTHS[c.month]));
     }));
   }
   function paintSlots() {

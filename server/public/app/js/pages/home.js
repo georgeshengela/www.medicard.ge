@@ -2,7 +2,7 @@
 // homeSectionOrder.ts): „ქალის ჯანმრთელობა“ (cycle first), „აქტიური“, „კვება და წონა“ and „სტანდარტული“.
 // The layout is the person's own choice (`extraAnswers.homeLayout`, written only from a click); an admin can
 // switch the feature off (`homeLayouts`) and a layout whose core modules are paused falls back to standard.
-import { h, mount, icon, section, card, button, fmtDate, fmtTime, greeting, stat, errorBox, skeleton, tile, fmtNum, openModal, toast, ymd } from '../ui.js';
+import { h, mount, icon, section, card, button, fmtDate, greeting, stat, errorBox, skeleton, tile, fmtNum, openModal, toast, ymd } from '../ui.js';
 import { session, firstName, featureOn, isFemale, profileExtra, setProfile } from '../session.js';
 import { get, put } from '../api.js';
 import { t } from '../i18n.js';
@@ -91,8 +91,14 @@ function attentionSection(navigate) {
   const slot = h('div');
   const today = ymd();
   const addDays = (k, n) => { const d = new Date(`${k}T00:00:00Z`); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); };
-  const daysUntil = (k) => Math.round((Date.parse(`${k}T00:00:00Z`) - Date.parse(`${today}T00:00:00Z`)) / 86400000);
-  const when = (k) => { const d = daysUntil(k); return d === 0 ? t('დღეს', 'Today') : d === 1 ? t('ხვალ', 'Tomorrow') : fmtDate(k); };
+  const daysUntil = (k, base = today) => Math.round((Date.parse(`${k}T00:00:00Z`) - Date.parse(`${base}T00:00:00Z`)) / 86400000);
+  const when = (k, base = today) => { const d = daysUntil(k, base); return d === 0 ? t('დღეს', 'Today') : d === 1 ? t('ხვალ', 'Tomorrow') : fmtDate(k); };
+  // A MEDIBOOK booking is at a Georgian business: its day and clock are Tbilisi's (fixed UTC+4), as on /book and in
+  // the app's bookFormat.ts, whatever zone the browser is in. Visits by hand and lab dates stay the person's own days.
+  const tbilisi = (v) => new Date(new Date(v).getTime() + 4 * 3600_000);
+  const tbilisiYmd = (v = new Date()) => tbilisi(v).toISOString().slice(0, 10);
+  const tbilisiClock = (v) => { const d = tbilisi(v); return `${String(d.getUTCHours()).padStart(2, '0')}:${String(d.getUTCMinutes()).padStart(2, '0')}`; };
+  const todayTbilisi = tbilisiYmd();
   Promise.all([
     featureOn('visits') ? get('/api/visits').then((r) => r.visits || []).catch(() => []) : [],
     featureOn('labs') ? get('/api/account/app-state').then((r) => r.state?.labPanels || []).catch(() => []) : [],
@@ -101,12 +107,12 @@ function attentionSection(navigate) {
   ]).then(([visits, panels, visitsMod, bookings]) => {
     const rows = [];
     const until = addDays(today, 7);
-    const booking = bookings.find((a) => a.startsAt && daysUntil(ymd(new Date(a.startsAt))) <= 7);
+    const booking = bookings.find((a) => a.startsAt && daysUntil(tbilisiYmd(a.startsAt), todayTbilisi) <= 7);
     if (booking) {
       rows.push(h('a', { class: 'card hover home-attn', href: `/book/appointments/${encodeURIComponent(booking.id)}`, 'data-link': '' }, tile('calendarCheck', 'book', 40),
         h('div', { class: 'row-main' },
           h('div', { class: 'card-title' }, t(`ჯავშანი: ${booking.serviceName}`, `Booking: ${booking.serviceName}`)),
-          h('div', { class: 'card-sub' }, `${booking.business?.name ? `${booking.business.name} · ` : ''}${when(ymd(new Date(booking.startsAt)))}, ${fmtTime(booking.startsAt)}`)),
+          h('div', { class: 'card-sub' }, `${booking.business?.name ? `${booking.business.name} · ` : ''}${when(tbilisiYmd(booking.startsAt), todayTbilisi)}, ${tbilisiClock(booking.startsAt)}`)),
         icon('chevronRight', { size: 18 })));
     }
     const visit = visits.filter((v) => v.active !== false && v.visitDate >= today && v.visitDate <= until)
