@@ -836,3 +836,10 @@ body.biz { font-size: 14.5px; }
 .bz-util-row .bz-room-ic { width: 34px; height: 34px; border-radius: 10px; }
 .bz-chip svg { flex: none; }
 .bz-kv .bz-tag { display: inline-flex; align-items: center; gap: 4px; }
+
+/* Settings: the ready-made kit card */
+.bz-kit { display: grid; gap: 12px; }
+.bz-kit-line { display: grid; gap: 2px; font-size: 14px; }
+.bz-kit-line .faint { font-size: 12.5px; }
+.bz-kit-foot { display: flex; justify-content: flex-end; }
+.bz-banner .btn { margin-left: auto; flex: none; }

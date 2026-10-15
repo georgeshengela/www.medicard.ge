@@ -4,7 +4,7 @@ import { h, mount, icon, button, pageHead, card, input, textarea, field, busy, o
 import { select } from '../fields.js';
 import { donut } from '/app/js/charts.js';
 import { t } from '/app/js/i18n.js';
-import { biz, gel, when, dateText, avatar, emptyBox, debounceFn, fail, ok, statusBadge, minutes, phoneText } from '../shared.js';
+import { biz, gel, when, dateText, avatar, emptyBox, debounceFn, fail, ok, statusBadge, minutes, phoneText, vocab } from '../shared.js';
 import { appointmentLine, loadContext, newAppointmentDialog, openAppointment } from '../appointment.js';
 import { chips, filterBar, listState, pager, paginate, sortRows, sortableHead } from '../lists.js';
 
@@ -123,7 +123,7 @@ export default async function clientsPage(root, ctx) {
   const search = input({ type: 'search', placeholder: t('სახელი, ტელეფონი, ტეგი, შენიშვნა…', 'Name, phone, tag, note…'), class: 'input bz-search' });
   search.addEventListener('input', debounceFn(() => { q = search.value; page = 1; paint(); }, 200));
   mount(root,
-    pageHead(t('კლიენტები', 'Clients'), t('ყველა, ვინც ოდესმე ჯავშნით ან ხელით ჩაიწერა — ისტორია, შენიშვნები, ტეგები.', 'Everyone who ever booked or was written in by hand — history, notes, tags.'),
+    pageHead(vocab('clients'), t('ყველა, ვინც ოდესმე ჯავშნით ან ხელით ჩაიწერა — ისტორია, შენიშვნები, ტეგები.', 'Everyone who ever booked or was written in by hand — history, notes, tags.'),
       button(t('კლიენტის დამატება', 'Add a client'), { icon: 'userPlus', onClick: () => clientDialog(null, load) })),
     strip,
     filterBar(

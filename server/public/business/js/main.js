@@ -6,7 +6,7 @@ import { getToken, onTokenChange } from '/app/js/api.js';
 import { t, isEn, lang, setLang } from '/app/js/i18n.js';
 import { loadSession, session, signOut, applyTheme, featureOn } from '/app/js/session.js';
 import { state, loadState, switchBusiness, onState, clearState, canManage, currentId } from './state.js';
-import { avatar, dayLabel, biz, ymd, weekdayOf, MONTHS, WEEKDAYS_SHORT } from './shared.js';
+import { avatar, dayLabel, biz, ymd, weekdayOf, MONTHS, WEEKDAYS_SHORT, vocab } from './shared.js';
 
 const BASE = '/business';
 
@@ -33,15 +33,25 @@ const ROUTES = [
   { path: '/start', page: () => import('./pages/start.js'), title: t('ბიზნესის დამატება', 'Add a business'), bare: true },
 ];
 const MOBILE_NAV = ['/', '/calendar', '/clients', '/services'];
+/** Pages that belong to a module the business may switch off (Settings → modules; defaults from its segment). */
+const MODULE_OF = { '/products': 'products', '/supplies': 'supplies', '/resources': 'resources', '/loyalty': 'loyalty', '/payroll': 'payroll', '/waitlist': 'waitlist', '/discounts': 'discounts', '/branches': 'branches' };
+function moduleOn(r) {
+  const key = MODULE_OF[r.path];
+  if (!key) return true;
+  const m = state.current?.business?.modules;
+  return m ? m[key] !== false : true;
+}
+/** The segment's word where a page is named after the people who book. */
+const routeTitle = (r) => (r.path === '/clients' ? vocab('clients') : r.title);
 
 /** On a phone the sidebar is hidden: the fifth bottom item opens every page the person may use, as a sheet. */
 let moreSheet = null;
 function openMore() {
-  const allowed = (r) => r.nav && (!r.manage || canManage());
+  const allowed = (r) => r.nav && (!r.manage || canManage()) && moduleOn(r);
   const current = currentPath();
   const grid = h('div', { class: 'bz-more-grid' }, ROUTES.filter((r) => allowed(r) && !MOBILE_NAV.includes(r.path)).map((r) => h('a', {
     href: r.path, 'data-link': '', class: current === r.path || current.startsWith(`${r.path}/`) ? 'on' : '', onClick: () => moreSheet?.close(),
-  }, icon(r.icon, { size: 22 }), h('span', null, r.title))));
+  }, icon(r.icon, { size: 22 }), h('span', null, routeTitle(r)))));
   moreSheet = openModal({
     title: t('ყველა გვერდი', 'Every page'),
     size: 'sm',
@@ -175,14 +185,14 @@ function paintSide(path, query) {
 }
 
 function buildShell() {
-  const allowed = (r) => r.nav && (!r.manage || canManage());
+  const allowed = (r) => r.nav && (!r.manage || canManage()) && moduleOn(r);
   const bizRow = state.current?.business;
   const switcher = state.memberships.length > 1
     ? h('div', { class: 'bz-switch' }, select(state.memberships.map((m) => ({ value: m.business.id, label: m.business.groupName && m.business.groupName !== m.business.name ? `${m.business.groupName} — ${m.business.name}` : m.business.name })), currentId(), { onChange: (e) => { switchBusiness(e.target.value); rebuildShell(); route(); } }))
     : null;
   badgeEls = {};
-  const item = (r) => h('a', { class: 'nav-item', href: r.path, 'data-link': '', 'data-nav': r.path, title: r.title },
-    icon(r.icon, { size: 19 }), h('span', { class: 'label' }, r.title), (badgeEls[r.path] = h('i', { class: 'nav-badge' })));
+  const item = (r) => h('a', { class: 'nav-item', href: r.path, 'data-link': '', 'data-nav': r.path, title: routeTitle(r) },
+    icon(r.icon, { size: 19 }), h('span', { class: 'label' }, routeTitle(r)), (badgeEls[r.path] = h('i', { class: 'nav-badge' })));
   const groups = GROUPS.map((g) => {
     const items = g.paths.map((p) => ROUTES.find((r) => r.path === p)).filter((r) => r && allowed(r));
     if (!items.length) return null;
@@ -216,7 +226,7 @@ function buildShell() {
     iconButton('logout', { title: t('გასვლა', 'Sign out'), onClick: () => { signOut(); clearState(); navigate('/', { replace: true }); } }));
   contentEl = h('main', { class: 'content wide', id: 'main' });
   const bottom = h('nav', { class: 'bottom-nav', 'aria-label': t('ნავიგაცია', 'Navigation') },
-    MOBILE_NAV.map((p) => ROUTES.find((r) => r.path === p)).filter((r) => r && allowed(r)).map((r) => h('a', { href: r.path, 'data-link': '', 'data-nav': r.path }, icon(r.icon, { size: 22 }), r.title)),
+    MOBILE_NAV.map((p) => ROUTES.find((r) => r.path === p)).filter((r) => r && allowed(r)).map((r) => h('a', { href: r.path, 'data-link': '', 'data-nav': r.path }, icon(r.icon, { size: 22 }), routeTitle(r))),
     h('a', { href: '#', 'data-nav': 'more', onClick: (e) => { e.preventDefault(); openMore(); } }, icon('menu', { size: 22 }), t('მეტი', 'More')));
   shellEl = h('div', { class: 'shell' }, side, h('div', { class: 'main' }, top, contentEl, bottom));
   mount(document.getElementById('root'), shellEl);

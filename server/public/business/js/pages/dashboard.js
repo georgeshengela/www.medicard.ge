@@ -1,9 +1,9 @@
 // MEDIBOOK business panel — overview: what needs attention now, today, this week, the setup checklist.
-import { h, mount, icon, button, pageHead, card, badge } from '/app/js/ui.js';
+import { h, mount, icon, button, pageHead, card, badge, busy } from '/app/js/ui.js';
 import { barChart, donut, ring, sparkline } from '/app/js/charts.js';
 import { t } from '/app/js/i18n.js';
-import { state } from '../state.js';
-import { biz, gel, pct, when, clock, emptyBox, fail, ymd, fromYmd, weekdayOf, dayLabel, minutes } from '../shared.js';
+import { state, canManage } from '../state.js';
+import { biz, gel, pct, when, clock, emptyBox, fail, ok, ymd, fromYmd, weekdayOf, dayLabel, minutes, vocab } from '../shared.js';
 import { appointmentLine, loadContext, newAppointmentDialog, openAppointment } from '../appointment.js';
 
 export default async function dashboardPage(root, ctx) {
@@ -43,7 +43,7 @@ export default async function dashboardPage(root, ctx) {
     kpi(t('დღეს', 'Today'), String(data.today.filter((a) => a.status !== 'CANCELLED').length), t(`${data.today.filter((a) => a.status === 'COMPLETED').length} დასრულდა`, `${data.today.filter((a) => a.status === 'COMPLETED').length} completed`), 'calendar', false, spark('bookings')),
     kpi(t('შემოსავალი · 7 დღე', 'Revenue · 7 days'), gel(data.week.revenue), t(`${data.week.done} დასრულებული ვიზიტი`, `${data.week.done} completed visits`), 'wallet', true, spark('revenue')),
     kpi(t('ახალი ჯავშნები · 7 დღე', 'New bookings · 7 days'), String(data.week.booked), t(`${data.week.cancelled} გაუქმდა · ${data.week.noShow} არ მოვიდა`, `${data.week.cancelled} cancelled · ${data.week.noShow} no-shows`), 'calendarCheck', false, spark('created')),
-    kpi(t('კლიენტები', 'Clients'), String(data.clients.total), t(`+${data.clients.new} ამ კვირაში`, `+${data.clients.new} this week`), 'users', false, spark('newClients')));
+    kpi(vocab('clients'), String(data.clients.total), t(`+${data.clients.new} ამ კვირაში`, `+${data.clients.new} this week`), 'users', false, spark('newClients')));
 
   // Three weeks of days: completed, still ahead, missed — today is the bar in the middle.
   const weeksCard = days.length ? card(
@@ -89,6 +89,10 @@ export default async function dashboardPage(root, ctx) {
       legendRow('var(--bg3)', t('ხელით', 'By hand'), src.BUSINESS || 0, srcTotal))) : null;
 
   const attention = [];
+  if (!detail.services.some((s) => s.active) && canManage()) {
+    const load = button(t('ჩატვირთვა', 'Load it'), { size: 'sm', style: { marginLeft: 'auto', flex: 'none' }, onClick: () => busy(load, async () => { try { const { added } = await biz.post('/starter-kit', {}); ok(t(`დაემატა ${added.services} სერვისი, ${added.supplies} მასალა, ${added.resources} რესურსი`, `Added ${added.services} services, ${added.supplies} supplies, ${added.resources} resources`)); reload(); } catch (e) { fail(e); } }) });
+    attention.push(h('div', { class: 'bz-banner is-info', style: { margin: 0 } }, icon('sparkles', { size: 20 }), h('p', null, h('b', null, t('დაიწყე მზა ნაკრებით', 'Start with the ready-made kit')), t('სერვისები ფასებით, მასალები ნორმებით და ოთახები შენი სეგმენტისთვის — ერთი დაჭერით; მერე ყველაფერს შეცვლი.', 'Services with prices, supplies with norms and rooms for your segment — one click; change anything afterwards.')), load));
+  }
   if (data.pending) attention.push(h('a', { class: 'bz-banner is-warn', href: '/business/appointments?status=PENDING', 'data-link': '', style: { margin: 0 } }, icon('bellRing', { size: 20 }), h('p', null, h('b', null, t(`${data.pending} ჯავშანი ელოდება დადასტურებას`, `${data.pending} ${data.pending === 1 ? 'booking is' : 'bookings are'} waiting for confirmation`)), t('კლიენტი ხედავს „ელოდება“-ს, სანამ არ დაადასტურებ.', 'The client sees "waiting" until you confirm.'))));
   if (data.reviews.unanswered) attention.push(h('a', { class: 'bz-banner is-info', href: '/business/reviews', 'data-link': '', style: { margin: 0 } }, icon('star', { size: 20 }), h('p', null, h('b', null, t(`${data.reviews.unanswered} შეფასება პასუხის გარეშე`, `${data.reviews.unanswered} ${data.reviews.unanswered === 1 ? 'review' : 'reviews'} without a reply`)), t('პასუხი საჯაროა და ნდობას მატებს.', 'Replies are public and build trust.'))));
   if (data.waitlist) attention.push(h('a', { class: 'bz-banner is-info', href: '/business/waitlist', 'data-link': '', style: { margin: 0 } }, icon('bellRing', { size: 20 }), h('p', null, h('b', null, t(`${data.waitlist} კლიენტი ელოდება თავისუფალ დროს`, `${data.waitlist} ${data.waitlist === 1 ? 'client is' : 'clients are'} waiting for a free time`)), t('გათავისუფლებული დრო თავისით ეთავაზება; ხელითაც შეგიძლია შესთავაზო ან პირდაპირ ჩაწერო.', 'A freed time is offered by itself; you can also offer one by hand or book them straight in.'))));

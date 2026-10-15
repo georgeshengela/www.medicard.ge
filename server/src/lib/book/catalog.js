@@ -289,6 +289,27 @@ export function normalizeLoyalty(raw) {
   };
 }
 
+/** The panel modules a business may switch off or on; the defaults come from its segment (segments.js). */
+export const MODULE_KEYS = Object.freeze(['products', 'supplies', 'resources', 'loyalty', 'payroll', 'waitlist', 'discounts', 'branches']);
+
+/** Sparse overrides: only known keys with boolean values survive. */
+export function normalizeModules(raw) {
+  const out = {};
+  if (!raw || typeof raw !== 'object') return out;
+  for (const k of MODULE_KEYS) if (typeof raw[k] === 'boolean') out[k] = raw[k];
+  return out;
+}
+
+/** A partial settings patch over the stored settings: nested groups (notify, loyalty, modules) merge key by key. */
+export function mergeSettings(existing, patch) {
+  const base = existing && typeof existing === 'object' ? existing : {};
+  const p = patch && typeof patch === 'object' ? patch : {};
+  const nest = (k) => ({ ...(base[k] && typeof base[k] === 'object' ? base[k] : {}), ...(p[k] && typeof p[k] === 'object' ? p[k] : {}) });
+  const notify = nest('notify');
+  notify.sms = { ...(base.notify?.sms && typeof base.notify.sms === 'object' ? base.notify.sms : {}), ...(p.notify?.sms && typeof p.notify.sms === 'object' ? p.notify.sms : {}) };
+  return normalizeSettings({ ...base, ...p, notify, loyalty: nest('loyalty'), modules: nest('modules') });
+}
+
 export function normalizeSettings(raw) {
   const s = raw && typeof raw === 'object' ? raw : {};
   const int = (v, d, lo, hi) => (Number.isFinite(Number(v)) ? Math.min(hi, Math.max(lo, Math.round(Number(v)))) : d);
@@ -304,6 +325,7 @@ export function normalizeSettings(raw) {
     bookingNote: String(s.bookingNote ?? '').trim().slice(0, 300),
     notify: normalizeNotify(s.notify),
     loyalty: normalizeLoyalty(s.loyalty),
+    modules: normalizeModules(s.modules),
   };
 }
 

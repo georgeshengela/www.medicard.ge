@@ -3,7 +3,7 @@ import { h, icon, badge, toast } from '/app/js/ui.js';
 import { get, post, patch, put, del, invalidate } from '/app/js/api.js';
 import { t, isEn } from '/app/js/i18n.js';
 import { timeField } from './fields.js';
-import { currentId } from './state.js';
+import { currentId, state } from './state.js';
 
 export const CATEGORIES = [
   ['DENTAL', t('სტომატოლოგია', 'Dental'), '#0EA5E9'],
@@ -50,6 +50,13 @@ export const methodLabel = (m) => METHODS.find(([k]) => k === m)?.[1] || (m ? m 
 export const EXPENSE_CATEGORIES = [['RENT', t('ქირა', 'Rent')], ['SALARY', t('ხელფასი', 'Salaries')], ['SUPPLIES', t('მასალები', 'Supplies')], ['MARKETING', t('მარკეტინგი', 'Marketing')], ['UTILITIES', t('კომუნალური', 'Utilities')], ['EQUIPMENT', t('ტექნიკა', 'Equipment')], ['TAX', t('გადასახადი', 'Tax')], ['OTHER', t('სხვა', 'Other')]];
 export const INCOME_CATEGORIES = [['SERVICE', t('სერვისი', 'Service')], ['PRODUCT', t('პროდუქტი', 'Product')], ['GIFT_CARD', t('სასაჩუქრე ბარათი', 'Gift card')], ['MEMBERSHIP', t('აბონემენტი', 'Membership')], ['OTHER', t('სხვა', 'Other')]];
 export const txCategoryLabel = (c) => [...EXPENSE_CATEGORIES, ...INCOME_CATEGORIES].find(([k]) => k === c)?.[1] || c;
+
+/** The segment's word for the people who book: კლიენტი / პაციენტი / წევრი (keys: client, clients, newClient). */
+export function vocab(key) {
+  const v = state.current?.business?.vocab?.[key];
+  if (v) return isEn ? v[1] : v[0];
+  return key === 'clients' ? t('კლიენტები', 'Clients') : key === 'newClient' ? t('ახალი კლიენტი', 'New client') : t('კლიენტი', 'Client');
+}
 
 export const ROLES = [['OWNER', t('მფლობელი', 'Owner')], ['MANAGER', t('მენეჯერი', 'Manager')], ['STAFF', t('თანამშრომელი', 'Staff')]];
 export const roleLabel = (r) => ROLES.find(([k]) => k === r)?.[1] || r;

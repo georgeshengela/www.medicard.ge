@@ -12,7 +12,7 @@ import { requireAuth } from '../middleware/auth.js';
 import { asyncHandler } from '../middleware/error.js';
 import { t } from '../lib/i18n.js';
 import { mapboxPublicToken } from '../lib/adminUserGeo.js';
-import { CATEGORY_IDS, TBILISI_CENTER, bookError, guessCategory, hoursFromMapboxPeriods, normalizeSettings } from '../lib/book/catalog.js';
+import { CATEGORY_IDS, TBILISI_CENTER, bookError, guessCategory, hoursFromMapboxPeriods, normalizeSettings, mergeSettings } from '../lib/book/catalog.js';
 import * as store from '../lib/book/store.js';
 import * as bookings from '../lib/book/bookings.js';
 import { buildAnalytics, periodFor } from '../lib/book/analytics.js';
@@ -23,6 +23,7 @@ import * as loyalty from '../lib/book/loyalty.js';
 import * as branches from '../lib/book/branches.js';
 import * as products from '../lib/book/products.js';
 import * as supplies from '../lib/book/supplies.js';
+import * as segments from '../lib/book/segments.js';
 import * as resources from '../lib/book/resources.js';
 import * as payroll from '../lib/book/payroll.js';
 import { prisma } from '../lib/prisma.js';
@@ -43,7 +44,9 @@ const ALL = ['OWNER', 'MANAGER', 'STAFF'];
 
 businessRouter.get('/me', asyncHandler(async (req, res) => {
   const [memberships, claims] = await Promise.all([store.membershipsOf(req.user.id), store.claimsOf(req.user.id)]);
-  res.json({ memberships, claims, mapboxToken: mapboxPublicToken(), user: { id: req.user.id, name: req.user.fullName, phone: req.user.phone ?? null } });
+  // Each business carries the modules it has and the segment's words, so the sidebar can draw itself before any page loads.
+  const enriched = memberships.map((m) => { const { settings, ...business } = m.business; return { ...m, business: { ...business, modules: segments.effectiveModules(settings, business.category), vocab: segments.profileFor(business.category).vocab } }; });
+  res.json({ memberships: enriched, claims, mapboxToken: mapboxPublicToken(), user: { id: req.user.id, name: req.user.fullName, phone: req.user.phone ?? null } });
 }));
 
 businessRouter.get('/search', asyncHandler(async (req, res) => {
@@ -152,12 +155,14 @@ businessRouter.get('/:businessId', member(ALL), asyncHandler(async (req, res) =>
   ]);
   if (!detail) throw bookError(404, 'ბიზნესი ვერ მოიძებნა.', 'BUSINESS_NOT_FOUND', 'Business not found.');
   const row = await store.businessRow(req.params.businessId);
-  res.json({ business: { ...detail, nameEn: row.name, nameKa: row.nameKa, descriptionEn: row.description, descriptionKa: row.descriptionKa, addressEn: row.address, addressKa: row.addressKa, logoImageId: row.logoImageId, coverImageId: row.coverImageId, photoIds: Array.isArray(row.photos) ? row.photos : [], source: row.source }, images, staff, services, members, role: req.member.role, staffId: req.member.staffId });
+  res.json({ profile: segments.profileFor(row.category), modules: segments.effectiveModules(row.settings, row.category), business: { ...detail, nameEn: row.name, nameKa: row.nameKa, descriptionEn: row.description, descriptionKa: row.descriptionKa, addressEn: row.address, addressKa: row.addressKa, logoImageId: row.logoImageId, coverImageId: row.coverImageId, photoIds: Array.isArray(row.photos) ? row.photos : [], source: row.source }, images, staff, services, members, role: req.member.role, staffId: req.member.staffId });
 }));
 
 businessRouter.patch('/:businessId', member(MANAGE), asyncHandler(async (req, res) => {
   const input = req.body ?? {};
   const patch = store.sanitizeBusinessInput(input);
+  // A settings patch is partial (the loyalty card sends only loyalty, the notifications card only notify): merge over what is stored.
+  if (input.settings !== undefined) patch.settings = mergeSettings((await store.businessRow(req.params.businessId))?.settings, input.settings);
   if (input.name !== undefined && !patch.name) throw bookError(400, 'სახელი ცარიელი ვერ იქნება.', 'NAME_REQUIRED', 'The name cannot be empty.');
   if (input.category !== undefined && !patch.category) throw bookError(400, 'უცნობი კატეგორია.', 'BAD_CATEGORY', 'Unknown category.');
   // Picture roles: only this business's own pictures.
@@ -388,6 +393,15 @@ businessRouter.post('/:businessId/sales', member(ALL), asyncHandler(async (req, 
   res.status(201).json({ sale: await products.createSale({ businessId: req.params.businessId, ...body, staffId, actorUserId: req.user.id }) });
 }));
 businessRouter.post('/:businessId/sales/:id/refund', member(MANAGE), asyncHandler(async (req, res) => res.json({ sale: await products.refundSale({ businessId: req.params.businessId, id: req.params.id, actorUserId: req.user.id }) })));
+
+// the segment profile: the modules this business has, its words, the ready-made kit and what the business already holds
+businessRouter.get('/:businessId/profile', member(ALL), asyncHandler(async (req, res) => {
+  const row = await store.businessRow(req.params.businessId);
+  if (!row) throw bookError(404, 'ბიზნესი ვერ მოიძებნა.', 'BUSINESS_NOT_FOUND', 'Business not found.');
+  const [services, sup, rsc] = await Promise.all([store.listServices(row.id, { all: false }), supplies.listSupplies(row.id), resources.listResources(row.id)]);
+  res.json({ profile: segments.profileFor(row.category), modules: segments.effectiveModules(row.settings, row.category), kit: segments.kitFor(row.category), have: { services: services.length, supplies: sup.length, resources: rsc.length } });
+}));
+businessRouter.post('/:businessId/starter-kit', member(MANAGE), asyncHandler(async (req, res) => res.json({ added: await segments.applyStarterKit(req.params.businessId) })));
 
 // the stock room: supplies a visit uses up, norms per service, deliveries / write-offs / counts, the ledger
 const qtyBody = z.object({ qty: z.union([z.number(), z.string()]), cost: z.union([z.number(), z.string()]).optional(), note: z.string().trim().max(300).optional(), expense: z.boolean().optional() });

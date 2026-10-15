@@ -172,7 +172,7 @@ export const ROLES = Object.freeze(['OWNER', 'MANAGER', 'STAFF']);
 
 export async function membershipsOf(userId, db = prisma) {
   const rows = await db.$queryRaw`SELECT m.role, m."staffId", b.*, g.name AS "groupName" FROM "BookMember" m JOIN "BookBusiness" b ON b.id = m."businessId" LEFT JOIN "BookGroup" g ON g.id = b."groupId" WHERE m."userId" = ${userId} ORDER BY g.name NULLS LAST, m."createdAt" ASC`;
-  return rows.map((r) => ({ role: r.role, staffId: r.staffId, business: { id: r.id, slug: r.slug, name: r.nameKa || r.name, category: r.category, status: r.status, groupId: r.groupId ?? null, groupName: r.groupName ?? null, logoUrl: imageUrl(r.logoImageId), coverUrl: imageUrl(r.coverImageId), city: r.city } }));
+  return rows.map((r) => ({ role: r.role, staffId: r.staffId, business: { id: r.id, slug: r.slug, name: r.nameKa || r.name, category: r.category, status: r.status, settings: normalizeSettings(r.settings), groupId: r.groupId ?? null, groupName: r.groupName ?? null, logoUrl: imageUrl(r.logoImageId), coverUrl: imageUrl(r.coverImageId), city: r.city } }));
 }
 
 /** The member row of `userId` in `businessId`, or 403. `roles` narrows who may do this. */
