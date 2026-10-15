@@ -6,10 +6,11 @@
 import { Prisma } from '@prisma/client';
 import { prisma } from '../prisma.js';
 import { bookError, businessCard, discountApplies, discountPublic, discountedPrice, imageUrl, newId, normalizePhone, normalizeSettings } from './catalog.js';
-import { canCancelFree, daysWithSlots, findConflict, isOfferedSlot, slotsForDay } from './availability.js';
+import { canCancelFree, daysWithSlots, findConflict, isOfferedSlot, resourceConflict, resourceIdsFor, slotsForDay } from './availability.js';
 import { addDaysYmd, isYmd, tbilisiInstant, tbilisiYmd } from './time.js';
 import { businessRow, requireBusiness } from './store.js';
 import * as loyalty from './loyalty.js';
+import * as supplies from './supplies.js';
 
 const sql = Prisma.sql;
 const join = Prisma.join;
@@ -25,14 +26,25 @@ const money = (v) => (v == null || v === '' ? null : Number.isFinite(Number(v)) 
 
 // ——— availability ———
 
-/** Staff, live appointments and time off of a business in a window — what the availability engine reads. */
+/**
+ * Staff, live appointments (with the rooms / devices they hold), time off, the live resources and the service →
+ * resource links of a business in a window — what the availability engine reads.
+ */
 export async function context({ businessId, from, to }, db) {
-  const [staff, appointments, timeOff] = await Promise.all([
+  const [staff, appointments, timeOff, resources, links] = await Promise.all([
     db.$queryRaw`SELECT * FROM "BookStaff" WHERE "businessId" = ${businessId} AND active`,
-    db.$queryRaw`SELECT id, "staffId", status, "startsAt", "endsAt" FROM "BookAppointment" WHERE "businessId" = ${businessId} AND status <> 'CANCELLED' AND "endsAt" > ${from} AND "startsAt" < ${to}`,
+    db.$queryRaw`SELECT id, "staffId", status, "startsAt", "endsAt", "resourceIds" FROM "BookAppointment" WHERE "businessId" = ${businessId} AND status <> 'CANCELLED' AND "endsAt" > ${from} AND "startsAt" < ${to}`,
     db.$queryRaw`SELECT "staffId", "startsAt", "endsAt" FROM "BookTimeOff" WHERE "businessId" = ${businessId} AND "endsAt" > ${from} AND "startsAt" < ${to}`,
+    db.$queryRaw`SELECT id, name, kind, capacity, active FROM "BookResource" WHERE "businessId" = ${businessId} AND active`,
+    db.$queryRaw`SELECT "serviceId", "resourceId" FROM "BookServiceResource" WHERE "businessId" = ${businessId}`,
   ]);
-  return { staff, appointments: appointments.map((a) => ({ ...a, startsAt: a.startsAt.toISOString(), endsAt: a.endsAt.toISOString() })), timeOff: timeOff.map((o) => ({ ...o, startsAt: o.startsAt.toISOString(), endsAt: o.endsAt.toISOString() })) };
+  return {
+    staff,
+    appointments: appointments.map((a) => ({ ...a, startsAt: a.startsAt.toISOString(), endsAt: a.endsAt.toISOString(), resourceIds: Array.isArray(a.resourceIds) ? a.resourceIds : [] })),
+    timeOff: timeOff.map((o) => ({ ...o, startsAt: o.startsAt.toISOString(), endsAt: o.endsAt.toISOString() })),
+    resources: resources.map((r) => ({ ...r, capacity: Number(r.capacity) || 1 })),
+    links,
+  };
 }
 
 export async function serviceRow(businessId, serviceId, db = prisma) {
@@ -58,14 +70,16 @@ export async function serviceRows(businessId, ids, db = prisma) {
   return out;
 }
 
-/** What the availability engine sees: one service, or the bundle as one block of time. */
-export function bundleOf(services) {
+/** What the availability engine sees: one service, or the bundle as one block of time, plus every room / device it needs. */
+export function bundleOf(services, links = []) {
   const first = services[0];
+  const ids = services.map((s) => s.id);
   return {
     id: first.id,
-    ids: services.map((s) => s.id),
+    ids,
     durationMin: services.reduce((sum, s) => sum + Number(s.durationMin), 0),
     bufferMin: Number(services[services.length - 1].bufferMin ?? 0),
+    resourceIds: resourceIdsFor(links, ids),
   };
 }
 
@@ -74,22 +88,23 @@ export async function availability({ businessId, serviceId, serviceIds, date, st
   if (!isYmd(date)) throw bookError(400, 'არასწორი თარიღი.', 'BAD_DATE', 'Invalid date.');
   const business = await requireBusiness(businessId, db);
   const services = await serviceRows(business.id, normalizeServiceIds(serviceIds, serviceId), db);
-  const service = bundleOf(services);
   const from = tbilisiInstant(addDaysYmd(date, -1), 0);
   const to = tbilisiInstant(addDaysYmd(date, 2), 0);
   const ctx = await context({ businessId: business.id, from, to }, db);
-  const result = slotsForDay({ business, service, staff: ctx.staff, appointments: ctx.appointments, timeOff: ctx.timeOff, date, now, staffId, ignoreLead });
-  return { date, serviceId: service.id, serviceIds: service.ids, durationMin: service.durationMin, ...result };
+  const service = bundleOf(services, ctx.links);
+  const result = slotsForDay({ business, service, staff: ctx.staff, appointments: ctx.appointments, timeOff: ctx.timeOff, resources: ctx.resources, date, now, staffId, ignoreLead });
+  return { date, serviceId: service.id, serviceIds: service.ids, durationMin: service.durationMin, resourceIds: service.resourceIds, ...result };
 }
 
 /** Which of the next `days` days have a free slot (the date strip). */
 export async function dateStrip({ businessId, serviceId, serviceIds, from = null, staffId = null, now = new Date(), days = 14 }, db = prisma) {
   const business = await requireBusiness(businessId, db);
-  const service = bundleOf(await serviceRows(business.id, normalizeServiceIds(serviceIds, serviceId), db));
+  const services = await serviceRows(business.id, normalizeServiceIds(serviceIds, serviceId), db);
   const start = from && isYmd(from) ? from : tbilisiYmd(now);
   const n = Math.min(60, Math.max(1, Number(days) || 14));
   const ctx = await context({ businessId: business.id, from: tbilisiInstant(addDaysYmd(start, -1), 0), to: tbilisiInstant(addDaysYmd(start, n + 1), 0) }, db);
-  return { from: start, days: daysWithSlots({ business, service, staff: ctx.staff, appointments: ctx.appointments, timeOff: ctx.timeOff, from: start, now, staffId, days: n }) };
+  const service = bundleOf(services, ctx.links);
+  return { from: start, days: daysWithSlots({ business, service, staff: ctx.staff, appointments: ctx.appointments, timeOff: ctx.timeOff, resources: ctx.resources, from: start, now, staffId, days: n }) };
 }
 
 // ——— appointments ———
@@ -119,6 +134,8 @@ export function appointmentPublic(row, { lang = 'ka', now = new Date() } = {}) {
     staffId: row.staffId ?? null,
     staffName: row.staffName ?? null,
     staffColor: row.staffColor ?? null,
+    resourceIds: Array.isArray(row.resourceIds) ? row.resourceIds : [],
+    resources: Array.isArray(row.resources) ? row.resources.map((r) => ({ id: r.id, name: r.name, kind: r.kind })) : [],
     clientId: row.clientId ?? null,
     clientUserId: row.clientUserId ?? null,
     clientName: row.clientName,
@@ -145,7 +162,8 @@ export function appointmentPublic(row, { lang = 'ka', now = new Date() } = {}) {
 }
 
 const ITEMS_JSON = sql`(SELECT COALESCE(json_agg(json_build_object('id', i."serviceId", 'name', i."serviceName", 'durationMin', i."durationMin", 'price', i.price, 'discountAmount', i."discountAmount") ORDER BY i."sortOrder"), '[]'::json) FROM "BookAppointmentItem" i WHERE i."appointmentId" = a.id)`;
-const APPOINTMENT_SELECT = sql`SELECT a.*, s.name AS "staffName", s.color AS "staffColor", ${ITEMS_JSON} AS items,
+const RESOURCES_JSON = sql`(SELECT COALESCE(json_agg(json_build_object('id', r.id, 'name', r.name, 'kind', r.kind) ORDER BY r."sortOrder", r.name), '[]'::json) FROM "BookResource" r WHERE r."businessId" = a."businessId" AND a."resourceIds" @> to_jsonb(r.id))`;
+const APPOINTMENT_SELECT = sql`SELECT a.*, s.name AS "staffName", s.color AS "staffColor", ${ITEMS_JSON} AS items, ${RESOURCES_JSON} AS resources,
   b.name AS "businessName", b."nameKa" AS "businessNameKa", b.slug AS "businessSlug", b.category AS "businessCategory", b.address AS "businessAddress", b."addressKa" AS "businessAddressKa",
   b.phone AS "businessPhone", b.lat AS "businessLat", b.lng AS "businessLng", b."logoImageId" AS "businessLogoImageId", b."coverImageId" AS "businessCoverImageId", b.settings AS "businessSettings"
   FROM "BookAppointment" a JOIN "BookBusiness" b ON b.id = a."businessId" LEFT JOIN "BookStaff" s ON s.id = a."staffId"`;
@@ -210,10 +228,15 @@ export async function createAppointment({ businessId, serviceId, serviceIds, sta
     }
     const services = await serviceRows(business.id, normalizeServiceIds(serviceIds, serviceId), tx);
     if (!byBusiness && services.some((x) => !x.online)) throw bookError(404, 'სერვისი ვერ მოიძებნა.', 'SERVICE_NOT_FOUND', 'Service not found.');
-    const service = bundleOf(services);
     const date = tbilisiYmd(at);
     const ctx = await context({ businessId: business.id, from: tbilisiInstant(addDaysYmd(date, -1), 0), to: tbilisiInstant(addDaysYmd(date, 2), 0) }, tx);
-    const offered = slotsForDay({ business, service, staff: ctx.staff, appointments: ctx.appointments, timeOff: ctx.timeOff, date, now, staffId: staffId || null, ignoreLead: byBusiness });
+    const service = bundleOf(services, ctx.links);
+    const offered = slotsForDay({ business, service, staff: ctx.staff, appointments: ctx.appointments, timeOff: ctx.timeOff, resources: ctx.resources, date, now, staffId: staffId || null, ignoreLead: byBusiness });
+    const endsAt = new Date(at.getTime() + Number(service.durationMin) * MIN);
+    // The room / device the services need must still have a free unit — checked first, so the answer names the
+    // room instead of a generic „taken“ (a forced walk-in may double up on purpose).
+    const full = resourceConflict(ctx.appointments, ctx.resources, { resourceIds: service.resourceIds, startsAt: at, endsAt, bufferMin: Number(service.bufferMin ?? 0) });
+    if (full && !(force && byBusiness)) throw bookError(409, `ამ დროს „${full.resource.name}“ დაკავებულია — აირჩიე სხვა დრო.`, 'RESOURCE_TAKEN', `"${full.resource.name}" is taken at this time — pick another one.`);
     let person = staffId || null;
     if (!force || !byBusiness) {
       if (!isOfferedSlot(offered, at, person)) {
@@ -226,7 +249,6 @@ export async function createAppointment({ businessId, serviceId, serviceIds, sta
         person = [...slot.staffIds].sort((x, y) => (load.get(x) ?? 0) - (load.get(y) ?? 0))[0] ?? null;
       }
     }
-    const endsAt = new Date(at.getTime() + Number(service.durationMin) * MIN);
     if (person) {
       const clash = findConflict(ctx.appointments, { staffId: person, startsAt: at, endsAt, bufferMin: Number(service.bufferMin ?? 0) });
       if (clash && !(force && byBusiness)) throw bookError(409, 'ეს დრო უკვე დაკავებულია.', 'SLOT_TAKEN', 'This time is already taken.');
@@ -249,8 +271,8 @@ export async function createAppointment({ businessId, serviceId, serviceIds, sta
     const serviceLabel = items.map((i) => i.serviceName).join(' + ');
     const id = newId();
     const status = byBusiness || settings.autoConfirm ? 'CONFIRMED' : 'PENDING';
-    await tx.$executeRaw`INSERT INTO "BookAppointment" (id, "businessId", "serviceId", "serviceName", "staffId", "clientId", "clientUserId", "clientName", "clientPhone", "startsAt", "endsAt", "durationMin", status, source, price, "discountId", "discountAmount", note)
-      VALUES (${id}, ${business.id}, ${service.id}, ${serviceLabel}, ${person}, ${clientId}, ${user?.id ?? null}, ${name}, ${phone}, ${at}, ${endsAt}, ${Number(service.durationMin)}, ${status}, ${byBusiness ? 'BUSINESS' : source}, ${price}, ${firstDiscount?.discountId ?? null}, ${firstDiscount ? discountTotal : null}, ${cleanText(note, 500)})`;
+    await tx.$executeRaw`INSERT INTO "BookAppointment" (id, "businessId", "serviceId", "serviceName", "staffId", "clientId", "clientUserId", "clientName", "clientPhone", "startsAt", "endsAt", "durationMin", status, source, price, "discountId", "discountAmount", note, "resourceIds")
+      VALUES (${id}, ${business.id}, ${service.id}, ${serviceLabel}, ${person}, ${clientId}, ${user?.id ?? null}, ${name}, ${phone}, ${at}, ${endsAt}, ${Number(service.durationMin)}, ${status}, ${byBusiness ? 'BUSINESS' : source}, ${price}, ${firstDiscount?.discountId ?? null}, ${firstDiscount ? discountTotal : null}, ${cleanText(note, 500)}, ${JSON.stringify(service.resourceIds)}::jsonb)`;
     for (const it of items) {
       await tx.$executeRaw`INSERT INTO "BookAppointmentItem" (id, "appointmentId", "serviceId", "serviceName", "durationMin", price, "discountId", "discountAmount", "sortOrder") VALUES (${it.id}, ${id}, ${it.serviceId}, ${it.serviceName}, ${it.durationMin}, ${it.price}, ${it.discountId}, ${it.discountAmount}, ${it.sortOrder})`;
       if (it.discountId) await tx.$executeRaw`UPDATE "BookDiscount" SET "usedCount" = "usedCount" + 1 WHERE id = ${it.discountId}`;
@@ -330,13 +352,19 @@ export async function updateByBusiness({ businessId, id, patch = {}, actorUserId
     let durationMin = Number(row.durationMin);
     let staffId = row.staffId;
     let serviceName = row.serviceName;
-    if (patch.serviceId !== undefined && patch.serviceId !== row.serviceId) {
+    let resourceIds = Array.isArray(row.resourceIds) ? row.resourceIds : [];
+    const serviceChanged = patch.serviceId !== undefined && patch.serviceId !== row.serviceId;
+    if (serviceChanged) {
       const service = await serviceRow(businessId, patch.serviceId, tx);
       if (!service) throw bookError(404, 'სერვისი ვერ მოიძებნა.', 'SERVICE_NOT_FOUND', 'Service not found.');
       durationMin = Number(service.durationMin);
       serviceName = service.nameKa || service.name;
       sets.push(sql`"serviceId" = ${service.id}`, sql`"serviceName" = ${serviceName}`, sql`"durationMin" = ${durationMin}`);
       if (patch.price === undefined) sets.push(sql`price = ${service.price == null ? null : Number(service.price)}`, sql`"discountId" = NULL`, sql`"discountAmount" = NULL`);
+      // The new service brings its own rooms / devices.
+      const links = await tx.$queryRaw`SELECT "serviceId", "resourceId" FROM "BookServiceResource" WHERE "serviceId" = ${service.id}`;
+      resourceIds = resourceIdsFor(links, [service.id]);
+      sets.push(sql`"resourceIds" = ${JSON.stringify(resourceIds)}::jsonb`);
     }
     if (patch.durationMin !== undefined) {
       durationMin = Math.max(5, Math.min(12 * 60, Math.round(Number(patch.durationMin) || durationMin)));
@@ -364,6 +392,15 @@ export async function updateByBusiness({ businessId, id, patch = {}, actorUserId
       }
       sets.push(sql`"startsAt" = ${startsAt}`, sql`"endsAt" = ${endsAt}`);
       if (row.status !== 'CANCELLED') sets.push(sql`"remindedDay" = FALSE`, sql`"remindedSoon" = FALSE`);
+    }
+    // A moved booking, or one given another service, must still find a free unit of every room / device it needs.
+    if ((moved || serviceChanged) && resourceIds.length && !patch.force && row.status !== 'CANCELLED') {
+      const [resources, others] = await Promise.all([
+        tx.$queryRaw`SELECT id, name, kind, capacity, active FROM "BookResource" WHERE "businessId" = ${businessId} AND active`,
+        tx.$queryRaw`SELECT id, status, "startsAt", "endsAt", "resourceIds" FROM "BookAppointment" WHERE "businessId" = ${businessId} AND id <> ${id} AND status <> 'CANCELLED' AND "endsAt" > ${new Date(startsAt.getTime() - 4 * 3600_000)} AND "startsAt" < ${new Date(endsAt.getTime() + 4 * 3600_000)}`,
+      ]);
+      const full = resourceConflict(others.map((a) => ({ ...a, startsAt: a.startsAt.toISOString(), endsAt: a.endsAt.toISOString() })), resources, { resourceIds, startsAt, endsAt, ignoreId: id });
+      if (full) throw bookError(409, `ამ დროს „${full.resource.name}“ დაკავებულია.`, 'RESOURCE_TAKEN', `"${full.resource.name}" is taken at this time.`);
     }
     if (patch.price !== undefined) sets.push(sql`price = ${money(patch.price)}`);
     if (patch.paidAmount !== undefined) sets.push(sql`"paidAmount" = ${money(patch.paidAmount)}`);
@@ -398,12 +435,15 @@ export async function updateByBusiness({ businessId, id, patch = {}, actorUserId
       const amount = parts.cashAmount;
       const spent = Math.round(((parts.cashAmount || 0) + (parts.giftAmount || 0) + (parts.membershipAmount || 0)) * 100) / 100;
       if (amount > 0) await tx.$executeRaw`INSERT INTO "BookTransaction" (id, "businessId", "appointmentId", "staffId", kind, category, amount, method, at, "createdBy") VALUES (${newId()}, ${businessId}, ${id}, ${next.staffId}, 'INCOME', 'SERVICE', ${amount}, ${next.paidMethod ?? null}, ${new Date(next.startsAt)}, ${actorUserId}) ON CONFLICT DO NOTHING`;
+      // The services' norms leave the stock room (never blocks the visit).
+      await supplies.writeOffVisit(tx, { businessId, appointment: next, actorUserId });
       if (next.clientId) await tx.$executeRaw`UPDATE "BookClient" SET visits = visits + 1, "totalSpent" = "totalSpent" + ${spent}, "firstVisitAt" = COALESCE("firstVisitAt", ${new Date(next.startsAt)}), "lastVisitAt" = GREATEST(COALESCE("lastVisitAt", ${new Date(next.startsAt)}), ${new Date(next.startsAt)}), "updatedAt" = CURRENT_TIMESTAMP WHERE id = ${next.clientId}`;
     } else if (row.status === 'COMPLETED' && status !== 'COMPLETED') {
       const [t] = await tx.$queryRaw`SELECT amount FROM "BookTransaction" WHERE "appointmentId" = ${id} AND kind = 'INCOME'`;
       const reverted = await loyalty.revertPayment(tx, { businessId, appointment: row, actorUserId });
       const undoSpent = reverted ? Math.round(((reverted.cashAmount || 0) + (reverted.giftAmount || 0) + (reverted.membershipAmount || 0)) * 100) / 100 : t ? Number(t.amount) : 0;
       await tx.$executeRaw`DELETE FROM "BookTransaction" WHERE "appointmentId" = ${id} AND kind = 'INCOME'`;
+      await supplies.revertVisit(tx, { businessId, appointmentId: id });
       if (next.clientId) await tx.$executeRaw`UPDATE "BookClient" SET visits = GREATEST(0, visits - 1), "totalSpent" = GREATEST(0, "totalSpent" - ${undoSpent}), "updatedAt" = CURRENT_TIMESTAMP WHERE id = ${next.clientId}`;
     } else if (status === 'COMPLETED' && (patch.paidAmount !== undefined || patch.price !== undefined)) {
       const amount = next.paidAmount != null ? Number(next.paidAmount) : next.price != null ? Number(next.price) : 0;
@@ -584,8 +624,8 @@ export async function deleteTransaction({ businessId, id }, db = prisma) {
 // ——— raw numbers for analytics (aggregated in analytics.js) ———
 
 export async function analyticsRaw({ businessId, from, to }, db = prisma) {
-  const [appointments, events, transactions, staff, timeOff, clients, reviews, business] = await Promise.all([
-    db.$queryRaw`SELECT a.id, a."staffId", a."serviceId", a."serviceName", ${ITEMS_JSON} AS items, a."clientId", a."clientUserId", a.status, a.source, a.price, a."discountAmount", a."startsAt", a."endsAt", a."durationMin", a."createdAt" FROM "BookAppointment" a WHERE a."businessId" = ${businessId} AND a."startsAt" >= ${from} AND a."startsAt" < ${to}`,
+  const [appointments, events, transactions, staff, timeOff, clients, reviews, business, resources] = await Promise.all([
+    db.$queryRaw`SELECT a.id, a."staffId", a."serviceId", a."serviceName", ${ITEMS_JSON} AS items, a."clientId", a."clientUserId", a.status, a.source, a.price, a."discountAmount", a."startsAt", a."endsAt", a."durationMin", a."createdAt", a."resourceIds" FROM "BookAppointment" a WHERE a."businessId" = ${businessId} AND a."startsAt" >= ${from} AND a."startsAt" < ${to}`,
     db.$queryRaw`SELECT kind, "viewerHash", at FROM "BookEvent" WHERE "businessId" = ${businessId} AND at >= ${from} AND at < ${to}`,
     db.$queryRaw`SELECT kind, category, amount, method, at, "staffId" FROM "BookTransaction" WHERE "businessId" = ${businessId} AND at >= ${from} AND at < ${to}`,
     db.$queryRaw`SELECT id, name, color, schedule, active, bookable FROM "BookStaff" WHERE "businessId" = ${businessId}`,
@@ -593,8 +633,9 @@ export async function analyticsRaw({ businessId, from, to }, db = prisma) {
     db.$queryRaw`SELECT id, "createdAt", "firstVisitAt", visits FROM "BookClient" WHERE "businessId" = ${businessId}`,
     db.$queryRaw`SELECT rating, "createdAt" FROM "BookReview" WHERE "businessId" = ${businessId} AND NOT hidden AND "createdAt" >= ${from} AND "createdAt" < ${to}`,
     businessRow(businessId, db),
+    db.$queryRaw`SELECT id, name, kind, capacity, active, "sortOrder" FROM "BookResource" WHERE "businessId" = ${businessId} AND active ORDER BY "sortOrder", name`,
   ]);
-  return { appointments, events, transactions, staff, timeOff, clients, reviews, business };
+  return { appointments, events, transactions, staff, timeOff, clients, reviews, business, resources };
 }
 
 /** The numbers on the owner's overview page: today, this week, what needs attention. */

@@ -4,6 +4,9 @@ import { t } from '/app/js/i18n.js';
 import { biz, gel, pct, emptyBox, fail, ok, avatar, dateText, when, methodLabel, METHODS, ymd, addDays } from '../shared.js';
 import { dateField, select } from '../fields.js';
 
+const RULE_COLORS = { svc: 'var(--book-2)', prod: 'var(--c3)', fixed: 'var(--text3)' };
+const RULE_LABEL = { svc: t('სერვისებიდან', 'From services'), prod: t('პროდუქტებიდან', 'From products'), fixed: t('ფიქსირებული', 'Fixed') };
+
 export default async function payrollPage(root) {
   const host = h('div');
   const today = ymd();
@@ -27,7 +30,9 @@ export default async function payrollPage(root) {
           fromF.set(from); toF.set(to);
           paint();
         }),
-        mode === 'custom' ? h('div', { class: 'bz-inline' }, fromF.el, h('span', { class: 'faint' }, '–'), toF.el) : h('span', { class: 'faint' }, `${dateText(r.from)} – ${dateText(r.to)} · ${t(`${r.days} დღე`, `${r.days} days`)}`));
+        mode === 'custom' ? h('div', { class: 'bz-inline' }, fromF.el, h('span', { class: 'faint' }, '–'), toF.el) : h('span', { class: 'faint' }, `${dateText(r.from)} – ${dateText(r.to)} · ${t(`${r.days} დღე`, `${r.days} days`)}`),
+        h('span', { style: { flex: 1 } }),
+        h('span', { class: 'bz-split-legend' }, Object.keys(RULE_LABEL).map((k) => h('span', null, h('i', { style: { background: RULE_COLORS[k] } }), RULE_LABEL[k]))));
       const T = r.totals;
       const kpis = h('div', { class: 'bz-kpis' },
         kpi(t('დარიცხული', 'Earned'), gel(T.earned), t(`${T.visits} ვიზიტი · ${gel(T.serviceValue)}`, `${T.visits} visits · ${gel(T.serviceValue)}`), true),
@@ -39,10 +44,10 @@ export default async function payrollPage(root) {
         h('thead', null, h('tr', null, h('th', null, t('თანამშრომელი', 'Person')), h('th', null, t('წესი', 'Rule')), h('th', { class: 'num' }, t('ვიზიტები', 'Visits')), h('th', { class: 'num' }, t('პროდუქტები', 'Products')), h('th', { class: 'num' }, t('დარიცხული', 'Earned')), h('th', { class: 'num' }, t('დარჩა', 'Balance')), h('th'))),
         h('tbody', null, r.staff.map((s) => h('tr', { class: s.active ? '' : 'is-muted' },
           h('td', null, h('div', { class: 'bz-inline' }, avatar(s.name, s.color || '#64748B', 30), h('div', null, h('b', null, s.name), s.title ? h('div', { class: 'faint' }, s.title) : null))),
-          h('td', null, h('div', { class: 'bz-inline', style: { flexWrap: 'nowrap' } }, ruleText(s.pay), button('', { size: 'sm', variant: 'ghost', icon: 'edit', ariaLabel: t('წესის შეცვლა', 'Change the rule'), title: t('წესის შეცვლა', 'Change the rule'), onClick: () => rulesDialog(s) }))),
+          h('td', null, h('div', { class: 'bz-rule' }, ruleTags(s.pay), button('', { size: 'sm', variant: 'ghost', icon: 'edit', ariaLabel: t('წესის შეცვლა', 'Change the rule'), title: t('წესის შეცვლა', 'Change the rule'), onClick: () => rulesDialog(s) }))),
           h('td', { class: 'num' }, h('b', null, String(s.visits)), h('div', { class: 'faint' }, gel(s.serviceValue))),
           h('td', { class: 'num' }, s.productRevenue ? gel(s.productRevenue) : h('span', { class: 'bz-dim' }, '—')),
-          h('td', { class: 'num' }, h('b', null, gel(s.earned.total)), h('div', { class: 'faint' }, [s.earned.fromServices ? t(`სერვ. ${gel(s.earned.fromServices)}`, `svc ${gel(s.earned.fromServices)}`) : null, s.earned.fromProducts ? t(`პროდ. ${gel(s.earned.fromProducts)}`, `prod ${gel(s.earned.fromProducts)}`) : null, s.earned.fixed ? t(`ფიქს. ${gel(s.earned.fixed)}`, `fixed ${gel(s.earned.fixed)}`) : null].filter(Boolean).join(' · '))),
+          h('td', { class: 'num bz-td-earned' }, h('b', null, gel(s.earned.total)), splitBar(s.earned)),
           h('td', { class: `num ${s.balance > 0 ? 'bz-ok' : ''}` }, h('b', null, gel(s.balance)), h('div', { class: 'faint' }, t(`გადახდილი ${gel(s.paid)}`, `paid ${gel(s.paid)}`))),
           h('td', { class: 'num' }, button(t('გადახდა', 'Pay'), { size: 'sm', icon: 'wallet', onClick: () => payDialog(s, r) })))),
           h('tr', { class: 'is-total' }, h('td', null, h('b', null, t('სულ', 'Total'))), h('td'), h('td', { class: 'num' }, h('b', null, String(T.visits)), h('div', { class: 'faint' }, gel(T.serviceValue))), h('td', { class: 'num' }, gel(T.productRevenue)), h('td', { class: 'num' }, h('b', null, gel(T.earned))), h('td', { class: 'num' }, h('b', null, gel(T.balance)), h('div', { class: 'faint' }, t(`გადახდილი ${gel(T.paid)}`, `paid ${gel(T.paid)}`))), h('td'))))));
@@ -61,12 +66,22 @@ export default async function payrollPage(root) {
     } catch (e) { mount(host, card(emptyBox(t('ვერ ჩაიტვირთა', 'Could not load'), e?.message))); }
   }
 
-  function ruleText(pay) {
-    const parts = [];
-    if (pay.servicePercent) parts.push(t(`${pay.servicePercent}% სერვ.`, `${pay.servicePercent}% svc`));
-    if (pay.productPercent) parts.push(t(`${pay.productPercent}% პროდ.`, `${pay.productPercent}% prod`));
-    if (pay.fixedMonthly) parts.push(t(`${gel(pay.fixedMonthly)}/თვე`, `${gel(pay.fixedMonthly)}/mo`));
-    return h('span', { class: parts.length ? '' : 'bz-dim', style: { maxWidth: '200px', lineHeight: '1.35' } }, parts.join(' + ') || t('წესი არ არის', 'No rule'));
+  /** The rule as tags, each with the dot of its colour in the split bar. */
+  function ruleTags(pay) {
+    const tags = [];
+    if (pay.servicePercent) tags.push(['svc', t(`${pay.servicePercent}% სერვისებიდან`, `${pay.servicePercent}% of services`)]);
+    if (pay.productPercent) tags.push(['prod', t(`${pay.productPercent}% პროდუქტებიდან`, `${pay.productPercent}% of products`)]);
+    if (pay.fixedMonthly) tags.push(['fixed', t(`${gel(pay.fixedMonthly)} თვეში`, `${gel(pay.fixedMonthly)} a month`)]);
+    if (!tags.length) return h('span', { class: 'bz-dim' }, t('წესი არ არის', 'No rule'));
+    return h('span', { class: 'bz-tags' }, tags.map(([k, l]) => h('span', { class: 'bz-tag' }, h('i', { class: 'dot', style: { background: RULE_COLORS[k] } }), l)));
+  }
+
+  /** Where the earned amount came from: services, products, the fixed part — one thin bar. */
+  function splitBar(e) {
+    const parts = [['svc', e.fromServices], ['prod', e.fromProducts], ['fixed', e.fixed]].filter(([, v]) => v > 0);
+    const total = parts.reduce((s, [, v]) => s + v, 0);
+    if (!total) return null;
+    return h('div', { class: 'bz-split', title: parts.map(([k, v]) => `${RULE_LABEL[k]} ${gel(v)}`).join(' · ') }, parts.map(([k, v]) => h('i', { style: { width: `${(v / total) * 100}%`, background: RULE_COLORS[k] } })));
   }
 
   function rulesDialog(s) {

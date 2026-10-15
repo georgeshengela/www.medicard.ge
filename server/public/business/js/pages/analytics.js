@@ -46,6 +46,15 @@ export default async function analyticsPage(root, ctx) {
               h('b', { class: 'pct' }, u.utilisation == null ? '—' : pct(u.utilisation))))) : h('p', { class: 'bz-sub' }, t('გუნდი ჯერ არ არის.', 'No team yet.'))),
           card(h('div', { class: 'card-head' }, h('div', null, h('div', { class: 'card-title' }, t('პიკური საათები', 'Busy hours')), h('div', { class: 'card-sub' }, a.peak ? t(`ყველაზე დატვირთული: ${WEEKDAYS_SHORT[a.peak.weekday]} ${String(a.peak.hour).padStart(2, '0')}:00`, `Busiest: ${WEEKDAYS_SHORT[a.peak.weekday]} ${String(a.peak.hour).padStart(2, '0')}:00`) : t('ჯერ არ ჩანს', 'Not visible yet')))),
             heat(a.heat))),
+        // Rooms and equipment: the same ratio per resource, so a full laser or a spare chair shows at once.
+        a.resources?.length ? h('div', { style: { marginTop: '16px' } }, card(
+          h('div', { class: 'card-head' }, h('div', null, h('div', { class: 'card-title' }, t('ოთახების დატვირთვა', 'Room and equipment load')), h('div', { class: 'card-sub' }, t('დაჯავშნილი დრო ÷ სამუშაო საათები × ერთეულები (გასულ საათებზე).', 'Booked time ÷ open hours × units (hours that have passed).'))), h('a', { class: 'link', href: '/business/resources', 'data-link': '' }, t('ოთახები', 'Rooms'), icon('chevronRight', { size: 16 }))),
+          h('div', { class: 'bz-util' }, a.resources.map((u) => h('div', { class: 'bz-util-row' },
+            h('span', { class: `bz-room-ic is-${String(u.kind).toLowerCase()}` }, icon(u.kind === 'EQUIPMENT' ? 'zap' : 'door', { size: 17 })),
+            h('div', null, h('b', null, u.name, u.capacity > 1 ? h('span', { class: 'faint' }, ` · ${u.capacity} ${t('ერთდროულად', 'at once')}`) : null),
+              h('small', null, t(`${u.appointments} ჩანაწერი · ${u.completed} დასრულდა · ${minutes(u.bookedMinutes)} / ${minutes(u.workingMinutes)}`, `${u.appointments} bookings · ${u.completed} done · ${minutes(u.bookedMinutes)} of ${minutes(u.workingMinutes)}`)),
+              h('div', { class: 'meter-track' }, h('span', { style: { width: `${u.utilisation ?? 0}%`, background: 'var(--book)' } }))),
+            h('b', { class: 'pct' }, u.utilisation == null ? '—' : pct(u.utilisation))))))) : null,
         h('div', { class: 'bz-grid-3' },
           card(h('div', { class: 'card-title', style: { marginBottom: '10px' } }, t('ტოპ სერვისები', 'Top services')),
             a.topServices.length ? h('table', { class: 'bz-table' }, h('tbody', null, a.topServices.slice(0, 8).map((s) => h('tr', null, h('td', null, h('b', null, s.name), h('div', { class: 'faint' }, minutes(s.minutes))), h('td', { class: 'num' }, String(s.count)), h('td', { class: 'num' }, gel(s.revenue)))))) : h('p', { class: 'bz-sub' }, '—')),

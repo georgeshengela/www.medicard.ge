@@ -6,6 +6,13 @@ import { chips, filterBar } from '../lists.js';
 import { dateField, select } from '../fields.js';
 
 const KIND_LABEL = { BONUS_EARN: t('ბონუსი დაერიცხა', 'Bonus earned'), BONUS_REDEEM: t('ბონუსით გადაიხადა', 'Paid with bonus'), BONUS_ADJUST: t('ბონუსის კორექცია', 'Bonus adjusted'), GIFT_SOLD: t('ბარათი გაიყიდა', 'Gift card sold'), GIFT_REDEEM: t('ბარათით გადაიხადა', 'Paid with a gift card'), MEMBERSHIP_SOLD: t('აბონემენტი გაიყიდა', 'Membership sold'), MEMBERSHIP_USE: t('აბონემენტი გამოიყენა', 'Membership used') };
+const kindIcon = (k) => (k.startsWith('GIFT') ? 'gift' : k.startsWith('MEMBERSHIP') ? 'badgeCheck' : 'coins');
+const kindClass = (k) => (k.startsWith('GIFT') ? 'is-gift' : k.startsWith('MEMBERSHIP') ? 'is-pass' : 'is-bonus');
+/** What is left on a gift card, as a bar over its face value. */
+function balanceCell(g) {
+  const p = g.amount ? Math.max(0, Math.min(100, (g.balance / g.amount) * 100)) : 0;
+  return h('div', { class: 'bz-stock' }, h('div', { class: 'top' }, h('b', null, gel(g.balance)), h('small', null, t(`${gel(g.amount)}-დან`, `of ${gel(g.amount)}`))), h('i', null, h('b', { style: { width: `${p}%` } })));
+}
 const GIFT_STATUS = { ACTIVE: [t('აქტიური', 'Active'), 'ok'], USED: [t('გამოყენებული', 'Used'), 'neutral'], EXPIRED: [t('ვადაგასული', 'Expired'), 'neutral'], CANCELLED: [t('გაუქმებული', 'Cancelled'), 'neutral'] };
 
 export default async function loyaltyPage(root) {
@@ -29,7 +36,7 @@ export default async function loyaltyPage(root) {
     const L = data.loyalty;
     const o = data.overview;
     const save = async (patch) => { try { await biz.patch('', { settings: { loyalty: { ...L, ...patch } } }); ok(t('შენახულია', 'Saved')); paint(); } catch (e) { fail(e); } };
-    const sel = (options, value, key) => select(options.map(([v, l]) => ({ value: v, label: l })), value, { class: 'input select', style: { width: 'auto' }, onChange: (e) => save({ [key]: Number(e.target.value) }) });
+    const sel = (options, value, key) => select(options.map(([v, l]) => ({ value: v, label: l })), value, { class: 'is-sm', style: { width: 'auto', minWidth: '150px' }, onChange: (e) => save({ [key]: Number(e.target.value) }) });
     const row = (title, sub, control) => h('div', { class: 'bz-muted-row' }, h('div', null, h('b', null, title), sub ? h('div', { class: 'faint' }, sub) : null), control);
     return h('div', { class: 'bz-grid' },
       card(h('div', { class: 'card-head' }, h('div', null, h('div', { class: 'card-title' }, t('ქეშბექი — ბონუსი ყოველი ვიზიტიდან', 'Cashback — bonus from every visit')), h('div', { class: 'card-sub' }, t('ფულით გადახდილი თანხის ნაწილი კლიენტს ბონუსად უბრუნდება და შემდეგ ვიზიტზე იხარჯება. აპში ბალანსი ბიზნესის გვერდზე ჩანს.', 'A share of what the client pays in money comes back as bonus and is spent on the next visit. The balance shows on the business page in the app.')))),
@@ -56,11 +63,10 @@ export default async function loyaltyPage(root) {
       const term = q.trim().toLowerCase();
       const rows = giftCards.filter((g) => !term || `${g.code} ${g.buyerName || ''} ${g.recipientName || ''} ${g.recipientPhone || ''}`.toLowerCase().includes(term));
       mount(list, rows.length ? card({ class: 'flush' }, h('div', { class: 'bz-table-wrap' }, h('table', { class: 'bz-table' },
-        h('thead', null, h('tr', null, h('th', null, t('კოდი', 'Code')), h('th', { class: 'num' }, t('ნომინალი', 'Value')), h('th', { class: 'num' }, t('დარჩა', 'Left')), h('th', null, t('ვისთვის', 'For')), h('th', null, t('ვადა', 'Expires')), h('th', null, t('სტატუსი', 'Status')), h('th'))),
+        h('thead', null, h('tr', null, h('th', null, t('კოდი', 'Code')), h('th', null, t('დარჩა', 'Left')), h('th', null, t('ვისთვის', 'For')), h('th', null, t('ვადა', 'Expires')), h('th', null, t('სტატუსი', 'Status')), h('th'))),
         h('tbody', null, rows.map((g) => h('tr', { class: g.status === 'ACTIVE' ? '' : 'is-muted' },
           h('td', null, h('code', { class: 'bz-code' }, g.code), g.buyerName ? h('div', { class: 'faint' }, t(`იყიდა: ${g.buyerName}`, `bought by ${g.buyerName}`)) : null),
-          h('td', { class: 'num' }, gel(g.amount)),
-          h('td', { class: 'num' }, h('b', null, gel(g.balance))),
+          h('td', null, balanceCell(g)),
           h('td', null, g.recipientName || h('span', { class: 'bz-dim' }, '—'), g.recipientPhone ? h('div', { class: 'faint' }, phoneText(g.recipientPhone)) : null),
           h('td', null, g.expiresOn ? dateText(g.expiresOn) : '—'),
           h('td', null, badge(GIFT_STATUS[g.status]?.[0] || g.status, GIFT_STATUS[g.status]?.[1] || 'neutral')),
@@ -124,18 +130,20 @@ export default async function loyaltyPage(root) {
   async function membershipsView() {
     const [{ memberships }, { clientMemberships }] = await Promise.all([biz.get('/memberships', { all: 1 }), biz.get('/client-memberships', { status: membershipsView.status || 'ACTIVE' })]);
     const products = card(h('div', { class: 'card-head' }, h('div', null, h('div', { class: 'card-title' }, t('აბონემენტები გასაყიდად', 'Memberships to sell')), h('div', { class: 'card-sub' }, t('ვიზიტების პაკეტი ან წინასწარ გადახდილი თანხა, ვადით.', 'A package of visits or a prepaid amount, with a validity.'))), button(t('ახალი', 'New'), { size: 'sm', icon: 'plus', onClick: () => membershipDialog(null) })),
-      memberships.length ? h('div', { class: 'bz-table-wrap' }, h('table', { class: 'bz-table' },
-        h('thead', null, h('tr', null, h('th', null, t('სახელი', 'Name')), h('th', null, t('შიგთავსი', 'Contents')), h('th', { class: 'num' }, t('ფასი', 'Price')), h('th', null, t('ვადა', 'Validity')), h('th', { class: 'num' }, t('გაყიდული', 'Sold')), h('th'))),
-        h('tbody', null, memberships.map((m) => h('tr', { class: m.active ? '' : 'is-muted' },
-          h('td', null, h('b', null, m.title), m.description ? h('div', { class: 'faint' }, m.description) : null),
-          h('td', null, m.kind === 'VISITS' ? t(`${m.visitsTotal} ვიზიტი`, `${m.visitsTotal} visits`) : gel(m.amountTotal), h('div', { class: 'faint' }, m.serviceIds.length ? services.filter((s) => m.serviceIds.includes(s.id)).map((s) => s.name).join(', ') : t('ყველა სერვისი', 'Every service'))),
-          h('td', { class: 'num' }, gel(m.price)),
-          h('td', null, t(`${m.validDays} დღე`, `${m.validDays} days`)),
-          h('td', { class: 'num' }, String(m.sold ?? 0)),
-          h('td', { class: 'num' }, h('div', { class: 'bz-inline', style: { justifyContent: 'flex-end' } },
-            m.active ? button(t('გაყიდვა', 'Sell'), { size: 'sm', onClick: () => sellMembershipDialog(m) }) : null,
+      memberships.length ? h('div', { class: 'bz-passes' }, memberships.map((m) => h('div', { class: `bz-pass${m.active ? '' : ' is-off'}` },
+          h('div', { class: 'bz-pass-top' },
+            h('div', { class: 'bz-pass-val' }, m.kind === 'VISITS' ? [h('b', null, String(m.visitsTotal)), h('small', null, t('ვიზიტი', 'visits'))] : [h('b', null, gel(m.amountTotal)), h('small', null, t('წინასწარ', 'prepaid'))]),
+            h('div', { class: 'who' }, h('b', null, m.title), h('span', null, m.description || (m.serviceIds.length ? services.filter((s) => m.serviceIds.includes(s.id)).map((s) => s.name).join(', ') : t('ყველა სერვისზე', 'On every service'))))),
+          h('div', { class: 'bz-pass-meta' },
+            h('span', null, icon('clock', { size: 14 }), t(`${m.validDays} დღე`, `${m.validDays} days`)),
+            h('span', null, icon('grid', { size: 14 }), m.serviceIds.length ? t(`${m.serviceIds.length} სერვისი`, `${m.serviceIds.length} services`) : t('ყველა სერვისი', 'every service')),
+            h('span', null, icon('users', { size: 14 }), t(`${m.sold ?? 0} გაყიდული`, `${m.sold ?? 0} sold`))),
+          h('div', { class: 'bz-pass-foot' },
+            h('span', { class: 'price' }, gel(m.price)),
+            h('span', { class: 'spacer' }),
+            m.active ? button(t('გაყიდვა', 'Sell'), { size: 'sm', onClick: () => sellMembershipDialog(m) }) : badge(t('აღარ იყიდება', 'Retired'), 'neutral'),
             button('', { size: 'sm', variant: 'ghost', icon: 'edit', ariaLabel: t('რედაქტირება', 'Edit'), onClick: () => membershipDialog(m) }),
-            m.active ? button('', { size: 'sm', variant: 'ghost', icon: 'trash', ariaLabel: t('გაუქმება', 'Retire'), onClick: async () => { if (await confirmDialog({ title: t('აღარ გაიყიდოს?', 'Stop selling it?'), body: m.title, confirm: t('გაუქმება', 'Retire') })) { try { await biz.del(`/memberships/${m.id}`); paint(); } catch (e) { fail(e); } } } }) : null)))))))
+            m.active ? button('', { size: 'sm', variant: 'ghost', icon: 'trash', ariaLabel: t('გაუქმება', 'Retire'), onClick: async () => { if (await confirmDialog({ title: t('აღარ გაიყიდოს?', 'Stop selling it?'), body: m.title, confirm: t('გაუქმება', 'Retire') })) { try { await biz.del(`/memberships/${m.id}`); paint(); } catch (e) { fail(e); } } } }) : null))))
         : h('p', { class: 'bz-sub' }, t('ჯერ არ არის — შექმენი პირველი.', 'None yet — create the first one.')));
     const passes = card(h('div', { class: 'card-head' }, h('div', null, h('div', { class: 'card-title' }, t('კლიენტების აბონემენტები', 'Memberships clients hold')), h('div', { class: 'card-sub' }, t('ვიზიტის დასრულებისას დიალოგი თავად სთავაზობს მოქმედ აბონემენტს.', 'When a visit is completed the dialog offers a live membership by itself.'))),
       chips([['ACTIVE', t('მოქმედი', 'Live')], ['USED', t('ამოწურული', 'Used up')], ['all', t('ყველა', 'All')]], membershipsView.status || 'ACTIVE', (v) => { membershipsView.status = v; paint(); })),
@@ -234,9 +242,9 @@ export default async function loyaltyPage(root) {
       h('thead', null, h('tr', null, h('th', null, t('როდის', 'When')), h('th', null, t('რა', 'What')), h('th', null, t('კლიენტი', 'Client')), h('th', { class: 'num' }, t('თანხა', 'Amount')))),
       h('tbody', null, rows.map((r) => h('tr', null,
         h('td', { class: 'faint' }, when(r.createdAt)),
-        h('td', null, KIND_LABEL[r.kind] || r.kind, r.note ? h('div', { class: 'faint' }, r.note) : null),
+        h('td', null, h('div', { class: 'bz-ledger' }, h('span', { class: `ic ${kindClass(r.kind)}` }, icon(kindIcon(r.kind), { size: 15 })), h('div', null, KIND_LABEL[r.kind] || r.kind, r.note ? h('div', { class: 'faint' }, r.note) : null))),
         h('td', null, r.clientId ? h('a', { class: 'bz-link', href: `/business/clients/${r.clientId}`, 'data-link': '' }, r.clientName || '—') : h('span', { class: 'bz-dim' }, '—')),
-        h('td', { class: `num ${r.amount < 0 ? 'bz-bad' : ''}` }, `${r.amount > 0 ? '+' : ''}${gel(r.amount)}`)))))))
+        h('td', { class: `num ${r.amount < 0 ? 'bz-bad' : ''}` }, h('b', null, `${r.amount > 0 ? '+' : ''}${gel(r.amount)}`))))))))
       : card(emptyBox(t('მოძრაობა ჯერ არ არის', 'No activity yet'), t('ბონუსები, ბარათები და აბონემენტები აქ ჩაიწერება.', 'Bonuses, gift cards and memberships are recorded here.')));
   }
 

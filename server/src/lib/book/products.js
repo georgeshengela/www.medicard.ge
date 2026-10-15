@@ -20,6 +20,7 @@ export function productPublic(r) {
   return {
     id: r.id, name: r.name, sku: r.sku ?? null, category: r.category ?? null, price: Number(r.price), cost: r.cost == null ? null : Number(r.cost), stock, unit: r.unit || 'pc',
     lowStock: Number(r.lowStock ?? 3), low: stock != null && stock <= Number(r.lowStock ?? 3), active: Boolean(r.active), sortOrder: Number(r.sortOrder ?? 0), sold30: r.sold30 == null ? undefined : Number(r.sold30), createdAt: toIso(r.createdAt),
+    kind: r.kind === 'SUPPLY' ? 'SUPPLY' : 'RETAIL',
   };
 }
 export function salePublic(r) {
@@ -30,9 +31,10 @@ export function salePublic(r) {
   };
 }
 
-export async function listProducts(businessId, { all = false } = {}, db = prisma) {
+/** Retail products by default; the stock room lists kind SUPPLY through supplies.js. */
+export async function listProducts(businessId, { all = false, kind = 'RETAIL' } = {}, db = prisma) {
   const rows = await db.$queryRaw`SELECT p.*, (SELECT COALESCE(SUM((i->>'qty')::numeric), 0) FROM "BookSale" s, jsonb_array_elements(s.items) i WHERE s."businessId" = p."businessId" AND s.status = 'DONE' AND s.at >= NOW() - INTERVAL '30 days' AND i->>'productId' = p.id)::float AS sold30
-    FROM "BookProduct" p WHERE p."businessId" = ${businessId} ${all ? Prisma.empty : sql`AND p.active`} ORDER BY p."sortOrder", p.name`;
+    FROM "BookProduct" p WHERE p."businessId" = ${businessId} AND p.kind = ${kind === 'SUPPLY' ? 'SUPPLY' : 'RETAIL'} ${all ? Prisma.empty : sql`AND p.active`} ORDER BY p."sortOrder", p.name`;
   return rows.map(productPublic);
 }
 
@@ -48,6 +50,7 @@ function sanitizeProduct(input = {}) {
   if (input.lowStock !== undefined) out.lowStock = Math.max(0, n2(input.lowStock));
   if (input.active !== undefined) out.active = Boolean(input.active);
   if (input.sortOrder !== undefined) out.sortOrder = Math.round(Number(input.sortOrder) || 0);
+  if (input.kind !== undefined) out.kind = input.kind === 'SUPPLY' ? 'SUPPLY' : 'RETAIL';
   return out;
 }
 
@@ -56,8 +59,8 @@ export async function createProduct(businessId, input = {}, db = prisma) {
   if (!p.name) throw bookError(400, 'მიუთითე პროდუქტის სახელი.', 'NAME_REQUIRED', 'Enter the product name.');
   if (!(p.price >= 0)) throw bookError(400, 'მიუთითე ფასი.', 'PRICE_REQUIRED', 'Enter the price.');
   const id = newId();
-  await db.$executeRaw`INSERT INTO "BookProduct" (id, "businessId", name, sku, category, price, cost, stock, unit, "lowStock", active, "sortOrder")
-    VALUES (${id}, ${businessId}, ${p.name}, ${p.sku ?? null}, ${p.category ?? null}, ${p.price}, ${p.cost ?? null}, ${p.stock ?? null}, ${p.unit ?? 'pc'}, ${p.lowStock ?? 3}, ${p.active ?? true}, ${p.sortOrder ?? 0})`;
+  await db.$executeRaw`INSERT INTO "BookProduct" (id, "businessId", name, sku, category, price, cost, stock, unit, "lowStock", active, "sortOrder", kind)
+    VALUES (${id}, ${businessId}, ${p.name}, ${p.sku ?? null}, ${p.category ?? null}, ${p.price}, ${p.cost ?? null}, ${p.stock ?? null}, ${p.unit ?? 'pc'}, ${p.lowStock ?? 3}, ${p.active ?? true}, ${p.sortOrder ?? 0}, ${p.kind ?? 'RETAIL'})`;
   const [row] = await db.$queryRaw`SELECT * FROM "BookProduct" WHERE id = ${id}`;
   return productPublic(row);
 }
@@ -78,8 +81,11 @@ export async function deactivateProduct(businessId, id, db = prisma) {
   await db.$executeRaw`UPDATE "BookProduct" SET active = FALSE, "updatedAt" = CURRENT_TIMESTAMP WHERE id = ${String(id)} AND "businessId" = ${businessId}`;
 }
 
-/** Stock in (a delivery) or a correction; a product without stock tracking starts tracking at this number. */
-export async function moveStock({ businessId, productId, delta, reason = 'RESTOCK', note = null, cost = null, actorUserId = null }, db = prisma) {
+/**
+ * Stock in (a delivery), a correction, a write-off or a count; a product without stock tracking starts tracking at
+ * this number. The move keeps the unit cost of the day. `expense` books a delivery's money as an expense (SUPPLIES).
+ */
+export async function moveStock({ businessId, productId, delta, reason = 'RESTOCK', note = null, cost = null, expense = false, actorUserId = null }, db = prisma) {
   const d = n2(delta);
   if (!d) throw bookError(400, 'მიუთითე რაოდენობა.', 'QTY_REQUIRED', 'Enter the quantity.');
   return db.$transaction(async (tx) => {
@@ -89,7 +95,12 @@ export async function moveStock({ businessId, productId, delta, reason = 'RESTOC
     const sets = [sql`stock = ${next}`, sql`"updatedAt" = CURRENT_TIMESTAMP`];
     if (cost != null && money(cost) != null) sets.push(sql`cost = ${money(cost)}`);
     await tx.$executeRaw`UPDATE "BookProduct" SET ${Prisma.join(sets, ', ')} WHERE id = ${p.id}`;
-    await tx.$executeRaw`INSERT INTO "BookStockMove" (id, "businessId", "productId", delta, reason, note, "createdBy") VALUES (${newId()}, ${businessId}, ${p.id}, ${d}, ${['RESTOCK', 'ADJUST'].includes(reason) ? reason : 'ADJUST'}, ${cleanText(note, 300)}, ${actorUserId})`;
+    const unitCost = cost != null && money(cost) != null ? money(cost) : p.cost == null ? null : n2(p.cost);
+    const why = ['RESTOCK', 'ADJUST', 'WRITE_OFF', 'COUNT'].includes(reason) ? reason : 'ADJUST';
+    await tx.$executeRaw`INSERT INTO "BookStockMove" (id, "businessId", "productId", delta, reason, note, cost, "createdBy") VALUES (${newId()}, ${businessId}, ${p.id}, ${d}, ${why}, ${cleanText(note, 300)}, ${unitCost}, ${actorUserId})`;
+    if (expense && why === 'RESTOCK' && d > 0 && unitCost != null && n2(d * unitCost) > 0) {
+      await tx.$executeRaw`INSERT INTO "BookTransaction" (id, "businessId", kind, category, amount, method, note, "createdBy") VALUES (${newId()}, ${businessId}, 'EXPENSE', 'SUPPLIES', ${n2(d * unitCost)}, NULL, ${`${p.name} ×${d}${cleanText(note, 200) ? ` · ${cleanText(note, 200)}` : ''}`}, ${actorUserId})`;
+    }
     const [row] = await tx.$queryRaw`SELECT * FROM "BookProduct" WHERE id = ${p.id}`;
     return productPublic(row);
   });
@@ -168,7 +179,7 @@ export async function refundSale({ businessId, id, actorUserId = null }, db = pr
 /** The products page's numbers: stock value at cost, low-stock count, 30-day sales and margin. */
 export async function productsOverview(businessId, db = prisma) {
   const [[stock], [sales]] = await Promise.all([
-    db.$queryRaw`SELECT COUNT(*)::int AS products, COUNT(*) FILTER (WHERE stock IS NOT NULL AND stock <= "lowStock")::int AS low, COALESCE(SUM(CASE WHEN stock IS NOT NULL AND cost IS NOT NULL THEN stock * cost ELSE 0 END), 0)::float AS "stockValue" FROM "BookProduct" WHERE "businessId" = ${businessId} AND active`,
+    db.$queryRaw`SELECT COUNT(*)::int AS products, COUNT(*) FILTER (WHERE stock IS NOT NULL AND stock <= "lowStock")::int AS low, COALESCE(SUM(CASE WHEN stock IS NOT NULL AND cost IS NOT NULL THEN stock * cost ELSE 0 END), 0)::float AS "stockValue" FROM "BookProduct" WHERE "businessId" = ${businessId} AND active AND kind = 'RETAIL'`,
     db.$queryRaw`SELECT COUNT(*)::int AS n, COALESCE(SUM(total), 0)::float AS revenue, COALESCE(SUM(cost), 0)::float AS cost FROM "BookSale" WHERE "businessId" = ${businessId} AND status = 'DONE' AND at >= NOW() - INTERVAL '30 days'`,
   ]);
   return { products: stock?.products ?? 0, low: stock?.low ?? 0, stockValue: n2(stock?.stockValue ?? 0), sales30: sales?.n ?? 0, revenue30: n2(sales?.revenue ?? 0), cost30: n2(sales?.cost ?? 0), margin30: n2((sales?.revenue ?? 0) - (sales?.cost ?? 0)) };
