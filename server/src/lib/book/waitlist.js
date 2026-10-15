@@ -39,7 +39,7 @@ export function normalizeDayParts(raw) {
 
 const WAIT_SELECT = sql`SELECT w.*, s.name AS "staffName", s.color AS "staffColor", os.name AS "offeredStaffName",
   b.name AS "businessName", b."nameKa" AS "businessNameKa", b.slug AS "businessSlug", b.category AS "businessCategory", b.address AS "businessAddress", b."addressKa" AS "businessAddressKa",
-  b.phone AS "businessPhone", b."logoImageId" AS "businessLogoImageId", b."coverImageId" AS "businessCoverImageId"
+  b.phone AS "businessPhone", b."logoImageId" AS "businessLogoImageId", b."coverImageId" AS "businessCoverImageId", b.settings AS "businessSettings"
   FROM "BookWaitlist" w JOIN "BookBusiness" b ON b.id = w."businessId" LEFT JOIN "BookStaff" s ON s.id = w."staffId" LEFT JOIN "BookStaff" os ON os.id = w."offeredStaffId"`;
 
 export async function waitlistRow(id, db = prisma) {

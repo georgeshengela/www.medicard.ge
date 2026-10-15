@@ -653,9 +653,17 @@ export async function claimReminder(id, flag, db = prisma) {
   return n > 0;
 }
 
+/** Open bookings within the widest reminder window (48 h) that still miss a push or an SMS; the pass decides per business. */
 export async function dueReminders(now = new Date(), db = prisma) {
-  const rows = await db.$queryRaw`${APPOINTMENT_SELECT} WHERE a.status IN ('PENDING','CONFIRMED') AND a."clientUserId" IS NOT NULL AND a."startsAt" > ${now} AND a."startsAt" <= ${new Date(now.getTime() + 24 * 3600_000)} AND (NOT a."remindedDay" OR NOT a."remindedSoon") ORDER BY a."startsAt" LIMIT 500`;
+  const rows = await db.$queryRaw`${APPOINTMENT_SELECT} WHERE a.status IN ('PENDING','CONFIRMED') AND a."startsAt" > ${now} AND a."startsAt" <= ${new Date(now.getTime() + 48 * 3600_000)}
+    AND ((a."clientUserId" IS NOT NULL AND (NOT a."remindedDay" OR NOT a."remindedSoon")) OR NOT a."smsDay" OR NOT a."smsSoon") ORDER BY a."startsAt" LIMIT 500`;
   return rows;
+}
+
+export async function claimSms(id, flag, db = prisma) {
+  const col = flag === 'soon' ? sql`"smsSoon"` : sql`"smsDay"`;
+  const n = await db.$executeRaw`UPDATE "BookAppointment" SET ${col} = TRUE WHERE id = ${id} AND NOT ${col}`;
+  return n > 0;
 }
 
 /** Completed-or-past confirmed visits of app users who have not been asked for a review yet (once, 2–48 h after). */

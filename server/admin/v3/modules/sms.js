@@ -364,7 +364,7 @@
           </header>
           <div class="p2-card-tools">
             ${segment('sms-status', 'სტატუსი', [['ALL', 'ყველა'], ['SENT', 'გაიგზავნა'], ['FAILED', 'ვერ გაიგზავნა'], ['QUEUED', 'რიგში']], logState.status)}
-            ${segment('sms-purpose', 'ტიპი', [['ALL', 'ყველა ტიპი'], ['OTP', 'კოდი (OTP)'], ['ADMIN', 'ადმინი'], ['MARKETING', 'მარკეტინგი'], ['TEST', 'ტესტი']], logState.purpose)}
+            ${segment('sms-purpose', 'ტიპი', [['ALL', 'ყველა ტიპი'], ['OTP', 'კოდი (OTP)'], ['ADMIN', 'ადმინი'], ['BOOK', 'MEDIBOOK'], ['MARKETING', 'მარკეტინგი'], ['TEST', 'ტესტი']], logState.purpose)}
             <label class="p2-search">
               <span class="sr-only">ძებნა</span>
               ${ico('search')}

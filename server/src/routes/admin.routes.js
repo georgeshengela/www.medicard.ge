@@ -1301,7 +1301,7 @@ adminRouter.get(
         limit: z.coerce.number().int().min(1).max(200).default(50),
         offset: z.coerce.number().int().min(0).default(0),
         status: z.enum(['ALL', 'SENT', 'FAILED', 'QUEUED']).default('ALL'),
-        purpose: z.enum(['ALL', 'OTP', 'ADMIN', 'MARKETING', 'TEST']).default('ALL'),
+        purpose: z.enum(['ALL', 'OTP', 'ADMIN', 'MARKETING', 'TEST', 'BOOK']).default('ALL'),
         q: z.string().trim().optional(),
       })
       .parse(req.query);

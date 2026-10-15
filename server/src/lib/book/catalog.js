@@ -248,6 +248,35 @@ export const DEFAULT_SETTINGS = Object.freeze({
   bookingNote: '',
 });
 
+/** What the business's clients get: pushes in the app, SMS for people without the app (off until the business turns it on), emails to the business. */
+export const DEFAULT_NOTIFY = Object.freeze({
+  reminderHours: 24,
+  soonHours: 2,
+  push: Object.freeze({ reminderDay: true, reminderSoon: true, reviewAsk: true }),
+  sms: Object.freeze({ enabled: false, onlyWithoutApp: true, confirm: true, reminderDay: true, reminderSoon: false, changes: true, waitlist: true, monthlyCap: 200 }),
+  email: Object.freeze({ newBooking: true, cancelled: true }),
+});
+export function normalizeNotify(raw) {
+  const n = raw && typeof raw === 'object' ? raw : {};
+  const bool = (v, d) => (typeof v === 'boolean' ? v : d);
+  const pick = (v, list, d) => (list.includes(Number(v)) ? Number(v) : d);
+  const push = n.push && typeof n.push === 'object' ? n.push : {};
+  const sms = n.sms && typeof n.sms === 'object' ? n.sms : {};
+  const email = n.email && typeof n.email === 'object' ? n.email : {};
+  const D = DEFAULT_NOTIFY;
+  return {
+    reminderHours: pick(n.reminderHours, [12, 24, 48], D.reminderHours),
+    soonHours: pick(n.soonHours, [1, 2, 3], D.soonHours),
+    push: { reminderDay: bool(push.reminderDay, D.push.reminderDay), reminderSoon: bool(push.reminderSoon, D.push.reminderSoon), reviewAsk: bool(push.reviewAsk, D.push.reviewAsk) },
+    sms: {
+      enabled: bool(sms.enabled, D.sms.enabled), onlyWithoutApp: bool(sms.onlyWithoutApp, D.sms.onlyWithoutApp), confirm: bool(sms.confirm, D.sms.confirm),
+      reminderDay: bool(sms.reminderDay, D.sms.reminderDay), reminderSoon: bool(sms.reminderSoon, D.sms.reminderSoon), changes: bool(sms.changes, D.sms.changes), waitlist: bool(sms.waitlist, D.sms.waitlist),
+      monthlyCap: pick(sms.monthlyCap, [50, 100, 200, 500, 1000], D.sms.monthlyCap),
+    },
+    email: { newBooking: bool(email.newBooking, D.email.newBooking), cancelled: bool(email.cancelled, D.email.cancelled) },
+  };
+}
+
 export function normalizeSettings(raw) {
   const s = raw && typeof raw === 'object' ? raw : {};
   const int = (v, d, lo, hi) => (Number.isFinite(Number(v)) ? Math.min(hi, Math.max(lo, Math.round(Number(v)))) : d);
@@ -261,6 +290,7 @@ export function normalizeSettings(raw) {
     onlineBooking: bool(s.onlineBooking, DEFAULT_SETTINGS.onlineBooking),
     allowStaffChoice: bool(s.allowStaffChoice, DEFAULT_SETTINGS.allowStaffChoice),
     bookingNote: String(s.bookingNote ?? '').trim().slice(0, 300),
+    notify: normalizeNotify(s.notify),
   };
 }
 

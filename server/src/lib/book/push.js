@@ -9,8 +9,10 @@ import { sendExpoPush } from '../push.js';
 import { withJobLease } from '../jobLease.js';
 import { getUserLanguages, t } from '../i18n.js';
 import { sendEmail } from '../email/mailer.js';
-import { claimReminder, dueReminders, dueReviewAsks, markReviewAsked } from './bookings.js';
+import { claimReminder, claimSms, dueReminders, dueReviewAsks, markReviewAsked } from './bookings.js';
 import * as waitlist from './waitlist.js';
+import { sendBookSms, smsKindOn } from './sms.js';
+import { normalizeSettings } from './catalog.js';
 import { addDaysYmd, tbilisiClock, tbilisiYmd, daysBetweenYmd } from './time.js';
 
 const KA_MONTHS = ['იან', 'თებ', 'მარ', 'აპრ', 'მაი', 'ივნ', 'ივლ', 'აგვ', 'სექ', 'ოქტ', 'ნოე', 'დეკ'];
@@ -76,6 +78,7 @@ export async function notifyBooked(a, { db = prisma, send = sendExpoPush, now = 
       { title: pending ? 'Booking sent' : 'Booking confirmed ✅', body: `${placeName(a, 'en')} · ${a.serviceName} · ${when}${pending ? ' — waiting for the business to confirm' : ''}`, route: `/book/appointments/${a.id}` }),
     db, send, lang);
   }
+  await sendBookSms(a.status === 'PENDING' ? 'pending' : 'confirm', a, { db, now });
   await notifyBusinessNewBooking(a, { db, send, now });
 }
 
@@ -92,7 +95,7 @@ async function notifyBusinessNewBooking(a, { db, send, now }) {
     db, send, lang);
   }
   const biz = await businessContact(a.businessId, db);
-  if (biz?.email) {
+  if (biz?.email && normalizeSettings(a.businessSettings).notify.email.newBooking) {
     await sendEmail({
       to: biz.email,
       templateKey: 'book_new_booking',
@@ -118,6 +121,9 @@ async function notifyBusinessNewBooking(a, { db, send, now }) {
 
 /** The business changed the booking: confirmed, moved, cancelled, completed. */
 export async function notifyChanged(a, { previousStatus = null, moved = false, db = prisma, send = sendExpoPush, now = new Date() } = {}) {
+  if (a.status === 'CANCELLED' && previousStatus !== 'CANCELLED') await sendBookSms('cancelled', a, { db, now, reason: a.cancelReason });
+  else if (a.status === 'CONFIRMED' && previousStatus === 'PENDING') await sendBookSms('confirm', a, { db, now });
+  else if (moved && ['PENDING', 'CONFIRMED'].includes(a.status)) await sendBookSms('moved', a, { db, now });
   if (!a.clientUserId) return;
   const lang = (await languagesFor(db, [a.clientUserId])).get(String(a.clientUserId)) ?? 'ka';
   const when = formatWhen(a.startsAt, lang, now);
@@ -152,7 +158,7 @@ export async function notifyClientCancelled(a, { late = false, db = prisma, send
     db, send, lang);
   }
   const biz = await businessContact(a.businessId, db);
-  if (biz?.email) {
+  if (biz?.email && normalizeSettings(a.businessSettings).notify.email.cancelled) {
     await sendEmail({
       to: biz.email, templateKey: 'book_cancelled', category: 'transactional', idempotencyKey: `book-cancel-${a.id}`, allowedVars: [], lang: 'ka',
       content: { subject: `ჯავშანი გაუქმდა — ${a.clientName}, ${formatWhen(a.startsAt, 'ka', now)}`, preheader: a.serviceName, heading: 'კლიენტმა ჯავშანი გააუქმა', body: `**${a.clientName}** გააუქმა ${a.serviceName} · **${formatWhen(a.startsAt, 'ka', now)}**${late ? ' (გაუქმების ვადის შემდეგ)' : ''}. დრო კალენდარში ისევ თავისუფალია.`, ctaLabel: 'კალენდრის გახსნა', ctaUrl: 'https://medicard.ge/business/calendar' },
@@ -188,13 +194,24 @@ export async function processBookReminders({ db = prisma, now = new Date(), send
   if (!probe?.ok) return { skipped: 'table' };
   const rows = await dueReminders(now, db);
   let sent = 0;
-  const langs = rows.length ? await languagesFor(db, rows.map((r) => r.clientUserId)) : new Map();
+  let smsSent = 0;
+  const langs = rows.length ? await languagesFor(db, rows.filter((r) => r.clientUserId).map((r) => r.clientUserId)) : new Map();
   for (const a of rows) {
+    const notify = normalizeSettings(a.businessSettings).notify;
     const msUntil = new Date(a.startsAt).getTime() - now.getTime();
-    const soon = msUntil <= 2 * 3600_000;
+    const dayDue = msUntil <= notify.reminderHours * 3600_000;
+    const soonDue = msUntil <= notify.soonHours * 3600_000;
+    // SMS first — people without the app depend on it; its own flags keep every pass idempotent.
+    if (soonDue && !a.smsSoon && smsKindOn(notify, 'soon')) {
+      if (await claimSms(a.id, 'soon', db)) { await claimSms(a.id, 'day', db); if ((await sendBookSms('soon', a, { db, now })).sent) smsSent += 1; }
+    } else if (dayDue && !a.smsDay && smsKindOn(notify, 'day')) {
+      if (await claimSms(a.id, 'day', db)) { if ((await sendBookSms('day', a, { db, now })).sent) smsSent += 1; }
+    }
+    if (!a.clientUserId) continue;
+    const soon = soonDue && notify.push.reminderSoon && !a.remindedSoon;
+    const day = dayDue && notify.push.reminderDay && !a.remindedDay;
+    if (!soon && !day) continue;
     const flag = soon ? 'soon' : 'day';
-    if (!soon && a.remindedDay) continue;
-    if (soon && a.remindedSoon) continue;
     if (!(await claimReminder(a.id, flag, db))) continue;
     if (soon) await claimReminder(a.id, 'day', db);
     const lang = langs.get(String(a.clientUserId)) ?? 'ka';
@@ -213,6 +230,7 @@ export async function processBookReminders({ db = prisma, now = new Date(), send
   const asks = await dueReviewAsks(now, db);
   const askLangs = asks.length ? await languagesFor(db, asks.map((r) => r.clientUserId)) : new Map();
   for (const a of asks) {
+    if (!normalizeSettings(a.businessSettings).notify.push.reviewAsk) { await markReviewAsked(a.id, db); continue; }
     if (!(await markReviewAsked(a.id, db))) continue;
     const lang = askLangs.get(String(a.clientUserId)) ?? 'ka';
     const r = await notifyUser(a.clientUserId, t(lang,
@@ -230,7 +248,7 @@ export async function processBookReminders({ db = prisma, now = new Date(), send
     const dates = Array.from({ length: 7 }, (_, i) => addDaysYmd(today, i));
     for (const businessId of await waitlist.sweepBusinesses({ now }, db)) offered += await offerOpenings({ businessId, dates, db, send, now, minAgeMs: 15 * 60_000 });
   } catch (error) { console.warn('[book] waitlist sweep failed', error?.message); }
-  return { checked: rows.length, asked: asks.length, sent, offered };
+  return { checked: rows.length, asked: asks.length, sent, smsSent, offered };
 }
 
 // ——— waiting list ———
@@ -254,7 +272,10 @@ function waitRoute(row, date) {
 
 /** A time opened up (found by a cancellation, a move, removed time off, the pass, or offered by hand). */
 export async function notifyWaitlistOpening(row, { slot = null, startsAt = null, db = prisma, send = sendExpoPush, now = new Date() } = {}) {
-  if (!row.clientUserId) return { sent: 0 };
+  if (!row.clientUserId) {
+    const r = await sendBookSms('waitlist', { ...row, startsAt: startsAt ?? slot?.startsAt ?? row.offeredStartsAt ?? null }, { db, now });
+    return { sent: r.sent ? 1 : 0 };
+  }
   const lang = (await languagesFor(db, [row.clientUserId])).get(String(row.clientUserId)) ?? 'ka';
   const at = startsAt ?? slot?.startsAt ?? row.offeredStartsAt ?? null;
   const when = at ? formatWhen(at, lang, now) : rangeText(row, lang);

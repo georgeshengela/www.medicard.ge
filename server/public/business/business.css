@@ -295,6 +295,11 @@ body.biz { font-size: 14.5px; }
 .bz-cal-col-head .occ span { display: block; height: 100%; border-radius: 2px; }
 @media (max-width: 760px) { .bz-kpi-spark { display: none; } .bz-kpi:has(.bz-kpi-spark) { padding-right: 16px; } .bz-sources { flex-direction: column; align-items: flex-start; } }
 
+/* Notifications card (settings): section labels and SMS previews */
+.bz-section-label { font-size: 12.5px; color: var(--text3); margin-top: 6px; padding-bottom: 4px; border-bottom: 1px solid var(--line); }
+.bz-sms-preview { display: grid; gap: 6px; font-size: 13px; }
+.bz-sms-bubble { padding: 8px 12px; border-radius: 12px; border: 1px solid var(--line); border-left: 3px solid var(--book-line); color: var(--text); line-height: 1.4; }
+
 /* Several services in one booking (new-booking dialog + drawer) */
 .bz-svc-pick { display: flex; flex-direction: column; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; max-height: 232px; overflow-y: auto; }
 .bz-svc-row { display: grid; grid-template-columns: 18px 1fr auto; align-items: center; gap: 10px; padding: 9px 12px; cursor: pointer; font-size: 14px; border-top: 1px solid var(--line); }

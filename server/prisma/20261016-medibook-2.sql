@@ -46,3 +46,7 @@ CREATE TABLE IF NOT EXISTS "BookWaitlist" (
 );
 CREATE INDEX IF NOT EXISTS "BookWaitlist_business_status" ON "BookWaitlist"("businessId", status, "fromDate");
 CREATE INDEX IF NOT EXISTS "BookWaitlist_client_user" ON "BookWaitlist"("clientUserId", status);
+
+-- SMS reminders: which SMS already went out for a booking (push keeps remindedDay / remindedSoon).
+ALTER TABLE "BookAppointment" ADD COLUMN IF NOT EXISTS "smsDay" BOOLEAN NOT NULL DEFAULT FALSE;
+ALTER TABLE "BookAppointment" ADD COLUMN IF NOT EXISTS "smsSoon" BOOLEAN NOT NULL DEFAULT FALSE;

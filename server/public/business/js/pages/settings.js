@@ -3,7 +3,7 @@ import { h, mount, icon, button, pageHead, card, input, textarea, field, select,
 import { get, request } from '/app/js/api.js';
 import { t } from '/app/js/i18n.js';
 import { state, loadState } from '../state.js';
-import { biz, CATEGORIES, hoursEditor, loadMapbox, fail, ok } from '../shared.js';
+import { biz, CATEGORIES, hoursEditor, loadMapbox, fail, ok, emptyBox } from '../shared.js';
 
 export default async function settingsPage(root, ctx) {
   const data = await biz.get('');
@@ -96,6 +96,9 @@ export default async function settingsPage(root, ctx) {
   const saveSettings = async (patch) => { try { await biz.patch('', { settings: patch }); ok(t('შენახულია', 'Saved')); } catch (e) { fail(e); } };
   const saveRules = button(t('შენახვა', 'Save'), { onClick: () => busy(saveRules, () => saveSettings({ slotMinutes: Number(slot.value), leadMinutes: Number(lead.value), horizonDays: Number(horizon.value), cancelHours: Number(cancelHours.value), bookingNote: bookingNote.value.trim() })) });
 
+  const notifHost = h('div');
+  void paintNotifications(notifHost, b);
+
   mount(root,
     pageHead(t('პარამეტრები', 'Settings'), t('რას ხედავს კლიენტი აპში და როგორ იწერება.', 'What the client sees in the app and how booking works.')),
     b.status === 'PENDING' ? h('div', { class: 'bz-banner is-warn' }, icon('clock', { size: 20 }), h('p', null, h('b', null, t('ბიზნესი განიხილება', 'Under review')), t('ყველაფერი, რასაც აქ შეავსებ, დადასტურების მომენტში აპში გამოჩნდება.', 'Everything you fill in here goes live in the app the moment it is approved.'))) : null,
@@ -126,6 +129,7 @@ export default async function settingsPage(root, ctx) {
               h('div', { class: 'form-row' }, field(t('რამდენი დღით ადრე', 'How far ahead'), horizon), field(t('უფასო გაუქმება', 'Free cancellation'), cancelHours)),
               field(t('შენიშვნა ჯავშნის წინ', 'Note before booking'), bookingNote),
               h('div', { style: { display: 'flex', justifyContent: 'flex-end' } }, saveRules)))),
+        notifHost,
         card(h('div', { class: 'card-title', style: { marginBottom: '8px' } }, t('სტატუსი', 'Status')),
           h('dl', { class: 'bz-kv' },
             h('dt', null, t('აპში', 'In the app')), h('dd', null, b.status === 'CLAIMED' ? h('span', { class: 'badge badge-ok' }, t('ჩართულია', 'Live')) : b.status === 'PENDING' ? h('span', { class: 'badge badge-warn' }, t('განიხილება', 'Under review')) : h('span', { class: 'badge badge-neutral' }, b.status)),
@@ -134,4 +138,52 @@ export default async function settingsPage(root, ctx) {
           h('p', { class: 'bz-note', style: { marginTop: '10px' } }, t('ბიზნესის დახურვა ან კატალოგიდან მოხსნა — support@medicard.ge.', 'To close the business or remove it from the catalogue, write to support@medicard.ge.'))))));
   await paintPhotos();
   void reload;
+}
+
+/**
+ * What the clients get: reminders in the app (hours ahead, on/off), SMS for people without the app (off until the
+ * business turns it on; a monthly cap and this month's count), emails to the business. Every switch saves at once.
+ */
+async function paintNotifications(host, b) {
+  mount(host, card(h('div', { class: 'skeleton-card' }, h('div', { class: 'sk' }), h('div', { class: 'sk' }))));
+  let data;
+  try { data = await biz.get('/notifications'); } catch (e) { mount(host, card(emptyBox(t('შეტყობინებები ვერ ჩაიტვირთა', 'Notifications could not load'), e?.message))); return; }
+  let notify = data.notify;
+  const save = async (mutate) => {
+    mutate(notify);
+    try { const res = await biz.patch('', { settings: { notify } }); notify = res.business.settings.notify; ok(t('შენახულია', 'Saved')); } catch (e) { fail(e); }
+    render();
+  };
+  const row = (title, sub, control) => h('div', { class: 'bz-muted-row' }, h('div', null, h('b', null, title), sub ? h('div', { class: 'faint' }, sub) : null), control);
+  const sel = (options, value, onChange) => select(options.map(([v, l]) => ({ value: v, label: l })), value, { class: 'input select', style: { width: 'auto' }, onChange: (e) => onChange(Number(e.target.value)) });
+  const label = (text) => h('div', { class: 'bz-section-label' }, text);
+  function render() {
+    const { push, sms, email } = notify;
+    const u = data.usage;
+    mount(host, card(
+      h('div', { class: 'card-head' }, h('div', null, h('div', { class: 'card-title' }, t('შეტყობინებები კლიენტებს', 'Client notifications')), h('div', { class: 'card-sub' }, t('აპის მომხმარებლებს push მიდის; ვისაც აპი არ აქვს — SMS, როცა ჩართავ.', 'App users get pushes; people without the app get SMS once you turn it on.')))),
+      h('div', { style: { display: 'grid', gap: '10px' } },
+        label(t('შეხსენებები აპში', 'Reminders in the app')),
+        row(t('წინა დღით', 'The day before'), t('რამდენი საათით ადრე', 'How many hours ahead'), h('div', { class: 'bz-inline' }, sel([[12, t('12 სთ', '12 h')], [24, t('24 სთ', '24 h')], [48, t('48 სთ', '48 h')]], notify.reminderHours, (v) => save((n) => { n.reminderHours = v; })), toggle(push.reminderDay, (on) => save((n) => { n.push.reminderDay = on; })))),
+        row(t('ვიზიტის წინ', 'Shortly before the visit'), t('რამდენი საათით ადრე', 'How many hours ahead'), h('div', { class: 'bz-inline' }, sel([[1, t('1 სთ', '1 h')], [2, t('2 სთ', '2 h')], [3, t('3 სთ', '3 h')]], notify.soonHours, (v) => save((n) => { n.soonHours = v; })), toggle(push.reminderSoon, (on) => save((n) => { n.push.reminderSoon = on; })))),
+        row(t('შეფასების თხოვნა ვიზიტის შემდეგ', 'Ask for a review after the visit'), null, toggle(push.reviewAsk, (on) => save((n) => { n.push.reviewAsk = on; }))),
+        label('SMS'),
+        row(t('SMS შეტყობინებები', 'SMS notifications'), data.smsAvailable
+          ? t(`MEDICARD-ის სახელით, თვეში ${sms.monthlyCap}-მდე. ამ თვეში გაგზავნილია ${u.sent}${u.failed ? `, ვერ გაიგზავნა ${u.failed}` : ''}.`, `Sent as MEDICARD, up to ${sms.monthlyCap} a month. This month: ${u.sent} sent${u.failed ? `, ${u.failed} failed` : ''}.`)
+          : t('SMS არხი დროებით გამორთულია.', 'The SMS channel is off for now.'), toggle(sms.enabled, (on) => save((n) => { n.sms.enabled = on; }))),
+        sms.enabled ? [
+          row(t('მხოლოდ მათ, ვისაც აპი არ აქვს', 'Only to people without the app'), t('აპის მომხმარებელს push საკმარისია; გამორთე და ყველას SMS-იც მივა.', 'A push is enough for app users; turn this off and everyone gets SMS too.'), toggle(sms.onlyWithoutApp, (on) => save((n) => { n.sms.onlyWithoutApp = on; }))),
+          row(t('ჯავშნის დადასტურება', 'Booking confirmed'), null, toggle(sms.confirm, (on) => save((n) => { n.sms.confirm = on; }))),
+          row(t('შეხსენება წინა დღით', 'Reminder the day before'), null, toggle(sms.reminderDay, (on) => save((n) => { n.sms.reminderDay = on; }))),
+          row(t('შეხსენება ვიზიტის წინ', 'Reminder shortly before'), null, toggle(sms.reminderSoon, (on) => save((n) => { n.sms.reminderSoon = on; }))),
+          row(t('გაუქმება და გადატანა', 'Cancellations and moves'), null, toggle(sms.changes, (on) => save((n) => { n.sms.changes = on; }))),
+          row(t('მოლოდინის სია — გათავისუფლებული დრო', 'Waiting list — a time opened up'), null, toggle(sms.waitlist, (on) => save((n) => { n.sms.waitlist = on; }))),
+          row(t('თვიური ლიმიტი', 'Monthly limit'), t('ლიმიტის შემდეგ SMS ჩერდება, push და ელფოსტა — არა.', 'Past the limit SMS stops; pushes and emails do not.'), sel([[50, '50'], [100, '100'], [200, '200'], [500, '500'], [1000, '1000']], sms.monthlyCap, (v) => save((n) => { n.sms.monthlyCap = v; }))),
+          h('div', { class: 'bz-sms-preview' }, h('div', { class: 'faint' }, t('როგორ გამოიყურება:', 'What it looks like:')), ['confirm', 'day', 'cancelled'].map((k) => h('div', { class: 'bz-sms-bubble' }, data.samples[k]))),
+        ] : null,
+        label(t('ელფოსტა ბიზნესს', 'Email to the business')),
+        row(t('ახალი ჯავშანი', 'New booking'), b.email || t('ელფოსტა საჯარო გვერდზე მიუთითე', 'Set an email on the public page'), toggle(email.newBooking, (on) => save((n) => { n.email.newBooking = on; }))),
+        row(t('გაუქმება კლიენტის მხრიდან', 'Cancellation by the client'), null, toggle(email.cancelled, (on) => save((n) => { n.email.cancelled = on; }))))));
+  }
+  render();
 }

@@ -18,6 +18,7 @@ import * as bookings from '../lib/book/bookings.js';
 import { buildAnalytics, periodFor } from '../lib/book/analytics.js';
 import { notifyBooked, notifyChanged, notifyWaitlistAdded, notifyWaitlistOpening, offerOpenings } from '../lib/book/push.js';
 import * as waitlist from '../lib/book/waitlist.js';
+import * as bookSms from '../lib/book/sms.js';
 import { prisma } from '../lib/prisma.js';
 import { addDaysYmd, isYmd, tbilisiInstant, tbilisiYmd } from '../lib/book/time.js';
 
@@ -161,8 +162,14 @@ businessRouter.patch('/:businessId', member(MANAGE), asyncHandler(async (req, re
   }
   if (input.photoIds !== undefined) patch.photos = (Array.isArray(input.photoIds) ? input.photoIds : []).map(String).filter((id) => own.has(id)).slice(0, 24);
   if (patch.settings) {
-    const current = await store.businessRow(req.params.businessId);
-    patch.settings = normalizeSettings({ ...normalizeSettings(current?.settings), ...input.settings });
+    const current = normalizeSettings((await store.businessRow(req.params.businessId))?.settings);
+    const next = { ...current, ...input.settings };
+    // notify is nested: a partial patch keeps what it does not mention.
+    if (input.settings?.notify && typeof input.settings.notify === 'object') {
+      const n = input.settings.notify;
+      next.notify = { ...current.notify, ...n, push: { ...current.notify.push, ...(n.push ?? {}) }, sms: { ...current.notify.sms, ...(n.sms ?? {}) }, email: { ...current.notify.email, ...(n.email ?? {}) } };
+    }
+    patch.settings = normalizeSettings(next);
   }
   const row = await store.updateBusiness(req.params.businessId, patch);
   res.json({ business: await store.businessDetail(row.id, { lang: lang(req), includeHidden: true }) });
@@ -280,7 +287,7 @@ businessRouter.post('/:businessId/appointments', member(ALL), asyncHandler(async
   const staffId = req.member.role === 'STAFF' && req.member.staffId ? req.member.staffId : body.staffId ?? null;
   const row = await bookings.createAppointment({ businessId: req.params.businessId, serviceId: body.serviceId, serviceIds: body.serviceIds, staffId, startsAt: body.startsAt, note: body.note ?? null, user, clientName, clientPhone, byBusiness: true, force: Boolean(body.force) });
   if (body.internalNote) await bookings.updateByBusiness({ businessId: req.params.businessId, id: row.id, patch: { internalNote: body.internalNote }, actorUserId: req.user.id });
-  if (row.clientUserId) notifyBooked(row).catch(() => undefined);
+  notifyBooked(row).catch(() => undefined);
   waitlist.markBooked({ businessId: req.params.businessId, userId: row.clientUserId, clientId: row.clientId, appointmentId: row.id, startsAt: row.startsAt, serviceIds: [row.serviceId, ...(Array.isArray(row.items) ? row.items.map((i) => i.id) : [])] }).catch(() => undefined);
   res.status(201).json({ appointment: bookings.appointmentPublic(await bookings.appointmentRow(row.id)) });
 }));
@@ -311,7 +318,8 @@ businessRouter.patch('/:businessId/appointments/:id', member(ALL), asyncHandler(
     delete patch.paidAmount;
   }
   const result = await bookings.updateByBusiness({ businessId: req.params.businessId, id: req.params.id, patch, actorUserId: req.user.id });
-  if (result.row.clientUserId && (result.moved || result.statusChanged)) notifyChanged(result.row, { previousStatus: result.previousStatus, moved: result.moved }).catch(() => undefined);
+  // The client push is skipped inside for walk-ins; the SMS (people without the app) must still go out.
+  if (result.moved || result.statusChanged) notifyChanged(result.row, { previousStatus: result.previousStatus, moved: result.moved }).catch(() => undefined);
   // A cancelled or moved booking frees its old day: offer it to the waiting list before answering, so the
   // panel can say how many people were told.
   let waitlistOffered = 0;
@@ -319,6 +327,15 @@ businessRouter.patch('/:businessId/appointments/:id', member(ALL), asyncHandler(
     waitlistOffered = await offerOpenings({ businessId: req.params.businessId, dates: [tbilisiYmd(new Date(result.previousStartsAt ?? result.row.startsAt))] });
   }
   res.json({ appointment: bookings.appointmentPublic(result.row), waitlistOffered });
+}));
+
+// notifications: what the clients get (push / SMS / email), this month's SMS usage, sample texts
+businessRouter.get('/:businessId/notifications', member(MANAGE), asyncHandler(async (req, res) => {
+  const row = await store.businessRow(req.params.businessId);
+  const settings = normalizeSettings(row?.settings);
+  const [svc] = await prisma.$queryRaw`SELECT name, "nameKa" FROM "BookService" WHERE "businessId" = ${req.params.businessId} AND active ORDER BY "sortOrder" LIMIT 1`;
+  const usage = await bookSms.smsUsage(req.params.businessId);
+  res.json({ notify: settings.notify, usage: { ...usage, cap: settings.notify.sms.monthlyCap }, samples: bookSms.sampleTexts(row ?? {}, svc?.nameKa || svc?.name || 'სერვისი'), smsAvailable: process.env.BOOK_SMS_DISABLED !== 'true' });
 }));
 
 // waiting list
