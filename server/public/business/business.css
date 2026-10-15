@@ -295,6 +295,54 @@ body.biz { font-size: 14.5px; }
 .bz-cal-col-head .occ span { display: block; height: 100%; border-radius: 2px; }
 @media (max-width: 760px) { .bz-kpi-spark { display: none; } .bz-kpi:has(.bz-kpi-spark) { padding-right: 16px; } .bz-sources { flex-direction: column; align-items: flex-start; } }
 
+/* List kit: filters, chips with counts, pager, day rows, row actions, sortable heads */
+.bz-filters { display: grid; gap: 10px; margin: 0 0 14px; }
+.bz-filters-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.bz-filters-row .spacer { flex: 1; }
+.bz-filters-count { font-size: 13px; color: var(--text2); white-space: nowrap; }
+.bz-search { max-width: 320px; min-width: 200px; flex: 1; }
+.bz-h2 { font-size: 18px; letter-spacing: -.01em; margin: 24px 0 12px; }
+.bz-table-rows td { padding: 10px 12px; }
+.bz-table-rows tbody tr { height: 56px; }
+.bz-table tr.is-muted td { opacity: .6; }
+.bz-table tr.is-muted .bz-cell-main span { text-decoration: line-through; }
+.bz-cell-main { min-width: 0; }
+.bz-cell-main b { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 260px; }
+.bz-cell-time b { display: block; font-variant-numeric: tabular-nums; font-size: 14px; }
+.bz-day-row td { background: var(--bg); padding: 7px 12px; font-size: 12.5px; color: var(--text2); border-bottom: 1px solid var(--line); }
+.bz-day-row b { color: var(--text); margin-right: 8px; }
+.bz-src { color: var(--text3); display: inline-flex; }
+.bz-table-rows td .bz-inline { flex-wrap: nowrap; white-space: nowrap; }
+.bz-table-rows .badge { white-space: nowrap; }
+.bz-next { color: var(--book-ink); font-weight: 600; }
+.bz-row-actions { display: inline-flex; gap: 2px; justify-content: flex-end; opacity: 0; transition: opacity .12s; }
+.bz-table tr:hover .bz-row-actions, .bz-table tr:focus-within .bz-row-actions { opacity: 1; }
+@media (hover: none) { .bz-row-actions { opacity: 1; } }
+.bz-row-act { width: 32px; height: 32px; padding: 0 !important; justify-content: center; }
+.bz-row-act.is-ok { color: var(--ok); }
+.bz-row-act.is-bad { color: var(--danger); }
+.bz-sort button { border: 0; background: none; font: inherit; color: inherit; cursor: pointer; padding: 0; display: inline-flex; align-items: center; gap: 4px; }
+.bz-sort.on button { color: var(--text); }
+.bz-sort .arrow { font-size: 11px; width: 10px; display: inline-block; }
+.bz-sort button:hover { color: var(--text); }
+.bz-tag-app { margin-left: 6px; color: var(--book-ink); border: 1px solid var(--book-2); background: transparent; }
+.bz-tag-ok { color: var(--ok); background: var(--ok-bg); }
+.bz-tag-warn { color: var(--warn); background: var(--warn-bg); }
+.bz-pager { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 12px 16px; border-top: 1px solid var(--line); font-size: 13px; color: var(--text2); }
+.bz-pager .spacer { flex: 1; }
+.bz-pager-pages { display: inline-flex; gap: 4px; align-items: center; }
+.bz-page { min-width: 32px; height: 32px; border-radius: 9px; border: 1px solid transparent; background: transparent; font: inherit; font-size: 13px; color: var(--text2); cursor: pointer; display: inline-flex; align-items: center; justify-content: center; padding: 0 6px; font-variant-numeric: tabular-nums; }
+.bz-page:hover { background: var(--bg); color: var(--text); }
+.bz-page.on { border-color: var(--book-2); color: var(--book-ink); font-weight: 700; }
+.bz-page:disabled { opacity: .35; cursor: default; background: transparent; }
+.bz-page-gap { color: var(--text3); padding: 0 2px; }
+.bz-pager-size { width: auto; padding: 6px 28px 6px 10px; font-size: 12.5px; }
+.bz-week-dots { display: inline-flex; gap: 3px; }
+.bz-week-dots i { width: 8px; height: 8px; border-radius: 50%; background: var(--bg3); display: inline-block; }
+.bz-review.is-low { border-left: 3px solid var(--danger); padding-left: 10px; }
+.bz-review .meta b { color: var(--text); }
+@media (max-width: 760px) { .bz-search { max-width: none; } .bz-pager { padding: 10px 12px; } .bz-cell-main b { max-width: 150px; } }
+
 /* Hours editor */
 .bz-hours { display: flex; flex-direction: column; gap: 6px; }
 .bz-hours-row { display: grid; grid-template-columns: 1fr auto auto auto; align-items: center; gap: 8px; }

@@ -2,7 +2,8 @@
 import { h, mount, icon, button, pageHead, card, input, field, select, busy, openModal, confirmDialog, badge } from '/app/js/ui.js';
 import { t } from '/app/js/i18n.js';
 import { meters } from '/app/js/charts.js';
-import { biz, avatar, hoursEditor, emptyBox, fail, ok, roleLabel, ROLES, gel, pct } from '../shared.js';
+import { biz, avatar, hoursEditor, emptyBox, fail, ok, roleLabel, ROLES, gel, pct, WEEKDAYS_SHORT, debounceFn } from '../shared.js';
+import { chips, filterBar } from '../lists.js';
 import { canManage, isOwner, state } from '../state.js';
 
 const PALETTE = ['#0EA5E9', '#8B5CF6', '#F59E0B', '#EC4899', '#14B8A6', '#6366F1', '#EF4444', '#0D9488', '#A855F7', '#F97316'];
@@ -10,15 +11,33 @@ const PALETTE = ['#0EA5E9', '#8B5CF6', '#F59E0B', '#EC4899', '#14B8A6', '#6366F1
 export default async function teamPage(root) {
   const host = h('div');
   const membersHost = h('div');
+  const chipsHost = h('div');
+  const count = h('span', { class: 'bz-filters-count' });
   const manage = canManage();
+  let q = '';
+  let only = '';
+  let sortBy = 'load';
+  let cache = null;
 
-  async function paint() {
-    mount(host, h('div', { class: 'skeleton-card' }, h('div', { class: 'sk' }), h('div', { class: 'sk' })));
+  async function paint(fresh = true) {
+    if (fresh || !cache) {
+      mount(host, h('div', { class: 'skeleton-card' }, h('div', { class: 'sk' }), h('div', { class: 'sk' })));
+      try {
+        const [{ staff }, { services }, analytics] = await Promise.all([biz.get('/staff'), biz.get('/services'), manage ? biz.get('/analytics', { range: '30' }).catch(() => null) : Promise.resolve(null)]);
+        cache = { staff, services, analytics };
+      } catch (e) { mount(host, card(emptyBox(t('ვერ ჩაიტვირთა', 'Could not load'), e?.message))); return; }
+    }
     try {
-      const [{ staff }, { services }, analytics] = await Promise.all([biz.get('/staff'), biz.get('/services'), manage ? biz.get('/analytics', { range: '30' }).catch(() => null) : Promise.resolve(null)]);
+      const { staff, services, analytics } = cache;
       const load = new Map((analytics?.utilisation || []).map((u) => [u.staffId, u]));
-      const active = staff.filter((s) => s.active);
-      if (!active.length) { mount(host, card(emptyBox(t('გუნდი ჯერ ცარიელია', 'No team yet'), t('დაამატე ყველა, ვინც კლიენტებს იღებს — თავისი სამუშაო საათებით. თავისუფალი დროები მათგან ითვლება.', 'Add everyone who sees clients — with their own hours. Free slots are computed from them.'), manage ? button(t('თანამშრომლის დამატება', 'Add a person'), { icon: 'userPlus', onClick: () => staffDialog(null, services, staff, paint) }) : null))); return; }
+      const everyone = staff.filter((s) => s.active);
+      const term = q.trim().toLowerCase();
+      mount(chipsHost, chips([['', t('ყველა', 'All'), everyone.length], ['bookable', t('იწერება აპიდან', 'Bookable'), everyone.filter((s) => s.bookable).length], ['own', t('საკუთარი გრაფიკით', 'Own hours'), everyone.filter((s) => Object.values(s.schedule || {}).some((l) => l.length)).length]], only, (v) => { only = v; paint(false); }));
+      const active = everyone.filter((s) => (only === 'bookable' ? s.bookable : only === 'own' ? Object.values(s.schedule || {}).some((l) => l.length) : true) && (!term || `${s.name} ${s.title || ''}`.toLowerCase().includes(term)))
+        .sort((a, b) => (sortBy === 'name' ? a.name.localeCompare(b.name, 'ka') : sortBy === 'bookings' ? (load.get(b.id)?.appointments ?? 0) - (load.get(a.id)?.appointments ?? 0) : (load.get(b.id)?.utilisation ?? -1) - (load.get(a.id)?.utilisation ?? -1)));
+      count.textContent = t(`${active.length} ადამიანი`, `${active.length} ${active.length === 1 ? 'person' : 'people'}`);
+      if (!everyone.length) { mount(host, card(emptyBox(t('გუნდი ჯერ ცარიელია', 'No team yet'), t('დაამატე ყველა, ვინც კლიენტებს იღებს — თავისი სამუშაო საათებით. თავისუფალი დროები მათგან ითვლება.', 'Add everyone who sees clients — with their own hours. Free slots are computed from them.'), manage ? button(t('თანამშრომლის დამატება', 'Add a person'), { icon: 'userPlus', onClick: () => staffDialog(null, services, staff, paint) }) : null))); return; }
+      if (!active.length) { mount(host, card(emptyBox(t('ვერაფერი მოიძებნა', 'Nothing found'), t('შეცვალე ძებნა ან ფილტრი.', 'Change the search or the filter.')))); return; }
       mount(host, h('div', { class: 'bz-grid-3' }, active.map((p) => {
         const mine = p.serviceIds.length ? services.filter((s) => p.serviceIds.includes(s.id)) : services.filter((s) => s.active);
         const days = [1, 2, 3, 4, 5, 6, 0].filter((d) => (p.schedule?.[String(d)] || []).length);
@@ -28,7 +47,8 @@ export default async function teamPage(root) {
             badge(p.bookable ? t('იწერება', 'Bookable') : t('არ იწერება', 'Not bookable'), p.bookable ? 'ok' : 'neutral')),
           h('div', { style: { marginTop: '12px', fontSize: '13.5px' } },
             h('div', { class: 'bz-sub' }, t('სერვისები: ', 'Services: '), h('span', { style: { color: 'var(--text)' } }, p.serviceIds.length ? mine.map((s) => s.name).join(', ') : t('ყველა', 'All'))),
-            h('div', { class: 'bz-sub', style: { marginTop: '4px' } }, t('გრაფიკი: ', 'Hours: '), h('span', { style: { color: 'var(--text)' } }, days.length ? t(`${days.length} დღე კვირაში`, `${days.length} days a week`) : t('ბიზნესის საათები', 'Business hours')))),
+            h('div', { class: 'bz-sub bz-inline', style: { marginTop: '6px', gap: '10px' } }, h('span', null, t('გრაფიკი: ', 'Hours: '), h('span', { style: { color: 'var(--text)' } }, days.length ? t(`${days.length} დღე კვირაში`, `${days.length} days a week`) : t('ბიზნესის საათები', 'Business hours'))),
+              days.length ? h('span', { class: 'bz-week-dots', 'aria-hidden': 'true' }, [1, 2, 3, 4, 5, 6, 0].map((d) => h('i', { class: days.includes(d) ? 'on' : '', title: `${WEEKDAYS_SHORT[d]} ${(p.schedule?.[String(d)] || []).map((r) => `${r.from}–${r.to}`).join(', ') || '—'}`, style: days.includes(d) ? { background: p.color || 'var(--book)' } : {} }))) : null)),
           load.get(p.id) ? h('div', { style: { marginTop: '12px' } },
             meters([{ name: t('დატვირთვა · 30 დღე', 'Load · 30 days'), value: load.get(p.id).utilisation ?? 0, max: 100, right: load.get(p.id).utilisation == null ? '—' : pct(load.get(p.id).utilisation), color: p.color || 'var(--book)' }]),
             h('div', { class: 'bz-note', style: { marginTop: '6px' } }, t(`${load.get(p.id).appointments} ჯავშანი · ${load.get(p.id).completed} დასრულდა · ${gel(load.get(p.id).revenue)}`, `${load.get(p.id).appointments} bookings · ${load.get(p.id).completed} done · ${gel(load.get(p.id).revenue)}`))) : null,
@@ -57,9 +77,14 @@ export default async function teamPage(root) {
     } catch { mount(membersHost); }
   }
 
+  const search = input({ type: 'search', placeholder: t('სახელი, პოზიცია…', 'Name, title…'), class: 'input bz-search' });
+  search.addEventListener('input', debounceFn(() => { q = search.value; paint(false); }, 200));
   mount(root,
     pageHead(t('გუნდი', 'Team'), t('ვინ იღებს კლიენტებს და როდის; ვის აქვს პანელზე წვდომა.', 'Who sees clients and when; who can open the panel.'),
       manage ? button(t('თანამშრომლის დამატება', 'Add a person'), { icon: 'userPlus', onClick: async () => { const [{ services }, { staff }] = await Promise.all([biz.get('/services'), biz.get('/staff')]); staffDialog(null, services, staff, paint); } }) : null),
+    filterBar(h('div', { class: 'bz-filters-row' }, search, chipsHost,
+      select([{ value: 'load', label: t('დატვირთვით', 'By load') }, { value: 'bookings', label: t('ჯავშნებით', 'By bookings') }, { value: 'name', label: t('სახელით', 'By name') }], sortBy, { onChange: (e) => { sortBy = e.target.value; paint(false); }, style: { maxWidth: '170px' } }),
+      h('span', { class: 'spacer' }), count)),
     host, h('div', { style: { height: '16px' } }), membersHost);
   await Promise.all([paint(), paintMembers()]);
 }

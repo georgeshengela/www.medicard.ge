@@ -2,7 +2,7 @@ import React, { useEffect, useMemo } from 'react';
 import { Pressable, RefreshControl, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ChevronRight, Heart, LocateFixed, Map as MapIcon, Plus, Search, Store } from 'lucide-react-native';
+import { CalendarCheck, ChevronRight, Heart, LocateFixed, Map as MapIcon, Plus, Search, Store } from 'lucide-react-native';
 import { ModuleHeader, ModuleHeaderButton } from '@/components/brand/ModuleHeader';
 import { HomeSectionHeading } from '@/components/home/HomeSectionHeading';
 import { AppointmentRow, BookHero, BusinessRow, CategoryChips, FlatCard, useBookOrigin } from '@/components/book/BookUI';
@@ -81,13 +81,26 @@ export default function BookHubScreen() {
         <Text style={[hubText.body, { color: c.text300, flex: 1 }]}>{tx('სტომატოლოგი, მანიკური, მასაჟი, კლინიკა…', 'Dentist, manicure, massage, clinic…')}</Text>
       </Pressable>
 
+      <Pressable accessibilityRole="button" onPress={() => router.push('/book/appointments' as never)} style={[s.manual, { backgroundColor: c.surface, marginTop: 10 }]}>
+        <View style={[s.tile, { borderWidth: 1.5, borderColor: c.primary100 }]}>
+          <CalendarCheck size={18} color={c.primary100} strokeWidth={2.1} />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={[hubText.cardTitle, { color: c.text100 }]}>{tx('ჩემი ჯავშნები', 'My bookings')}</Text>
+          <Text style={[hubText.caption, { color: c.text200 }]}>
+            {mine.data ? (upcoming.length ? tx(`${upcoming.length} მომავალი · ${past.length} წარსული`, `${upcoming.length} ahead · ${past.length} past`) : past.length ? tx(`მომავალი არ არის · ${past.length} წარსული`, `Nothing ahead · ${past.length} past`) : tx('ჯერ არაფერია — ჩაეწერე პირველად', 'Nothing yet — make your first booking')) : tx('იტვირთება…', 'Loading…')}
+          </Text>
+        </View>
+        <ChevronRight size={17} color={c.text300} />
+      </Pressable>
+
       <View style={{ marginTop: 14 }}>
         <CategoryChips value={null} onChange={openCategory} all={false} />
       </View>
 
-      {upcoming.length > 1 || (upcoming.length === 1 && false) ? (
+      {upcoming.length > 1 ? (
         <View style={{ marginTop: HUB.sectionGap }}>
-          <HomeSectionHeading title={tx('მომავალი ჯავშნები', 'Upcoming bookings')} />
+          <HomeSectionHeading title={tx('მომავალი ჯავშნები', 'Upcoming bookings')} linkLabel={tx('ყველა', 'All')} onLink={() => router.push('/book/appointments' as never)} />
           <FlatCard>
             {upcoming.slice(1, 6).map((a, i) => <AppointmentRow key={a.id} appointment={a} first={i === 0} onPress={() => openAppointment(a)} />)}
           </FlatCard>
@@ -167,7 +180,7 @@ export default function BookHubScreen() {
 
       {past.length ? (
         <View style={{ marginTop: HUB.sectionGap }}>
-          <HomeSectionHeading title={tx('წარსული', 'Past')} />
+          <HomeSectionHeading title={tx('წარსული', 'Past')} linkLabel={tx('ყველა', 'All')} onLink={() => router.push('/book/appointments' as never)} />
           <FlatCard>
             {past.slice(0, 4).map((a, i) => <AppointmentRow key={a.id} appointment={a} first={i === 0} onPress={() => openAppointment(a)} />)}
           </FlatCard>

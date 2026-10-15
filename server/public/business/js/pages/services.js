@@ -1,19 +1,37 @@
 // MEDIBOOK business panel — services: what can be booked, with price, duration and who performs it.
 import { h, mount, icon, button, pageHead, card, input, textarea, field, busy, openModal, confirmDialog, toggle, badge } from '/app/js/ui.js';
 import { t } from '/app/js/i18n.js';
-import { biz, gel, minutes, emptyBox, fail, ok } from '../shared.js';
+import { biz, gel, minutes, emptyBox, fail, ok, debounceFn } from '../shared.js';
 import { canManage } from '../state.js';
+import { chips, filterBar } from '../lists.js';
 
 export default async function servicesPage(root) {
   const host = h('div');
+  const chipsHost = h('div');
+  const groupHost = h('div');
+  const count = h('span', { class: 'bz-filters-count' });
   const manage = canManage();
+  let q = '';
+  let online = '';
+  let group = '';
+  let cache = null;
 
-  async function paint() {
-    mount(host, h('div', { class: 'skeleton-card' }, h('div', { class: 'sk' }), h('div', { class: 'sk' })));
+  async function paint(fresh = true) {
+    if (fresh || !cache) {
+      mount(host, h('div', { class: 'skeleton-card' }, h('div', { class: 'sk' }), h('div', { class: 'sk' })));
+      try { const [{ services }, { staff }] = await Promise.all([biz.get('/services'), biz.get('/staff')]); cache = { services, staff }; } catch (e) { mount(host, card(emptyBox(t('ვერ ჩაიტვირთა', 'Could not load'), e?.message))); return; }
+    }
     try {
-      const [{ services }, { staff }] = await Promise.all([biz.get('/services'), biz.get('/staff')]);
-      const active = services.filter((s) => s.active);
-      if (!active.length) { mount(host, card(emptyBox(t('სერვისები ჯერ არ არის', 'No services yet'), t('აპში სწორედ სერვისები ჩანს „ჩაწერა“-ს ღილაკით. დაამატე პირველი — სახელი, ხანგრძლივობა, ფასი.', 'Services are what the app shows with a Book button. Add the first — name, duration, price.'), manage ? button(t('სერვისის დამატება', 'Add a service'), { icon: 'plus', onClick: () => serviceDialog(null, staff, paint) }) : null))); return; }
+      const { services, staff } = cache;
+      const everything = services.filter((s) => s.active);
+      const term = q.trim().toLowerCase();
+      const groupsAll = [...new Set(everything.map((s) => s.group || ''))].filter(Boolean);
+      mount(chipsHost, chips([['', t('ყველა', 'All'), everything.length], ['on', t('ონლაინ', 'Online'), everything.filter((s) => s.online).length], ['off', t('მხოლოდ ადგილზე', 'On site only'), everything.filter((s) => !s.online).length]], online, (v) => { online = v; paint(false); }));
+      mount(groupHost, groupsAll.length > 1 ? chips([['', t('ყველა ჯგუფი', 'Every group')], ...groupsAll.map((g) => [g, g, everything.filter((s) => (s.group || '') === g).length])], group, (v) => { group = v; paint(false); }) : null);
+      const active = everything.filter((s) => (online === 'on' ? s.online : online === 'off' ? !s.online : true) && (!group || (s.group || '') === group) && (!term || `${s.name} ${s.nameEn || ''} ${s.group || ''} ${s.description || ''}`.toLowerCase().includes(term)));
+      count.textContent = t(`${active.length} სერვისი`, `${active.length} ${active.length === 1 ? 'service' : 'services'}`);
+      if (!everything.length) { mount(host, card(emptyBox(t('სერვისები ჯერ არ არის', 'No services yet'), t('აპში სწორედ სერვისები ჩანს „ჩაწერა“-ს ღილაკით. დაამატე პირველი — სახელი, ხანგრძლივობა, ფასი.', 'Services are what the app shows with a Book button. Add the first — name, duration, price.'), manage ? button(t('სერვისის დამატება', 'Add a service'), { icon: 'plus', onClick: () => serviceDialog(null, staff, paint) }) : null))); return; }
+      if (!active.length) { mount(host, card(emptyBox(t('ვერაფერი მოიძებნა', 'Nothing found'), t('შეცვალე ძებნა ან ფილტრი.', 'Change the search or the filter.')))); return; }
       const groups = new Map();
       for (const s of active) groups.set(s.group || '', [...(groups.get(s.group || '') || []), s]);
       mount(host, [...groups.entries()].map(([group, list]) => card({ class: 'flush' },
@@ -33,9 +51,12 @@ export default async function servicesPage(root) {
     } catch (e) { mount(host, card(emptyBox(t('ვერ ჩაიტვირთა', 'Could not load'), e?.message))); }
   }
 
+  const search = input({ type: 'search', placeholder: t('სერვისის სახელი, ჯგუფი…', 'Service name, group…'), class: 'input bz-search' });
+  search.addEventListener('input', debounceFn(() => { q = search.value; paint(false); }, 200));
   mount(root,
     pageHead(t('სერვისები', 'Services'), t('სახელი, ხანგრძლივობა, ფასი და ვინ ასრულებს. „ონლაინ“ = კლიენტი აპიდან თავად იწერს.', 'Name, duration, price and who performs it. "Online" = clients book it from the app themselves.'),
       manage ? button(t('სერვისის დამატება', 'Add a service'), { icon: 'plus', onClick: async () => serviceDialog(null, (await biz.get('/staff')).staff, paint) }) : null),
+    filterBar(h('div', { class: 'bz-filters-row' }, search, chipsHost, h('span', { class: 'spacer' }), count), groupHost),
     host);
   await paint();
 }
