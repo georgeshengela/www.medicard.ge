@@ -17,6 +17,7 @@ import type { BookBusinessDetail, BookService } from '@/lib/book/bookTypes';
 import { FRESH, invalidate } from '@/lib/queryClient';
 import { HUB, hubText } from '@/theme/hub';
 import { useIsDark, useThemeColors } from '@/theme/colors';
+import { moduleInk } from '@/theme/moduleBrand';
 
 /**
  * One place: pictures, who they are, call / route / site / share, live discounts, every service with price and
@@ -89,7 +90,7 @@ export default function BusinessScreen() {
   const Icon = cat.icon;
   const todayLine = b ? todayHoursLine(b.hours) : null;
   const gallery = (b?.gallery ?? []).map(imageUri).filter(Boolean) as string[];
-  const ink = dark ? '#F0ABFC' : '#A21CAF';
+  const ink = moduleInk('book', dark);
 
   return (
     <ScrollView contentContainerStyle={{ paddingTop: insets.top + 12, paddingBottom: insets.bottom + 110, paddingHorizontal: HUB.gutter }} showsVerticalScrollIndicator={false}>

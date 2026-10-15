@@ -103,11 +103,12 @@ export const MODULE_BRANDS: Record<ModuleBrandId, ModuleBrand> = {
     gradient: ['#0A1030', '#1B2A66', '#C99A45'], glow: 'rgba(233,199,126,0.32)', onHero: '#F3DDA6',
   },
   // MEDIBOOK (owner 2026-10-15): dental clinics, salons, aesthetic centres and clinics on a map, with online
-  // booking. Fuchsia = the beauty and aesthetics world; distinct from MEDICYCLE rose (redder) and MEDIQUEST violet.
+  // booking. Lime = a free slot on the calendar; yellow-green, so it never reads as MEDIFOOD's blue-green emerald.
+  // (The first pick, fuchsia, the owner rejected the same day.)
   book: {
     id: 'book', suffix: 'BOOK', name: 'MEDIBOOK',
-    ink: { light: '#A21CAF', dark: '#F0ABFC' },
-    gradient: ['#4A044E', '#A21CAF', '#E879F9'], glow: 'rgba(240,171,252,0.35)', onHero: '#FAE8FF',
+    ink: { light: '#4D7C0F', dark: '#BEF264' },
+    gradient: ['#14230A', '#3F6212', '#84CC16'], glow: 'rgba(190,242,100,0.35)', onHero: '#ECFCCB',
   },
   // MEDIPROFILE (owner 2026-10-04): the Profile tab's title. It is the person's own page, not a module,
   // so it keeps the brand teal instead of a signature colour.

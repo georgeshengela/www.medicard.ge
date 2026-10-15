@@ -5,7 +5,7 @@ import { getToken, onTokenChange } from '/app/js/api.js';
 import { t, isEn, lang, setLang } from '/app/js/i18n.js';
 import { loadSession, session, signOut, applyTheme, featureOn } from '/app/js/session.js';
 import { state, loadState, switchBusiness, onState, clearState, canManage, currentId } from './state.js';
-import { avatar } from './shared.js';
+import { avatar, dayLabel } from './shared.js';
 
 const BASE = '/business';
 
@@ -77,11 +77,12 @@ function wordmark() {
   return h('span', { class: 'wordmark' }, 'MEDI', h('b', null, 'BOOK'));
 }
 
-function statusBadge(status) {
-  if (status === 'CLAIMED') return h('span', { class: 'badge badge-ok' }, t('ჩართულია აპში', 'Live in the app'));
-  if (status === 'PENDING') return h('span', { class: 'badge badge-warn' }, t('განიხილება', 'Under review'));
-  if (status === 'HIDDEN') return h('span', { class: 'badge badge-danger' }, t('დამალულია', 'Hidden'));
-  return h('span', { class: 'badge badge-neutral' }, t('კატალოგში', 'Listed'));
+/** One quiet line under the business name: a dot and the state, instead of a badge shouting in the sidebar. */
+function statusLine(status) {
+  if (status === 'CLAIMED') return h('span', { class: 'is-ok' }, h('i'), t('ჩართულია აპში', 'Live in the app'));
+  if (status === 'PENDING') return h('span', { class: 'is-warn' }, h('i'), t('განიხილება', 'Under review'));
+  if (status === 'HIDDEN') return h('span', null, h('i'), t('დამალულია', 'Hidden'));
+  return h('span', null, h('i'), t('კატალოგში', 'Listed'));
 }
 
 function buildShell() {
@@ -92,7 +93,7 @@ function buildShell() {
     : null;
   const side = h('aside', { class: 'side', 'aria-label': t('ნავიგაცია', 'Navigation') },
     h('a', { class: 'side-brand', href: '/', 'data-link': '' }, h('img', { src: '/icon.png', alt: '' }), h('span', null, wordmark(), h('small', null, t('ბიზნესის პანელი', 'Business panel')))),
-    biz ? h('div', { class: 'bz-biz' }, avatar(biz.name, '#A21CAF', 34), h('div', { class: 'who' }, h('b', null, biz.name), h('span', null, statusBadge(biz.status)))) : null,
+    biz ? h('div', { class: 'bz-biz' }, avatar(biz.name, 'var(--book)', 34), h('div', { class: 'who' }, h('b', null, biz.name), statusLine(biz.status))) : null,
     switcher,
     h('nav', { class: 'side-nav' }, nav.map((r) => h('a', { class: 'nav-item', href: r.path, 'data-link': '', 'data-nav': r.path, title: r.title }, icon(r.icon, { size: 20 }), h('span', null, r.title)))),
     h('div', { class: 'side-foot' },
@@ -109,6 +110,7 @@ function buildShell() {
   const top = h('div', { class: 'topbar' },
     h('a', { class: 'mobile-brand', href: '/', 'data-link': '' }, h('img', { src: '/icon.png', alt: '' }), wordmark()),
     crumbEl,
+    h('span', { class: 'bz-today' }, dayLabel(new Date(), { long: true })),
     h('div', { class: 'spacer' }),
     themeBtn,
     langToggle(),

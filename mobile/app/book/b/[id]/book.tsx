@@ -19,6 +19,7 @@ import { isPhoneRequiredError, offerPhoneVerification } from '@/lib/phoneGate';
 import { FRESH, invalidate } from '@/lib/queryClient';
 import { HUB, hubText } from '@/theme/hub';
 import { useIsDark, useThemeColors } from '@/theme/colors';
+import { moduleInk } from '@/theme/moduleBrand';
 
 /**
  * Booking in one page: the service, who (anyone or a chosen person), the day, the time, a note, then confirm.
@@ -45,7 +46,7 @@ export default function BookFlowScreen() {
   const [note, setNote] = useState('');
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState<BookAppointment | null>(null);
-  const ink = dark ? '#F0ABFC' : '#A21CAF';
+  const ink = moduleInk('book', dark);
 
   useEffect(() => {
     if (!service && services.length && !serviceId) setServiceId(services[0].id);

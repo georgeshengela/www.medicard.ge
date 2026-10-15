@@ -4,7 +4,7 @@ import { t } from '/app/js/i18n.js';
 import { biz, avatar, hoursEditor, emptyBox, fail, ok, roleLabel, ROLES } from '../shared.js';
 import { canManage, isOwner, state } from '../state.js';
 
-const PALETTE = ['#A21CAF', '#0EA5E9', '#22C55E', '#F59E0B', '#EC4899', '#6366F1', '#14B8A6', '#EF4444', '#8B5CF6', '#0D9488'];
+const PALETTE = ['#0EA5E9', '#8B5CF6', '#F59E0B', '#EC4899', '#14B8A6', '#6366F1', '#EF4444', '#0D9488', '#A855F7', '#F97316'];
 
 export default async function teamPage(root) {
   const host = h('div');
@@ -22,7 +22,7 @@ export default async function teamPage(root) {
         const days = [1, 2, 3, 4, 5, 6, 0].filter((d) => (p.schedule?.[String(d)] || []).length);
         return card(
           h('div', { class: 'bz-inline', style: { justifyContent: 'space-between', alignItems: 'flex-start' } },
-            h('div', { class: 'bz-inline' }, avatar(p.name, p.color || '#A21CAF', 44), h('div', null, h('div', { class: 'card-title' }, p.name), h('div', { class: 'card-sub' }, p.title || t('თანამშრომელი', 'Staff')))),
+            h('div', { class: 'bz-inline' }, avatar(p.name, p.color || 'var(--book)', 44), h('div', null, h('div', { class: 'card-title' }, p.name), h('div', { class: 'card-sub' }, p.title || t('თანამშრომელი', 'Staff')))),
             badge(p.bookable ? t('იწერება', 'Bookable') : t('არ იწერება', 'Not bookable'), p.bookable ? 'ok' : 'neutral')),
           h('div', { style: { marginTop: '12px', fontSize: '13.5px' } },
             h('div', { class: 'bz-sub' }, t('სერვისები: ', 'Services: '), h('span', { style: { color: 'var(--text)' } }, p.serviceIds.length ? mine.map((s) => s.name).join(', ') : t('ყველა', 'All'))),

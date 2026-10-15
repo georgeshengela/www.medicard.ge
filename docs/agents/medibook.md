@@ -9,8 +9,8 @@ Read this file before working in the area; add new notes here, not in AGENTS.md.
 
 ## Names and rules
 
-- Module **MEDIBOOK** (`book`), brand id `book` in `mobile/src/theme/moduleBrand.ts` (fuchsia `#A21CAF` / `#F0ABFC`;
-  distinct from MEDICYCLE rose and MEDIQUEST violet), tone `book` in `colors.ts`. Feature flag `book` (server
+- Module **MEDIBOOK** (`book`), brand id `book` in `mobile/src/theme/moduleBrand.ts` (lime `#4D7C0F` / `#BEF264` — a free slot on the calendar;
+  the first pick, fuchsia, the owner rejected on day one), tone `book` in `colors.ts`. Feature flag `book` (server
   `FEATURES`, app `FEATURE_KEYS`, admin section „სხვა სივრცეები“). `visits` stays: it gates the hand-typed visit
   editor and Medi's visit tools.
 - Free for consumers and (for now) free for businesses — no payments anywhere; prices are shown, paid on site.
@@ -104,3 +104,11 @@ cover roles, booking rules, status). Pending businesses see a yellow banner; the
 `#/book` (`server/admin/v4/modules/book.js`): claims queue with approve / reject (reason required, pushes + email to
 the owner), catalogue table (search, status, category; hide / list / edit; add a place), numbers (listed /
 claimed / pending, bookings, favourites, 7-day views / calls). Capabilities `BOOK_VIEW`, `BOOK_MANAGE`.
+
+## Business panel UI (2026-10-15 design pass)
+
+- Brand colour is lime (`#4D7C0F` light ink / `#BEF264` dark; `--book*` tokens in `server/public/business/business.css`). The first pick, fuchsia, was rejected by the owner the same day — never bring it back.
+- The landing hero is the product: a three-column day that fills with bookings once on load (`pages/landing.js` `demo()`); claim / register scroll to the sign-in box and store the intent in `sessionStorage` for `/start`.
+- Date and time are never native inputs: `js/fields.js` `dateField()` (month popover, Monday first) and `timeField()` (15-minute grid in three parts of the day; `configure({ free })` tints the free slots from `/availability`; `allowEmpty` adds Clear; `to: '24:00'` for closing times). The popover is `position: fixed` on `<body>` so modals and the drawer never clip it, and it is click-through while fading out. Used by the walk-in dialog, the move editor, time off, discounts, finance and the hours editor (`shared.js hoursEditor`).
+- Dialog buttons in the modal footer sit outside the form: submit by hand (`form.requestSubmit()`), never `type: 'submit'` there.
+- Shell: the desktop sidebar column rule is wrapped in `@media (min-width: 761px)` (the shared `/app/app.css` hides the sidebar at 760px); stat strip = one surface with hairline dividers, only the money number carries the accent.

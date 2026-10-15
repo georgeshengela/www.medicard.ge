@@ -4,8 +4,9 @@ import { t } from '/app/js/i18n.js';
 import { state, canManage } from '../state.js';
 import { biz, ymd, addDays, weekdayOf, minutesOf, clock, WEEKDAYS_SHORT, WEEKDAYS, MONTHS, MONTHS_SHORT, fail, ok, toIso, emptyBox } from '../shared.js';
 import { loadContext, newAppointmentDialog, openAppointment } from '../appointment.js';
+import { dateField, timeField } from '../fields.js';
 
-const HOUR_H = 56;
+const HOUR_H = 64;
 /** h() assigns style objects with Object.assign, which ignores custom properties — set them by hand. */
 function vars(el, map) { for (const [k, v] of Object.entries(map)) el.style.setProperty(k, String(v)); return el; }
 
@@ -50,7 +51,7 @@ export default async function calendarPage(root, ctx) {
     const hours = [];
     for (let hh = start; hh < end; hh += 1) hours.push(hh);
     const cols = mode === 'day'
-      ? (filterStaff ? staffCols.filter((s) => s.id === filterStaff) : staffCols.length ? staffCols : [{ id: null, name: t('გუნდი', 'Team'), color: '#A21CAF' }]).map((s) => ({ key: s.id ?? 'all', label: s.name, sub: s.title || '', color: s.color, date: anchor, staffId: s.id }))
+      ? (filterStaff ? staffCols.filter((s) => s.id === filterStaff) : staffCols.length ? staffCols : [{ id: null, name: t('გუნდი', 'Team'), color: '#64748B' }]).map((s) => ({ key: s.id ?? 'all', label: s.name, sub: s.title || '', color: s.color, date: anchor, staffId: s.id }))
       : Array.from({ length: 7 }, (_, i) => { const d = addDays(from, i); return { key: d, label: `${WEEKDAYS_SHORT[weekdayOf(d)]} ${Number(d.slice(8, 10))}`, sub: MONTHS_SHORT[Number(d.slice(5, 7)) - 1], date: d, staffId: null, today: d === ymd() }; });
     const colEl = (col) => {
       const dayIdx = weekdayOf(col.date);
@@ -91,7 +92,7 @@ export default async function calendarPage(root, ctx) {
       for (const a of sorted) {
         const top = ((minutesOf(a.startsAt) - start * 60) / 60) * HOUR_H;
         const height = Math.max(26, ((new Date(a.endsAt) - new Date(a.startsAt)) / 60000 / 60) * HOUR_H - 2);
-        const color = a.staffColor || staffCols.find((s) => s.id === a.staffId)?.color || '#A21CAF';
+        const color = a.staffColor || staffCols.find((s) => s.id === a.staffId)?.color || '#64748B';
         const width = 100 / laneCount;
         el.appendChild(vars(h('div', {
           class: `bz-cal-event${a.status === 'PENDING' ? ' is-pending' : ''}${a.status === 'CANCELLED' ? ' is-cancelled' : ''}${a.status === 'COMPLETED' || a.status === 'NO_SHOW' ? ' is-done' : ''}`,
@@ -120,7 +121,7 @@ export default async function calendarPage(root, ctx) {
           h('div', { class: 'bz-cal-body' },
             h('div', { class: 'bz-cal-hours' }, hours.map((hh) => h('div', { class: 'bz-cal-hour' }, `${String(hh).padStart(2, '0')}:00`))),
             cols.map(colEl))), { '--cols': cols.length, '--hour-h': `${HOUR_H}px` })),
-      h('div', { class: 'bz-legend', style: { padding: '10px 14px 12px' } },
+      h('div', { class: 'bz-legend' },
         h('span', null, h('i', { style: { background: 'var(--book)' } }), t('დადასტურებული', 'Confirmed')),
         h('span', null, h('i', { style: { background: 'repeating-linear-gradient(135deg, var(--book) 0 3px, transparent 3px 6px)' } }), t('დასადასტურებელი', 'To confirm')),
         h('span', null, h('i', { style: { background: 'var(--bg3)' } }), t('დახურული / დასვენება', 'Closed / time off')),
@@ -130,14 +131,29 @@ export default async function calendarPage(root, ctx) {
 
   function timeOffDialog() {
     const who = select([{ value: '', label: t('მთელი ბიზნესი (დახურული დღე)', 'Whole business (closed)') }, ...staffCols.map((s) => ({ value: s.id, label: s.name }))], '');
-    const from = input({ type: 'datetime-local', value: `${anchor}T09:00` });
-    const to = input({ type: 'datetime-local', value: `${anchor}T19:00` });
+    const fromDay = dateField({ value: anchor, onChange: (v) => { if (toDay.get() < v) toDay.set(v); } });
+    const fromTime = timeField({ value: '09:00', from: '00:00', to: '23:45' });
+    const toDay = dateField({ value: anchor });
+    const toTime = timeField({ value: '19:00', from: '00:00', to: '24:00' });
     const reason = input({ placeholder: t('მიზეზი (არასავალდებულო)', 'Reason (optional)') });
     const save = button(t('შენახვა', 'Save'));
-    const m = openModal({ title: t('დასვენება / დახურული საათები', 'Time off / closed hours'), size: 'sm', body: h('div', { class: 'form' }, field(t('ვისთვის', 'Who'), who), field(t('დან', 'From'), from), field(t('მდე', 'To'), to), field(t('მიზეზი', 'Reason'), reason)),
+    const m = openModal({ title: t('დასვენება / დახურული საათები', 'Time off / closed hours'),
+      body: h('div', { class: 'form' },
+        field(t('ვისთვის', 'Who'), who),
+        h('div', { class: 'form-row' }, field(t('დღიდან', 'From day'), fromDay.el), field(t('საათიდან', 'From time'), fromTime.el)),
+        h('div', { class: 'form-row' }, field(t('დღემდე', 'To day'), toDay.el), field(t('საათამდე', 'To time'), toTime.el)),
+        field(t('მიზეზი', 'Reason'), reason),
+        h('p', { class: 'bz-note' }, t('ამ დროს ონლაინ ჩაწერა არ იქნება; არსებული ჯავშნები რჩება.', 'No online booking in this window; existing bookings stay.'))),
       footer: (close) => [button(t('გაუქმება', 'Cancel'), { variant: 'ghost', onClick: () => close() }), save] });
     save.addEventListener('click', () => busy(save, async () => {
-      try { await biz.post('/time-off', { staffId: who.value || null, startsAt: toIso(from.value.slice(0, 10), from.value.slice(11, 16)), endsAt: toIso(to.value.slice(0, 10), to.value.slice(11, 16)), reason: reason.value.trim() || undefined }); m.close(); ok(t('შენახულია', 'Saved')); paint(); } catch (e) { fail(e); }
+      try {
+        if (!fromDay.get() || !toDay.get() || !fromTime.get() || !toTime.get()) throw new Error(t('აირჩიე დღეები და საათები.', 'Pick the days and times.'));
+        const startsAt = toIso(fromDay.get(), fromTime.get());
+        const endsAt = toTime.get() === '24:00' ? toIso(addDays(toDay.get(), 1), '00:00') : toIso(toDay.get(), toTime.get());
+        if (endsAt <= startsAt) throw new Error(t('დასასრული დასაწყისზე ადრეა.', 'The end is before the start.'));
+        await biz.post('/time-off', { staffId: who.value || null, startsAt, endsAt, reason: reason.value.trim() || undefined });
+        m.close(); ok(t('შენახულია', 'Saved')); paint();
+      } catch (e) { fail(e); }
     }));
   }
 
