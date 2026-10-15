@@ -1,7 +1,8 @@
 // MEDIBOOK business panel — the team: people who perform services (with their hours) and panel access.
 import { h, mount, icon, button, pageHead, card, input, field, select, busy, openModal, confirmDialog, badge } from '/app/js/ui.js';
 import { t } from '/app/js/i18n.js';
-import { biz, avatar, hoursEditor, emptyBox, fail, ok, roleLabel, ROLES } from '../shared.js';
+import { meters } from '/app/js/charts.js';
+import { biz, avatar, hoursEditor, emptyBox, fail, ok, roleLabel, ROLES, gel, pct } from '../shared.js';
 import { canManage, isOwner, state } from '../state.js';
 
 const PALETTE = ['#0EA5E9', '#8B5CF6', '#F59E0B', '#EC4899', '#14B8A6', '#6366F1', '#EF4444', '#0D9488', '#A855F7', '#F97316'];
@@ -14,7 +15,8 @@ export default async function teamPage(root) {
   async function paint() {
     mount(host, h('div', { class: 'skeleton-card' }, h('div', { class: 'sk' }), h('div', { class: 'sk' })));
     try {
-      const [{ staff }, { services }] = await Promise.all([biz.get('/staff'), biz.get('/services')]);
+      const [{ staff }, { services }, analytics] = await Promise.all([biz.get('/staff'), biz.get('/services'), manage ? biz.get('/analytics', { range: '30' }).catch(() => null) : Promise.resolve(null)]);
+      const load = new Map((analytics?.utilisation || []).map((u) => [u.staffId, u]));
       const active = staff.filter((s) => s.active);
       if (!active.length) { mount(host, card(emptyBox(t('გუნდი ჯერ ცარიელია', 'No team yet'), t('დაამატე ყველა, ვინც კლიენტებს იღებს — თავისი სამუშაო საათებით. თავისუფალი დროები მათგან ითვლება.', 'Add everyone who sees clients — with their own hours. Free slots are computed from them.'), manage ? button(t('თანამშრომლის დამატება', 'Add a person'), { icon: 'userPlus', onClick: () => staffDialog(null, services, staff, paint) }) : null))); return; }
       mount(host, h('div', { class: 'bz-grid-3' }, active.map((p) => {
@@ -27,6 +29,9 @@ export default async function teamPage(root) {
           h('div', { style: { marginTop: '12px', fontSize: '13.5px' } },
             h('div', { class: 'bz-sub' }, t('სერვისები: ', 'Services: '), h('span', { style: { color: 'var(--text)' } }, p.serviceIds.length ? mine.map((s) => s.name).join(', ') : t('ყველა', 'All'))),
             h('div', { class: 'bz-sub', style: { marginTop: '4px' } }, t('გრაფიკი: ', 'Hours: '), h('span', { style: { color: 'var(--text)' } }, days.length ? t(`${days.length} დღე კვირაში`, `${days.length} days a week`) : t('ბიზნესის საათები', 'Business hours')))),
+          load.get(p.id) ? h('div', { style: { marginTop: '12px' } },
+            meters([{ name: t('დატვირთვა · 30 დღე', 'Load · 30 days'), value: load.get(p.id).utilisation ?? 0, max: 100, right: load.get(p.id).utilisation == null ? '—' : pct(load.get(p.id).utilisation), color: p.color || 'var(--book)' }]),
+            h('div', { class: 'bz-note', style: { marginTop: '6px' } }, t(`${load.get(p.id).appointments} ჯავშანი · ${load.get(p.id).completed} დასრულდა · ${gel(load.get(p.id).revenue)}`, `${load.get(p.id).appointments} bookings · ${load.get(p.id).completed} done · ${gel(load.get(p.id).revenue)}`))) : null,
           manage ? h('div', { class: 'bz-actions', style: { marginTop: '14px' } },
             button(t('რედაქტირება', 'Edit'), { size: 'sm', variant: 'ghost', icon: 'edit', onClick: () => staffDialog(p, services, staff, paint) }),
             button(t('მოხსნა', 'Remove'), { size: 'sm', variant: 'ghost', icon: 'trash', onClick: async () => { if (await confirmDialog({ title: t(`${p.name} — მოხსნა?`, `Remove ${p.name}?`), body: t('მისი ჯავშნები ისტორიაში რჩება; ახალი ვეღარ დაინიშნება.', 'Their bookings stay in the history; no new ones can be made.'), confirm: t('მოხსნა', 'Remove'), danger: true })) { try { await biz.del(`/staff/${p.id}`); paint(); } catch (e) { fail(e); } } } })) : null);

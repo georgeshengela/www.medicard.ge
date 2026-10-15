@@ -262,6 +262,39 @@ body.biz { font-size: 14.5px; }
 .bz-feat .tile { color: var(--book-ink); background: transparent; box-shadow: inset 0 0 0 1px var(--book-2); }
 .bz-pop { position: fixed; top: 0; left: 0; z-index: 140; }
 
+/* Charts and the richer pieces (dashboard, clients, reviews, team, calendar heads) */
+.bz-kpi { position: relative; }
+.bz-kpi-spark { position: absolute; right: 16px; bottom: 12px; opacity: .95; pointer-events: none; }
+.bz-kpi:has(.bz-kpi-spark) { padding-right: 124px; }
+.bz-kpi-spark .spark { display: block; }
+.bz-kpi-donut { flex-direction: row; align-items: center; gap: 14px; }
+.bz-kpi-donut > div:last-child { min-width: 0; }
+.bz-legend-inline { border-top: 0; padding: 10px 0 0; }
+.bz-team-today { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 12px 16px; }
+.bz-team-today-item { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.bz-team-today-item .who { min-width: 0; }
+.bz-team-today-item b { display: block; font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bz-team-today-item span { font-size: 12px; color: var(--text2); }
+.bz-team-today-item .ring-center strong { font-size: 12px; }
+.bz-sources { display: flex; align-items: center; gap: 18px; }
+.bz-src-legend { display: grid; gap: 6px; font-size: 13px; min-width: 0; flex: 1; }
+.bz-src-legend .row { display: grid; grid-template-columns: 10px 1fr auto auto; align-items: center; gap: 8px; }
+.bz-src-legend i { width: 10px; height: 10px; border-radius: 3px; }
+.bz-src-legend span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--text2); }
+.bz-src-legend b { font-variant-numeric: tabular-nums; }
+.bz-src-legend small { color: var(--text3); font-variant-numeric: tabular-nums; min-width: 34px; text-align: right; }
+.bz-review-avg { display: flex; align-items: center; gap: 22px; }
+.bz-review-avg b.big { font-size: 46px; line-height: 1; letter-spacing: -.03em; display: block; }
+.bz-review-avg-text { display: grid; gap: 4px; font-size: 13.5px; color: var(--text2); }
+.bz-warn { color: var(--warn); }
+.bz-stars span:not(.off) svg { fill: currentColor; }
+.bz-chip i.n { font-style: normal; font-size: 11.5px; color: var(--text3); font-weight: 600; margin-left: 2px; }
+.bz-chip.on i.n { color: var(--book-ink); }
+.bz-cal-col-head { position: relative; padding-bottom: 14px; }
+.bz-cal-col-head .occ { position: absolute; left: 12px; right: 12px; bottom: 6px; height: 3px; border-radius: 2px; background: var(--track); overflow: hidden; }
+.bz-cal-col-head .occ span { display: block; height: 100%; border-radius: 2px; }
+@media (max-width: 760px) { .bz-kpi-spark { display: none; } .bz-kpi:has(.bz-kpi-spark) { padding-right: 16px; } .bz-sources { flex-direction: column; align-items: flex-start; } }
+
 /* Hours editor */
 .bz-hours { display: flex; flex-direction: column; gap: 6px; }
 .bz-hours-row { display: grid; grid-template-columns: 1fr auto auto auto; align-items: center; gap: 8px; }

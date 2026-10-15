@@ -28,6 +28,18 @@ export default async function analyticsPage(root, ctx) {
               f(a.funnel.favorites, t('შეინახა', 'Saved')), f(a.funnel.bookingStarted, t('ჯავშანი დაიწყო', 'Booking started')), f(a.funnel.booked, t('დაჯავშნა', 'Booked')), f(pct(a.funnel.conversion), t('კონვერსია', 'Conversion'))),
             h('p', { class: 'bz-note', style: { marginTop: '10px' } }, t('კონვერსია = ჯავშნები აპიდან / უნიკალური მნახველები.', 'Conversion = bookings from the app ÷ unique viewers.')))),
         h('div', { class: 'bz-grid' },
+          card(h('div', { class: 'card-head' }, h('div', null, h('div', { class: 'card-title' }, t('შემოსავალი დღეების მიხედვით', 'Revenue by day')), h('div', { class: 'card-sub' }, t('დასრულებული ვიზიტებიდან, გადახდის დღით', 'From completed visits, by the day they were paid')))),
+            a.series.some((d) => d.revenue) ? lineChart({ labels, height: 200, series: [{ name: t('შემოსავალი', 'Revenue'), values: a.series.map((d) => d.revenue), color: 'var(--c1)', area: true }], fmt: (v) => gel(v) }) : emptyBox(t('შემოსავალი ჯერ არ არის', 'No revenue yet'), t('დასრულებული ვიზიტი თავისით იწერება.', 'A completed visit writes itself in.'))),
+          card(h('div', { class: 'card-head' }, h('div', null, h('div', { class: 'card-title' }, t('სერვისების წილი', 'Share of services')), h('div', { class: 'card-sub' }, t('შემოსავლით, ამ პერიოდში', 'By revenue, in this period')))),
+            a.topServices.length ? (() => {
+              const top = a.topServices.slice(0, 5);
+              const rest = a.topServices.slice(5).reduce((s2, x) => s2 + x.revenue, 0);
+              const parts = [...top.map((x, i) => ({ name: x.name, value: x.revenue, color: `var(--c${(i % 6) + 1})` })), ...(rest ? [{ name: t('სხვა', 'Other'), value: rest, color: 'var(--bg3)' }] : [])];
+              const sum = parts.reduce((s2, p) => s2 + p.value, 0) || 1;
+              return h('div', { class: 'bz-inline', style: { gap: '18px', alignItems: 'center' } }, donut({ parts, size: 120, stroke: 16 }),
+                h('div', { class: 'bz-src-legend' }, parts.map((p) => h('div', { class: 'row' }, h('i', { style: { background: p.color } }), h('span', null, p.name), h('b', null, gel(p.value)), h('small', null, `${Math.round((p.value / sum) * 100)}%`)))));
+            })() : h('p', { class: 'bz-sub' }, '—'))),
+        h('div', { class: 'bz-grid' },
           card(h('div', { class: 'card-head' }, h('div', null, h('div', { class: 'card-title' }, t('დატვირთვა თანამშრომლებით', 'Utilisation per person')), h('div', { class: 'card-sub' }, t('დაჯავშნილი დრო ÷ სამუშაო დრო (გასულ საათებზე).', 'Booked time ÷ working time (hours that have passed).')))),
             a.utilisation.length ? h('div', { class: 'bz-util' }, a.utilisation.map((u) => h('div', { class: 'bz-util-row' }, avatar(u.name, u.color || 'var(--book)', 34),
               h('div', null, h('b', null, u.name), h('small', null, t(`${u.appointments} ჩანაწერი · ${u.completed} დასრულდა · ${u.noShow} არ მოვიდა · ${gel(u.revenue)}`, `${u.appointments} bookings · ${u.completed} done · ${u.noShow} no-shows · ${gel(u.revenue)}`)), h('div', { class: 'meter-track' }, h('span', { style: { width: `${u.utilisation ?? 0}%`, background: u.color || 'var(--book)' } }))),

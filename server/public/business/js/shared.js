@@ -109,7 +109,7 @@ export function initials(name) {
 }
 
 export function avatar(name, color, size = 34) {
-  return h('span', { class: 'bz-avatar', style: { width: `${size}px`, height: `${size}px`, background: color || 'var(--brand)', fontSize: `${Math.round(size * 0.38)}px` } }, initials(name));
+  return h('span', { class: 'bz-avatar', style: { width: `${size}px`, height: `${size}px`, background: color || 'var(--brand)', color: !color || color === 'var(--brand)' ? 'var(--on-brand)' : '#fff', fontSize: `${Math.round(size * 0.38)}px` } }, initials(name));
 }
 
 /* ── API scoped to the open business ─────────────────── */

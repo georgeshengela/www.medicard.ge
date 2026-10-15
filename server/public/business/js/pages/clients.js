@@ -1,5 +1,6 @@
 // MEDIBOOK business panel — the client book: list with search and sort, one client's card with history.
 import { h, mount, icon, button, pageHead, card, input, select, textarea, field, busy, openModal, badge } from '/app/js/ui.js';
+import { donut } from '/app/js/charts.js';
 import { t } from '/app/js/i18n.js';
 import { biz, gel, when, dateText, avatar, emptyBox, debounceFn, fail, ok, statusBadge, minutes } from '../shared.js';
 import { appointmentLine, loadContext, newAppointmentDialog, openAppointment } from '../appointment.js';
@@ -9,7 +10,31 @@ export default async function clientsPage(root, ctx) {
   let q = '';
   let sort = 'recent';
   const host = h('div');
+  const strip = h('div');
   const total = h('span', { class: 'bz-sub' });
+
+  // The whole book in four numbers, drawn once from the unfiltered list.
+  async function paintStrip() {
+    try {
+      const { clients } = await biz.get('/clients', { sort: 'recent', limit: 1000 });
+      if (!clients.length) { mount(strip); return; }
+      const d30 = Date.now() - 30 * 86_400_000;
+      const fresh = clients.filter((c) => new Date(c.createdAt).getTime() >= d30).length;
+      const returning = clients.filter((c) => c.visits >= 2).length;
+      const once = clients.filter((c) => c.visits === 1).length;
+      const never = clients.length - returning - once;
+      const withVisits = clients.filter((c) => c.visits > 0);
+      const avg = withVisits.length ? withVisits.reduce((s, c) => s + Number(c.totalSpent || 0), 0) / withVisits.length : null;
+      const lost = clients.filter((c) => c.visits > 0 && c.lastVisitAt && new Date(c.lastVisitAt).getTime() < Date.now() - 60 * 86_400_000 && !c.nextAt).length;
+      mount(strip, h('div', { class: 'bz-kpis', style: { marginBottom: '14px' } },
+        h('div', { class: 'bz-kpi bz-kpi-donut' },
+          donut({ parts: [{ name: t('დაბრუნებული', 'Returning'), value: returning, color: 'var(--c1)' }, { name: t('ერთხელ', 'Once'), value: once, color: 'var(--c2)' }, { name: t('ჯერ არ მოსულა', 'Not yet'), value: never, color: 'var(--bg3)' }], size: 64, stroke: 9 }),
+          h('div', null, h('div', { class: 'stat-label' }, t('დაბრუნებული', 'Returning')), h('div', { class: 'stat-value' }, clients.length ? `${Math.round((returning / clients.length) * 100)}%` : '—'), h('div', { class: 'stat-delta' }, t(`${returning} მეორედაც მოვიდა · ${once} ერთხელ`, `${returning} came back · ${once} once`)))),
+        h('div', { class: 'bz-kpi' }, h('div', { class: 'stat-label' }, t('ახალი · 30 დღე', 'New · 30 days')), h('div', { class: 'stat-value' }, String(fresh)), h('div', { class: 'stat-delta' }, t(`სულ ${clients.length}`, `${clients.length} in all`))),
+        h('div', { class: 'bz-kpi is-accent' }, h('div', { class: 'stat-label' }, t('საშუალო ხარჯი', 'Average spend')), h('div', { class: 'stat-value' }, avg == null ? '—' : gel(avg)), h('div', { class: 'stat-delta' }, t('ერთ კლიენტზე, ყველა ვიზიტით', 'per client, all visits'))),
+        h('div', { class: 'bz-kpi' }, h('div', { class: 'stat-label' }, t('დაკარგვის რისკი', 'Drifting away')), h('div', { class: 'stat-value' }, String(lost)), h('div', { class: 'stat-delta' }, t('60 დღეზე მეტია არ ყოფილა, ჯავშანიც არ აქვს', 'no visit in 60+ days and nothing booked')))));
+    } catch { mount(strip); }
+  }
 
   async function paint() {
     mount(host, h('div', { class: 'skeleton-card' }, h('div', { class: 'sk' }), h('div', { class: 'sk' })));
@@ -35,11 +60,12 @@ export default async function clientsPage(root, ctx) {
   mount(root,
     pageHead(t('კლიენტები', 'Clients'), t('ყველა, ვინც ოდესმე ჯავშნით ან ხელით ჩაიწერა — ისტორია, შენიშვნები, ტეგები.', 'Everyone who ever booked or was written in by hand — history, notes, tags.'),
       button(t('კლიენტის დამატება', 'Add a client'), { icon: 'userPlus', onClick: () => clientDialog(null, () => paint()) })),
+    strip,
     h('div', { class: 'bz-toolbar' }, search,
       select([{ value: 'recent', label: t('ბოლო აქტივობით', 'Most recent') }, { value: 'name', label: t('სახელით', 'By name') }, { value: 'visits', label: t('ვიზიტებით', 'By visits') }, { value: 'spent', label: t('თანხით', 'By spending') }], sort, { onChange: (e) => { sort = e.target.value; paint(); }, style: { maxWidth: '200px' } }),
       h('span', { class: 'spacer' }), total),
     host);
-  await paint();
+  await Promise.all([paint(), paintStrip()]);
 }
 
 function clientDialog(client, onSaved) {

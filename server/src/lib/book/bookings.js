@@ -541,7 +541,9 @@ export async function overviewRaw({ businessId, now = new Date() }, db = prisma)
   const dayStart = tbilisiInstant(todayYmd, 0);
   const dayEnd = tbilisiInstant(addDaysYmd(todayYmd, 1), 0);
   const weekStart = new Date(now.getTime() - 7 * 86400_000);
-  const [today, [week], [pending], [clients], [reviews], [views], upcoming] = await Promise.all([
+  const spanStart = tbilisiInstant(addDaysYmd(todayYmd, -13), 0);
+  const spanEnd = tbilisiInstant(addDaysYmd(todayYmd, 8), 0);
+  const [today, [week], [pending], [clients], [reviews], [views], upcoming, spanAppts, spanIncome, spanClients] = await Promise.all([
     db.$queryRaw`${APPOINTMENT_SELECT} WHERE a."businessId" = ${businessId} AND a."startsAt" >= ${dayStart} AND a."startsAt" < ${dayEnd} ORDER BY a."startsAt"`,
     db.$queryRaw`SELECT COUNT(*) FILTER (WHERE "createdAt" >= ${weekStart})::int AS booked, COUNT(*) FILTER (WHERE status = 'COMPLETED' AND "startsAt" >= ${weekStart})::int AS done, COUNT(*) FILTER (WHERE status = 'NO_SHOW' AND "startsAt" >= ${weekStart})::int AS "noShow", COUNT(*) FILTER (WHERE status = 'CANCELLED' AND "cancelledAt" >= ${weekStart})::int AS cancelled,
       COALESCE((SELECT SUM(amount) FROM "BookTransaction" t WHERE t."businessId" = ${businessId} AND t.kind = 'INCOME' AND t.at >= ${weekStart}), 0)::float AS revenue FROM "BookAppointment" WHERE "businessId" = ${businessId}`,
@@ -550,7 +552,35 @@ export async function overviewRaw({ businessId, now = new Date() }, db = prisma)
     db.$queryRaw`SELECT COUNT(*)::int AS n, AVG(rating)::float AS avg, COUNT(*) FILTER (WHERE reply IS NULL)::int AS unanswered FROM "BookReview" WHERE "businessId" = ${businessId} AND NOT hidden`,
     db.$queryRaw`SELECT COUNT(*) FILTER (WHERE kind = 'VIEW')::int AS views, COUNT(*) FILTER (WHERE kind = 'CALL')::int AS calls, COUNT(*) FILTER (WHERE kind = 'BOOK_DONE')::int AS booked FROM "BookEvent" WHERE "businessId" = ${businessId} AND at >= ${weekStart}`,
     db.$queryRaw`${APPOINTMENT_SELECT} WHERE a."businessId" = ${businessId} AND a."startsAt" >= ${dayEnd} AND a.status IN ('PENDING','CONFIRMED') ORDER BY a."startsAt" LIMIT 8`,
+    db.$queryRaw`SELECT "startsAt", "createdAt", status, source FROM "BookAppointment" WHERE "businessId" = ${businessId} AND (("startsAt" >= ${spanStart} AND "startsAt" < ${spanEnd}) OR ("createdAt" >= ${spanStart} AND "createdAt" < ${spanEnd}))`,
+    db.$queryRaw`SELECT amount, at FROM "BookTransaction" WHERE "businessId" = ${businessId} AND kind = 'INCOME' AND at >= ${spanStart} AND at < ${spanEnd}`,
+    db.$queryRaw`SELECT "createdAt" FROM "BookClient" WHERE "businessId" = ${businessId} AND "createdAt" >= ${spanStart} AND "createdAt" < ${spanEnd}`,
   ]);
+  // Two weeks back and one ahead, one row per day — the overview chart and the sparklines under the numbers.
+  const days = [];
+  const byDay = new Map();
+  for (let i = -13; i <= 7; i += 1) {
+    const date = addDaysYmd(todayYmd, i);
+    const row = { date, bookings: 0, completed: 0, noShow: 0, cancelled: 0, pending: 0, created: 0, revenue: 0, newClients: 0 };
+    days.push(row);
+    byDay.set(date, row);
+  }
+  const sources = { APP: 0, WEB: 0, BUSINESS: 0 };
+  for (const a of spanAppts) {
+    const row = byDay.get(tbilisiYmd(new Date(a.startsAt)));
+    if (row) {
+      if (a.status !== 'CANCELLED') row.bookings += 1;
+      if (a.status === 'COMPLETED') row.completed += 1;
+      if (a.status === 'NO_SHOW') row.noShow += 1;
+      if (a.status === 'CANCELLED') row.cancelled += 1;
+      if (a.status === 'PENDING') row.pending += 1;
+      if (a.status !== 'CANCELLED' && new Date(a.startsAt) < now) sources[a.source] = (sources[a.source] ?? 0) + 1;
+    }
+    const made = byDay.get(tbilisiYmd(new Date(a.createdAt)));
+    if (made) made.created += 1;
+  }
+  for (const t of spanIncome) { const row = byDay.get(tbilisiYmd(new Date(t.at))); if (row) row.revenue = Math.round((row.revenue + Number(t.amount)) * 100) / 100; }
+  for (const c of spanClients) { const row = byDay.get(tbilisiYmd(new Date(c.createdAt))); if (row) row.newClients += 1; }
   return {
     today: today.map((a) => appointmentPublic(a, { now })),
     upcoming: upcoming.map((a) => appointmentPublic(a, { now })),
@@ -559,6 +589,8 @@ export async function overviewRaw({ businessId, now = new Date() }, db = prisma)
     clients,
     reviews: { count: Number(reviews.n), avg: reviews.avg == null ? null : Math.round(Number(reviews.avg) * 10) / 10, unanswered: Number(reviews.unanswered) },
     funnel: views,
+    days,
+    sources,
   };
 }
 
