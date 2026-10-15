@@ -33,6 +33,7 @@ export function openAppointment(appt, ctx, { onChange } = {}) {
       h('dl', { class: 'bz-kv' },
         h('dt', null, t('როდის', 'When')), h('dd', null, h('b', null, when(a.startsAt)), ` – ${clock(a.endsAt)} · ${minutes(a.durationMin)}`),
         h('dt', null, t('ვინ', 'Who')), h('dd', null, h('span', { class: 'bz-inline' }, h('span', { class: 'bz-color-dot', style: { background: a.staffColor || staffColor(ctx, a.staffId) } }), a.staffName || t('ნებისმიერი', 'Anyone'))),
+        a.services && a.services.length > 1 ? [h('dt', null, t('სერვისები', 'Services')), h('dd', null, h('ul', { class: 'bz-svc-list' }, a.services.map((x) => h('li', null, h('span', null, x.name), h('span', { class: 'bz-sub' }, [minutes(x.durationMin), x.price != null ? gel(x.price) : null].filter(Boolean).join(' · '))))))] : null,
         h('dt', null, t('ფასი', 'Price')), h('dd', null, gel(a.price), a.discountAmount ? h('span', { class: 'bz-sub' }, t(` (ფასდაკლება −${gel(a.discountAmount)})`, ` (discount −${gel(a.discountAmount)})`)) : null),
         a.paidAmount != null ? [h('dt', null, t('გადახდილი', 'Paid')), h('dd', null, `${gel(a.paidAmount)} · ${methodLabel(a.paidMethod)}`)] : null,
         a.note ? [h('dt', null, t('კლიენტის შენიშვნა', 'Client note')), h('dd', null, a.note)] : null,
@@ -154,7 +155,29 @@ export function newAppointmentDialog(ctx, preset = {}, { onCreated } = {}) {
   }, 250);
   clientQ.addEventListener('input', searchClients);
 
-  const svc = select(ctx.services.map((s) => ({ value: s.id, label: `${s.name} · ${minutes(s.durationMin)}${s.price != null ? ` · ${gel(s.price)}` : ''}` })), ctx.services[0]?.id || '');
+  // Services: one is the rule, but a visit can hold several (haircut + colour) — they follow one another with
+  // the same person, so the dialog books one block of time for all of them.
+  const chosen = [];
+  if (ctx.services[0]) chosen.push(ctx.services[0].id);
+  const svcList = h('div', { class: 'bz-svc-pick' });
+  const svcTotal = h('div', { class: 'bz-svc-total' });
+  const svc = { get value() { return chosen[0] || ''; }, get values() { return [...chosen]; }, addEventListener(type, fn) { if (type === 'change') svcList.addEventListener('svc-change', fn); } };
+  function paintServices() {
+    const total = chosen.map((id) => ctx.services.find((s) => s.id === id)).filter(Boolean);
+    mount(svcList, ctx.services.map((s) => {
+      const on = chosen.includes(s.id);
+      return h('label', { class: `bz-svc-row${on ? ' on' : ''}` },
+        h('input', { type: 'checkbox', checked: on, onChange: () => { if (chosen.includes(s.id)) { if (chosen.length > 1) chosen.splice(chosen.indexOf(s.id), 1); } else if (chosen.length < 8) chosen.push(s.id); paintServices(); svcList.dispatchEvent(new Event('svc-change')); } }),
+        h('span', { class: 'name' }, s.name),
+        h('span', { class: 'meta' }, [minutes(s.durationMin), s.price != null ? gel(s.price) : null].filter(Boolean).join(' · ')));
+    }));
+    const mins = total.reduce((sum, s) => sum + Number(s.durationMin), 0);
+    const price = total.some((s) => s.price != null) ? total.reduce((sum, s) => sum + Number(s.price ?? 0), 0) : null;
+    mount(svcTotal, total.length > 1
+      ? [h('b', null, t(`${total.length} სერვისი`, `${total.length} services`)), h('span', null, [minutes(mins), price != null ? gel(price) : null].filter(Boolean).join(' · '))]
+      : total.length ? h('span', { class: 'bz-sub' }, t('მონიშნე კიდევ ერთი, თუ ვიზიტი რამდენიმე სერვისს მოიცავს.', 'Tick another one when the visit holds several services.')) : null);
+  }
+  paintServices();
   const who = select([{ value: '', label: t('ნებისმიერი', 'Anyone') }, ...ctx.staff.map((s) => ({ value: s.id, label: s.name }))], preset.staffId || '');
   const time = timeField({ value: preset.time || '', onChange: () => { chosenIso = null; paintQuick(); } });
   const date = dateField({ value: preset.date || ymd(), onChange: () => loadSlots() });
@@ -178,7 +201,7 @@ export function newAppointmentDialog(ctx, preset = {}, { onCreated } = {}) {
     if (!svc.value || !date.get()) { time.configure({ free: null }); mount(quick); return; }
     mount(quick, h('span', null, t('ვეძებ თავისუფალ დროებს…', 'Looking for free times…')));
     try {
-      const r = await biz.get('/availability', { serviceId: svc.value, date: date.get(), staffId: who.value || undefined });
+      const r = await biz.get('/availability', { serviceIds: svc.values.join(','), date: date.get(), staffId: who.value || undefined });
       freeSlots = r.slots;
       time.configure({ free: new Set(r.slots.map((s) => s.time)) });
       if (!r.slots.length) { mount(quick, h('span', null, r.reason === 'closed' ? t('ამ დღეს დახურულია — დროის არჩევა მაინც შეიძლება.', 'Closed this day — a time can still be picked.') : t('თავისუფალი დრო არ არის — აირჩიე მაინც და მონიშნე „მაინც“.', 'No free time — pick one anyway and tick "anyway".'))); return; }
@@ -198,7 +221,7 @@ export function newAppointmentDialog(ctx, preset = {}, { onCreated } = {}) {
     if (!clientId && !clientQ.value.trim()) { err.textContent = t('მიუთითე კლიენტის სახელი.', 'Enter the client name.'); err.hidden = false; return; }
     await busy(submit, async () => {
       try {
-        const res = await biz.post('/appointments', { serviceId: svc.value, staffId: who.value || null, startsAt, clientId: clientId || undefined, clientName: clientQ.value.trim() || undefined, clientPhone: clientPhone.value.trim() || undefined, internalNote: note.value.trim() || undefined, force: force.checked });
+        const res = await biz.post('/appointments', { serviceIds: svc.values, staffId: who.value || null, startsAt, clientId: clientId || undefined, clientName: clientQ.value.trim() || undefined, clientPhone: clientPhone.value.trim() || undefined, internalNote: note.value.trim() || undefined, force: force.checked });
         close();
         ok(t('ჩაწერილია', 'Booked'));
         onCreated?.(res.appointment);
@@ -207,7 +230,7 @@ export function newAppointmentDialog(ctx, preset = {}, { onCreated } = {}) {
   } },
   field(t('კლიენტი', 'Client'), clientQ, picked.textContent ? undefined : t('ჩაწერე სახელი — არსებული კლიენტი თავისით ამოვა.', 'Type a name — an existing client comes up by itself.')), clientList, picked,
   field(t('ტელეფონი', 'Phone'), clientPhone),
-  field(t('სერვისი', 'Service'), svc),
+  field(t('სერვისი', 'Service'), h('div', null, svcList, svcTotal)),
   field(t('თანამშრომელი', 'Person'), who),
   h('div', { class: 'form-row' }, field(t('დღე', 'Day'), date.el), field(t('დრო', 'Time'), time.el)),
   quick,

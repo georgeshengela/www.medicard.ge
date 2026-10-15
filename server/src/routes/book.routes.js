@@ -11,7 +11,7 @@ import { asyncHandler } from '../middleware/error.js';
 import { requireVerifiedPhone } from '../lib/phoneGate.js';
 import { t } from '../lib/i18n.js';
 import { clientIp } from '../lib/rateLimitKey.js';
-import { publicCategories } from '../lib/book/catalog.js';
+import { bookError, publicCategories } from '../lib/book/catalog.js';
 import * as store from '../lib/book/store.js';
 import * as bookings from '../lib/book/bookings.js';
 import { notifyBooked, notifyClientCancelled } from '../lib/book/push.js';
@@ -82,13 +82,13 @@ bookRouter.post('/businesses/:id/events', optionalAuth, asyncHandler(async (req,
 }));
 
 bookRouter.get('/businesses/:id/availability', asyncHandler(async (req, res) => {
-  const result = await bookings.availability({ businessId: req.params.id, serviceId: String(req.query.serviceId ?? ''), date: String(req.query.date ?? ''), staffId: req.query.staffId ? String(req.query.staffId) : null });
+  const result = await bookings.availability({ businessId: req.params.id, serviceId: String(req.query.serviceId ?? ''), serviceIds: req.query.serviceIds ? String(req.query.serviceIds) : undefined, date: String(req.query.date ?? ''), staffId: req.query.staffId ? String(req.query.staffId) : null });
   res.set('Cache-Control', 'no-store');
   res.json(result);
 }));
 
 bookRouter.get('/businesses/:id/days', asyncHandler(async (req, res) => {
-  const result = await bookings.dateStrip({ businessId: req.params.id, serviceId: String(req.query.serviceId ?? ''), from: req.query.from ? String(req.query.from) : null, staffId: req.query.staffId ? String(req.query.staffId) : null, days: Number(req.query.days) || 14 });
+  const result = await bookings.dateStrip({ businessId: req.params.id, serviceId: String(req.query.serviceId ?? ''), serviceIds: req.query.serviceIds ? String(req.query.serviceIds) : undefined, from: req.query.from ? String(req.query.from) : null, staffId: req.query.staffId ? String(req.query.staffId) : null, days: Number(req.query.days) || 14 });
   res.set('Cache-Control', 'no-store');
   res.json(result);
 }));
@@ -99,7 +99,8 @@ bookRouter.use(requireAuth);
 
 const createBody = z.object({
   businessId: z.string().min(1),
-  serviceId: z.string().min(1),
+  serviceId: z.string().min(1).optional(),
+  serviceIds: z.array(z.string().min(1)).min(1).max(8).optional(),
   staffId: z.string().min(1).nullable().optional(),
   startsAt: z.string().min(10),
   note: z.string().trim().max(500).optional(),
@@ -109,9 +110,11 @@ const createBody = z.object({
 bookRouter.post('/appointments', requireVerifiedPhone, asyncHandler(async (req, res) => {
   const body = createBody.parse(req.body ?? {});
   const platform = String(req.headers['x-medicard-platform'] ?? '');
+  if (!body.serviceId && !body.serviceIds?.length) throw bookError(400, 'აირჩიე სერვისი.', 'SERVICE_REQUIRED', 'Pick a service.');
   const row = await bookings.createAppointment({
     businessId: body.businessId,
     serviceId: body.serviceId,
+    serviceIds: body.serviceIds,
     staffId: body.staffId ?? null,
     startsAt: body.startsAt,
     note: body.note ?? null,

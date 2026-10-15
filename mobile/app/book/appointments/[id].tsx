@@ -135,7 +135,16 @@ export default function AppointmentScreen() {
           <>
             <FlatCard style={{ marginTop: 20, padding: 18, gap: 12 }}>
               <StatusPill status={a.status} />
-              <Text style={[hubText.sectionTitle, { color: c.text100, fontSize: 21, lineHeight: 28 }]}>{a.serviceName}</Text>
+              <Text style={[hubText.sectionTitle, { color: c.text100, fontSize: 21, lineHeight: 28 }]}>{a.services && a.services.length > 1 ? tx(`${a.services.length} სერვისი`, `${a.services.length} services`) : a.serviceName}</Text>
+              {a.services && a.services.length > 1 ? (
+                <View style={{ gap: 4, borderLeftWidth: 2, borderLeftColor: ink, paddingLeft: 10 }}>
+                  {a.services.map((x, i) => (
+                    <Text key={`${x.id ?? x.name}-${i}`} style={[hubText.caption, { color: c.text100 }]}>
+                      {x.name}<Text style={{ color: c.text300 }}> · {durationLabel(x.durationMin)}{x.price != null ? ` · ${priceLabel(x.price)}` : ''}</Text>
+                    </Text>
+                  ))}
+                </View>
+              ) : null}
               <Text style={[hubText.body, { color: c.text100, fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 16 }]}>{whenLabel(a.startsAt)}</Text>
               <Text style={[hubText.caption, { color: c.text200 }]}>
                 {durationLabel(a.durationMin)}{a.staffName ? tx(` · ${a.staffName}`, ` · with ${a.staffName}`) : ''} · {priceLabel(a.price)}{a.discountAmount ? tx(` (ფასდაკლება −${a.discountAmount} ₾)`, ` (discount −${a.discountAmount} ₾)`) : ''}

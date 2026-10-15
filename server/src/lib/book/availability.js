@@ -48,11 +48,16 @@ function performs(staff, serviceId) {
   const ids = Array.isArray(staff?.serviceIds) ? staff.serviceIds : [];
   return ids.length === 0 || ids.includes(serviceId);
 }
+/** The service ids a slot must cover: a bundle ({ ids }) or one service ({ id }). */
+export function serviceIdsOf(service) {
+  const ids = Array.isArray(service?.ids) ? service.ids.filter(Boolean) : [];
+  return ids.length ? ids : [service?.id].filter(Boolean);
+}
 
 /**
  * @param {object} args
  * @param {object} args.business  { hours, settings }
- * @param {object} args.service   { id, durationMin, bufferMin }
+ * @param {object} args.service   { id, durationMin, bufferMin } — or a bundle { id, ids: [...], durationMin: total, bufferMin: the last one's }
  * @param {object[]} args.staff   active people [{ id, serviceIds, schedule, bookable }]
  * @param {object[]} args.appointments  on that day (and the night before), any status but CANCELLED: [{ staffId, startsAt, endsAt }]
  * @param {object[]} args.timeOff [{ staffId|null, startsAt, endsAt }]
@@ -77,7 +82,8 @@ export function slotsForDay({ business, service, staff, appointments = [], timeO
   const dayStart = tbilisiInstant(date, 0).getTime();
   const earliest = ignoreLead ? -Infinity : now.getTime() + settings.leadMinutes * MIN;
 
-  const people = (staff ?? []).filter((s) => s && s.active !== false && s.bookable !== false && performs(s, service?.id) && (!staffId || s.id === staffId));
+  const wanted = serviceIdsOf(service);
+  const people = (staff ?? []).filter((s) => s && s.active !== false && s.bookable !== false && wanted.every((id) => performs(s, id)) && (!staffId || s.id === staffId));
   if (!people.length) return { slots: [], closed: true, reason: staffId ? 'staff' : 'no-staff' };
 
   const toMin = (iso) => (new Date(iso).getTime() - dayStart) / MIN;

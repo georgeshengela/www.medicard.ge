@@ -128,12 +128,16 @@ export function buildAnalytics({ appointments = [], events = [], transactions = 
   // Top services by count and revenue (price copied at booking).
   const svc = new Map();
   for (const a of live) {
-    const key = a.serviceId ?? a.serviceName;
-    const row = svc.get(key) ?? { serviceId: a.serviceId ?? null, name: a.serviceName, count: 0, completed: 0, revenue: 0, minutes: 0 };
-    row.count += 1;
-    if (a.status === 'COMPLETED') { row.completed += 1; row.revenue = n2(row.revenue + Number(a.price ?? 0)); }
-    row.minutes += Number(a.durationMin ?? 0);
-    svc.set(key, row);
+    // A booking with several services counts once per service.
+    const parts = Array.isArray(a.items) && a.items.length ? a.items.map((i) => ({ serviceId: i.id ?? null, name: i.name, price: i.price, durationMin: i.durationMin })) : [{ serviceId: a.serviceId ?? null, name: a.serviceName, price: a.price, durationMin: a.durationMin }];
+    for (const part of parts) {
+      const key = part.serviceId ?? part.name;
+      const row = svc.get(key) ?? { serviceId: part.serviceId, name: part.name, count: 0, completed: 0, revenue: 0, minutes: 0 };
+      row.count += 1;
+      if (a.status === 'COMPLETED') { row.completed += 1; row.revenue = n2(row.revenue + Number(part.price ?? 0)); }
+      row.minutes += Number(part.durationMin ?? 0);
+      svc.set(key, row);
+    }
   }
   const topServices = [...svc.values()].sort((a, b) => b.count - a.count).slice(0, 12);
 

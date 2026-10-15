@@ -3,7 +3,7 @@ import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import { FlatCard } from '@/components/book/BookUI';
-import { ChosenPills, FlowHeader, PersonRow, StepBar, StepTitle, useBookingFlow } from '@/components/book/BookFlow';
+import { ChosenPills, FlowHeader, PersonRow, StepBar, StepTitle, serviceParams, useBookingFlow } from '@/components/book/BookFlow';
 import { RecordsPageSkeleton } from '@/components/ui/Skeleton';
 import { tx } from '@/i18n/locale';
 import { api } from '@/lib/api';
@@ -25,7 +25,7 @@ export default function BookWhoStep() {
   const dark = useIsDark();
   const ink = moduleInk('book', dark);
   const insets = useSafeAreaInsets();
-  const { b, query, service, eligibleStaff, steps, go } = useBookingFlow();
+  const { b, query, service, serviceIds, serviceKey, selected, eligibleStaff, steps, go } = useBookingFlow();
   const [nearest, setNearest] = useState<Record<string, Nearest>>({});
 
   useEffect(() => {
@@ -33,10 +33,10 @@ export default function BookWhoStep() {
     let alive = true;
     const ids: Array<string | null> = [null, ...eligibleStaff.map((p) => p.id)];
     void Promise.allSettled(ids.map(async (id) => {
-      const strip = await api.book.days(b.id, { serviceId: service.id, staffId: id, days: 14 });
+      const strip = await api.book.days(b.id, { ...serviceParams(serviceIds), staffId: id, days: 14 });
       const first = strip.days.find((d) => d.count > 0);
       if (!first) return null;
-      const av = await api.book.availability(b.id, { serviceId: service.id, date: first.date, staffId: id });
+      const av = await api.book.availability(b.id, { ...serviceParams(serviceIds), date: first.date, staffId: id });
       return { date: first.date, slots: av.slots.slice(0, 4) };
     })).then((results) => {
       if (!alive) return;
@@ -45,7 +45,8 @@ export default function BookWhoStep() {
       setNearest(next);
     });
     return () => { alive = false; };
-  }, [b, service, eligibleStaff]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [b, serviceKey, eligibleStaff]);
 
   const pick = (staffId: string | null) => {
     void Haptics.selectionAsync().catch(() => undefined);
@@ -83,7 +84,7 @@ export default function BookWhoStep() {
         ) : (
           <>
             <StepTitle title={tx('ვისთან?', 'With whom?')} sub={tx('ყველას თავისი გრაფიკი აქვს. უახლოესი თავისუფალი დროები თითოეულთან წერია — ერთი შეხებით პირდაპირ შეჯამებაზე გადახვალ.', 'Each person keeps their own hours. The nearest free times sit next to every name — one tap takes you straight to the summary.')} />
-            <ChosenPills items={[service.name]} />
+            <ChosenPills items={selected.map((x) => x.name)} />
             <FlatCard>
               <View>
                 <PersonRow person={null} first nearest={'*' in nearest ? (nearest['*'] ? dayLabel(dateFromYmd(nearest['*'].date)) : null) : undefined} onPress={() => pick(null)} />

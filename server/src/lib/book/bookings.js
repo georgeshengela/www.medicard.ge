@@ -38,24 +38,52 @@ export async function serviceRow(businessId, serviceId, db = prisma) {
   return row ?? null;
 }
 
+/** One service id or several (`serviceIds` wins), de-duplicated, at most 8. */
+export function normalizeServiceIds(serviceIds, serviceId) {
+  const list = Array.isArray(serviceIds) ? serviceIds : typeof serviceIds === 'string' ? serviceIds.split(',') : [];
+  const ids = [...new Set(list.map((v) => String(v ?? '').trim()).filter(Boolean))];
+  if (!ids.length && serviceId) ids.push(String(serviceId));
+  return ids.slice(0, 8);
+}
+
+/** The services of a booking in the order asked for; every id must exist and be active. */
+export async function serviceRows(businessId, ids, db = prisma) {
+  if (!ids.length) throw bookError(400, 'აირჩიე სერვისი.', 'SERVICE_REQUIRED', 'Pick a service.');
+  const rows = await db.$queryRaw`SELECT * FROM "BookService" WHERE "businessId" = ${businessId} AND id IN (${join(ids)})`;
+  const byId = new Map(rows.map((r) => [r.id, r]));
+  const out = ids.map((id) => byId.get(id));
+  if (out.some((r) => !r || !r.active)) throw bookError(404, 'სერვისი ვერ მოიძებნა.', 'SERVICE_NOT_FOUND', 'Service not found.');
+  return out;
+}
+
+/** What the availability engine sees: one service, or the bundle as one block of time. */
+export function bundleOf(services) {
+  const first = services[0];
+  return {
+    id: first.id,
+    ids: services.map((s) => s.id),
+    durationMin: services.reduce((sum, s) => sum + Number(s.durationMin), 0),
+    bufferMin: Number(services[services.length - 1].bufferMin ?? 0),
+  };
+}
+
 /** Slots of one day for a service (and optionally one person). */
-export async function availability({ businessId, serviceId, date, staffId = null, now = new Date(), ignoreLead = false }, db = prisma) {
+export async function availability({ businessId, serviceId, serviceIds, date, staffId = null, now = new Date(), ignoreLead = false }, db = prisma) {
   if (!isYmd(date)) throw bookError(400, 'არასწორი თარიღი.', 'BAD_DATE', 'Invalid date.');
   const business = await requireBusiness(businessId, db);
-  const service = await serviceRow(business.id, serviceId, db);
-  if (!service || !service.active) throw bookError(404, 'სერვისი ვერ მოიძებნა.', 'SERVICE_NOT_FOUND', 'Service not found.');
+  const services = await serviceRows(business.id, normalizeServiceIds(serviceIds, serviceId), db);
+  const service = bundleOf(services);
   const from = tbilisiInstant(addDaysYmd(date, -1), 0);
   const to = tbilisiInstant(addDaysYmd(date, 2), 0);
   const ctx = await context({ businessId: business.id, from, to }, db);
   const result = slotsForDay({ business, service, staff: ctx.staff, appointments: ctx.appointments, timeOff: ctx.timeOff, date, now, staffId, ignoreLead });
-  return { date, serviceId: service.id, durationMin: Number(service.durationMin), ...result };
+  return { date, serviceId: service.id, serviceIds: service.ids, durationMin: service.durationMin, ...result };
 }
 
 /** Which of the next `days` days have a free slot (the date strip). */
-export async function dateStrip({ businessId, serviceId, from = null, staffId = null, now = new Date(), days = 14 }, db = prisma) {
+export async function dateStrip({ businessId, serviceId, serviceIds, from = null, staffId = null, now = new Date(), days = 14 }, db = prisma) {
   const business = await requireBusiness(businessId, db);
-  const service = await serviceRow(business.id, serviceId, db);
-  if (!service || !service.active) throw bookError(404, 'სერვისი ვერ მოიძებნა.', 'SERVICE_NOT_FOUND', 'Service not found.');
+  const service = bundleOf(await serviceRows(business.id, normalizeServiceIds(serviceIds, serviceId), db));
   const start = from && isYmd(from) ? from : tbilisiYmd(now);
   const n = Math.min(60, Math.max(1, Number(days) || 14));
   const ctx = await context({ businessId: business.id, from: tbilisiInstant(addDaysYmd(start, -1), 0), to: tbilisiInstant(addDaysYmd(start, n + 1), 0) }, db);
@@ -83,6 +111,9 @@ export function appointmentPublic(row, { lang = 'ka', now = new Date() } = {}) {
     } : undefined,
     serviceId: row.serviceId ?? null,
     serviceName: row.serviceName,
+    services: Array.isArray(row.items) && row.items.length
+      ? row.items.map((i) => ({ id: i.id ?? null, name: i.name, durationMin: Number(i.durationMin), price: i.price == null ? null : Number(i.price), discountAmount: i.discountAmount == null ? null : Number(i.discountAmount) }))
+      : [{ id: row.serviceId ?? null, name: row.serviceName, durationMin: Number(row.durationMin), price: row.price == null ? null : Number(row.price), discountAmount: row.discountAmount == null ? null : Number(row.discountAmount) }],
     staffId: row.staffId ?? null,
     staffName: row.staffName ?? null,
     staffColor: row.staffColor ?? null,
@@ -110,7 +141,8 @@ export function appointmentPublic(row, { lang = 'ka', now = new Date() } = {}) {
   };
 }
 
-const APPOINTMENT_SELECT = sql`SELECT a.*, s.name AS "staffName", s.color AS "staffColor",
+const ITEMS_JSON = sql`(SELECT COALESCE(json_agg(json_build_object('id', i."serviceId", 'name', i."serviceName", 'durationMin', i."durationMin", 'price', i.price, 'discountAmount', i."discountAmount") ORDER BY i."sortOrder"), '[]'::json) FROM "BookAppointmentItem" i WHERE i."appointmentId" = a.id)`;
+const APPOINTMENT_SELECT = sql`SELECT a.*, s.name AS "staffName", s.color AS "staffColor", ${ITEMS_JSON} AS items,
   b.name AS "businessName", b."nameKa" AS "businessNameKa", b.slug AS "businessSlug", b.category AS "businessCategory", b.address AS "businessAddress", b."addressKa" AS "businessAddressKa",
   b.phone AS "businessPhone", b.lat AS "businessLat", b.lng AS "businessLng", b."logoImageId" AS "businessLogoImageId", b."coverImageId" AS "businessCoverImageId", b.settings AS "businessSettings"
   FROM "BookAppointment" a JOIN "BookBusiness" b ON b.id = a."businessId" LEFT JOIN "BookStaff" s ON s.id = a."staffId"`;
@@ -161,7 +193,7 @@ async function bestDiscount(tx, { businessId, serviceId, price, at, code }) {
  * Book. `byBusiness` = the business books for a walk-in (any client name/phone, no lead time, PENDING never).
  * Returns the full appointment row (appointmentRow shape).
  */
-export async function createAppointment({ businessId, serviceId, staffId = null, startsAt, note = null, source = 'APP', user = null, clientName = null, clientPhone = null, code = null, byBusiness = false, force = false, now = new Date() }, db = prisma) {
+export async function createAppointment({ businessId, serviceId, serviceIds, staffId = null, startsAt, note = null, source = 'APP', user = null, clientName = null, clientPhone = null, code = null, byBusiness = false, force = false, now = new Date() }, db = prisma) {
   const at = new Date(startsAt);
   if (Number.isNaN(at.getTime())) throw bookError(400, 'არასწორი დრო.', 'BAD_TIME', 'Invalid time.');
   return db.$transaction(async (tx) => {
@@ -173,8 +205,9 @@ export async function createAppointment({ businessId, serviceId, staffId = null,
       if (business.status !== 'CLAIMED') throw bookError(409, 'ეს ბიზნესი ჯერ არ იღებს ონლაინ ჯავშნებს — დარეკე.', 'NOT_BOOKABLE', 'This business does not take online bookings yet — give them a call.');
       if (!settings.onlineBooking) throw bookError(409, 'ონლაინ ჯავშნა ამ ბიზნესში ამჟამად გამორთულია.', 'ONLINE_OFF', 'Online booking is turned off at this business right now.');
     }
-    const service = await serviceRow(business.id, serviceId, tx);
-    if (!service || !service.active || (!byBusiness && !service.online)) throw bookError(404, 'სერვისი ვერ მოიძებნა.', 'SERVICE_NOT_FOUND', 'Service not found.');
+    const services = await serviceRows(business.id, normalizeServiceIds(serviceIds, serviceId), tx);
+    if (!byBusiness && services.some((x) => !x.online)) throw bookError(404, 'სერვისი ვერ მოიძებნა.', 'SERVICE_NOT_FOUND', 'Service not found.');
+    const service = bundleOf(services);
     const date = tbilisiYmd(at);
     const ctx = await context({ businessId: business.id, from: tbilisiInstant(addDaysYmd(date, -1), 0), to: tbilisiInstant(addDaysYmd(date, 2), 0) }, tx);
     const offered = slotsForDay({ business, service, staff: ctx.staff, appointments: ctx.appointments, timeOff: ctx.timeOff, date, now, staffId: staffId || null, ignoreLead: byBusiness });
@@ -199,14 +232,26 @@ export async function createAppointment({ businessId, serviceId, staffId = null,
     const phone = normalizePhone(clientPhone) ?? normalizePhone(user?.phone);
     if (!byBusiness && !phone) throw bookError(403, 'ჯავშნისთვის ტელეფონის ნომერი საჭიროა — ბიზნესი ასე დაგიკავშირდება.', 'PHONE_VERIFICATION_REQUIRED', 'A phone number is needed to book — this is how the business reaches you.');
     const clientId = await upsertClient(tx, { businessId: business.id, userId: user?.id ?? null, name, phone });
-    const base = service.price == null ? null : Number(service.price);
-    const best = base != null ? await bestDiscount(tx, { businessId: business.id, serviceId: service.id, price: base, at, code }) : null;
-    const price = best ? discountedPrice(base, best.row).price : base;
+    // Price and discount per service; the appointment row carries the totals.
+    const items = [];
+    for (const [idx, svc] of services.entries()) {
+      const base = svc.price == null ? null : Number(svc.price);
+      const best = base != null ? await bestDiscount(tx, { businessId: business.id, serviceId: svc.id, price: base, at, code }) : null;
+      items.push({ id: newId(), serviceId: svc.id, serviceName: svc.nameKa || svc.name, durationMin: Number(svc.durationMin), price: best ? discountedPrice(base, best.row).price : base, discountId: best ? best.row.id : null, discountAmount: best ? best.off : null, sortOrder: idx });
+    }
+    const priced = items.filter((i) => i.price != null);
+    const price = priced.length ? Math.round(priced.reduce((sum, i) => sum + i.price, 0) * 100) / 100 : null;
+    const firstDiscount = items.find((i) => i.discountId) ?? null;
+    const discountTotal = Math.round(items.reduce((sum, i) => sum + (i.discountAmount ?? 0), 0) * 100) / 100;
+    const serviceLabel = items.map((i) => i.serviceName).join(' + ');
     const id = newId();
     const status = byBusiness || settings.autoConfirm ? 'CONFIRMED' : 'PENDING';
     await tx.$executeRaw`INSERT INTO "BookAppointment" (id, "businessId", "serviceId", "serviceName", "staffId", "clientId", "clientUserId", "clientName", "clientPhone", "startsAt", "endsAt", "durationMin", status, source, price, "discountId", "discountAmount", note)
-      VALUES (${id}, ${business.id}, ${service.id}, ${service.nameKa || service.name}, ${person}, ${clientId}, ${user?.id ?? null}, ${name}, ${phone}, ${at}, ${endsAt}, ${Number(service.durationMin)}, ${status}, ${byBusiness ? 'BUSINESS' : source}, ${price}, ${best?.row.id ?? null}, ${best ? best.off : null}, ${cleanText(note, 500)})`;
-    if (best) await tx.$executeRaw`UPDATE "BookDiscount" SET "usedCount" = "usedCount" + 1 WHERE id = ${best.row.id}`;
+      VALUES (${id}, ${business.id}, ${service.id}, ${serviceLabel}, ${person}, ${clientId}, ${user?.id ?? null}, ${name}, ${phone}, ${at}, ${endsAt}, ${Number(service.durationMin)}, ${status}, ${byBusiness ? 'BUSINESS' : source}, ${price}, ${firstDiscount?.discountId ?? null}, ${firstDiscount ? discountTotal : null}, ${cleanText(note, 500)})`;
+    for (const it of items) {
+      await tx.$executeRaw`INSERT INTO "BookAppointmentItem" (id, "appointmentId", "serviceId", "serviceName", "durationMin", price, "discountId", "discountAmount", "sortOrder") VALUES (${it.id}, ${id}, ${it.serviceId}, ${it.serviceName}, ${it.durationMin}, ${it.price}, ${it.discountId}, ${it.discountAmount}, ${it.sortOrder})`;
+      if (it.discountId) await tx.$executeRaw`UPDATE "BookDiscount" SET "usedCount" = "usedCount" + 1 WHERE id = ${it.discountId}`;
+    }
     await tx.$executeRaw`UPDATE "BookBusiness" SET "bookingCount" = "bookingCount" + 1 WHERE id = ${business.id}`;
     if (!byBusiness) await tx.$executeRaw`INSERT INTO "BookEvent" ("businessId", kind) VALUES (${business.id}, 'BOOK_DONE')`;
     return appointmentRow(id, tx);
@@ -336,6 +381,12 @@ export async function updateByBusiness({ businessId, id, patch = {}, actorUserId
     if (!sets.length) return { row, moved: false, statusChanged: false };
     sets.push(sql`"updatedAt" = CURRENT_TIMESTAMP`);
     await tx.$executeRaw`UPDATE "BookAppointment" SET ${join(sets, ', ')} WHERE id = ${id}`;
+    if (patch.serviceId !== undefined && patch.serviceId !== row.serviceId) {
+      // A service change from the drawer makes the booking a single-service one again.
+      await tx.$executeRaw`DELETE FROM "BookAppointmentItem" WHERE "appointmentId" = ${id}`;
+      const [fresh] = await tx.$queryRaw`SELECT "serviceId", "serviceName", "durationMin", price FROM "BookAppointment" WHERE id = ${id}`;
+      await tx.$executeRaw`INSERT INTO "BookAppointmentItem" (id, "appointmentId", "serviceId", "serviceName", "durationMin", price, "sortOrder") VALUES (${newId()}, ${id}, ${fresh.serviceId}, ${fresh.serviceName}, ${fresh.durationMin}, ${fresh.price}, 0)`;
+    }
     const next = await appointmentRow(id, tx);
     // Money and client history follow the status.
     if (status === 'COMPLETED' && row.status !== 'COMPLETED') {
@@ -523,7 +574,7 @@ export async function deleteTransaction({ businessId, id }, db = prisma) {
 
 export async function analyticsRaw({ businessId, from, to }, db = prisma) {
   const [appointments, events, transactions, staff, timeOff, clients, reviews, business] = await Promise.all([
-    db.$queryRaw`SELECT a.id, a."staffId", a."serviceId", a."serviceName", a."clientId", a."clientUserId", a.status, a.source, a.price, a."discountAmount", a."startsAt", a."endsAt", a."durationMin", a."createdAt" FROM "BookAppointment" a WHERE a."businessId" = ${businessId} AND a."startsAt" >= ${from} AND a."startsAt" < ${to}`,
+    db.$queryRaw`SELECT a.id, a."staffId", a."serviceId", a."serviceName", ${ITEMS_JSON} AS items, a."clientId", a."clientUserId", a.status, a.source, a.price, a."discountAmount", a."startsAt", a."endsAt", a."durationMin", a."createdAt" FROM "BookAppointment" a WHERE a."businessId" = ${businessId} AND a."startsAt" >= ${from} AND a."startsAt" < ${to}`,
     db.$queryRaw`SELECT kind, "viewerHash", at FROM "BookEvent" WHERE "businessId" = ${businessId} AND at >= ${from} AND at < ${to}`,
     db.$queryRaw`SELECT kind, category, amount, method, at, "staffId" FROM "BookTransaction" WHERE "businessId" = ${businessId} AND at >= ${from} AND at < ${to}`,
     db.$queryRaw`SELECT id, name, color, schedule, active, bookable FROM "BookStaff" WHERE "businessId" = ${businessId}`,

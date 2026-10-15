@@ -21,26 +21,38 @@ import { HUB, hubText } from '@/theme/hub';
 import { useIsDark, useThemeColors } from '@/theme/colors';
 import { moduleInk } from '@/theme/moduleBrand';
 
-/** Step 5 — one summary, a note, the rules, then confirm. The server checks the minute again when booking. */
+/** The last step — one summary (every service with its price, who, when, where), a note, the rules, then confirm. The server checks the minute again when booking. */
 export default function BookConfirmStep() {
   const c = useThemeColors();
   const dark = useIsDark();
   const ink = moduleInk('book', dark);
   const insets = useSafeAreaInsets();
-  const { router, b, query, service, staffId, person, params, steps, businessId } = useBookingFlow();
+  const { router, b, query, service, serviceIds, selected, bundle, staffId, person, params, steps, businessId } = useBookingFlow();
   const startsAt = params.startsAt ? String(params.startsAt) : null;
   const [note, setNote] = useState('');
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState<BookAppointment | null>(null);
 
-  const discount = useMemo(() => discountFor(b?.discounts, service, startsAt ? new Date(startsAt) : undefined), [b?.discounts, service, startsAt]);
-  const finalPrice = service ? discountedPrice(service.price, discount) : null;
+  // A discount is checked per service (the server applies the exact one); the total is what the client sees.
+  const lines = useMemo(() => selected.map((svc) => {
+    const discount = discountFor(b?.discounts, svc, startsAt ? new Date(startsAt) : undefined);
+    return { svc, discount, final: discountedPrice(svc.price, discount) };
+  }), [b?.discounts, selected, startsAt]);
+  const discounts = lines.filter((l) => l.discount).map((l) => l.discount!);
+  const finalPrice = lines.length && lines.every((l) => l.final != null) ? Math.round(lines.reduce((sum, l) => sum + (l.final ?? 0), 0) * 100) / 100 : null;
+  const priceTo = discounts.length ? null : bundle.priceTo;
 
   const confirm = async () => {
     if (!b || !service || !startsAt) return;
     setBusy(true);
     try {
-      const { appointment } = await api.book.create({ businessId: b.id, serviceId: service.id, staffId: staffId ?? (params.pick ? String(params.pick) : null), startsAt, note: note.trim() || undefined });
+      const { appointment } = await api.book.create({
+        businessId: b.id,
+        ...(serviceIds.length > 1 ? { serviceIds } : { serviceId: service.id }),
+        staffId: staffId ?? (params.pick ? String(params.pick) : null),
+        startsAt,
+        note: note.trim() || undefined,
+      });
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
       setDone(appointment);
       void invalidate('book');
@@ -92,7 +104,7 @@ export default function BookConfirmStep() {
     <View style={{ paddingHorizontal: HUB.gutter, paddingTop: 10, paddingBottom: insets.bottom + 12, backgroundColor: c.bg100 }}>
       {service && startsAt ? (
         <Text style={[hubText.caption, { color: c.text200, textAlign: 'center', marginBottom: 8 }]}>
-          {whenLabel(startsAt)} · {priceLabel(finalPrice, discount ? null : service.priceTo, service.currency)}
+          {whenLabel(startsAt)} · {durationLabel(bundle.durationMin)} · {priceLabel(finalPrice, priceTo, bundle.currency)}
         </Text>
       ) : null}
       <Button label={busy ? tx('იწერება…', 'Booking…') : tx('ჯავშნის დადასტურება', 'Confirm booking')} size="lg" onPress={() => void confirm()} disabled={!service || !startsAt || busy} loading={busy} />
@@ -101,8 +113,11 @@ export default function BookConfirmStep() {
 
   const change = (step: 'service' | 'who' | 'when') => {
     const path = `/book/b/${businessId}/book${step === 'service' ? '' : `/${step}`}`;
-    router.dismissTo({ pathname: path, params: { serviceId: params.serviceId, staffId: params.staffId, date: params.date } } as never);
+    // The service page reads `serviceIds` so it shows the ticks instead of skipping ahead.
+    router.dismissTo({ pathname: path, params: { serviceId: params.serviceId, serviceIds: serviceIds.join(','), staffId: params.staffId, date: params.date } } as never);
   };
+
+  const several = selected.length > 1;
 
   return (
     <KeyboardFormShell header={header} footer={footer} background={c.bg100} contentStyle={{ paddingHorizontal: HUB.gutter, paddingBottom: 24 }}>
@@ -113,14 +128,32 @@ export default function BookConfirmStep() {
         <>
           <StepTitle title={tx('ყველაფერი სწორია?', 'Everything right?')} sub={tx('გადახედე და დაადასტურე — ჯავშანი მხოლოდ ახლა იქმნება.', 'Check it over and confirm — the booking is made only now.')} />
           <FlatCard>
-            <Row icon={Tag} label={tx('სერვისი', 'Service')} value={service.name} sub={`${durationLabel(service.durationMin)} · ${priceLabel(service.price, service.priceTo, service.currency)}${discount ? ` → ${priceLabel(finalPrice, null, service.currency)} (${discountLabel(discount)})` : ''}`} first onChange={() => change('service')} />
+            <Row
+              icon={Tag}
+              label={several ? tx('სერვისები', 'Services') : tx('სერვისი', 'Service')}
+              value={several ? tx(`${selected.length} სერვისი`, `${selected.length} services`) : service.name}
+              sub={`${durationLabel(bundle.durationMin)} · ${priceLabel(finalPrice, priceTo, bundle.currency)}${!several && lines[0]?.discount ? ` (${discountLabel(lines[0].discount)}, ${priceLabel(service.price, null, service.currency)}-დან)` : ''}`}
+              first
+              onChange={() => change('service')}
+            >
+              {several ? (
+                <View style={{ gap: 5, marginTop: 6, borderLeftWidth: 2, borderLeftColor: ink, paddingLeft: 10 }}>
+                  {lines.map(({ svc, discount, final }) => (
+                    <View key={svc.id} style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 10 }}>
+                      <Text style={[hubText.caption, { color: c.text100, flex: 1 }]} numberOfLines={1}>{svc.name}<Text style={{ color: c.text300 }}> · {durationLabel(svc.durationMin)}</Text></Text>
+                      <Text style={[hubText.caption, { color: discount ? ink : c.text100, fontFamily: 'NotoSansGeorgian_600SemiBold' }]}>{priceLabel(final, discount ? null : svc.priceTo, svc.currency)}</Text>
+                    </View>
+                  ))}
+                </View>
+              ) : null}
+            </Row>
             <Row icon={User} label={tx('ვინ', 'Who')} value={person ? person.name : tx('ნებისმიერი თანამშრომელი', 'Anyone available')} sub={person?.title ?? (staffId ? null : tx('ვინც ამ დროს თავისუფალია', 'Whoever is free at this time'))} onChange={steps.includes('who') ? () => change('who') : undefined} />
-            <Row icon={CalendarDays} label={tx('როდის', 'When')} value={whenLabel(startsAt)} sub={tx(`დასრულდება ~${durationLabel(service.durationMin)}-ში`, `Ends in about ${durationLabel(service.durationMin)}`)} onChange={() => change('when')} />
+            <Row icon={CalendarDays} label={tx('როდის', 'When')} value={whenLabel(startsAt)} sub={tx(`დასრულდება ~${durationLabel(bundle.durationMin)}-ში`, `Ends in about ${durationLabel(bundle.durationMin)}`)} onChange={() => change('when')} />
             <Row icon={MapPin} label={tx('სად', 'Where')} value={b.name} sub={b.address ?? null} />
           </FlatCard>
-          {discount ? (
+          {discounts.length ? (
             <View style={[s.note, { borderColor: ink, backgroundColor: c.surface }]}>
-              <Text style={[hubText.caption, { color: c.text100 }]}><Text style={{ color: ink, fontFamily: 'NotoSansGeorgian_600SemiBold' }}>{discount.title} · {discountLabel(discount)}</Text> — {tx('ფასდაკლება ადგილზე, ზუსტ თანხას ბიზნესი დაადასტურებს.', 'applied on site; the business confirms the exact amount.')}</Text>
+              <Text style={[hubText.caption, { color: c.text100 }]}><Text style={{ color: ink, fontFamily: 'NotoSansGeorgian_600SemiBold' }}>{discounts.map((d) => `${d.title} · ${discountLabel(d)}`).join(', ')}</Text> — {tx('ფასდაკლება ადგილზე, ზუსტ თანხას ბიზნესი დაადასტურებს.', 'applied on site; the business confirms the exact amount.')}</Text>
             </View>
           ) : null}
 
@@ -142,7 +175,7 @@ export default function BookConfirmStep() {
   );
 }
 
-function Row({ icon: Icon, label, value, sub, first = false, onChange }: { icon: React.ComponentType<{ size: number; color: string; strokeWidth?: number }>; label: string; value: string; sub?: string | null; first?: boolean; onChange?: () => void }) {
+function Row({ icon: Icon, label, value, sub, first = false, onChange, children }: { icon: React.ComponentType<{ size: number; color: string; strokeWidth?: number }>; label: string; value: string; sub?: string | null; first?: boolean; onChange?: () => void; children?: React.ReactNode }) {
   const c = useThemeColors();
   const dark = useIsDark();
   const ink = moduleInk('book', dark);
@@ -153,9 +186,10 @@ function Row({ icon: Icon, label, value, sub, first = false, onChange }: { icon:
         <Text style={[hubText.small, { color: c.text300 }]}>{label}</Text>
         <Text style={[hubText.cardTitle, { color: c.text100 }]}>{value}</Text>
         {sub ? <Text style={[hubText.caption, { color: c.text200 }]}>{sub}</Text> : null}
+        {children}
       </View>
       {onChange ? (
-        <Pressable accessibilityRole="button" accessibilityLabel={tx(`${label} — შეცვლა`, `Change ${label}`)} onPress={onChange} hitSlop={8} style={{ paddingVertical: 8, paddingHorizontal: 4 }}>
+        <Pressable accessibilityRole="button" accessibilityLabel={tx(`${label} — შეცვლა`, `Change ${label}`)} onPress={onChange} hitSlop={8} style={{ paddingVertical: 8, paddingHorizontal: 4, alignSelf: 'flex-start' }}>
           <Text style={[hubText.small, { color: ink, fontFamily: 'NotoSansGeorgian_600SemiBold' }]}>{tx('შეცვლა', 'Change')}</Text>
         </Pressable>
       ) : null}

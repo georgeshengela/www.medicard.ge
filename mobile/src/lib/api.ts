@@ -3950,11 +3950,11 @@ export const api = {
     business: (idOrSlug: string) => request<{ business: import('@/lib/book/bookTypes').BookBusinessDetail }>(`/api/book/businesses/${encodeURIComponent(idOrSlug)}`),
     event: (businessId: string, kind: 'CALL' | 'ROUTE' | 'WEBSITE' | 'SHARE' | 'BOOK_START') =>
       request<{ ok: boolean }>(`/api/book/businesses/${encodeURIComponent(businessId)}/events`, { method: 'POST', body: { kind } }),
-    availability: (businessId: string, params: { serviceId: string; date: string; staffId?: string | null }) =>
+    availability: (businessId: string, params: { serviceId?: string; serviceIds?: string; date: string; staffId?: string | null }) =>
       request<import('@/lib/book/bookTypes').BookAvailability>(`/api/book/businesses/${encodeURIComponent(businessId)}/availability?${bookQuery(params)}`),
-    days: (businessId: string, params: { serviceId: string; from?: string; staffId?: string | null; days?: number }) =>
+    days: (businessId: string, params: { serviceId?: string; serviceIds?: string; from?: string; staffId?: string | null; days?: number }) =>
       request<import('@/lib/book/bookTypes').BookDayStrip>(`/api/book/businesses/${encodeURIComponent(businessId)}/days?${bookQuery(params)}`),
-    create: (body: { businessId: string; serviceId: string; staffId?: string | null; startsAt: string; note?: string; code?: string }) =>
+    create: (body: { businessId: string; serviceId?: string; serviceIds?: string[]; staffId?: string | null; startsAt: string; note?: string; code?: string }) =>
       request<{ appointment: import('@/lib/book/bookTypes').BookAppointment }>('/api/book/appointments', { method: 'POST', body }),
     appointments: () => request<{ upcoming: import('@/lib/book/bookTypes').BookAppointment[]; past: import('@/lib/book/bookTypes').BookAppointment[] }>('/api/book/appointments'),
     appointment: (id: string) => request<{ appointment: import('@/lib/book/bookTypes').BookAppointment }>(`/api/book/appointments/${encodeURIComponent(id)}`),

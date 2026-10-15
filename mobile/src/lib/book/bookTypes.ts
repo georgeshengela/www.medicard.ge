@@ -106,10 +106,13 @@ export type BookBusinessDetail = BookBusinessCard & {
 export type BookPin = { id: string; slug: string; name: string; category: BookCategoryId; lat: number; lng: number; claimed: boolean; rating: number | null };
 
 export type BookSlot = { time: string; startsAt: string; staffIds: string[] };
-export type BookAvailability = { date: string; serviceId: string; durationMin: number; slots: BookSlot[]; closed: boolean; reason?: string };
+export type BookAvailability = { date: string; serviceId: string; serviceIds?: string[]; durationMin: number; slots: BookSlot[]; closed: boolean; reason?: string };
 export type BookDayStrip = { from: string; days: Array<{ date: string; count: number; closed: boolean }> };
 
 export type BookAppointmentStatus = 'PENDING' | 'CONFIRMED' | 'CANCELLED' | 'COMPLETED' | 'NO_SHOW';
+
+/** One service inside a booking; a plain booking has exactly one. */
+export type BookAppointmentService = { id: string | null; name: string; durationMin: number; price: number | null; discountAmount: number | null };
 
 export type BookAppointment = {
   id: string;
@@ -127,7 +130,9 @@ export type BookAppointment = {
     coverUrl: string | null;
   };
   serviceId: string | null;
+  /** All services joined with „ + “ when the booking holds several. */
   serviceName: string;
+  services?: BookAppointmentService[];
   staffId: string | null;
   staffName: string | null;
   staffColor: string | null;

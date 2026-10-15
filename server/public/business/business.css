@@ -295,6 +295,19 @@ body.biz { font-size: 14.5px; }
 .bz-cal-col-head .occ span { display: block; height: 100%; border-radius: 2px; }
 @media (max-width: 760px) { .bz-kpi-spark { display: none; } .bz-kpi:has(.bz-kpi-spark) { padding-right: 16px; } .bz-sources { flex-direction: column; align-items: flex-start; } }
 
+/* Several services in one booking (new-booking dialog + drawer) */
+.bz-svc-pick { display: flex; flex-direction: column; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; max-height: 232px; overflow-y: auto; }
+.bz-svc-row { display: grid; grid-template-columns: 18px 1fr auto; align-items: center; gap: 10px; padding: 9px 12px; cursor: pointer; font-size: 14px; border-top: 1px solid var(--line); }
+.bz-svc-row:first-child { border-top: 0; }
+.bz-svc-row.on { box-shadow: inset 3px 0 0 var(--book-2); }
+.bz-svc-row input { margin: 0; accent-color: var(--book); }
+.bz-svc-row .name { font-weight: 600; }
+.bz-svc-row .meta { color: var(--text2); font-size: 12.5px; white-space: nowrap; }
+.bz-svc-total { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; margin-top: 6px; font-size: 13px; color: var(--text2); min-height: 18px; }
+.bz-svc-total b { color: var(--text); }
+.bz-svc-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
+.bz-svc-list li { display: flex; justify-content: space-between; gap: 10px; padding-left: 10px; border-left: 2px solid var(--book-line); }
+
 /* List kit: filters, chips with counts, pager, day rows, row actions, sortable heads */
 .bz-filters { display: grid; gap: 10px; margin: 0 0 14px; }
 .bz-filters-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }

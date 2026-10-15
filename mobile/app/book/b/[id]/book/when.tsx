@@ -4,12 +4,12 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import { ChevronLeft, ChevronRight, Zap } from 'lucide-react-native';
 import { FlatCard } from '@/components/book/BookUI';
-import { ChosenPills, FlowHeader, StepBar, StepTitle, monthName, useBookingFlow } from '@/components/book/BookFlow';
+import { ChosenPills, FlowHeader, StepBar, StepTitle, bundleLine, monthName, serviceParams, useBookingFlow } from '@/components/book/BookFlow';
 import { Button } from '@/components/ui/Button';
 import { RecordsPageSkeleton } from '@/components/ui/Skeleton';
 import { tx } from '@/i18n/locale';
 import { api } from '@/lib/api';
-import { addDays, dateFromYmd, dayLabel, durationLabel, priceLabel, weekdayShort, ymdLocal } from '@/lib/book/bookFormat';
+import { addDays, dateFromYmd, dayLabel, durationLabel, weekdayShort, ymdLocal } from '@/lib/book/bookFormat';
 import type { BookAvailability, BookDayStrip, BookSlot } from '@/lib/book/bookTypes';
 import { HUB, hubText } from '@/theme/hub';
 import { useIsDark, useThemeColors } from '@/theme/colors';
@@ -29,7 +29,7 @@ export default function BookWhenStep() {
   const ink = moduleInk('book', dark);
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
-  const { b, query, service, staffId, person, params, steps, go } = useBookingFlow();
+  const { b, query, service, serviceIds, serviceKey, selected, bundle, staffId, person, params, steps, go } = useBookingFlow();
   const [strip, setStrip] = useState<BookDayStrip | null>(null);
   const [stripFailed, setStripFailed] = useState(false);
   const [date, setDate] = useState<string | null>(params.date ? String(params.date) : null);
@@ -47,7 +47,7 @@ export default function BookWhenStep() {
     setStrip(null);
     setStripFailed(false);
     setEarliest(undefined);
-    api.book.days(b.id, { serviceId: service.id, staffId, days: Math.min(60, Math.max(14, b.settings.horizonDays || 30)) })
+    api.book.days(b.id, { ...serviceParams(serviceIds), staffId, days: Math.min(60, Math.max(14, b.settings.horizonDays || 30)) })
       .then(async (res) => {
         if (!alive) return;
         setStrip(res);
@@ -55,14 +55,14 @@ export default function BookWhenStep() {
         if (!date || !res.days.some((d) => d.date === date && d.count > 0)) setDate(firstFree?.date ?? res.days[0]?.date ?? ymdLocal());
         if (!firstFree) { setEarliest(null); return; }
         try {
-          const av = await api.book.availability(b.id, { serviceId: service.id, date: firstFree.date, staffId });
+          const av = await api.book.availability(b.id, { ...serviceParams(serviceIds), date: firstFree.date, staffId });
           if (alive) setEarliest(av.slots[0] ? { date: firstFree.date, slot: av.slots[0] } : null);
         } catch { if (alive) setEarliest(null); }
       })
       .catch(() => alive && setStripFailed(true));
     return () => { alive = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [b?.id, service?.id, staffId]);
+  }, [b?.id, serviceKey, staffId]);
 
   // The free times of the chosen day.
   useEffect(() => {
@@ -70,11 +70,12 @@ export default function BookWhenStep() {
     let alive = true;
     setSlots(null);
     setSlot(null);
-    api.book.availability(b.id, { serviceId: service.id, date, staffId })
+    api.book.availability(b.id, { ...serviceParams(serviceIds), date, staffId })
       .then((res) => alive && setSlots(res))
-      .catch(() => alive && setSlots({ date, serviceId: service.id, durationMin: service.durationMin, slots: [], closed: false, reason: 'error' }));
+      .catch(() => alive && setSlots({ date, serviceId: service.id, durationMin: bundle.durationMin, slots: [], closed: false, reason: 'error' }));
     return () => { alive = false; };
-  }, [b, service, date, staffId]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [b, serviceKey, date, staffId]);
 
   // Weeks of seven, Monday first, from the week that holds today.
   const weeks = useMemo(() => {
@@ -158,7 +159,7 @@ export default function BookWhenStep() {
         ) : (
           <>
             <StepTitle title={tx('როდის?', 'When?')} sub={strip ? (freeDays ? tx(`${freeDays} დღეა თავისუფალი დროებით — წერტილი დღის ქვეშ.`, `${freeDays} days with free time — a dot under the day.`) : tx('ახლო დღეებში თავისუფალი დრო არ ჩანს.', 'No free time in the coming days.')) : tx('თავისუფალ დღეებს ვეძებ…', 'Looking for free days…')} />
-            <ChosenPills items={[service.name, person ? person.name : staffId ? null : tx('ნებისმიერი', 'Anyone')]} />
+            <ChosenPills items={[...selected.map((x) => x.name), person ? person.name : staffId ? null : tx('ნებისმიერი', 'Anyone')]} />
 
             {earliest ? (
               <Pressable accessibilityRole="button" onPress={takeEarliest} style={[s.earliest, { backgroundColor: c.surface, borderColor: ink }]}>
@@ -225,7 +226,7 @@ export default function BookWhenStep() {
               <View style={{ marginTop: HUB.sectionGap }}>
                 <View style={{ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 10 }}>
                   <Text style={[hubText.sectionTitle, { color: c.text100 }]}>{dayLabel(dateFromYmd(date))}</Text>
-                  <Text style={[hubText.caption, { color: c.text300 }]}>{slots ? tx(`${slots.slots.length} თავისუფალი დრო · ${durationLabel(service.durationMin)}`, `${slots.slots.length} free · ${durationLabel(service.durationMin)}`) : ''}</Text>
+                  <Text style={[hubText.caption, { color: c.text300 }]}>{slots ? tx(`${slots.slots.length} თავისუფალი დრო · ${durationLabel(bundle.durationMin)}`, `${slots.slots.length} free · ${durationLabel(bundle.durationMin)}`) : ''}</Text>
                 </View>
                 {!slots ? (
                   <RecordsPageSkeleton />
@@ -262,7 +263,7 @@ export default function BookWhenStep() {
       {b && service ? (
         <View style={[s.footer, { paddingBottom: insets.bottom + 12, backgroundColor: c.bg100, borderTopColor: c.bg200 }]}>
           <Text style={[hubText.caption, { color: slot ? c.text100 : c.text300, textAlign: 'center', marginBottom: 8 }]}>
-            {slot && date ? `${dayLabel(dateFromYmd(date))} · ${slot.time} · ${durationLabel(service.durationMin)} · ${priceLabel(service.price, service.priceTo, service.currency)}` : tx('აირჩიე დღე და დრო', 'Pick a day and a time')}
+            {slot && date ? `${dayLabel(dateFromYmd(date))} · ${slot.time} · ${bundleLine(bundle)}` : tx('აირჩიე დღე და დრო', 'Pick a day and a time')}
           </Text>
           <Button label={tx('გაგრძელება', 'Continue')} size="lg" onPress={next} disabled={!slot} />
         </View>

@@ -235,11 +235,12 @@ businessRouter.get('/:businessId/appointments', member(ALL), asyncHandler(async 
 }));
 
 businessRouter.get('/:businessId/availability', member(ALL), asyncHandler(async (req, res) => {
-  res.json(await bookings.availability({ businessId: req.params.businessId, serviceId: String(req.query.serviceId ?? ''), date: String(req.query.date ?? ''), staffId: req.query.staffId ? String(req.query.staffId) : null, ignoreLead: true }));
+  res.json(await bookings.availability({ businessId: req.params.businessId, serviceId: String(req.query.serviceId ?? ''), serviceIds: req.query.serviceIds ? String(req.query.serviceIds) : undefined, date: String(req.query.date ?? ''), staffId: req.query.staffId ? String(req.query.staffId) : null, ignoreLead: true }));
 }));
 
 const walkInBody = z.object({
-  serviceId: z.string().min(1),
+  serviceId: z.string().min(1).optional(),
+  serviceIds: z.array(z.string().min(1)).min(1).max(8).optional(),
   staffId: z.string().min(1).nullable().optional(),
   startsAt: z.string().min(10),
   clientId: z.string().optional(),
@@ -263,8 +264,9 @@ businessRouter.post('/:businessId/appointments', member(ALL), asyncHandler(async
     if (client.userId) user = { id: client.userId, fullName: client.name, phone: client.phone };
   }
   if (!clientName) throw bookError(400, 'მიუთითე კლიენტის სახელი.', 'NAME_REQUIRED', 'Enter the client name.');
+  if (!body.serviceId && !body.serviceIds?.length) throw bookError(400, 'აირჩიე სერვისი.', 'SERVICE_REQUIRED', 'Pick a service.');
   const staffId = req.member.role === 'STAFF' && req.member.staffId ? req.member.staffId : body.staffId ?? null;
-  const row = await bookings.createAppointment({ businessId: req.params.businessId, serviceId: body.serviceId, staffId, startsAt: body.startsAt, note: body.note ?? null, user, clientName, clientPhone, byBusiness: true, force: Boolean(body.force) });
+  const row = await bookings.createAppointment({ businessId: req.params.businessId, serviceId: body.serviceId, serviceIds: body.serviceIds, staffId, startsAt: body.startsAt, note: body.note ?? null, user, clientName, clientPhone, byBusiness: true, force: Boolean(body.force) });
   if (body.internalNote) await bookings.updateByBusiness({ businessId: req.params.businessId, id: row.id, patch: { internalNote: body.internalNote }, actorUserId: req.user.id });
   if (row.clientUserId) notifyBooked(row).catch(() => undefined);
   res.status(201).json({ appointment: bookings.appointmentPublic(await bookings.appointmentRow(row.id)) });
