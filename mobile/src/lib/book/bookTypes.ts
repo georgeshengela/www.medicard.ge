@@ -111,6 +111,36 @@ export type BookDayStrip = { from: string; days: Array<{ date: string; count: nu
 
 export type BookAppointmentStatus = 'PENDING' | 'CONFIRMED' | 'CANCELLED' | 'COMPLETED' | 'NO_SHOW';
 
+export type BookDayPart = 'MORNING' | 'AFTERNOON' | 'EVENING';
+export type BookWaitlistStatus = 'WAITING' | 'OFFERED' | 'BOOKED' | 'CANCELLED' | 'EXPIRED';
+/** A waiting-list entry: what the client wants, for which days and parts of the day, and the last offer. */
+export type BookWaitlistEntry = {
+  id: string;
+  businessId: string;
+  business?: { id: string; slug: string | null; name: string; category: BookCategoryId | null; address: string | null; phone: string | null; logoUrl: string | null; coverUrl: string | null };
+  serviceId: string | null;
+  serviceIds: string[];
+  serviceName: string;
+  staffId: string | null;
+  staffName: string | null;
+  staffColor: string | null;
+  clientName: string;
+  fromDate: string;
+  toDate: string;
+  dayParts: BookDayPart[];
+  note: string | null;
+  status: BookWaitlistStatus;
+  source: 'APP' | 'WEB' | 'BUSINESS';
+  offeredAt: string | null;
+  offeredStartsAt: string | null;
+  offeredStaffId: string | null;
+  offeredStaffName: string | null;
+  offerCount: number;
+  appointmentId: string | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
 /** One service inside a booking; a plain booking has exactly one. */
 export type BookAppointmentService = { id: string | null; name: string; durationMin: number; price: number | null; discountAmount: number | null };
 

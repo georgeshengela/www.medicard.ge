@@ -14,7 +14,9 @@ import { clientIp } from '../lib/rateLimitKey.js';
 import { bookError, publicCategories } from '../lib/book/catalog.js';
 import * as store from '../lib/book/store.js';
 import * as bookings from '../lib/book/bookings.js';
-import { notifyBooked, notifyClientCancelled } from '../lib/book/push.js';
+import { notifyBooked, notifyClientCancelled, notifyWaitlistJoined, offerOpenings } from '../lib/book/push.js';
+import * as waitlist from '../lib/book/waitlist.js';
+import { tbilisiYmd } from '../lib/book/time.js';
 
 export const bookRouter = Router();
 
@@ -123,6 +125,7 @@ bookRouter.post('/appointments', requireVerifiedPhone, asyncHandler(async (req, 
     user: req.user,
   });
   notifyBooked(row).catch(() => undefined);
+  waitlist.markBooked({ businessId: row.businessId, userId: req.user.id, clientId: row.clientId, appointmentId: row.id, startsAt: row.startsAt, serviceIds: [row.serviceId, ...(Array.isArray(row.items) ? row.items.map((i) => i.id) : [])] }).catch(() => undefined);
   res.status(201).json({ appointment: bookings.appointmentPublic(row, { lang: lang(req) }) });
 }));
 
@@ -140,6 +143,7 @@ bookRouter.post('/appointments/:id/cancel', asyncHandler(async (req, res) => {
   const { reason } = z.object({ reason: z.string().trim().max(300).optional() }).parse(req.body ?? {});
   const { row, late } = await bookings.cancelByUser({ id: req.params.id, userId: req.user.id, reason: reason ?? null });
   notifyClientCancelled(row, { late }).catch(() => undefined);
+  offerOpenings({ businessId: row.businessId, dates: [tbilisiYmd(new Date(row.startsAt))] }).catch(() => undefined);
   res.json({ appointment: bookings.appointmentPublic(row, { lang: lang(req) }), late });
 }));
 
@@ -147,6 +151,38 @@ bookRouter.post('/appointments/:id/review', asyncHandler(async (req, res) => {
   const { rating, text } = z.object({ rating: z.number().int().min(1).max(5), text: z.string().trim().max(1000).optional() }).parse(req.body ?? {});
   const row = await bookings.reviewAppointment({ id: req.params.id, userId: req.user.id, rating, text: text ?? null });
   res.json({ appointment: bookings.appointmentPublic(row, { lang: lang(req) }) });
+}));
+
+// ——— waiting list ———
+
+const waitBody = z.object({
+  businessId: z.string().min(1),
+  serviceId: z.string().min(1).optional(),
+  serviceIds: z.array(z.string().min(1)).min(1).max(8).optional(),
+  staffId: z.string().min(1).nullable().optional(),
+  fromDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  toDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  dayParts: z.array(z.enum(['MORNING', 'AFTERNOON', 'EVENING'])).max(3).optional(),
+  note: z.string().trim().max(300).optional(),
+});
+
+bookRouter.post('/waitlist', requireVerifiedPhone, asyncHandler(async (req, res) => {
+  const body = waitBody.parse(req.body ?? {});
+  if (!body.serviceId && !body.serviceIds?.length) throw bookError(400, 'აირჩიე სერვისი.', 'SERVICE_REQUIRED', 'Pick a service.');
+  const platform = String(req.headers['x-medicard-platform'] ?? '');
+  const { row, created } = await waitlist.join({ businessId: body.businessId, user: req.user, serviceId: body.serviceId, serviceIds: body.serviceIds, staffId: body.staffId ?? null, fromDate: body.fromDate ?? null, toDate: body.toDate ?? null, dayParts: body.dayParts ?? [], note: body.note ?? null, source: platform === 'web' ? 'WEB' : 'APP' });
+  if (created) notifyWaitlistJoined(row).catch(() => undefined);
+  res.status(created ? 201 : 200).json({ entry: waitlist.waitlistPublic(row, { lang: lang(req) }), created });
+}));
+
+bookRouter.get('/waitlist', asyncHandler(async (req, res) => {
+  res.set('Cache-Control', 'no-store');
+  res.json({ entries: await waitlist.listMine(req.user.id, { lang: lang(req) }) });
+}));
+
+bookRouter.delete('/waitlist/:id', asyncHandler(async (req, res) => {
+  const row = await waitlist.cancelMine({ id: req.params.id, userId: req.user.id });
+  res.json({ entry: waitlist.waitlistPublic(row, { lang: lang(req) }) });
 }));
 
 bookRouter.get('/favorites', asyncHandler(async (req, res) => {

@@ -16,7 +16,9 @@ import { CATEGORY_IDS, TBILISI_CENTER, bookError, guessCategory, hoursFromMapbox
 import * as store from '../lib/book/store.js';
 import * as bookings from '../lib/book/bookings.js';
 import { buildAnalytics, periodFor } from '../lib/book/analytics.js';
-import { notifyBooked, notifyChanged } from '../lib/book/push.js';
+import { notifyBooked, notifyChanged, notifyWaitlistAdded, notifyWaitlistOpening, offerOpenings } from '../lib/book/push.js';
+import * as waitlist from '../lib/book/waitlist.js';
+import { prisma } from '../lib/prisma.js';
 import { addDaysYmd, isYmd, tbilisiInstant, tbilisiYmd } from '../lib/book/time.js';
 
 export const businessRouter = Router();
@@ -224,7 +226,17 @@ businessRouter.post('/:businessId/time-off', member(MANAGE), asyncHandler(async 
   const body = z.object({ staffId: z.string().nullable().optional(), startsAt: z.string(), endsAt: z.string(), reason: z.string().trim().max(120).optional() }).parse(req.body ?? {});
   res.status(201).json({ timeOff: await store.addTimeOff(req.params.businessId, { staffId: body.staffId ?? null, startsAt: body.startsAt, endsAt: body.endsAt, reason: body.reason ?? null }) });
 }));
-businessRouter.delete('/:businessId/time-off/:id', member(MANAGE), asyncHandler(async (req, res) => { await store.removeTimeOff(req.params.businessId, req.params.id); res.json({ ok: true }); }));
+businessRouter.delete('/:businessId/time-off/:id', member(MANAGE), asyncHandler(async (req, res) => {
+  const [off] = await prisma.$queryRaw`SELECT "startsAt", "endsAt" FROM "BookTimeOff" WHERE id = ${req.params.id} AND "businessId" = ${req.params.businessId}`;
+  await store.removeTimeOff(req.params.businessId, req.params.id);
+  // The freed days may fit someone on the waiting list.
+  if (off) {
+    const dates = [];
+    for (let d = tbilisiYmd(off.startsAt); d <= tbilisiYmd(off.endsAt) && dates.length < 14; d = addDaysYmd(d, 1)) dates.push(d);
+    offerOpenings({ businessId: req.params.businessId, dates }).catch(() => undefined);
+  }
+  res.json({ ok: true });
+}));
 
 // calendar
 businessRouter.get('/:businessId/appointments', member(ALL), asyncHandler(async (req, res) => {
@@ -269,6 +281,7 @@ businessRouter.post('/:businessId/appointments', member(ALL), asyncHandler(async
   const row = await bookings.createAppointment({ businessId: req.params.businessId, serviceId: body.serviceId, serviceIds: body.serviceIds, staffId, startsAt: body.startsAt, note: body.note ?? null, user, clientName, clientPhone, byBusiness: true, force: Boolean(body.force) });
   if (body.internalNote) await bookings.updateByBusiness({ businessId: req.params.businessId, id: row.id, patch: { internalNote: body.internalNote }, actorUserId: req.user.id });
   if (row.clientUserId) notifyBooked(row).catch(() => undefined);
+  waitlist.markBooked({ businessId: req.params.businessId, userId: row.clientUserId, clientId: row.clientId, appointmentId: row.id, startsAt: row.startsAt, serviceIds: [row.serviceId, ...(Array.isArray(row.items) ? row.items.map((i) => i.id) : [])] }).catch(() => undefined);
   res.status(201).json({ appointment: bookings.appointmentPublic(await bookings.appointmentRow(row.id)) });
 }));
 
@@ -299,8 +312,51 @@ businessRouter.patch('/:businessId/appointments/:id', member(ALL), asyncHandler(
   }
   const result = await bookings.updateByBusiness({ businessId: req.params.businessId, id: req.params.id, patch, actorUserId: req.user.id });
   if (result.row.clientUserId && (result.moved || result.statusChanged)) notifyChanged(result.row, { previousStatus: result.previousStatus, moved: result.moved }).catch(() => undefined);
-  res.json({ appointment: bookings.appointmentPublic(result.row) });
+  // A cancelled or moved booking frees its old day: offer it to the waiting list before answering, so the
+  // panel can say how many people were told.
+  let waitlistOffered = 0;
+  if ((result.statusChanged && result.row.status === 'CANCELLED') || result.moved) {
+    waitlistOffered = await offerOpenings({ businessId: req.params.businessId, dates: [tbilisiYmd(new Date(result.previousStartsAt ?? result.row.startsAt))] });
+  }
+  res.json({ appointment: bookings.appointmentPublic(result.row), waitlistOffered });
 }));
+
+// waiting list
+const waitInput = z.object({
+  clientId: z.string().optional(),
+  clientName: z.string().trim().max(120).optional(),
+  clientPhone: z.string().trim().max(32).optional(),
+  serviceId: z.string().min(1).optional(),
+  serviceIds: z.array(z.string().min(1)).min(1).max(8).optional(),
+  staffId: z.string().min(1).nullable().optional(),
+  fromDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  toDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  dayParts: z.array(z.enum(['MORNING', 'AFTERNOON', 'EVENING'])).max(3).optional(),
+  note: z.string().trim().max(300).optional(),
+});
+businessRouter.get('/:businessId/waitlist', member(ALL), asyncHandler(async (req, res) => {
+  res.json(await waitlist.listForBusiness(req.params.businessId, { status: req.query.status ? String(req.query.status) : 'open', limit: Number(req.query.limit) || 500 }));
+}));
+businessRouter.post('/:businessId/waitlist', member(ALL), asyncHandler(async (req, res) => {
+  const body = waitInput.parse(req.body ?? {});
+  if (!body.serviceId && !body.serviceIds?.length) throw bookError(400, 'აირჩიე სერვისი.', 'SERVICE_REQUIRED', 'Pick a service.');
+  const row = await waitlist.addByBusiness({ businessId: req.params.businessId, ...body, staffId: body.staffId ?? null });
+  notifyWaitlistAdded(row).catch(() => undefined);
+  res.status(201).json({ entry: waitlist.waitlistPublic(row) });
+}));
+businessRouter.patch('/:businessId/waitlist/:id', member(ALL), asyncHandler(async (req, res) => {
+  const patch = z.object({
+    status: z.enum(['WAITING', 'CANCELLED', 'BOOKED']).optional(),
+    appointmentId: z.string().optional(),
+    note: z.string().trim().max(300).nullable().optional(),
+    offer: z.object({ startsAt: z.string().min(10), staffId: z.string().nullable().optional() }).optional(),
+  }).parse(req.body ?? {});
+  const row = await waitlist.updateByBusiness({ businessId: req.params.businessId, id: req.params.id, patch });
+  let notified = 0;
+  if (patch.offer && row.clientUserId) notified = (await notifyWaitlistOpening(row, { startsAt: patch.offer.startsAt })).sent ?? 0;
+  res.json({ entry: waitlist.waitlistPublic(row), notified });
+}));
+businessRouter.delete('/:businessId/waitlist/:id', member(MANAGE), asyncHandler(async (req, res) => { await waitlist.remove({ businessId: req.params.businessId, id: req.params.id }); res.json({ ok: true }); }));
 
 // clients
 businessRouter.get('/:businessId/clients', member(ALL), asyncHandler(async (req, res) => res.json(await bookings.listClients({ businessId: req.params.businessId, q: String(req.query.q ?? ''), sort: String(req.query.sort ?? 'recent'), limit: Number(req.query.limit) || 200, offset: Number(req.query.offset) || 0 }))));

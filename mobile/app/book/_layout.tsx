@@ -25,6 +25,7 @@ function BookStack() {
       <Stack.Screen name="b/[id]/book/index" options={{ headerShown: false }} />
       <Stack.Screen name="b/[id]/book/who" options={{ headerShown: false }} />
       <Stack.Screen name="b/[id]/book/when" options={{ headerShown: false }} />
+      <Stack.Screen name="b/[id]/book/wait" options={{ headerShown: false }} />
       <Stack.Screen name="appointments/index" options={{ headerShown: false }} />
       <Stack.Screen name="b/[id]/book/confirm" options={{ headerShown: false }} />
       <Stack.Screen name="appointments/[id]" options={{ headerShown: false }} />

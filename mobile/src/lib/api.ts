@@ -3966,6 +3966,13 @@ export const api = {
       request<{ businesses: import('@/lib/book/bookTypes').BookBusinessCard[] }>(`/api/book/favorites${origin ? `?${bookQuery({ lat: origin.lat, lng: origin.lng })}` : ''}`),
     setFavorite: (businessId: string, on: boolean) =>
       request<{ favorite: boolean }>(`/api/book/favorites/${encodeURIComponent(businessId)}`, { method: on ? 'PUT' : 'DELETE' }),
+    /** The waiting list: join for some days and parts of the day, see mine, leave. */
+    waitlist: {
+      join: (body: { businessId: string; serviceId?: string; serviceIds?: string[]; staffId?: string | null; fromDate?: string; toDate?: string; dayParts?: import('@/lib/book/bookTypes').BookDayPart[]; note?: string }) =>
+        request<{ entry: import('@/lib/book/bookTypes').BookWaitlistEntry; created: boolean }>('/api/book/waitlist', { method: 'POST', body }),
+      list: () => request<{ entries: import('@/lib/book/bookTypes').BookWaitlistEntry[] }>('/api/book/waitlist'),
+      cancel: (id: string) => request<{ entry: import('@/lib/book/bookTypes').BookWaitlistEntry }>(`/api/book/waitlist/${encodeURIComponent(id)}`, { method: 'DELETE' }),
+    },
   },
 
 };

@@ -24,7 +24,8 @@ const money = (v) => (v == null || v === '' ? null : Number.isFinite(Number(v)) 
 
 // ——— availability ———
 
-async function context({ businessId, from, to }, db) {
+/** Staff, live appointments and time off of a business in a window — what the availability engine reads. */
+export async function context({ businessId, from, to }, db) {
   const [staff, appointments, timeOff] = await Promise.all([
     db.$queryRaw`SELECT * FROM "BookStaff" WHERE "businessId" = ${businessId} AND active`,
     db.$queryRaw`SELECT id, "staffId", status, "startsAt", "endsAt" FROM "BookAppointment" WHERE "businessId" = ${businessId} AND status <> 'CANCELLED' AND "endsAt" > ${from} AND "startsAt" < ${to}`,
@@ -153,7 +154,7 @@ export async function appointmentRow(id, db = prisma) {
 }
 
 /** Find or create the business's client row for a person / phone. */
-async function upsertClient(tx, { businessId, userId = null, name, phone = null, email = null }) {
+export async function upsertClient(tx, { businessId, userId = null, name, phone = null, email = null }) {
   if (userId) {
     const [row] = await tx.$queryRaw`SELECT * FROM "BookClient" WHERE "businessId" = ${businessId} AND "userId" = ${userId}`;
     if (row) {
@@ -403,7 +404,7 @@ export async function updateByBusiness({ businessId, id, patch = {}, actorUserId
     }
     if (status === 'NO_SHOW' && row.status !== 'NO_SHOW' && next.clientId) await tx.$executeRaw`UPDATE "BookClient" SET "noShows" = "noShows" + 1, "updatedAt" = CURRENT_TIMESTAMP WHERE id = ${next.clientId}`;
     if (row.status === 'NO_SHOW' && status !== 'NO_SHOW' && next.clientId) await tx.$executeRaw`UPDATE "BookClient" SET "noShows" = GREATEST(0, "noShows" - 1), "updatedAt" = CURRENT_TIMESTAMP WHERE id = ${next.clientId}`;
-    return { row: next, moved, statusChanged: status !== row.status, previousStatus: row.status };
+    return { row: next, moved, statusChanged: status !== row.status, previousStatus: row.status, previousStartsAt: row.startsAt };
   }, { timeout: 20_000 });
 }
 

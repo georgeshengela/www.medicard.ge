@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
-import { ChevronLeft, ChevronRight, Zap } from 'lucide-react-native';
+import { BellRing, ChevronLeft, ChevronRight, Zap } from 'lucide-react-native';
 import { FlatCard } from '@/components/book/BookUI';
 import { ChosenPills, FlowHeader, StepBar, StepTitle, bundleLine, monthName, serviceParams, useBookingFlow } from '@/components/book/BookFlow';
 import { Button } from '@/components/ui/Button';
@@ -29,7 +29,7 @@ export default function BookWhenStep() {
   const ink = moduleInk('book', dark);
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
-  const { b, query, service, serviceIds, serviceKey, selected, bundle, staffId, person, params, steps, go } = useBookingFlow();
+  const { router, businessId, b, query, service, serviceIds, serviceKey, selected, bundle, staffId, person, params, steps, go } = useBookingFlow();
   const [strip, setStrip] = useState<BookDayStrip | null>(null);
   const [stripFailed, setStripFailed] = useState(false);
   const [date, setDate] = useState<string | null>(params.date ? String(params.date) : null);
@@ -148,6 +148,25 @@ export default function BookWhenStep() {
     if (!slot || !date) return;
     go('confirm', { date, startsAt: slot.startsAt, time: slot.time, pick: staffId || (slot.staffIds.length === 1 ? slot.staffIds[0] : '') });
   };
+  // The waiting list keeps the chosen services and person; the day travels along when one is open.
+  const openWaitlist = (forDay: string | null) => {
+    void Haptics.selectionAsync().catch(() => undefined);
+    const q: Record<string, string> = { serviceId: params.serviceId ? String(params.serviceId) : service?.id ?? '' };
+    if (serviceIds.length > 1) q.serviceIds = serviceIds.join(',');
+    if (staffId) q.staffId = staffId;
+    if (forDay) q.date = forDay;
+    router.push({ pathname: `/book/b/${businessId}/book/wait`, params: q } as never);
+  };
+  const waitCard = (forDay: string | null, strong: boolean) => (
+    <Pressable accessibilityRole="button" onPress={() => openWaitlist(forDay)} style={[s.wait, { backgroundColor: c.surface, borderColor: strong ? ink : c.bg300 }]}>
+      <View style={[s.zap, { borderColor: ink }]}><BellRing size={16} color={ink} strokeWidth={2.2} /></View>
+      <View style={{ flex: 1 }}>
+        <Text style={[hubText.cardTitle, { color: c.text100 }]}>{tx('მოლოდინის სია', 'Waiting list')}</Text>
+        <Text style={[hubText.caption, { color: c.text200 }]}>{forDay ? tx('ამ დღეს დრო რომ გათავისუფლდეს, პირველი შენ გაიგებ.', 'If a time frees up on this day, you hear first.') : tx('გათავისუფლებულ დროს პირველი შენ გაიგებ.', 'You hear first when a time frees up.')}</Text>
+      </View>
+      <Text style={[hubText.small, { color: ink, fontFamily: 'NotoSansGeorgian_600SemiBold' }]}>{tx('ჩაწერა', 'Join')}</Text>
+    </Pressable>
+  );
 
   return (
     <View style={{ flex: 1, backgroundColor: c.bg100 }}>
@@ -171,6 +190,8 @@ export default function BookWhenStep() {
                 <Text style={[hubText.small, { color: ink, fontFamily: 'NotoSansGeorgian_600SemiBold' }]}>{tx('ავიღოთ', 'Take it')}</Text>
               </Pressable>
             ) : null}
+
+            {strip && !freeDays ? waitCard(null, true) : null}
 
             {stripFailed ? (
               <FlatCard style={{ padding: 16 }}><Text style={[hubText.body, { color: c.text200 }]}>{tx('თავისუფალი დღეები ვერ ჩაიტვირთა. სცადე ხელახლა.', 'Free days could not load. Please try again.')}</Text></FlatCard>
@@ -238,6 +259,7 @@ export default function BookWhenStep() {
                           : slots.reason === 'error' ? tx('დროები ვერ ჩაიტვირთა. სცადე ხელახლა.', 'Times could not load. Please try again.')
                             : tx('ამ დღეს თავისუფალი დრო აღარ დარჩა — აირჩიე სხვა დღე ზემოთ.', 'No free time left on this day — pick another day above.')}
                     </Text>
+                    {slots.reason !== 'error' && slots.reason !== 'horizon' ? waitCard(date, false) : null}
                   </FlatCard>
                 ) : groups.map((g) => (
                   <View key={g.label} style={{ marginBottom: 12 }}>
@@ -255,6 +277,11 @@ export default function BookWhenStep() {
                   </View>
                 ))}
               </View>
+            ) : null}
+            {strip && freeDays ? (
+              <Pressable accessibilityRole="button" onPress={() => openWaitlist(null)} hitSlop={8} style={{ alignSelf: 'center', paddingVertical: 12, marginTop: 4 }}>
+                <Text style={[hubText.small, { color: ink, fontFamily: 'NotoSansGeorgian_600SemiBold' }]}>{tx('სასურველი დრო არ ჩანს? მოლოდინის სია', 'No time that suits you? Join the waiting list')}</Text>
+              </Pressable>
             ) : null}
           </>
         )}
@@ -274,6 +301,7 @@ export default function BookWhenStep() {
 
 const s = StyleSheet.create({
   earliest: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, borderRadius: HUB.cardRadius, borderWidth: 1, marginBottom: 12 },
+  wait: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14, borderRadius: HUB.cardRadius, borderWidth: 1, marginBottom: 12, marginTop: 4 },
   zap: { width: 36, height: 36, borderRadius: 12, borderWidth: 1, alignItems: 'center', justifyContent: 'center' },
   monthRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 },
   navBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },

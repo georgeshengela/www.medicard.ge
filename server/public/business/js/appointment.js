@@ -72,8 +72,9 @@ export function openAppointment(appt, ctx, { onChange } = {}) {
           if (!date.get() || !time.get()) throw new Error(t('აირჩიე დღე და დრო.', 'Pick a day and a time.'));
           const patch = { startsAt: toIso(date.get(), time.get()), staffId: who.value || null };
           if (svc.value && svc.value !== a.serviceId) patch.serviceId = svc.value;
-          a = (await biz.patch(`/appointments/${a.id}`, patch)).appointment;
-          ok(t('გადატანილია. კლიენტს შეტყობინება მივა.', 'Moved. The client is notified.'));
+          const res = await biz.patch(`/appointments/${a.id}`, patch);
+          a = res.appointment;
+          ok(res.waitlistOffered ? t(`გადატანილია · ძველი დრო მოლოდინის სიიდან ${res.waitlistOffered} კლიენტს შევთავაზეთ`, `Moved · the old time was offered to ${res.waitlistOffered} waiting ${res.waitlistOffered === 1 ? 'client' : 'clients'}`) : t('გადატანილია. კლიენტს შეტყობინება მივა.', 'Moved. The client is notified.'));
           d.setTitle(a.serviceName);
           d.setBody(render());
           d.setFooter(actions());
@@ -87,8 +88,9 @@ export function openAppointment(appt, ctx, { onChange } = {}) {
 
   async function setStatus(status, extra = {}) {
     try {
-      a = (await biz.patch(`/appointments/${a.id}`, { status, ...extra })).appointment;
-      ok(t('შენახულია', 'Saved'));
+      const res = await biz.patch(`/appointments/${a.id}`, { status, ...extra });
+      a = res.appointment;
+      ok(res.waitlistOffered ? t(`შენახულია · მოლოდინის სიიდან ${res.waitlistOffered} კლიენტს დრო შევთავაზეთ`, `Saved · ${res.waitlistOffered} waiting ${res.waitlistOffered === 1 ? 'client was' : 'clients were'} offered the time`) : t('შენახულია', 'Saved'));
       d.setBody(render());
       d.setFooter(actions());
       onChange?.(a);
@@ -158,7 +160,9 @@ export function newAppointmentDialog(ctx, preset = {}, { onCreated } = {}) {
   // Services: one is the rule, but a visit can hold several (haircut + colour) — they follow one another with
   // the same person, so the dialog books one block of time for all of them.
   const chosen = [];
-  if (ctx.services[0]) chosen.push(ctx.services[0].id);
+  const presetIds = (preset.serviceIds || []).filter((id) => ctx.services.some((s) => s.id === id));
+  if (presetIds.length) chosen.push(...presetIds);
+  else if (ctx.services[0]) chosen.push(ctx.services[0].id);
   const svcList = h('div', { class: 'bz-svc-pick' });
   const svcTotal = h('div', { class: 'bz-svc-total' });
   const svc = { get value() { return chosen[0] || ''; }, get values() { return [...chosen]; }, addEventListener(type, fn) { if (type === 'change') svcList.addEventListener('svc-change', fn); } };

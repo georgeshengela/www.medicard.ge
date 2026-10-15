@@ -10,7 +10,8 @@ import { withJobLease } from '../jobLease.js';
 import { getUserLanguages, t } from '../i18n.js';
 import { sendEmail } from '../email/mailer.js';
 import { claimReminder, dueReminders, dueReviewAsks, markReviewAsked } from './bookings.js';
-import { tbilisiClock, tbilisiYmd, daysBetweenYmd } from './time.js';
+import * as waitlist from './waitlist.js';
+import { addDaysYmd, tbilisiClock, tbilisiYmd, daysBetweenYmd } from './time.js';
 
 const KA_MONTHS = ['იან', 'თებ', 'მარ', 'აპრ', 'მაი', 'ივნ', 'ივლ', 'აგვ', 'სექ', 'ოქტ', 'ნოე', 'დეკ'];
 const EN_MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -220,7 +221,85 @@ export async function processBookReminders({ db = prisma, now = new Date(), send
     db, send, lang);
     sent += r?.sent ?? 0;
   }
-  return { checked: rows.length, asked: asks.length, sent };
+  // Waiting list: entries past their last day expire; open ones are matched against the next seven days
+  // (entries younger than 15 minutes wait for the next pass, so joining never pushes back at once).
+  let offered = 0;
+  try {
+    await waitlist.expireOld({ now }, db);
+    const today = tbilisiYmd(now);
+    const dates = Array.from({ length: 7 }, (_, i) => addDaysYmd(today, i));
+    for (const businessId of await waitlist.sweepBusinesses({ now }, db)) offered += await offerOpenings({ businessId, dates, db, send, now, minAgeMs: 15 * 60_000 });
+  } catch (error) { console.warn('[book] waitlist sweep failed', error?.message); }
+  return { checked: rows.length, asked: asks.length, sent, offered };
+}
+
+// ——— waiting list ———
+
+function ymdText(ymd, lang) {
+  const [, m, d] = String(ymd).split('-').map(Number);
+  return `${d} ${(lang === 'en' ? EN_MONTHS : KA_MONTHS)[m - 1]}`;
+}
+const rangeText = (row, lang) => (row.fromDate === row.toDate ? ymdText(row.fromDate, lang) : `${ymdText(row.fromDate, lang)} – ${ymdText(row.toDate, lang)}`);
+
+/** Straight into the booking flow on that day with the same services and person. */
+function waitRoute(row, date) {
+  const ids = Array.isArray(row.serviceIds) ? row.serviceIds : [];
+  const q = new URLSearchParams();
+  q.set('serviceId', ids[0] || row.serviceId || '');
+  if (ids.length > 1) q.set('serviceIds', ids.join(','));
+  if (row.staffId) q.set('staffId', row.staffId);
+  if (date) q.set('date', date);
+  return `/book/b/${row.businessId}/book/when?${q.toString()}`;
+}
+
+/** A time opened up (found by a cancellation, a move, removed time off, the pass, or offered by hand). */
+export async function notifyWaitlistOpening(row, { slot = null, startsAt = null, db = prisma, send = sendExpoPush, now = new Date() } = {}) {
+  if (!row.clientUserId) return { sent: 0 };
+  const lang = (await languagesFor(db, [row.clientUserId])).get(String(row.clientUserId)) ?? 'ka';
+  const at = startsAt ?? slot?.startsAt ?? row.offeredStartsAt ?? null;
+  const when = at ? formatWhen(at, lang, now) : rangeText(row, lang);
+  const date = at ? tbilisiYmd(new Date(at)) : row.fromDate;
+  const route = waitRoute(row, date);
+  const staffName = row.offeredStaffName || row.staffName || null;
+  return notifyUser(row.clientUserId, t(lang,
+    { title: `გათავისუფლდა დრო — ${placeName(row, 'ka')}`, body: `${row.serviceName} · ${when}${staffName ? ` · ${staffName}` : ''}. დაჯავშნე ახლავე, სანამ სხვა დაიკავებს.`, route },
+    { title: `A time opened up — ${placeName(row, 'en')}`, body: `${row.serviceName} · ${when}${staffName ? ` · ${staffName}` : ''}. Book it before someone else does.`, route }),
+  db, send, lang);
+}
+
+/** The business learns that someone is waiting. */
+export async function notifyWaitlistJoined(row, { db = prisma, send = sendExpoPush } = {}) {
+  const recipients = await businessRecipients(row.businessId, row.staffId, db);
+  const langs = await languagesFor(db, recipients);
+  for (const userId of recipients) {
+    const lang = langs.get(String(userId)) ?? 'ka';
+    await notifyUser(userId, t(lang,
+      { title: 'მოლოდინის სია — ახალი კლიენტი', body: `${row.clientName} · ${row.serviceName} · ${rangeText(row, 'ka')}${row.staffName ? ` · ${row.staffName}` : ''}`, route: '/book/business' },
+      { title: 'Waiting list — new client', body: `${row.clientName} · ${row.serviceName} · ${rangeText(row, 'en')}${row.staffName ? ` · ${row.staffName}` : ''}`, route: '/book/business' }),
+    db, send, lang);
+  }
+}
+
+/** The business put a walk-in on the list who has the app: tell them. */
+export async function notifyWaitlistAdded(row, { db = prisma, send = sendExpoPush } = {}) {
+  if (!row.clientUserId) return { sent: 0 };
+  const lang = (await languagesFor(db, [row.clientUserId])).get(String(row.clientUserId)) ?? 'ka';
+  return notifyUser(row.clientUserId, t(lang,
+    { title: `მოლოდინის სიაში ხარ — ${placeName(row, 'ka')}`, body: `${row.serviceName} · ${rangeText(row, 'ka')}. როგორც კი დრო გათავისუფლდება, შეგატყობინებთ.`, route: '/book/appointments' },
+    { title: `You are on the waiting list — ${placeName(row, 'en')}`, body: `${row.serviceName} · ${rangeText(row, 'en')}. We will tell you as soon as a time opens up.`, route: '/book/appointments' }),
+  db, send, lang);
+}
+
+/** Cancellations, moves and removed time off call this: match the freed days and push every offer. Never throws. */
+export async function offerOpenings({ businessId, dates, db = prisma, send = sendExpoPush, now = new Date(), minAgeMs = 0 }) {
+  try {
+    const offers = await waitlist.matchOpenings({ businessId, dates, now, minAgeMs }, db);
+    for (const o of offers) await notifyWaitlistOpening(o.row, { slot: o.slot, db, send, now });
+    return offers.length;
+  } catch (error) {
+    console.warn('[book] waitlist offers failed', error?.message);
+    return 0;
+  }
 }
 
 export function startBookReminders({ intervalMs = 5 * 60 * 1000 } = {}) {

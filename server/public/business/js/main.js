@@ -13,6 +13,8 @@ const ROUTES = [
   { path: '/', page: () => import('./pages/dashboard.js'), title: t('მიმოხილვა', 'Overview'), icon: 'home', nav: true },
   { path: '/calendar', page: () => import('./pages/calendar.js'), title: t('კალენდარი', 'Calendar'), icon: 'calendar', nav: true },
   { path: '/appointments', page: () => import('./pages/appointments.js'), title: t('ჯავშნები', 'Bookings'), icon: 'calendarCheck', nav: true },
+  { path: '/waitlist', page: () => import('./pages/waitlist.js'), title: t('მოლოდინის სია', 'Waiting list'), icon: 'bellRing', nav: true },
+  { path: '/waitlist', page: () => import('./pages/waitlist.js'), title: t('მოლოდინის სია', 'Waiting list'), icon: 'bellRing', nav: true },
   { path: '/clients', page: () => import('./pages/clients.js'), title: t('კლიენტები', 'Clients'), icon: 'users', nav: true },
   { path: '/clients/:id', page: () => import('./pages/clients.js'), title: t('კლიენტი', 'Client') },
   { path: '/services', page: () => import('./pages/services.js'), title: t('სერვისები', 'Services'), icon: 'grid', nav: true },
@@ -87,7 +89,7 @@ function statusLine(status) {
 
 /** The sidebar reads like a working day: today's pages first, then what the business is, then money and numbers. */
 const GROUPS = [
-  { title: () => t('დღე', 'The day'), paths: ['/', '/calendar', '/appointments', '/clients'] },
+  { title: () => t('დღე', 'The day'), paths: ['/', '/calendar', '/appointments', '/waitlist', '/clients'] },
   { title: () => t('ბიზნესი', 'The business'), paths: ['/services', '/team', '/discounts'] },
   { title: () => t('ფული და ციფრები', 'Money and numbers'), paths: ['/finance', '/analytics', '/reviews'] },
   { title: null, paths: ['/settings'] },
@@ -106,6 +108,16 @@ async function refreshBadges() {
     set('/reviews', o.reviews?.unanswered || 0, '');
     set('/calendar', (o.today || []).filter((x) => x.status !== 'CANCELLED').length, '');
   } catch { /* the badges are a nicety */ }
+  try {
+    const w = await biz.get('/waitlist', { status: 'open', limit: 1 });
+    const el = badgeEls['/waitlist'];
+    if (el) { el.textContent = w.total ? String(w.total) : ''; el.className = `nav-badge${w.total ? ' on' : ''}`; }
+  } catch { /* same */ }
+  try {
+    const w = await biz.get('/waitlist', { status: 'open', limit: 1 });
+    const el = badgeEls['/waitlist'];
+    if (el) { el.textContent = w.total ? String(w.total) : ''; el.className = `nav-badge${w.total ? ' on' : ''}`; }
+  } catch { /* same */ }
 }
 
 /** A month at a glance under the navigation while the calendar is open; a day jumps to it. */
