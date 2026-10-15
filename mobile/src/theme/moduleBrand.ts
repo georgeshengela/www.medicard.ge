@@ -103,12 +103,12 @@ export const MODULE_BRANDS: Record<ModuleBrandId, ModuleBrand> = {
     gradient: ['#0A1030', '#1B2A66', '#C99A45'], glow: 'rgba(233,199,126,0.32)', onHero: '#F3DDA6',
   },
   // MEDIBOOK (owner 2026-10-15): dental clinics, salons, aesthetic centres and clinics on a map, with online
-  // booking. Lime = a free slot on the calendar; yellow-green, so it never reads as MEDIFOOD's blue-green emerald.
-  // (The first pick, fuchsia, the owner rejected the same day.)
+  // booking. Honey amber = the golden hour of a salon or clinic; warm, and distinct from MEDIFAMILY's red-orange coral and MEDIHOROSCOPE's muted brass on night.
+  // (Fuchsia and then lime were both rejected by the owner the same day; never bring them back.)
   book: {
     id: 'book', suffix: 'BOOK', name: 'MEDIBOOK',
-    ink: { light: '#4D7C0F', dark: '#BEF264' },
-    gradient: ['#14230A', '#3F6212', '#84CC16'], glow: 'rgba(190,242,100,0.35)', onHero: '#ECFCCB',
+    ink: { light: '#B45309', dark: '#FCD34D' },
+    gradient: ['#451A03', '#B45309', '#F59E0B'], glow: 'rgba(252,211,77,0.35)', onHero: '#FEF3C7',
   },
   // MEDIPROFILE (owner 2026-10-04): the Profile tab's title. It is the person's own page, not a module,
   // so it keeps the brand teal instead of a signature colour.

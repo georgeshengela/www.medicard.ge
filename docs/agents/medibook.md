@@ -9,7 +9,7 @@ Read this file before working in the area; add new notes here, not in AGENTS.md.
 
 ## Names and rules
 
-- Module **MEDIBOOK** (`book`), brand id `book` in `mobile/src/theme/moduleBrand.ts` (lime `#4D7C0F` / `#BEF264` — a free slot on the calendar;
+- Module **MEDIBOOK** (`book`), brand id `book` in `mobile/src/theme/moduleBrand.ts` (honey amber `#B45309` / `#FCD34D` — the golden hour;
   the first pick, fuchsia, the owner rejected on day one), tone `book` in `colors.ts`. Feature flag `book` (server
   `FEATURES`, app `FEATURE_KEYS`, admin section „სხვა სივრცეები“). `visits` stays: it gates the hand-typed visit
   editor and Medi's visit tools.
@@ -107,7 +107,7 @@ claimed / pending, bookings, favourites, 7-day views / calls). Capabilities `BOO
 
 ## Business panel UI (2026-10-15 design pass)
 
-- Brand colour is lime (`#4D7C0F` light ink / `#BEF264` dark; `--book*` tokens in `server/public/business/business.css`). The first pick, fuchsia, was rejected by the owner the same day — never bring it back.
+- Brand colour is honey amber (`#B45309` light ink / `#FCD34D` dark; `--book*` tokens in `server/public/business/business.css`). Fuchsia and then lime were both rejected by the owner on 2026-10-15 — never bring it back.
 - The landing hero is the product: a three-column day that fills with bookings once on load (`pages/landing.js` `demo()`); claim / register scroll to the sign-in box and store the intent in `sessionStorage` for `/start`.
 - Date and time are never native inputs: `js/fields.js` `dateField()` (month popover, Monday first) and `timeField()` (15-minute grid in three parts of the day; `configure({ free })` tints the free slots from `/availability`; `allowEmpty` adds Clear; `to: '24:00'` for closing times). The popover is `position: fixed` on `<body>` so modals and the drawer never clip it, and it is click-through while fading out. Used by the walk-in dialog, the move editor, time off, discounts, finance and the hours editor (`shared.js hoursEditor`).
 - Dialog buttons in the modal footer sit outside the form: submit by hand (`form.requestSubmit()`), never `type: 'submit'` there.

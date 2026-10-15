@@ -1,25 +1,25 @@
-/* MEDIBOOK business panel — a calm, flat workspace in the MEDICARD family, with MEDIBOOK's lime as the
+/* MEDIBOOK business panel — a calm, flat workspace in the MEDICARD family, with MEDIBOOK's honey amber as the
    one accent (actions, the active page, the free slot). Loaded after /app/app.css and re-tokens it:
-   a warm-neutral light canvas, a deep green-black dark canvas, hairline cards instead of soft shadows. */
+   a warm stone light canvas, a warm near-black dark canvas, hairline cards instead of soft shadows. */
 
 :root {
-  --book: #4d7c0f; --book-ink: #3f6212; --book-2: #65a30d; --book-soft: #ecfccb; --book-line: #d9f99d;
-  --bg: #f4f6f2; --bg2: #e9ede6; --bg3: #d8ded5; --surface: #ffffff; --surface2: #f8faf6;
-  --line: #e4e9e1; --track: #e6ebe3; --text: #111611; --text2: #4a564a; --text3: #7b867a;
-  --brand: #4d7c0f; --brand-ink: #3f6212; --brand-soft: #ecfccb; --brand-2: #65a30d; --on-brand: #ffffff;
+  --book: #b45309; --book-ink: #92400e; --book-2: #d97706; --book-soft: #fef3c7; --book-line: #fde68a;
+  --bg: #f5f4f1; --bg2: #eae8e3; --bg3: #d9d6cf; --surface: #ffffff; --surface2: #faf9f6;
+  --line: #e7e4de; --track: #e8e5df; --text: #171511; --text2: #534f47; --text3: #827d74;
+  --brand: #b45309; --brand-ink: #92400e; --brand-soft: #fef3c7; --brand-2: #d97706; --on-brand: #ffffff;
   --radius: 18px; --radius-sm: 12px;
-  --ok: #1a7f4b; --ok-bg: #e4f5ea; --warn: #a15c00; --warn-bg: #fbf0dc; --danger: #c22f3f; --danger-bg: #fbeaec;
-  --shadow-pop: 0 24px 60px -24px rgba(17, 22, 17, .35), 0 2px 6px rgba(17, 22, 17, .06);
-  --c1: #4d7c0f; --c2: #2563eb; --c3: #d97706; --c4: #db2777; --c5: #0891b2; --c6: #7c3aed;
+  --ok: #1a7f4b; --ok-bg: #e4f5ea; --warn: #9a3412; --warn-bg: #fff1e6; --danger: #c22f3f; --danger-bg: #fbeaec;
+  --shadow-pop: 0 24px 60px -24px rgba(23, 21, 17, .35), 0 2px 6px rgba(23, 21, 17, .06);
+  --c1: #b45309; --c2: #2563eb; --c3: #059669; --c4: #db2777; --c5: #0891b2; --c6: #7c3aed;
 }
 :root[data-theme='dark'] {
-  --book: #a3e635; --book-ink: #bef264; --book-2: #84cc16; --book-soft: #1b2a0b; --book-line: #365314;
-  --bg: #0b0f0c; --bg2: #161d18; --bg3: #243029; --surface: #121915; --surface2: #18211b;
-  --line: #1f2a23; --track: #243029; --text: #f1f5ee; --text2: #b7c2b8; --text3: #7b887f;
-  --brand: #84cc16; --brand-ink: #bef264; --brand-soft: #1b2a0b; --brand-2: #a3e635; --on-brand: #0b0f0c;
-  --ok: #4ade80; --ok-bg: #0f2a1a; --warn: #fbbf24; --warn-bg: #3a2a08; --danger: #f87171; --danger-bg: #3f1518;
+  --book: #fbbf24; --book-ink: #fcd34d; --book-2: #f59e0b; --book-soft: #2a1b05; --book-line: #78350f;
+  --bg: #0e0d0b; --bg2: #1b1916; --bg3: #2a2723; --surface: #151412; --surface2: #1c1a17;
+  --line: #262320; --track: #2a2723; --text: #f4f2ee; --text2: #bfbab2; --text3: #857f76;
+  --brand: #f59e0b; --brand-ink: #fcd34d; --brand-soft: #2a1b05; --brand-2: #fbbf24; --on-brand: #1a1203;
+  --ok: #4ade80; --ok-bg: #0f2a1a; --warn: #fb923c; --warn-bg: #3b1d0a; --danger: #f87171; --danger-bg: #3f1518;
   --shadow-pop: 0 24px 60px -24px rgba(0, 0, 0, .8), 0 0 0 1px rgba(255, 255, 255, .05);
-  --c1: #a3e635; --c2: #60a5fa; --c3: #fbbf24; --c4: #f472b6; --c5: #22d3ee; --c6: #a78bfa;
+  --c1: #fbbf24; --c2: #60a5fa; --c3: #34d399; --c4: #f472b6; --c5: #22d3ee; --c6: #a78bfa;
 }
 
 body.biz { font-size: 14.5px; }
@@ -232,7 +232,7 @@ body.biz { font-size: 14.5px; }
 .bz-cal-pop-grid button.muted { color: var(--text3); }
 .bz-cal-pop-grid button.today { font-weight: 700; color: var(--book-ink); }
 .bz-cal-pop-grid button.on { background: var(--book); color: #fff; font-weight: 700; }
-:root[data-theme='dark'] .bz-cal-pop-grid button.on { color: #0b0f0c; }
+:root[data-theme='dark'] .bz-cal-pop-grid button.on { color: #1a1203; }
 .bz-cal-pop-grid button:disabled { color: var(--bg3); cursor: default; background: transparent; }
 .bz-cal-pop-foot { display: flex; justify-content: space-between; margin-top: 8px; }
 .bz-cal-pop-foot button { border: 0; background: none; color: var(--brand-ink); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; padding: 4px 6px; border-radius: 8px; }
@@ -244,7 +244,7 @@ body.biz { font-size: 14.5px; }
 .bz-time-grid button:hover { border-color: var(--bg3); }
 .bz-time-grid button.free { background: var(--book-soft); color: var(--book-ink); }
 .bz-time-grid button.on { background: var(--book); color: #fff; border-color: var(--book); }
-:root[data-theme='dark'] .bz-time-grid button.on { color: #0b0f0c; }
+:root[data-theme='dark'] .bz-time-grid button.on { color: #1a1203; }
 .bz-time-grid button.busy { color: var(--text3); background: transparent; text-decoration: line-through; }
 .bz-time-note { font-size: 12px; color: var(--text3); margin: 8px 2px 0; display: flex; gap: 10px; }
 .bz-time-note i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; background: var(--book-soft); border: 1px solid var(--book-line); margin-right: 4px; vertical-align: -1px; }
@@ -256,7 +256,7 @@ body.biz { font-size: 14.5px; }
 .bz-quick button { border: 1px solid var(--book-line); background: var(--book-soft); color: var(--book-ink); border-radius: 8px; padding: 3px 9px; font: inherit; font-size: 12.5px; font-weight: 600; cursor: pointer; font-variant-numeric: tabular-nums; }
 .bz-quick button:hover { border-color: var(--book-2); }
 .bz-quick button.on { background: var(--book); color: #fff; border-color: var(--book); }
-:root[data-theme='dark'] .bz-quick button.on { color: #0b0f0c; }
+:root[data-theme='dark'] .bz-quick button.on { color: #1a1203; }
 .bz-quick button.more { background: transparent; border-color: var(--line); color: var(--text2); }
 .bz-feat .tile { color: var(--book-ink); background: var(--book-soft); }
 .bz-pop { position: fixed; top: 0; left: 0; z-index: 140; }
@@ -340,6 +340,7 @@ body.biz { font-size: 14.5px; }
 .bz-slots { display: flex; gap: 6px; flex-wrap: wrap; max-height: 180px; overflow: auto; padding: 2px; }
 .bz-slots button { border: 1px solid var(--line); background: var(--surface); border-radius: 9px; padding: 7px 10px; font-weight: 600; font-size: 13px; cursor: pointer; }
 .bz-slots button.on { background: var(--book); color: #fff; border-color: var(--book); }
+:root[data-theme='dark'] .bz-slots button.on { color: #1a1203; }
 
 /* ── Landing ───────────────────────────────────────────── */
 .bz-landing { min-height: 100vh; }
@@ -356,7 +357,7 @@ body.biz { font-size: 14.5px; }
 .bz-hero-proof b { display: block; font-size: 20px; color: var(--text); letter-spacing: -.02em; font-variant-numeric: tabular-nums; }
 
 /* The product itself as the hero: a day column that fills with bookings once on load */
-.bz-demo { background: var(--surface); border: 1px solid var(--line); border-radius: 22px; overflow: hidden; box-shadow: 0 30px 80px -40px rgba(17, 22, 17, .45); }
+.bz-demo { background: var(--surface); border: 1px solid var(--line); border-radius: 22px; overflow: hidden; box-shadow: 0 30px 80px -40px rgba(23, 21, 17, .45); }
 :root[data-theme='dark'] .bz-demo { box-shadow: 0 30px 80px -40px rgba(0, 0, 0, .9); }
 .bz-demo-top { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-bottom: 1px solid var(--line); font-size: 13px; }
 .bz-demo-top b { font-weight: 700; }

@@ -119,10 +119,10 @@ const MODULE_TONES: Record<ModuleTone, { light: ToneTokens; dark: ToneTokens }> 
     light: { primary100: '#8A6414', primary200: '#B07F1F', primary300: '#C99A45', accent100: '#F6EBD3', accent200: '#E9C77E' },
     dark: { primary100: '#F3DDA6', primary200: '#E9C77E', primary300: '#C99A45', accent100: '#1A1A3A', accent200: '#5B4A22' },
   },
-  // MEDIBOOK (moduleBrand `book`): #4D7C0F / #BEF264 — lime, a free slot on the calendar.
+  // MEDIBOOK (moduleBrand `book`): #B45309 / #FCD34D — honey amber, the golden hour of a salon or clinic.
   book: {
-    light: { primary100: '#4D7C0F', primary200: '#65A30D', primary300: '#A3E635', accent100: '#ECFCCB', accent200: '#BEF264' },
-    dark: { primary100: '#BEF264', primary200: '#A3E635', primary300: '#84CC16', accent100: '#1A2E05', accent200: '#3F6212' },
+    light: { primary100: '#B45309', primary200: '#D97706', primary300: '#FBBF24', accent100: '#FEF3C7', accent200: '#FDE68A' },
+    dark: { primary100: '#FCD34D', primary200: '#FBBF24', primary300: '#F59E0B', accent100: '#2A1B05', accent200: '#78350F' },
   },
 };
 const TONED: Record<ModuleTone, { light: Palette; dark: Palette }> = {

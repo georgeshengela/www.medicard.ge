@@ -18,7 +18,7 @@ function demo() {
   const people = [
     { name: t('ნინო', 'Nino'), title: t('სტილისტი', 'Stylist'), c: '#0ea5e9' },
     { name: t('გიო', 'Gio'), title: t('ბარბერი', 'Barber'), c: '#8b5cf6' },
-    { name: t('მარიამი', 'Mariam'), title: t('კოსმეტოლოგი', 'Cosmetologist'), c: '#f59e0b' },
+    { name: t('მარიამი', 'Mariam'), title: t('კოსმეტოლოგი', 'Cosmetologist'), c: '#10b981' },
   ];
   const start = 10; // 10:00 … 19:00
   const ev = (col, from, len, client, service, d, extra = '') => {
