@@ -20,7 +20,7 @@ export default async function payrollPage(root) {
     mount(host, h('div', { class: 'skeleton-card' }, h('div', { class: 'sk' }), h('div', { class: 'sk' })));
     try {
       const r = await biz.get('/payroll', { from, to });
-      const periodBar = h('div', { class: 'bz-inline', style: { flexWrap: 'wrap', gap: '8px', marginBottom: '12px' } },
+      const periodBar = h('div', { class: 'bz-inline', style: { flexWrap: 'wrap', gap: '8px' } },
         segmented([{ value: 'this', label: t('ეს თვე', 'This month') }, { value: 'prev', label: t('წინა თვე', 'Last month') }, { value: 'custom', label: t('პერიოდი', 'Period') }], mode, (v) => {
           mode = v;
           if (v === 'this') { from = monthStart; to = today; } else if (v === 'prev') { from = prevStart; to = prevEnd; }
@@ -34,20 +34,18 @@ export default async function payrollPage(root) {
         kpi(t('გადახდილი', 'Paid'), gel(T.paid), ''),
         kpi(t('დარჩენილი', 'Balance'), gel(T.balance), T.balance > 0 ? t('გადასახდელია', 'to pay') : ''),
         kpi(t('პროდუქტები', 'Products'), gel(T.productRevenue), t('გაყიდვები პერიოდში', 'sales in the period')));
-      if (!r.staff.length) { mount(host, periodBar, kpis, card(emptyBox(t('გუნდი ცარიელია', 'No team yet'), t('დაამატე თანამშრომლები „გუნდი“ გვერდზე, მერე აქ წესები და გადახდები.', 'Add people on the Team page, then rules and payouts here.')))); return; }
+      if (!r.staff.length) { mount(host, h('div', { class: 'bz-stack' }, periodBar, kpis, card(emptyBox(t('გუნდი ცარიელია', 'No team yet'), t('დაამატე თანამშრომლები „გუნდი“ გვერდზე, მერე აქ წესები და გადახდები.', 'Add people on the Team page, then rules and payouts here.'))))); return; }
       const table = card({ class: 'flush' }, h('div', { class: 'bz-table-wrap' }, h('table', { class: 'bz-table' },
-        h('thead', null, h('tr', null, h('th', null, t('თანამშრომელი', 'Person')), h('th', null, t('წესი', 'Rule')), h('th', { class: 'num' }, t('ვიზიტი', 'Visits')), h('th', { class: 'num' }, t('სერვისების ღირ.', 'Service value')), h('th', { class: 'num' }, t('პროდუქტები', 'Products')), h('th', { class: 'num' }, t('დარიცხული', 'Earned')), h('th', { class: 'num' }, t('გადახდილი', 'Paid')), h('th', { class: 'num' }, t('დარჩა', 'Balance')), h('th'))),
+        h('thead', null, h('tr', null, h('th', null, t('თანამშრომელი', 'Person')), h('th', null, t('წესი', 'Rule')), h('th', { class: 'num' }, t('ვიზიტები', 'Visits')), h('th', { class: 'num' }, t('პროდუქტები', 'Products')), h('th', { class: 'num' }, t('დარიცხული', 'Earned')), h('th', { class: 'num' }, t('დარჩა', 'Balance')), h('th'))),
         h('tbody', null, r.staff.map((s) => h('tr', { class: s.active ? '' : 'is-muted' },
           h('td', null, h('div', { class: 'bz-inline' }, avatar(s.name, s.color || '#64748B', 30), h('div', null, h('b', null, s.name), s.title ? h('div', { class: 'faint' }, s.title) : null))),
-          h('td', null, ruleText(s.pay), h('div', null, button(t('წესი', 'Rule'), { size: 'sm', variant: 'ghost', icon: 'edit', onClick: () => rulesDialog(s) }))),
-          h('td', { class: 'num' }, String(s.visits)),
-          h('td', { class: 'num' }, gel(s.serviceValue)),
+          h('td', null, h('div', { class: 'bz-inline', style: { flexWrap: 'nowrap' } }, ruleText(s.pay), button('', { size: 'sm', variant: 'ghost', icon: 'edit', ariaLabel: t('წესის შეცვლა', 'Change the rule'), title: t('წესის შეცვლა', 'Change the rule'), onClick: () => rulesDialog(s) }))),
+          h('td', { class: 'num' }, h('b', null, String(s.visits)), h('div', { class: 'faint' }, gel(s.serviceValue))),
           h('td', { class: 'num' }, s.productRevenue ? gel(s.productRevenue) : h('span', { class: 'bz-dim' }, '—')),
           h('td', { class: 'num' }, h('b', null, gel(s.earned.total)), h('div', { class: 'faint' }, [s.earned.fromServices ? t(`სერვ. ${gel(s.earned.fromServices)}`, `svc ${gel(s.earned.fromServices)}`) : null, s.earned.fromProducts ? t(`პროდ. ${gel(s.earned.fromProducts)}`, `prod ${gel(s.earned.fromProducts)}`) : null, s.earned.fixed ? t(`ფიქს. ${gel(s.earned.fixed)}`, `fixed ${gel(s.earned.fixed)}`) : null].filter(Boolean).join(' · '))),
-          h('td', { class: 'num' }, gel(s.paid)),
-          h('td', { class: `num ${s.balance > 0 ? 'bz-ok' : ''}` }, h('b', null, gel(s.balance))),
+          h('td', { class: `num ${s.balance > 0 ? 'bz-ok' : ''}` }, h('b', null, gel(s.balance)), h('div', { class: 'faint' }, t(`გადახდილი ${gel(s.paid)}`, `paid ${gel(s.paid)}`))),
           h('td', { class: 'num' }, button(t('გადახდა', 'Pay'), { size: 'sm', icon: 'wallet', onClick: () => payDialog(s, r) })))),
-          h('tr', { class: 'is-total' }, h('td', null, h('b', null, t('სულ', 'Total'))), h('td'), h('td', { class: 'num' }, String(T.visits)), h('td', { class: 'num' }, gel(T.serviceValue)), h('td', { class: 'num' }, gel(T.productRevenue)), h('td', { class: 'num' }, h('b', null, gel(T.earned))), h('td', { class: 'num' }, gel(T.paid)), h('td', { class: 'num' }, h('b', null, gel(T.balance))), h('td'))))));
+          h('tr', { class: 'is-total' }, h('td', null, h('b', null, t('სულ', 'Total'))), h('td'), h('td', { class: 'num' }, h('b', null, String(T.visits)), h('div', { class: 'faint' }, gel(T.serviceValue))), h('td', { class: 'num' }, gel(T.productRevenue)), h('td', { class: 'num' }, h('b', null, gel(T.earned))), h('td', { class: 'num' }, h('b', null, gel(T.balance)), h('div', { class: 'faint' }, t(`გადახდილი ${gel(T.paid)}`, `paid ${gel(T.paid)}`))), h('td'))))));
       const payouts = card(h('div', { class: 'card-head' }, h('div', null, h('div', { class: 'card-title' }, t('გადახდები ამ პერიოდში', 'Payouts in this period')), h('div', { class: 'card-sub' }, t('ყოველი გადახდა ხარჯებშიც ჩანს (ხელფასი).', 'Every payout also shows in expenses (salaries).')))),
         r.payouts.length ? h('div', { class: 'bz-table-wrap' }, h('table', { class: 'bz-table' },
           h('thead', null, h('tr', null, h('th', null, t('როდის', 'When')), h('th', null, t('ვის', 'To')), h('th', null, t('პერიოდი', 'Period')), h('th', null, t('მეთოდი', 'Method')), h('th', { class: 'num' }, t('თანხა', 'Amount')), h('th'))),
@@ -59,16 +57,16 @@ export default async function payrollPage(root) {
             h('td', { class: 'num' }, h('b', null, gel(p.amount))),
             h('td', { class: 'num' }, button('', { size: 'sm', variant: 'ghost', icon: 'trash', ariaLabel: t('წაშლა', 'Delete'), onClick: async () => { if (await confirmDialog({ title: t('გადახდის წაშლა?', 'Delete the payout?'), body: t(`${gel(p.amount)} ხარჯებიდანაც წაიშლება.`, `${gel(p.amount)} leaves the expenses too.`), confirm: t('წაშლა', 'Delete'), danger: true })) { try { await biz.del(`/payouts/${p.id}`); paint(); } catch (e) { fail(e); } } } })))))))
           : h('p', { class: 'bz-sub' }, t('ამ პერიოდში გადახდა არ ყოფილა.', 'No payouts in this period.')));
-      mount(host, periodBar, kpis, table, payouts);
+      mount(host, h('div', { class: 'bz-stack' }, periodBar, kpis, table, payouts));
     } catch (e) { mount(host, card(emptyBox(t('ვერ ჩაიტვირთა', 'Could not load'), e?.message))); }
   }
 
   function ruleText(pay) {
     const parts = [];
-    if (pay.servicePercent) parts.push(t(`${pay.servicePercent}% სერვისებიდან`, `${pay.servicePercent}% of services`));
-    if (pay.productPercent) parts.push(t(`${pay.productPercent}% პროდუქტებიდან`, `${pay.productPercent}% of products`));
-    if (pay.fixedMonthly) parts.push(t(`${gel(pay.fixedMonthly)} თვეში`, `${gel(pay.fixedMonthly)} a month`));
-    return h('span', { class: parts.length ? '' : 'bz-dim' }, parts.join(' + ') || t('წესი არ არის', 'No rule'));
+    if (pay.servicePercent) parts.push(t(`${pay.servicePercent}% სერვ.`, `${pay.servicePercent}% svc`));
+    if (pay.productPercent) parts.push(t(`${pay.productPercent}% პროდ.`, `${pay.productPercent}% prod`));
+    if (pay.fixedMonthly) parts.push(t(`${gel(pay.fixedMonthly)}/თვე`, `${gel(pay.fixedMonthly)}/mo`));
+    return h('span', { class: parts.length ? '' : 'bz-dim', style: { maxWidth: '200px', lineHeight: '1.35' } }, parts.join(' + ') || t('წესი არ არის', 'No rule'));
   }
 
   function rulesDialog(s) {

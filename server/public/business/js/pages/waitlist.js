@@ -53,17 +53,17 @@ export default async function waitlistPage(root) {
       ], s.status, (v) => { st.set({ status: v, page: 1 }); refresh(); }),
       input({ class: 'input', placeholder: t('ძებნა — სახელი, ტელეფონი, სერვისი…', 'Search — name, phone, service…'), value: s.q, onInput: debounce((e) => { st.set({ q: e.target.value, page: 1 }); paint(); }, 200) }));
     if (!list.length) {
-      mount(host, bar, card(emptyBox(
+      mount(host, h('div', { class: 'bz-stack' }, bar, card(emptyBox(
         s.status === 'open' ? t('მოლოდინის სია ცარიელია', 'The waiting list is empty') : t('აქ არაფერია', 'Nothing here'),
         t('როცა კლიენტი აპში თავისუფალ დროს ვერ იპოვის, აქ ეწერება; გათავისუფლებულ დროზე თავისით ვატყობინებთ. ვიზიტორი ხელითაც დაემატება.', 'When a client finds no free time in the app, they end up here; we tell them by ourselves when a time opens up. A walk-in can be added by hand.'),
-        button(t('დამატება ხელით', 'Add by hand'), { icon: 'plus', onClick: () => addDialog() }))));
+        button(t('დამატება ხელით', 'Add by hand'), { icon: 'plus', onClick: () => addDialog() })))));
       return;
     }
     const pg = paginate(list, s.page, s.size);
-    mount(host, bar, card({ class: 'flush' }, h('div', { class: 'bz-table-wrap' }, h('table', { class: 'bz-table bz-wait' },
+    mount(host, h('div', { class: 'bz-stack' }, bar, card({ class: 'flush' }, h('div', { class: 'bz-table-wrap' }, h('table', { class: 'bz-table bz-wait' },
       h('thead', null, h('tr', null, h('th', null, t('კლიენტი', 'Client')), h('th', null, t('სერვისი', 'Service')), h('th', null, t('როდის უნდა', 'Wanted')), h('th', null, t('სტატუსი', 'Status')), h('th'))),
       h('tbody', null, pg.rows.map((e) => row(e))))),
-      pager({ ...pg, size: s.size, onPage: (p) => { st.set({ page: p }); paint(); }, onSize: (n) => { st.set({ size: n, page: 1 }); paint(); } })));
+      pager({ ...pg, size: s.size, onPage: (p) => { st.set({ page: p }); paint(); }, onSize: (n) => { st.set({ size: n, page: 1 }); paint(); } }))));
   }
 
   function row(e) {

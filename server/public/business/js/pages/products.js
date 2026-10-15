@@ -22,7 +22,8 @@ export default async function productsPage(root) {
         kpi(t('მარაგი თვითღირებულებით', 'Stock at cost'), gel(o.stockValue), t(`${o.products} პროდუქტი`, `${o.products} products`)),
         kpi(t('მცირე მარაგი', 'Low stock'), String(o.low), o.low ? t('შეავსე', 'Restock soon') : t('ყველაფერი რიგზეა', 'All fine')));
       const body = tab === 'products' ? await productsView() : await salesView();
-      mount(host, kpis, filterBar(tabs, h('span', { class: 'spacer' }), button(t('გაყიდვა', 'Sell'), { icon: 'plus', onClick: () => saleDialog({}, { onCreated: () => { tab = 'sales'; paint(); } }) }), canManage() ? button(t('ახალი პროდუქტი', 'New product'), { variant: 'secondary', icon: 'plus', onClick: () => productDialog(null) }) : null), body);
+      const toolbar = h('div', { class: 'bz-toolbar' }, tabs, h('div', { class: 'bz-inline' }, button(t('გაყიდვა', 'Sell'), { icon: 'plus', onClick: () => saleDialog({}, { onCreated: () => { tab = 'sales'; paint(); } }) }), canManage() ? button(t('ახალი პროდუქტი', 'New product'), { variant: 'secondary', icon: 'plus', onClick: () => productDialog(null) }) : null));
+      mount(host, h('div', { class: 'bz-stack' }, kpis, toolbar, body));
     } catch (e) { mount(host, card(emptyBox(t('ვერ ჩაიტვირთა', 'Could not load'), e?.message))); }
   }
 
@@ -33,7 +34,7 @@ export default async function productsPage(root) {
     const search = input({ class: 'input', placeholder: t('ძებნა — სახელი, კოდი, კატეგორია…', 'Search — name, code, category…'), value: st.state.q, onInput: debounce((e) => { st.set({ q: e.target.value, page: 1 }); paint(); }, 250) });
     if (!products.length) return card(emptyBox(t('პროდუქტი ჯერ არ არის', 'No products yet'), t('შამპუნი, კრემი, ნიღაბი — დაამატე ფასით და მარაგით; გაყიდვა შემოსავალში და კლიენტის ბარათზე ჩაიწერება.', 'Shampoo, a cream, a mask — add them with a price and stock; a sale lands in income and on the client card.'), canManage() ? button(t('პროდუქტის დამატება', 'Add a product'), { icon: 'plus', onClick: () => productDialog(null) }) : null));
     const pg = paginate(rows, st.state.page, st.state.size);
-    return h('div', null, h('div', { style: { marginBottom: '10px' } }, search),
+    return h('div', { class: 'bz-stack is-tight' }, search,
       card({ class: 'flush' }, h('div', { class: 'bz-table-wrap' }, h('table', { class: 'bz-table' },
         h('thead', null, h('tr', null, h('th', null, t('პროდუქტი', 'Product')), h('th', null, t('კატეგორია', 'Category')), h('th', { class: 'num' }, t('ფასი', 'Price')), h('th', { class: 'num' }, t('თვითღ.', 'Cost')), h('th', { class: 'num' }, t('მარაგი', 'Stock')), h('th', { class: 'num' }, t('გაიყიდა 30დ', 'Sold 30d')), h('th'))),
         h('tbody', null, pg.rows.map((p) => h('tr', { class: p.active ? '' : 'is-muted' },
@@ -46,15 +47,15 @@ export default async function productsPage(root) {
           h('td', { class: 'num' }, h('div', { class: 'bz-row-actions' },
             canManage() ? button(t('მიღება', 'Stock in'), { size: 'sm', variant: 'ghost', icon: 'download', onClick: () => restockDialog(p) }) : null,
             canManage() ? button('', { size: 'sm', variant: 'ghost', icon: 'edit', ariaLabel: t('რედაქტირება', 'Edit'), onClick: () => productDialog(p) }) : null,
-            canManage() && p.active ? button('', { size: 'sm', variant: 'ghost', icon: 'trash', ariaLabel: t('ამოღება', 'Retire'), onClick: async () => { if (await confirmDialog({ title: t('პროდუქტის ამოღება?', 'Retire the product?'), body: p.name, confirm: t('ამოღება', 'Retire') })) { try { await biz.del(`/products/${p.id}`); paint(); } catch (e) { fail(e); } } } }) : null)))))))),
-      pager({ ...pg, size: st.state.size, onPage: (pp) => { st.set({ page: pp }); paint(); }, onSize: (n) => { st.set({ size: n, page: 1 }); paint(); } }));
+            canManage() && p.active ? button('', { size: 'sm', variant: 'ghost', icon: 'trash', ariaLabel: t('ამოღება', 'Retire'), onClick: async () => { if (await confirmDialog({ title: t('პროდუქტის ამოღება?', 'Retire the product?'), body: p.name, confirm: t('ამოღება', 'Retire') })) { try { await biz.del(`/products/${p.id}`); paint(); } catch (e) { fail(e); } } } }) : null))))))),
+        pager({ ...pg, size: st.state.size, onPage: (pp) => { st.set({ page: pp }); paint(); }, onSize: (n) => { st.set({ size: n, page: 1 }); paint(); } })));
   }
 
   async function salesView() {
     const { sales } = await biz.get('/sales', { limit: 500 });
     if (!sales.length) return card(emptyBox(t('გაყიდვა ჯერ არ არის', 'No sales yet'), t('„გაყიდვა“ ღილაკით — პროდუქტი, რაოდენობა, კლიენტი, ვინ გაყიდა.', 'With the Sell button — product, quantity, client, who sold.')));
     const pg = paginate(sales, st.state.page, st.state.size);
-    return h('div', null, card({ class: 'flush' }, h('div', { class: 'bz-table-wrap' }, h('table', { class: 'bz-table' },
+    return h('div', { class: 'bz-stack is-tight' }, card({ class: 'flush' }, h('div', { class: 'bz-table-wrap' }, h('table', { class: 'bz-table' },
       h('thead', null, h('tr', null, h('th', null, t('როდის', 'When')), h('th', null, t('რა', 'What')), h('th', null, t('კლიენტი', 'Client')), h('th', null, t('ვინ გაყიდა', 'Sold by')), h('th', null, t('გადახდა', 'Payment')), h('th', { class: 'num' }, t('სულ', 'Total')), h('th'))),
       h('tbody', null, pg.rows.map((s) => h('tr', { class: s.status === 'REFUNDED' ? 'is-muted' : '' },
         h('td', null, h('b', null, dateText(s.at)), h('div', { class: 'faint' }, when(s.at).split(' · ')[1] || '')),
@@ -63,8 +64,8 @@ export default async function productsPage(root) {
         h('td', null, s.staffName || h('span', { class: 'bz-dim' }, '—')),
         h('td', null, methodLabel(s.paidMethod)),
         h('td', { class: 'num' }, h('b', null, gel(s.total)), s.status === 'REFUNDED' ? badge(t('დაბრუნდა', 'Refunded'), 'neutral') : null),
-        h('td', { class: 'num' }, s.status === 'DONE' && canManage() ? button(t('დაბრუნება', 'Refund'), { size: 'sm', variant: 'ghost', onClick: async () => { if (await confirmDialog({ title: t('გაყიდვის დაბრუნება?', 'Refund the sale?'), body: t(`${gel(s.total)} შემოსავლიდან მოიხსნება, მარაგი დაბრუნდება.`, `${gel(s.total)} leaves income, stock goes back.`), confirm: t('დაბრუნება', 'Refund'), danger: true })) { try { await biz.post(`/sales/${s.id}/refund`, {}); paint(); } catch (e) { fail(e); } } } }) : null))))))),
-      pager({ ...pg, size: st.state.size, onPage: (pp) => { st.set({ page: pp }); paint(); }, onSize: (n) => { st.set({ size: n, page: 1 }); paint(); } }));
+        h('td', { class: 'num' }, s.status === 'DONE' && canManage() ? button(t('დაბრუნება', 'Refund'), { size: 'sm', variant: 'ghost', onClick: async () => { if (await confirmDialog({ title: t('გაყიდვის დაბრუნება?', 'Refund the sale?'), body: t(`${gel(s.total)} შემოსავლიდან მოიხსნება, მარაგი დაბრუნდება.`, `${gel(s.total)} leaves income, stock goes back.`), confirm: t('დაბრუნება', 'Refund'), danger: true })) { try { await biz.post(`/sales/${s.id}/refund`, {}); paint(); } catch (e) { fail(e); } } } }) : null)))))),
+        pager({ ...pg, size: st.state.size, onPage: (pp) => { st.set({ page: pp }); paint(); }, onSize: (n) => { st.set({ size: n, page: 1 }); paint(); } })));
   }
 
   function productDialog(p) {

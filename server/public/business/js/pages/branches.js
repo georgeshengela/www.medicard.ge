@@ -47,12 +47,12 @@ export default async function branchesPage(root, ctx) {
               h('tr', { class: 'is-total' }, h('td', null, h('b', null, t('სულ', 'Total'))), h('td', { class: 'num' }, String(a.totals.bookings)), h('td', { class: 'num' }, String(a.totals.completed)), h('td', { class: 'num' }, ''), h('td', { class: 'num' }, ''), h('td', { class: 'num' }, h('b', null, gel(a.totals.revenue))), h('td', { class: 'num' }, ''), h('td', { class: 'num' }, String(a.totals.newClients)), h('td', { class: 'num' }, ''))))));
         } catch (e) { mount(compare, h('p', { class: 'bz-sub' }, e?.message || '')); }
       };
-      mount(host,
-        h('div', { class: 'bz-inline', style: { justifyContent: 'space-between', marginBottom: '12px', flexWrap: 'wrap', gap: '8px' } }, h('div', { class: 'faint' }, t(`${data.branches.length} ფილიალი · ${data.group?.name || ''}`, `${data.branches.length} branches · ${data.group?.name || ''}`)), h('div', { class: 'bz-inline' }, actions)),
+      mount(host, h('div', { class: 'bz-stack' },
+        h('div', { class: 'bz-inline', style: { justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' } }, h('div', { class: 'faint' }, t(`${data.branches.length} ფილიალი · ${data.group?.name || ''}`, `${data.branches.length} branches · ${data.group?.name || ''}`)), h('div', { class: 'bz-inline' }, actions)),
         cards,
         card(h('div', { class: 'card-head' }, h('div', null, h('div', { class: 'card-title' }, t('ფილიალები ერთმანეთის გვერდით', 'Branches side by side')), h('div', { class: 'card-sub' }, t('ერთი პერიოდი, ყველა ლოკაცია.', 'One period, every location.'))),
           segmented([{ value: '7', label: t('7 დღე', '7 days') }, { value: '30', label: t('30 დღე', '30 days') }, { value: '90', label: t('90 დღე', '90 days') }], range, (v) => { range = v; paintCompare(); })),
-          compare));
+          compare)));
       paintCompare();
     } catch (e) { mount(host, card(emptyBox(t('ვერ ჩაიტვირთა', 'Could not load'), e?.message))); }
   }

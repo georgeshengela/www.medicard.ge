@@ -336,6 +336,15 @@ body.biz { font-size: 14.5px; }
 .bz-svc-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
 .bz-svc-list li { display: flex; justify-content: space-between; gap: 10px; padding-left: 10px; border-left: 2px solid var(--book-line); }
 
+/* Page stack: every block of a page 16 px apart; the grid and the filter bar inside it bring no margins of their own */
+.bz-stack { display: grid; gap: 16px; align-content: start; min-width: 0; }
+.bz-stack.is-tight { gap: 10px; }
+/* Tabs on the left, their actions on the right; wraps on a phone */
+.bz-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap; }
+.bz-stack > .bz-grid, .bz-stack > .bz-grid-2, .bz-stack > .bz-grid-3 { margin-top: 0; }
+.bz-stack > .bz-filters { margin-bottom: 0; }
+.bz-stack > .bz-branches { margin-bottom: 0; }
+
 /* List kit: filters, chips with counts, pager, day rows, row actions, sortable heads */
 .bz-filters { display: grid; gap: 10px; margin: 0 0 14px; }
 .bz-filters-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }

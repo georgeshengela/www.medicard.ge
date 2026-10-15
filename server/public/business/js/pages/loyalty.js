@@ -20,7 +20,7 @@ export default async function loyaltyPage(root) {
       const data = await biz.get('/loyalty');
       const tabs = chips([['cashback', t('ქეშბექი', 'Cashback')], ['gifts', t('სასაჩუქრე ბარათები', 'Gift cards'), data.overview.giftCards.active || undefined], ['memberships', t('აბონემენტები', 'Memberships'), data.overview.memberships.active || undefined], ['ledger', t('მოძრაობა', 'Activity')]], tab, (v) => { tab = v; paint(); });
       const body = tab === 'cashback' ? cashbackView(data) : tab === 'gifts' ? await giftsView(data) : tab === 'memberships' ? await membershipsView(data) : ledgerView(data);
-      mount(host, filterBar(tabs), body);
+      mount(host, h('div', { class: 'bz-stack' }, filterBar(tabs), body));
     } catch (e) { mount(host, card(emptyBox(t('ვერ ჩაიტვირთა', 'Could not load'), e?.message))); }
   }
 
@@ -68,10 +68,10 @@ export default async function loyaltyPage(root) {
         : card(emptyBox(t('ბარათი არ არის', 'No gift cards'), t('გაყიდე სასაჩუქრე ბარათი — კოდი კლიენტს მიეცი, ვიზიტის დასრულებისას კოდით იხდის.', 'Sell a gift card — give the code to the client; it pays at the end of a visit.'), button(t('ბარათის გაყიდვა', 'Sell a gift card'), { icon: 'plus', onClick: sellGiftDialog }))));
     };
     paintList();
-    return h('div', null,
-      filterBar(chips([['ACTIVE', t('აქტიური', 'Active')], ['USED', t('გამოყენებული', 'Used')], ['all', t('ყველა', 'All')]], status, (v) => { giftsView.status = v; paint(); }),
-        input({ class: 'input', placeholder: t('ძებნა — კოდი, სახელი, ტელეფონი…', 'Search — code, name, phone…'), onInput: debounce((e) => paintList(e.target.value), 200) }),
+    return h('div', { class: 'bz-stack' },
+      h('div', { class: 'bz-toolbar' }, chips([['ACTIVE', t('აქტიური', 'Active')], ['USED', t('გამოყენებული', 'Used')], ['all', t('ყველა', 'All')]], status, (v) => { giftsView.status = v; paint(); }),
         button(t('ბარათის გაყიდვა', 'Sell a gift card'), { icon: 'plus', onClick: sellGiftDialog })),
+      input({ class: 'input', placeholder: t('ძებნა — კოდი, სახელი, ტელეფონი…', 'Search — code, name, phone…'), onInput: debounce((e) => paintList(e.target.value), 200) }),
       list);
   }
 
