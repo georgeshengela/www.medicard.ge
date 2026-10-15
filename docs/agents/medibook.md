@@ -213,3 +213,11 @@ claimed / pending, bookings, favourites, 7-day views / calls). Capabilities `BOO
 - Routes: `GET /payroll?from=&to=` (manage), `PATCH /staff/:staffId/pay` (owner), `POST /payouts` (owner), `DELETE /payouts/:id` (owner).
 - Panel: sidebar „ხელფასები“ (coins, in „ფული და ციფრები“, manage): period (this month / last month / custom days), KPIs, the table per person (rule with an edit dialog, visits, service value, products, earned with its split, paid, balance, „გადახდა“ dialog prefilled with the balance) with totals, and the payouts of the period (delete).
 - Verified 2026-10-15 on the main DB with the QA business: two products, a sale of three items (total 108, cost 51, stock 10 → 8, sold-30 counts), the overview, OUT_OF_STOCK for 20, restock to 13, rules 40 % / 10 % / 300, the report (products 108 → 10.8, fixed 150 for 15 days → 160.8), a payout of 100 (balance 60.8, expense SALARY), a refund (stock 15, REFUNDED), the latest transactions; the products and payroll pages in the browser; 30 book tests green. No app changes (products are sold in person).
+
+## Wave 2 polish (2026-10-16): phone navigation, dashboard attention, landing, QR
+
+- Phone: the bottom bar has four pages plus „მეტი“ — a sheet (`openMore` in `main.js`, `.bz-more-grid`) with every page the role may use and „სხვა ბიზნესის დამატება“; „მეტი“ lights up when the open page lives behind it. Before this the new pages were unreachable on a phone (the sidebar is hidden there).
+- Dashboard: `/overview` now carries `waitlist` (open entries) and `lowStock` (products at or under their low-stock mark); the attention banners link to the waiting list and the products page next to „to confirm“ and unanswered reviews.
+- Landing (`pages/landing.js`): the feature grid names the whole set — SMS reminders, waiting list + several services, loyalty, products + payroll, branches.
+- Settings → Status: the booking link with „კოპირება“ and „QR კოდი“ (a dialog with a lilac-eyed QR from `/app/js/pages/coachQr.js` `qrMatrix`, download as SVG) for the counter, the door or the Instagram bio.
+- Every new page keeps one vertical rhythm (`.bz-stack`, `.bz-toolbar`, pagers inside cards — see the memory note on page rhythm). Verified 2026-10-15 in the browser at 1280 px and 375 px with a QA business (deleted afterwards).

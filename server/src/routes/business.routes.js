@@ -182,6 +182,10 @@ businessRouter.patch('/:businessId', member(MANAGE), asyncHandler(async (req, re
 
 businessRouter.get('/:businessId/overview', member(ALL), asyncHandler(async (req, res) => {
   const data = await bookings.overviewRaw({ businessId: req.params.businessId });
+  // What needs a look besides bookings: people waiting for a time, products running low.
+  const [waiting, stock] = await Promise.all([waitlist.countOpen(req.params.businessId).catch(() => 0), products.productsOverview(req.params.businessId).catch(() => null)]);
+  data.waitlist = waiting;
+  data.lowStock = stock?.low ?? 0;
   if (req.member.role === 'STAFF' && req.member.staffId) {
     data.today = data.today.filter((a) => a.staffId === req.member.staffId);
     data.upcoming = data.upcoming.filter((a) => a.staffId === req.member.staffId);

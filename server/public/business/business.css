@@ -336,6 +336,14 @@ body.biz { font-size: 14.5px; }
 .bz-svc-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
 .bz-svc-list li { display: flex; justify-content: space-between; gap: 10px; padding-left: 10px; border-left: 2px solid var(--book-line); }
 
+/* Phone: the „მეტი“ sheet with every page; the QR card in Settings */
+.bz-more-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.bz-more-grid a { display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 14px 6px; border: 1px solid var(--line); border-radius: 14px; font-size: 12.5px; color: var(--text); text-align: center; line-height: 1.2; }
+.bz-more-grid a.on { border-color: var(--book-2); color: var(--book-ink); }
+.bz-more-foot { display: flex; align-items: center; justify-content: center; gap: 6px; padding: 10px; border: 1px dashed var(--line); border-radius: 12px; color: var(--text2); font-size: 13px; }
+.bz-qr { padding: 12px; background: #fff; border-radius: 16px; border: 1px solid var(--line); line-height: 0; }
+.bz-qr svg { display: block; }
+
 /* Page stack: every block of a page 16 px apart; the grid and the filter bar inside it bring no margins of their own */
 .bz-stack { display: grid; gap: 16px; align-content: start; min-width: 0; }
 .bz-stack.is-tight { gap: 10px; }

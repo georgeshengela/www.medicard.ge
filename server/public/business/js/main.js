@@ -1,6 +1,6 @@
 // MEDIBOOK business panel — boot, router and shell (medicard.ge/business).
 // Vanilla ES modules on the /app toolkit: api.js (same /api + Bearer token), ui.js, i18n.js, session.js.
-import { h, mount, icon, iconButton, select } from '/app/js/ui.js';
+import { h, mount, icon, iconButton, select, openModal } from '/app/js/ui.js';
 import { getToken, onTokenChange } from '/app/js/api.js';
 import { t, isEn, lang, setLang } from '/app/js/i18n.js';
 import { loadSession, session, signOut, applyTheme, featureOn } from '/app/js/session.js';
@@ -13,7 +13,6 @@ const ROUTES = [
   { path: '/', page: () => import('./pages/dashboard.js'), title: t('მიმოხილვა', 'Overview'), icon: 'home', nav: true },
   { path: '/calendar', page: () => import('./pages/calendar.js'), title: t('კალენდარი', 'Calendar'), icon: 'calendar', nav: true },
   { path: '/appointments', page: () => import('./pages/appointments.js'), title: t('ჯავშნები', 'Bookings'), icon: 'calendarCheck', nav: true },
-  { path: '/waitlist', page: () => import('./pages/waitlist.js'), title: t('მოლოდინის სია', 'Waiting list'), icon: 'bellRing', nav: true },
   { path: '/waitlist', page: () => import('./pages/waitlist.js'), title: t('მოლოდინის სია', 'Waiting list'), icon: 'bellRing', nav: true },
   { path: '/clients', page: () => import('./pages/clients.js'), title: t('კლიენტები', 'Clients'), icon: 'users', nav: true },
   { path: '/clients/:id', page: () => import('./pages/clients.js'), title: t('კლიენტი', 'Client') },
@@ -30,7 +29,23 @@ const ROUTES = [
   { path: '/settings', page: () => import('./pages/settings.js'), title: t('პარამეტრები', 'Settings'), icon: 'settings', nav: true, manage: true },
   { path: '/start', page: () => import('./pages/start.js'), title: t('ბიზნესის დამატება', 'Add a business'), bare: true },
 ];
-const MOBILE_NAV = ['/', '/calendar', '/clients', '/services', '/analytics'];
+const MOBILE_NAV = ['/', '/calendar', '/clients', '/services'];
+
+/** On a phone the sidebar is hidden: the fifth bottom item opens every page the person may use, as a sheet. */
+let moreSheet = null;
+function openMore() {
+  const allowed = (r) => r.nav && (!r.manage || canManage());
+  const current = currentPath();
+  const grid = h('div', { class: 'bz-more-grid' }, ROUTES.filter((r) => allowed(r) && !MOBILE_NAV.includes(r.path)).map((r) => h('a', {
+    href: r.path, 'data-link': '', class: current === r.path || current.startsWith(`${r.path}/`) ? 'on' : '', onClick: () => moreSheet?.close(),
+  }, icon(r.icon, { size: 22 }), h('span', null, r.title))));
+  moreSheet = openModal({
+    title: t('ყველა გვერდი', 'Every page'),
+    size: 'sm',
+    body: h('div', { style: { display: 'grid', gap: '12px' } }, grid,
+      h('a', { class: 'bz-more-foot', href: '/start?new=1', 'data-link': '', onClick: () => moreSheet?.close() }, icon('plus', { size: 16 }), t('სხვა ბიზნესის დამატება', 'Add another business'))),
+  });
+}
 
 let cleanup = null;
 let shellEl = null;
@@ -117,11 +132,6 @@ async function refreshBadges() {
     const el = badgeEls['/waitlist'];
     if (el) { el.textContent = w.total ? String(w.total) : ''; el.className = `nav-badge${w.total ? ' on' : ''}`; }
   } catch { /* same */ }
-  try {
-    const w = await biz.get('/waitlist', { status: 'open', limit: 1 });
-    const el = badgeEls['/waitlist'];
-    if (el) { el.textContent = w.total ? String(w.total) : ''; el.className = `nav-badge${w.total ? ' on' : ''}`; }
-  } catch { /* same */ }
 }
 
 /** A month at a glance under the navigation while the calendar is open; a day jumps to it. */
@@ -203,7 +213,8 @@ function buildShell() {
     iconButton('logout', { title: t('გასვლა', 'Sign out'), onClick: () => { signOut(); clearState(); navigate('/', { replace: true }); } }));
   contentEl = h('main', { class: 'content wide', id: 'main' });
   const bottom = h('nav', { class: 'bottom-nav', 'aria-label': t('ნავიგაცია', 'Navigation') },
-    MOBILE_NAV.map((p) => ROUTES.find((r) => r.path === p)).filter((r) => r && allowed(r)).map((r) => h('a', { href: r.path, 'data-link': '', 'data-nav': r.path }, icon(r.icon, { size: 22 }), r.title)));
+    MOBILE_NAV.map((p) => ROUTES.find((r) => r.path === p)).filter((r) => r && allowed(r)).map((r) => h('a', { href: r.path, 'data-link': '', 'data-nav': r.path }, icon(r.icon, { size: 22 }), r.title)),
+    h('a', { href: '#', 'data-nav': 'more', onClick: (e) => { e.preventDefault(); openMore(); } }, icon('menu', { size: 22 }), t('მეტი', 'More')));
   shellEl = h('div', { class: 'shell' }, side, h('div', { class: 'main' }, top, contentEl, bottom));
   mount(document.getElementById('root'), shellEl);
   badgeTimer = 0;
@@ -214,8 +225,12 @@ function rebuildShell() { shellEl = null; buildShell(); }
 function markNav(path) {
   document.querySelectorAll('[data-nav]').forEach((a) => {
     const p = a.getAttribute('data-nav');
+    if (p === 'more') return;
     a.classList.toggle('on', p === '/' ? path === '/' : path === p || path.startsWith(`${p}/`));
   });
+  // „მეტი“ lights up when the open page lives behind it.
+  const more = document.querySelector('.bottom-nav [data-nav="more"]');
+  if (more) more.classList.toggle('on', ![...document.querySelectorAll('.bottom-nav a[data-nav]:not([data-nav="more"])')].some((a) => a.classList.contains('on')));
 }
 
 async function renderLanding() {

@@ -1,9 +1,10 @@
 // MEDIBOOK business panel — settings: the public page (names, contacts, address, hours, pictures) and booking rules.
-import { h, mount, icon, button, pageHead, card, input, textarea, field, select, busy, toggle, confirmDialog, debounce } from '/app/js/ui.js';
+import { h, mount, icon, button, pageHead, card, input, textarea, field, select, busy, toggle, confirmDialog, debounce, openModal } from '/app/js/ui.js';
 import { get, request } from '/app/js/api.js';
 import { t } from '/app/js/i18n.js';
 import { state, loadState } from '../state.js';
 import { biz, CATEGORIES, hoursEditor, loadMapbox, fail, ok, emptyBox } from '../shared.js';
+import { qrMatrix } from '/app/js/pages/coachQr.js';
 
 export default async function settingsPage(root, ctx) {
   const data = await biz.get('');
@@ -133,11 +134,64 @@ export default async function settingsPage(root, ctx) {
         card(h('div', { class: 'card-title', style: { marginBottom: '8px' } }, t('სტატუსი', 'Status')),
           h('dl', { class: 'bz-kv' },
             h('dt', null, t('აპში', 'In the app')), h('dd', null, b.status === 'CLAIMED' ? h('span', { class: 'badge badge-ok' }, t('ჩართულია', 'Live')) : b.status === 'PENDING' ? h('span', { class: 'badge badge-warn' }, t('განიხილება', 'Under review')) : h('span', { class: 'badge badge-neutral' }, b.status)),
-            h('dt', null, t('ბმული', 'Link')), h('dd', null, h('code', { style: { fontSize: '12px' } }, `medicard.ge/app/book/${b.slug}`)),
+            h('dt', null, t('ბმული', 'Link')), h('dd', null, h('code', { style: { fontSize: '12px' } }, `medicard.ge/app/book/${b.slug}`),
+              h('div', { class: 'bz-inline', style: { marginTop: '6px' } },
+                button(t('კოპირება', 'Copy'), { size: 'sm', variant: 'ghost', icon: 'copy', onClick: async () => { try { await navigator.clipboard.writeText(`https://medicard.ge/app/book/${b.slug}`); ok(t('ბმული დაკოპირდა', 'Link copied')); } catch { fail(new Error(t('ვერ დაკოპირდა', 'Could not copy'))); } } }),
+                button(t('QR კოდი', 'QR code'), { size: 'sm', variant: 'ghost', icon: 'qr', onClick: () => qrDialog(b) }))),
             h('dt', null, t('შეფასება', 'Rating')), h('dd', null, b.rating != null ? `${b.rating.toFixed(1)} · ${b.ratingCount}` : t('ჯერ არ არის', 'None yet'))),
           h('p', { class: 'bz-note', style: { marginTop: '10px' } }, t('ბიზნესის დახურვა ან კატალოგიდან მოხსნა — support@medicard.ge.', 'To close the business or remove it from the catalogue, write to support@medicard.ge.'))))));
   await paintPhotos();
   void reload;
+}
+
+/** The booking link as a QR: on the counter, the door or the Instagram bio — a scan lands on the business page in the app. */
+function qrDialog(b) {
+  const url = `https://medicard.ge/app/book/${b.slug}`;
+  const svg = qrSvg(url, 240);
+  if (!svg) { fail(new Error(t('QR ვერ შეიქმნა.', 'Could not make the QR.'))); return; }
+  openModal({
+    title: t('QR კოდი ჯავშნისთვის', 'QR code for booking'),
+    size: 'sm',
+    body: h('div', { style: { display: 'grid', gap: '12px', justifyItems: 'center', textAlign: 'center' } },
+      h('div', { class: 'bz-qr' }, svg),
+      h('code', { style: { fontSize: '12px' } }, url.replace('https://', '')),
+      h('p', { class: 'bz-note' }, t('დაბეჭდე დახლზე ან კარზე, ჩასვი Instagram-ის ბიოში — სკანი პირდაპირ შენს გვერდზე მიდის და კლიენტი იქვე იწერება.', 'Print it for the counter or the door, put it in the Instagram bio — a scan lands on your page and the client books right there.'))),
+    footer: (close) => [button(t('ჩამოტვირთვა (SVG)', 'Download (SVG)'), { variant: 'secondary', icon: 'download', onClick: () => downloadSvg(qrSvg(url, 1024, true), `medibook-${b.slug}.svg`) }), button(t('დახურვა', 'Close'), { onClick: () => close() })],
+  });
+}
+
+/** Square-module QR, quiet zone 4, lilac finder eyes. */
+function qrSvg(text, size, forFile = false) {
+  const m = qrMatrix(text);
+  if (!m) return null;
+  const n = m.length;
+  const quiet = 4;
+  const total = n + quiet * 2;
+  const NS = 'http://www.w3.org/2000/svg';
+  const el = (tag, attrs) => { const x = document.createElementNS(NS, tag); Object.entries(attrs).forEach(([k, v]) => x.setAttribute(k, String(v))); return x; };
+  const svg = el('svg', { viewBox: `0 0 ${total} ${total}`, width: size, height: size, role: 'img', 'aria-label': t('QR კოდი', 'QR code'), 'shape-rendering': 'crispEdges' });
+  if (forFile) svg.setAttribute('xmlns', NS);
+  svg.appendChild(el('rect', { x: 0, y: 0, width: total, height: total, fill: '#ffffff', rx: forFile ? 0 : 2 }));
+  const inFinder = (r, c) => (r < 7 && c < 7) || (r < 7 && c >= n - 7) || (r >= n - 7 && c < 7);
+  let d = '';
+  for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) if (m[r][c] && !inFinder(r, c)) d += `M${c + quiet},${r + quiet}h1v1h-1z`;
+  svg.appendChild(el('path', { d, fill: '#16141a' }));
+  for (const [r, c] of [[0, 0], [0, n - 7], [n - 7, 0]]) {
+    svg.appendChild(el('path', { d: `M${c + quiet},${r + quiet}h7v7h-7zM${c + quiet + 1},${r + quiet + 1}v5h5v-5z`, fill: '#16141a', 'fill-rule': 'evenodd' }));
+    svg.appendChild(el('rect', { x: c + quiet + 2, y: r + quiet + 2, width: 3, height: 3, fill: '#7a58c9' }));
+  }
+  return svg;
+}
+
+function downloadSvg(svg, filename) {
+  if (!svg) return;
+  const blob = new Blob([new XMLSerializer().serializeToString(svg)], { type: 'image/svg+xml' });
+  const url = URL.createObjectURL(blob);
+  const a = h('a', { href: url, download: filename });
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
 }
 
 /**
