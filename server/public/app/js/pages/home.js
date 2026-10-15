@@ -101,12 +101,17 @@ function attentionSection(navigate) {
   ]).then(([visits, panels, visitsMod, bookings]) => {
     const rows = [];
     const until = addDays(today, 7);
-    const booking = bookings.find((a) => a.startsAt && daysUntil(ymd(new Date(a.startsAt))) <= 7);
+    // A MEDIBOOK booking is at a Georgian business: its day and clock are Tbilisi's (fixed UTC+4), as on /book,
+    // whatever zone the browser is in.
+    const tbilisi = (iso) => new Date(new Date(iso).getTime() + 4 * 60 * 60_000);
+    const bookingDay = (a) => tbilisi(a.startsAt).toISOString().slice(0, 10);
+    const bookingClock = (a) => { const d = tbilisi(a.startsAt); return `${String(d.getUTCHours()).padStart(2, '0')}:${String(d.getUTCMinutes()).padStart(2, '0')}`; };
+    const booking = bookings.find((a) => a.startsAt && daysUntil(bookingDay(a)) <= 7);
     if (booking) {
       rows.push(h('a', { class: 'card hover home-attn', href: `/book/appointments/${encodeURIComponent(booking.id)}`, 'data-link': '' }, tile('calendarCheck', 'book', 40),
         h('div', { class: 'row-main' },
           h('div', { class: 'card-title' }, t(`ჯავშანი: ${booking.serviceName}`, `Booking: ${booking.serviceName}`)),
-          h('div', { class: 'card-sub' }, `${booking.business?.name ? `${booking.business.name} · ` : ''}${when(ymd(new Date(booking.startsAt)))}, ${fmtTime(booking.startsAt)}`)),
+          h('div', { class: 'card-sub' }, `${booking.business?.name ? `${booking.business.name} · ` : ''}${when(bookingDay(booking))}, ${bookingClock(booking)}`)),
         icon('chevronRight', { size: 18 })));
     }
     const visit = visits.filter((v) => v.active !== false && v.visitDate >= today && v.visitDate <= until)

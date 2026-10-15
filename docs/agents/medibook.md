@@ -115,6 +115,13 @@ frame, so Mapbox never fires `load`): tiles, pins by category, clusters, the cou
 `MutationObserver` on `data-theme` (`setStyle` + re-added layers from the kept features); the pill says „500+“ at the
 server cap (`MAP_LIMIT`); a chip that excludes the selected place closes its card; on phones the Mapbox logo / attribution
 sit above the bottom nav, the +/- buttons are hidden (pinch zooms) and the card hides the „ჩაწერა“ pill.
+A real booking was made the same day against medicard.ge (owner signed in on localhost:4401 with the App Review demo
+account; Google sign-in cannot work there — the GSI button answers 403 for a localhost origin, phone/OTP does): ეკგ at
+„ავერსის კლინიკა“ → 201 CONFIRMED, staff auto-assigned, `source: WEB`, note stored, hub hero + Home row, appointment
+page, cancel through `confirmDialog` → CANCELLED / cancelledBy CLIENT. **Clocks are Tbilisi's (fixed UTC+4, like
+`lib/book/time.js`), never the browser's zone:** `tbilisi()` / `clockOf` / `ymdLocal` / `dayLabel` in `book.js` and the
+booking row in `home.js` — the slot labels come from the server in Tbilisi time, so a person booking from abroad used to
+pick „11:30“ and read „09:30“. The `.ics` keeps UTC stamps. (The app's `bookFormat.ts` still formats in the device zone.)
 
 ## Business panel (`server/public/business/`, served at /business and /business/*)
 

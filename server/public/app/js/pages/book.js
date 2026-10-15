@@ -23,25 +23,35 @@ function ensureCss() {
   return cssReady;
 }
 
-/* ── Formatting (mobile src/lib/book/bookFormat.ts): clocks in the browser's own zone, like a calendar app ── */
+/* ── Formatting: every clock and day is the business's own — Georgia, fixed UTC+4 (server lib/book/time.js) ──
+   The slots arrive as Tbilisi labels, so the summary, the hub and Home must say the same time whatever zone the
+   browser is in (a person booking from abroad picked „11:30“ and read „09:30“ before). The .ics keeps UTC stamps. */
 const MONTHS = isEn ? ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'] : ['იან', 'თებ', 'მარ', 'აპრ', 'მაი', 'ივნ', 'ივლ', 'აგვ', 'სექ', 'ოქტ', 'ნოე', 'დეკ'];
 const DAYS = isEn ? ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'] : ['კვი', 'ორშ', 'სამ', 'ოთხ', 'ხუთ', 'პარ', 'შაბ'];
 const DAYS_LONG = isEn ? ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'] : ['კვირა', 'ორშაბათი', 'სამშაბათი', 'ოთხშაბათი', 'ხუთშაბათი', 'პარასკევი', 'შაბათი'];
 const pad = (n) => String(n).padStart(2, '0');
-const ymdLocal = (d = new Date()) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+const TBILISI_MS = 4 * 60 * 60_000;
+/** The instant shifted so that its UTC fields read as Tbilisi wall-clock fields. */
+const tbilisi = (v) => new Date((v instanceof Date ? v : new Date(v)).getTime() + TBILISI_MS);
+/** Tbilisi calendar day of an instant (default: now) as YYYY-MM-DD. */
+const ymdLocal = (v = new Date()) => tbilisi(v).toISOString().slice(0, 10);
 const dateFromYmd = (s) => { const [y, m, d] = String(s).split('-').map(Number); return new Date(y, m - 1, d); };
-const addDaysYmd = (s, n) => { const [y, m, d] = String(s).split('-').map(Number); return ymdLocal(new Date(y, m - 1, d + n)); };
+const ymdOfDate = (d) => `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+const addDaysYmd = (s, n) => { const [y, m, d] = String(s).split('-').map(Number); return ymdOfDate(new Date(y, m - 1, d + n)); };
 const daysBetween = (a, b) => Math.round((dateFromYmd(b) - dateFromYmd(a)) / 86400000);
-const clockOf = (iso) => { const d = new Date(iso); return `${pad(d.getHours())}:${pad(d.getMinutes())}`; };
+const clockOf = (iso) => { const d = tbilisi(iso); return `${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}`; };
 
-/** „ორშ, 19 ოქტ“ / „Mon, 19 Oct“; today, tomorrow and yesterday by name. */
+/** „ორშ, 19 ოქტ“ / „Mon, 19 Oct“ in Tbilisi time; today, tomorrow and yesterday by name. A plain YYYY-MM-DD civil
+    date (from `dateFromYmd`) is already a day, so it is read as it is. */
 function dayLabel(v) {
-  const d = v instanceof Date ? v : new Date(v);
-  const diff = daysBetween(ymdLocal(), ymdLocal(d));
+  const civil = v instanceof Date && v.getHours() === 0 && v.getMinutes() === 0;
+  const d = civil ? v : tbilisi(v);
+  const get = civil ? { day: d.getDay(), date: d.getDate(), month: d.getMonth(), ymd: ymdOfDate(d) } : { day: d.getUTCDay(), date: d.getUTCDate(), month: d.getUTCMonth(), ymd: d.toISOString().slice(0, 10) };
+  const diff = daysBetween(ymdLocal(), get.ymd);
   if (diff === 0) return t('დღეს', 'Today');
   if (diff === 1) return t('ხვალ', 'Tomorrow');
   if (diff === -1) return t('გუშინ', 'Yesterday');
-  return `${DAYS[d.getDay()]}, ${d.getDate()} ${MONTHS[d.getMonth()]}`;
+  return `${DAYS[get.day]}, ${get.date} ${MONTHS[get.month]}`;
 }
 const whenLabel = (iso) => `${dayLabel(iso)} · ${clockOf(iso)}`;
 const money = (v) => (Number.isInteger(v) ? String(v) : Number(v).toFixed(2));
@@ -81,7 +91,7 @@ function todayHoursLine(hours) {
 }
 const weekHours = (hours) => [1, 2, 3, 4, 5, 6, 0].map((d) => {
   const list = hours[String(d)] ?? [];
-  return { day: DAYS_LONG[d], ranges: list.length ? rangesText(list) : t('დახურულია', 'Closed'), today: d === new Date().getDay() };
+  return { day: DAYS_LONG[d], ranges: list.length ? rangesText(list) : t('დახურულია', 'Closed'), today: d === tbilisi(new Date()).getUTCDay() };
 });
 const ratingLabel = (rating, count) => (rating == null || !count
   ? t('ჯერ შეფასება არ აქვს', 'No ratings yet')
