@@ -3,7 +3,7 @@ import { h, mount, icon, button, pageHead, card, textarea, busy } from '/app/js/
 import { select } from '../fields.js';
 import { meters } from '/app/js/charts.js';
 import { t } from '/app/js/i18n.js';
-import { biz, dateText, emptyBox, fail, ok } from '../shared.js';
+import { biz, dateText, emptyBox, fail, ok, avatar } from '../shared.js';
 import { canManage } from '../state.js';
 import { chips, filterBar, listState, pager, paginate } from '../lists.js';
 
@@ -76,16 +76,21 @@ export default async function reviewsPage(root) {
   function reviewRow(r) {
     const manage = canManage();
     const box = textarea({ rows: 2, value: r.reply || '', placeholder: t('საჯარო პასუხი — აპში ყველა ხედავს', 'Public reply — everyone in the app sees it') });
-    const save = button(r.reply ? t('პასუხის შეცვლა', 'Update reply') : t('პასუხი', 'Reply'), { size: 'sm', variant: 'secondary', onClick: () => busy(save, async () => { try { await biz.post(`/reviews/${r.id}/reply`, { reply: box.value.trim() || null }); ok(t('შენახულია', 'Saved')); load(); } catch (e) { fail(e); } }) });
-    const editing = h('div', { style: { display: r.reply ? 'none' : 'grid', gap: '6px', marginTop: '6px' } }, box, h('div', { style: { display: 'flex', justifyContent: 'flex-end' } }, save));
-    return h('div', { class: `bz-review${r.rating <= 2 ? ' is-low' : ''}` },
-      h('div', { class: 'meta' },
-        h('span', { class: 'bz-stars' }, [1, 2, 3, 4, 5].map((i) => h('span', { class: i <= r.rating ? '' : 'off' }, icon('star', { size: 14 })))),
-        h('b', null, r.clientName), h('span', null, dateText(r.createdAt)), h('span', null, `${r.serviceName}${r.staffName ? ` · ${r.staffName}` : ''}`),
-        !r.reply ? h('span', { class: 'bz-tag bz-tag-warn' }, t('პასუხის გარეშე', 'No reply')) : null),
-      r.text ? h('div', { style: { fontSize: '14.5px' } }, r.text) : h('div', { class: 'faint' }, t('ტექსტის გარეშე', 'No text')),
-      r.reply ? h('div', { class: 'bz-reply' }, h('b', null, t('თქვენი პასუხი: ', 'Your reply: ')), r.reply, manage ? h('button', { type: 'button', class: 'bz-link', style: { marginLeft: '8px' }, onClick: () => { editing.style.display = 'grid'; box.focus(); } }, t('შეცვლა', 'Edit')) : null) : null,
-      manage ? editing : null);
+    const save = button(r.reply ? t('პასუხის შეცვლა', 'Update reply') : t('პასუხის გაგზავნა', 'Send reply'), { size: 'sm', variant: 'secondary', icon: 'send', onClick: () => busy(save, async () => { try { await biz.post(`/reviews/${r.id}/reply`, { reply: box.value.trim() || null }); ok(t('შენახულია', 'Saved')); load(); } catch (e) { fail(e); } }) });
+    const editing = h('div', { class: 'bz-review-edit', hidden: Boolean(r.reply) }, box,
+      h('div', { class: 'bz-inline', style: { justifyContent: 'flex-end' } }, r.reply ? button(t('გაუქმება', 'Cancel'), { size: 'sm', variant: 'ghost', onClick: () => { editing.hidden = true; } }) : null, save));
+    return h('div', { class: `bz-review${r.rating <= 2 ? ' is-low' : ''}${r.reply ? '' : ' is-open'}` },
+      avatar(r.clientName, '#64748B', 40),
+      h('div', { class: 'bz-review-body' },
+        h('div', { class: 'meta' },
+          h('b', null, r.clientName),
+          h('span', { class: 'bz-stars' }, [1, 2, 3, 4, 5].map((i) => h('span', { class: i <= r.rating ? '' : 'off' }, icon('star', { size: 13 })))),
+          h('span', null, dateText(r.createdAt)),
+          h('span', { class: 'svc' }, `${r.serviceName}${r.staffName ? ` · ${r.staffName}` : ''}`),
+          !r.reply ? h('span', { class: 'bz-tag bz-tag-warn' }, t('პასუხის გარეშე', 'No reply')) : null),
+        r.text ? h('p', { class: 'text' }, r.text) : h('p', { class: 'text faint' }, t('ტექსტის გარეშე', 'No text')),
+        r.reply ? h('div', { class: 'bz-reply' }, h('span', { class: 'lbl' }, t('თქვენი პასუხი', 'Your reply')), h('span', { class: 'what' }, r.reply), manage ? h('button', { type: 'button', class: 'bz-link', onClick: () => { editing.hidden = false; box.focus(); } }, t('შეცვლა', 'Edit')) : null) : null,
+        manage ? editing : null));
   }
 
   mount(root,

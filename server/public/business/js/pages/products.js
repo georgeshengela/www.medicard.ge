@@ -37,14 +37,13 @@ export default async function productsPage(root) {
     const pg = paginate(rows, st.state.page, st.state.size);
     return h('div', { class: 'bz-stack is-tight' }, search,
       card({ class: 'flush' }, h('div', { class: 'bz-table-wrap' }, h('table', { class: 'bz-table' },
-        h('thead', null, h('tr', null, h('th', null, t('პროდუქტი', 'Product')), h('th', null, t('კატეგორია', 'Category')), h('th', { class: 'num' }, t('ფასი', 'Price')), h('th', { class: 'num' }, t('თვითღ.', 'Cost')), h('th', { class: 'num' }, t('მარაგი', 'Stock')), h('th', { class: 'num' }, t('გაიყიდა 30დ', 'Sold 30d')), h('th'))),
-        h('tbody', null, pg.rows.map((p) => h('tr', { class: p.active ? '' : 'is-muted' },
-          h('td', null, h('b', null, p.name), p.sku ? h('div', { class: 'faint' }, p.sku) : null),
-          h('td', null, p.category || h('span', { class: 'bz-dim' }, '—')),
-          h('td', { class: 'num' }, gel(p.price)),
-          h('td', { class: 'num' }, p.cost == null ? '—' : gel(p.cost)),
-          h('td', { class: 'num' }, p.stock == null ? h('span', { class: 'bz-dim', title: t('მარაგი არ ითვლება', 'Stock not tracked') }, '—') : h('span', { class: p.low ? 'bz-bad' : '' }, `${p.stock} ${p.unit}`), p.low ? badge(t('მცირე', 'Low'), 'warn') : null),
-          h('td', { class: 'num' }, String(p.sold30 ?? 0)),
+        h('thead', null, h('tr', null, h('th', null, t('პროდუქტი', 'Product')), h('th', null, t('კატეგორია', 'Category')), h('th', { class: 'num' }, t('ფასი · მარჟა', 'Price · margin')), h('th', null, t('მარაგი', 'Stock')), h('th', { class: 'num' }, t('გაიყიდა 30დ', 'Sold 30d')), h('th'))),
+        h('tbody', null, pg.rows.map((p) => h('tr', { class: `${p.active ? '' : 'is-muted'}${p.low ? ' is-low' : ''}` },
+          h('td', null, h('b', null, p.name), p.sku ? h('div', { class: 'faint bz-code' }, p.sku) : null),
+          h('td', null, p.category ? h('span', { class: 'bz-tag' }, p.category) : h('span', { class: 'bz-dim' }, '—')),
+          h('td', { class: 'num bz-td-price' }, h('b', null, gel(p.price)), h('div', { class: 'faint' }, p.cost == null ? t('თვითღ. —', 'cost —') : `${t(`თვითღ. ${gel(p.cost)}`, `cost ${gel(p.cost)}`)}${margin(p)}`)),
+          h('td', null, stockCell(p)),
+          h('td', { class: 'num' }, h('b', null, String(p.sold30 ?? 0))),
           h('td', { class: 'num' }, h('div', { class: 'bz-row-actions' },
             canManage() ? button(t('მიღება', 'Stock in'), { size: 'sm', variant: 'ghost', icon: 'download', onClick: () => restockDialog(p) }) : null,
             canManage() ? button('', { size: 'sm', variant: 'ghost', icon: 'edit', ariaLabel: t('რედაქტირება', 'Edit'), onClick: () => productDialog(p) }) : null,
@@ -128,6 +127,22 @@ export default async function productsPage(root) {
 
 function kpi(label, value, delta, accent = false) {
   return h('div', { class: `bz-kpi${accent ? ' is-accent' : ''}` }, h('div', { class: 'stat-label' }, label), h('div', { class: 'stat-value' }, value), delta ? h('div', { class: 'stat-delta' }, delta) : null);
+}
+
+/** " · margin 40%" after the cost, when both numbers are known. */
+function margin(p) {
+  if (p.cost == null || !p.price) return '';
+  const m = Math.round(((p.price - p.cost) / p.price) * 100);
+  return t(` · მარჟა ${m}%`, ` · margin ${m}%`);
+}
+
+/** Stock as a short bar: full = four times the low-stock mark (or the stock itself when higher), amber once it is low. */
+function stockCell(p) {
+  if (p.stock == null) return h('span', { class: 'bz-dim', title: t('მარაგი არ ითვლება', 'Stock not tracked') }, t('არ ითვლება', 'not tracked'));
+  const cap = Math.max(1, p.stock, (p.lowStock || 0) * 4);
+  return h('div', { class: `bz-stock${p.low ? ' is-low' : ''}` },
+    h('div', { class: 'top' }, h('b', null, `${p.stock} ${p.unit}`), p.low ? h('span', { class: 'bz-tag bz-tag-warn' }, t('მცირე', 'Low')) : p.lowStock ? h('small', null, t(`ზღვარი ${p.lowStock}`, `min ${p.lowStock}`)) : null),
+    h('i', null, h('b', { style: { width: `${Math.round((p.stock / cap) * 100)}%` } })));
 }
 
 export { phoneText };

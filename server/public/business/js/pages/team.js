@@ -2,8 +2,8 @@
 import { h, mount, icon, button, pageHead, card, input, field, busy, openModal, confirmDialog, badge } from '/app/js/ui.js';
 import { select } from '../fields.js';
 import { t } from '/app/js/i18n.js';
-import { meters } from '/app/js/charts.js';
-import { biz, avatar, hoursEditor, emptyBox, fail, ok, roleLabel, ROLES, gel, pct, WEEKDAYS_SHORT, debounceFn } from '../shared.js';
+import { ring } from '/app/js/charts.js';
+import { biz, avatar, hoursEditor, emptyBox, fail, ok, roleLabel, ROLES, gel, WEEKDAYS_SHORT, debounceFn } from '../shared.js';
 import { chips, filterBar } from '../lists.js';
 import { canManage, isOwner, state } from '../state.js';
 
@@ -39,21 +39,33 @@ export default async function teamPage(root) {
       count.textContent = t(`${active.length} ადამიანი`, `${active.length} ${active.length === 1 ? 'person' : 'people'}`);
       if (!everyone.length) { mount(host, card(emptyBox(t('გუნდი ჯერ ცარიელია', 'No team yet'), t('დაამატე ყველა, ვინც კლიენტებს იღებს — თავისი სამუშაო საათებით. თავისუფალი დროები მათგან ითვლება.', 'Add everyone who sees clients — with their own hours. Free slots are computed from them.'), manage ? button(t('თანამშრომლის დამატება', 'Add a person'), { icon: 'userPlus', onClick: () => staffDialog(null, services, staff, paint) }) : null))); return; }
       if (!active.length) { mount(host, card(emptyBox(t('ვერაფერი მოიძებნა', 'Nothing found'), t('შეცვალე ძებნა ან ფილტრი.', 'Change the search or the filter.')))); return; }
-      mount(host, h('div', { class: 'bz-grid-3' }, active.map((p) => {
-        const mine = p.serviceIds.length ? services.filter((s) => p.serviceIds.includes(s.id)) : services.filter((s) => s.active);
+      const stat = (v, l) => h('span', { class: 'bz-person-stat' }, h('b', null, v), h('small', null, l));
+      mount(host, h('div', { class: 'bz-people' }, active.map((p) => {
+        const mine = p.serviceIds.length ? services.filter((s) => p.serviceIds.includes(s.id)) : [];
+        const shown = mine.slice(0, 3);
         const days = [1, 2, 3, 4, 5, 6, 0].filter((d) => (p.schedule?.[String(d)] || []).length);
-        return card(
-          h('div', { class: 'bz-inline', style: { justifyContent: 'space-between', alignItems: 'flex-start' } },
-            h('div', { class: 'bz-inline' }, avatar(p.name, p.color || 'var(--book)', 44), h('div', null, h('div', { class: 'card-title' }, p.name), h('div', { class: 'card-sub' }, p.title || t('თანამშრომელი', 'Staff')))),
-            badge(p.bookable ? t('იწერება', 'Bookable') : t('არ იწერება', 'Not bookable'), p.bookable ? 'ok' : 'neutral')),
-          h('div', { style: { marginTop: '12px', fontSize: '13.5px' } },
-            h('div', { class: 'bz-sub' }, t('სერვისები: ', 'Services: '), h('span', { style: { color: 'var(--text)' } }, p.serviceIds.length ? mine.map((s) => s.name).join(', ') : t('ყველა', 'All'))),
-            h('div', { class: 'bz-sub bz-inline', style: { marginTop: '6px', gap: '10px' } }, h('span', null, t('გრაფიკი: ', 'Hours: '), h('span', { style: { color: 'var(--text)' } }, days.length ? t(`${days.length} დღე კვირაში`, `${days.length} days a week`) : t('ბიზნესის საათები', 'Business hours'))),
-              days.length ? h('span', { class: 'bz-week-dots', 'aria-hidden': 'true' }, [1, 2, 3, 4, 5, 6, 0].map((d) => h('i', { class: days.includes(d) ? 'on' : '', title: `${WEEKDAYS_SHORT[d]} ${(p.schedule?.[String(d)] || []).map((r) => `${r.from}–${r.to}`).join(', ') || '—'}`, style: days.includes(d) ? { background: p.color || 'var(--book)' } : {} }))) : null)),
-          load.get(p.id) ? h('div', { style: { marginTop: '12px' } },
-            meters([{ name: t('დატვირთვა · 30 დღე', 'Load · 30 days'), value: load.get(p.id).utilisation ?? 0, max: 100, right: load.get(p.id).utilisation == null ? '—' : pct(load.get(p.id).utilisation), color: p.color || 'var(--book)' }]),
-            h('div', { class: 'bz-note', style: { marginTop: '6px' } }, t(`${load.get(p.id).appointments} ჯავშანი · ${load.get(p.id).completed} დასრულდა · ${gel(load.get(p.id).revenue)}`, `${load.get(p.id).appointments} bookings · ${load.get(p.id).completed} done · ${gel(load.get(p.id).revenue)}`))) : null,
-          manage ? h('div', { class: 'bz-actions', style: { marginTop: '14px' } },
+        const color = p.color || 'var(--book)';
+        const u = load.get(p.id);
+        return h('div', { class: `bz-person${p.bookable ? '' : ' is-offline'}` },
+          h('div', { class: 'bz-person-head' },
+            avatar(p.name, color, 52),
+            h('div', { class: 'who' }, h('b', null, p.name), h('span', null, p.title || t('თანამშრომელი', 'Staff'))),
+            h('span', { class: `bz-person-state${p.bookable ? ' on' : ''}` }, h('i'), p.bookable ? t('იწერება აპიდან', 'Bookable') : t('არ იწერება', 'Not bookable'))),
+          u ? h('div', { class: 'bz-person-load' },
+            ring({ value: u.utilisation ?? 0, max: 100, size: 64, stroke: 6, color, label: u.utilisation == null ? '—' : `${Math.round(u.utilisation)}%`, labelScale: 0.22 }),
+            h('div', { class: 'bz-person-stats' }, stat(String(u.appointments), t('ჯავშანი', 'bookings')), stat(String(u.completed), t('დასრულდა', 'done')), stat(gel(u.revenue), t('შემოსავალი', 'revenue'))),
+            h('span', { class: 'cap' }, t('დატვირთვა · ბოლო 30 დღე', 'Load · last 30 days'))) : null,
+          h('div', { class: 'bz-person-row' },
+            h('span', { class: 'lbl' }, t('სერვისები', 'Services')),
+            h('span', { class: 'bz-tags' }, p.serviceIds.length
+              ? [...shown.map((s) => h('span', { class: 'bz-tag' }, s.name)), mine.length > shown.length ? h('span', { class: 'bz-tag is-more', title: mine.slice(3).map((s) => s.name).join(', ') }, `+${mine.length - shown.length}`) : null]
+              : h('span', { class: 'bz-tag is-all' }, t('ყველა სერვისი', 'Every service')))),
+          h('div', { class: 'bz-person-row' },
+            h('span', { class: 'lbl' }, t('გრაფიკი', 'Hours')),
+            days.length
+              ? h('span', { class: 'bz-days', title: t(`${days.length} დღე კვირაში`, `${days.length} days a week`) }, [1, 2, 3, 4, 5, 6, 0].map((d) => h('i', { class: days.includes(d) ? 'on' : '', style: days.includes(d) ? { borderColor: color, background: `color-mix(in srgb, ${color} 14%, transparent)` } : null, title: `${WEEKDAYS_SHORT[d]} ${(p.schedule?.[String(d)] || []).map((r) => `${r.from}–${r.to}`).join(', ') || '—'}` }, WEEKDAYS_SHORT[d][0])))
+              : h('span', { class: 'bz-sub', style: { paddingTop: '3px' } }, t('ბიზნესის საათებით', 'Business hours'))),
+          manage ? h('div', { class: 'bz-person-foot' },
             button(t('რედაქტირება', 'Edit'), { size: 'sm', variant: 'ghost', icon: 'edit', onClick: () => staffDialog(p, services, staff, paint) }),
             button(t('მოხსნა', 'Remove'), { size: 'sm', variant: 'ghost', icon: 'trash', onClick: async () => { if (await confirmDialog({ title: t(`${p.name} — მოხსნა?`, `Remove ${p.name}?`), body: t('მისი ჯავშნები ისტორიაში რჩება; ახალი ვეღარ დაინიშნება.', 'Their bookings stay in the history; no new ones can be made.'), confirm: t('მოხსნა', 'Remove'), danger: true })) { try { await biz.del(`/staff/${p.id}`); paint(); } catch (e) { fail(e); } } } })) : null);
       })));
@@ -86,7 +98,7 @@ export default async function teamPage(root) {
     filterBar(h('div', { class: 'bz-filters-row' }, search, chipsHost,
       select([{ value: 'load', label: t('დატვირთვით', 'By load') }, { value: 'bookings', label: t('ჯავშნებით', 'By bookings') }, { value: 'name', label: t('სახელით', 'By name') }], sortBy, { onChange: (e) => { sortBy = e.target.value; paint(false); }, style: { maxWidth: '170px' } }),
       h('span', { class: 'spacer' }), count)),
-    host, h('div', { style: { height: '16px' } }), membersHost);
+    h('div', { class: 'bz-stack' }, host, membersHost));
   await Promise.all([paint(), paintMembers()]);
 }
 
