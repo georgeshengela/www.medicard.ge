@@ -1,7 +1,8 @@
 /**
  * MEDIBOOK availability — pure. Which start times a service can be booked at on one Tbilisi day:
  *   business hours ∩ the person's working hours − time off − appointments (with the service's buffer),
- *   on the business's slot grid, not before now + lead time, not beyond the horizon.
+ *   on the business's slot grid, not before now + lead time, not beyond the horizon,
+ *   and only while every room / device the service needs still has a free unit (`resources`, capacity-aware).
  * „Any staff“ = the union over every person who performs the service. Tested in availability.test.js.
  */
 import { dayRanges, normalizeSettings } from './catalog.js';
@@ -54,20 +55,53 @@ export function serviceIdsOf(service) {
   return ids.length ? ids : [service?.id].filter(Boolean);
 }
 
+/** The resources a set of services needs — the union over the service → resource links, in link order. */
+export function resourceIdsFor(links, serviceIds) {
+  const wanted = new Set((serviceIds ?? []).filter(Boolean));
+  const out = [];
+  for (const l of links ?? []) if (wanted.has(l.serviceId) && l.resourceId && !out.includes(l.resourceId)) out.push(l.resourceId);
+  return out;
+}
+
+const holdsResource = (a, id) => Array.isArray(a?.resourceIds) && a.resourceIds.includes(id);
+
+/**
+ * Which needed resource has every unit taken in [startsAt, endsAt) (buffer on both sides, like the person check)?
+ * Counts the live appointments that hold the resource and overlap; a resource with `capacity` units blocks once
+ * that many overlap. Unknown or retired resources never block. Returns { resource, taken, capacity } or null.
+ */
+export function resourceConflict(appointments, resources, { resourceIds = [], startsAt, endsAt, bufferMin = 0, ignoreId = null }) {
+  const needed = (resourceIds ?? []).filter(Boolean);
+  if (!needed.length) return null;
+  const s = new Date(startsAt).getTime() - bufferMin * MIN;
+  const e = new Date(endsAt).getTime() + bufferMin * MIN;
+  const byId = new Map((resources ?? []).map((r) => [r.id, r]));
+  for (const id of needed) {
+    const resource = byId.get(id);
+    if (!resource || resource.active === false) continue;
+    const capacity = Math.max(1, Number(resource.capacity) || 1);
+    const taken = (appointments ?? []).filter((a) => a.id !== ignoreId && a.status !== 'CANCELLED' && holdsResource(a, id)
+      && new Date(a.startsAt).getTime() < e && new Date(a.endsAt).getTime() > s).length;
+    if (taken >= capacity) return { resource, taken, capacity };
+  }
+  return null;
+}
+
 /**
  * @param {object} args
  * @param {object} args.business  { hours, settings }
- * @param {object} args.service   { id, durationMin, bufferMin } — or a bundle { id, ids: [...], durationMin: total, bufferMin: the last one's }
+ * @param {object} args.service   { id, durationMin, bufferMin, resourceIds? } — or a bundle { id, ids: [...], durationMin: total, bufferMin: the last one's, resourceIds: the union }
  * @param {object[]} args.staff   active people [{ id, serviceIds, schedule, bookable }]
- * @param {object[]} args.appointments  on that day (and the night before), any status but CANCELLED: [{ staffId, startsAt, endsAt }]
+ * @param {object[]} args.appointments  on that day (and the night before), any status but CANCELLED: [{ staffId, startsAt, endsAt, resourceIds? }]
  * @param {object[]} args.timeOff [{ staffId|null, startsAt, endsAt }]
+ * @param {object[]} [args.resources]  the business's live rooms / devices [{ id, capacity, active }] — a start is refused while a needed one is full
  * @param {string} args.date  YYYY-MM-DD (Tbilisi)
  * @param {Date} [args.now]
  * @param {string|null} [args.staffId]  a chosen person, or null for anyone
  * @param {boolean} [args.ignoreLead]  the business books for a walk-in (no lead time, no horizon)
  * @returns {{ slots: Array<{ time: string, startsAt: string, staffIds: string[] }>, closed: boolean, reason?: string }}
  */
-export function slotsForDay({ business, service, staff, appointments = [], timeOff = [], date, now = new Date(), staffId = null, ignoreLead = false }) {
+export function slotsForDay({ business, service, staff, appointments = [], timeOff = [], resources = [], date, now = new Date(), staffId = null, ignoreLead = false }) {
   const settings = normalizeSettings(business?.settings);
   const weekday = weekdayOfYmd(date);
   const today = tbilisiYmd(now);
@@ -87,6 +121,14 @@ export function slotsForDay({ business, service, staff, appointments = [], timeO
   if (!people.length) return { slots: [], closed: true, reason: staffId ? 'staff' : 'no-staff' };
 
   const toMin = (iso) => (new Date(iso).getTime() - dayStart) / MIN;
+  // A room or device is shared by everyone: whether a start is blocked by one is the same for every person.
+  const needed = Array.isArray(service?.resourceIds) ? service.resourceIds.filter(Boolean) : [];
+  const resourceFull = new Map();
+  const blockedByResource = (start) => {
+    if (!needed.length) return false;
+    if (!resourceFull.has(start)) resourceFull.set(start, Boolean(resourceConflict(appointments, resources, { resourceIds: needed, startsAt: dayStart + start * MIN, endsAt: dayStart + (start + duration) * MIN, bufferMin: buffer })));
+    return resourceFull.get(start);
+  };
   const byTime = new Map();
   let anyWorking = false;
   for (const person of people) {
@@ -110,6 +152,7 @@ export function slotsForDay({ business, service, staff, appointments = [], timeO
       for (let start = first; start + duration <= to; start += step) {
         const at = dayStart + start * MIN;
         if (at < earliest) continue;
+        if (blockedByResource(start)) continue;
         const key = start;
         const slot = byTime.get(key) ?? { time: `${String(Math.floor((start / 60) % 24)).padStart(2, '0')}:${String(start % 60).padStart(2, '0')}`, startsAt: new Date(at).toISOString(), staffIds: [] };
         slot.staffIds.push(person.id);
@@ -123,13 +166,13 @@ export function slotsForDay({ business, service, staff, appointments = [], timeO
 }
 
 /** Days in the horizon that have at least one slot (for the date strip). Cheap: reuses one appointment list. */
-export function daysWithSlots({ business, service, staff, appointments, timeOff, from, now = new Date(), staffId = null, days = 14 }) {
+export function daysWithSlots({ business, service, staff, appointments, timeOff, resources = [], from, now = new Date(), staffId = null, days = 14 }) {
   const out = [];
   for (let i = 0; i < days; i += 1) {
     const date = addDaysYmd(from, i);
     const dayAppointments = appointments.filter((a) => tbilisiYmd(new Date(a.startsAt)) === date || tbilisiYmd(new Date(a.endsAt)) === date);
     const dayOff = timeOff.filter((o) => new Date(o.startsAt).getTime() < tbilisiInstant(date, 24 * 60).getTime() && new Date(o.endsAt).getTime() > tbilisiInstant(date, 0).getTime());
-    const r = slotsForDay({ business, service, staff, appointments: dayAppointments, timeOff: dayOff, date, now, staffId });
+    const r = slotsForDay({ business, service, staff, appointments: dayAppointments, timeOff: dayOff, resources, date, now, staffId });
     out.push({ date, count: r.slots.length, closed: r.closed });
   }
   return out;

@@ -417,9 +417,11 @@ export async function deactivateStaff(businessId, staffId, db = prisma) {
 
 // ——— services ———
 
+/** The business's own list: every service with the live rooms / devices it needs (`resourceIds`; the public shape never carries them). */
 export async function listServices(businessId, { all = false } = {}, db = prisma) {
-  const rows = await db.$queryRaw`SELECT * FROM "BookService" WHERE "businessId" = ${businessId} ${all ? empty : sql`AND active`} ORDER BY "group" NULLS LAST, "sortOrder", name`;
-  return rows.map(servicePublic);
+  const rows = await db.$queryRaw`SELECT s.*, (SELECT COALESCE(json_agg(l."resourceId" ORDER BY l."createdAt"), '[]'::json) FROM "BookServiceResource" l JOIN "BookResource" r ON r.id = l."resourceId" AND r.active WHERE l."serviceId" = s.id) AS "resourceIds"
+    FROM "BookService" s WHERE s."businessId" = ${businessId} ${all ? empty : sql`AND s.active`} ORDER BY s."group" NULLS LAST, s."sortOrder", s.name`;
+  return rows.map((r) => ({ ...servicePublic(r), resourceIds: Array.isArray(r.resourceIds) ? r.resourceIds : [] }));
 }
 
 function sanitizeService(input = {}) {

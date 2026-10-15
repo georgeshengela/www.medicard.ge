@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { buildAnalytics, periodFor, workingMinutes } from './analytics.js';
+import { buildAnalytics, periodFor, resourceUtilisation, workingMinutes } from './analytics.js';
 import { tbilisiInstant } from './time.js';
 
 const hours = { 1: [{ from: '10:00', to: '18:00' }], 2: [{ from: '10:00', to: '18:00' }], 3: [{ from: '10:00', to: '18:00' }], 4: [], 5: [], 6: [], 0: [] };
@@ -79,5 +79,34 @@ describe('MEDIBOOK analytics', () => {
     assert.equal(p.from.toISOString(), tbilisiInstant('2026-10-15', 0).toISOString());
     assert.equal(p.to.toISOString(), tbilisiInstant('2026-10-22', 0).toISOString());
     assert.equal(periodFor('month', tbilisiInstant('2026-10-21', 14 * 60)).from.toISOString(), tbilisiInstant('2026-10-01', 0).toISOString());
+  });
+});
+
+describe('MEDIBOOK analytics — rooms and equipment', () => {
+  it('utilisation per room: booked ÷ open minutes × capacity, passed hours only, retired ones left out', () => {
+    const resources = [{ id: 'r1', name: 'Room 1', kind: 'ROOM', capacity: 1, active: true }, { id: 'r2', name: 'Chairs', kind: 'ROOM', capacity: 2, active: true }, { id: 'old', name: 'Old', capacity: 1, active: false }];
+    const appointments = [
+      { ...appt('a1', 'nino', '2026-10-19', 10, 60, 'COMPLETED'), resourceIds: ['r1'] },
+      { ...appt('a2', 'gio', '2026-10-19', 15, 120, 'CONFIRMED'), resourceIds: ['r1', 'r2'] },
+      { ...appt('a3', 'nino', '2026-10-20', 11, 60, 'CANCELLED'), resourceIds: ['r1'] },
+      { ...appt('a4', 'nino', '2026-10-21', 16, 60, 'CONFIRMED'), resourceIds: ['r2'] }, // later today (now = Wed 14:00): not yet
+    ];
+    const r = resourceUtilisation({ resources, appointments, businessHours: hours, from, to, now });
+    assert.deepEqual(r.map((x) => x.resourceId), ['r1', 'r2']);
+    // Open: Mon 8 h + Tue 8 h + Wed up to 14:00 = 20 h.
+    const r1 = r.find((x) => x.resourceId === 'r1');
+    assert.equal(r1.workingMinutes, 1200);
+    assert.equal(r1.bookedMinutes, 180);
+    assert.equal(r1.utilisation, 15);
+    assert.equal(r1.appointments, 2);
+    assert.equal(r1.completed, 1);
+    const r2 = r.find((x) => x.resourceId === 'r2');
+    assert.equal(r2.workingMinutes, 2400);
+    assert.equal(r2.bookedMinutes, 120);
+    assert.equal(r2.utilisation, 5);
+    // A business-wide Tuesday off shrinks the open time; a person's own day off does not.
+    const off = resourceUtilisation({ resources: resources.slice(0, 1), appointments, businessHours: hours, timeOff: [{ staffId: null, startsAt: at('2026-10-20', 0), endsAt: at('2026-10-21', 0) }, { staffId: 'nino', startsAt: at('2026-10-19', 0), endsAt: at('2026-10-20', 0) }], from, to, now });
+    assert.equal(off[0].workingMinutes, 720);
+    assert.equal(buildAnalytics({ appointments, resources, business: { hours }, from, to, now }).resources.length, 2);
   });
 });

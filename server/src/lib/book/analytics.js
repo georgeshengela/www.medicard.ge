@@ -1,8 +1,8 @@
 /**
  * MEDIBOOK analytics — pure. Turns the raw rows of a period into what the owner's „ანალიტიკა“ page shows:
  * bookings and revenue per day, status split, no-show and cancellation rates, utilisation per person
- * (მარგი ქმედების კოეფიციენტი = booked minutes ÷ working minutes), the listing funnel, busy hours, top
- * services, new vs returning clients, sources, ratings. Tested in analytics.test.js.
+ * (მარგი ქმედების კოეფიციენტი = booked minutes ÷ working minutes), the same per room / device, the listing
+ * funnel, busy hours, top services, new vs returning clients, sources, ratings. Tested in analytics.test.js.
  */
 import { dayRanges } from './catalog.js';
 import { staffWorkingRanges, subtractRange } from './availability.js';
@@ -47,7 +47,33 @@ export function workingMinutes({ staff, businessHours, timeOff = [], from, to, n
   return total;
 }
 
-export function buildAnalytics({ appointments = [], events = [], transactions = [], staff = [], timeOff = [], clients = [], reviews = [], business = {}, from, to, now = new Date() }) {
+/**
+ * Utilisation per room / device: booked minutes of the live appointments that hold it ÷ the business's open minutes
+ * (passed hours only, business-wide time off removed) × capacity.
+ */
+export function resourceUtilisation({ resources = [], appointments = [], businessHours, timeOff = [], from, to, now = new Date() }) {
+  const live = appointments.filter((a) => a.status !== 'CANCELLED');
+  const open = resources.length ? workingMinutes({ staff: { id: null, schedule: {} }, businessHours, timeOff: timeOff.filter((o) => !o.staffId), from, to, now }) : 0;
+  return resources.filter((r) => r.active !== false).map((r) => {
+    const capacity = Math.max(1, Number(r.capacity) || 1);
+    const mine = live.filter((a) => Array.isArray(a.resourceIds) && a.resourceIds.includes(r.id));
+    const booked = mine.reduce((sum, a) => sum + overlapMinutes(a.startsAt, a.endsAt, from, now < to ? now : to), 0);
+    const working = open * capacity;
+    return {
+      resourceId: r.id,
+      name: r.name,
+      kind: r.kind ?? 'ROOM',
+      capacity,
+      bookedMinutes: Math.round(booked),
+      workingMinutes: Math.round(working),
+      utilisation: working > 0 ? Math.min(100, Math.round((booked / working) * 1000) / 10) : null,
+      appointments: mine.length,
+      completed: mine.filter((a) => a.status === 'COMPLETED').length,
+    };
+  }).sort((a, b) => (b.utilisation ?? -1) - (a.utilisation ?? -1));
+}
+
+export function buildAnalytics({ appointments = [], events = [], transactions = [], staff = [], timeOff = [], clients = [], reviews = [], business = {}, resources = [], from, to, now = new Date() }) {
   const live = appointments.filter((a) => a.status !== 'CANCELLED');
   const done = appointments.filter((a) => a.status === 'COMPLETED');
   const noShow = appointments.filter((a) => a.status === 'NO_SHOW');
@@ -188,6 +214,7 @@ export function buildAnalytics({ appointments = [], events = [], transactions = 
     },
     series: [...byDay.values()],
     utilisation,
+    resources: resourceUtilisation({ resources, appointments, businessHours: business.hours, timeOff, from, to, now }),
     funnel,
     heat,
     peak,

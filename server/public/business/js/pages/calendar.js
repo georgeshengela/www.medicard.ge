@@ -5,6 +5,7 @@ import { state, canManage } from '../state.js';
 import { biz, ymd, addDays, weekdayOf, minutesOf, clock, WEEKDAYS_SHORT, WEEKDAYS, MONTHS, MONTHS_SHORT, fail, ok, toIso, emptyBox } from '../shared.js';
 import { loadContext, newAppointmentDialog, openAppointment } from '../appointment.js';
 import { dateField, timeField, select } from '../fields.js';
+import { chips } from '../lists.js';
 
 const HOUR_H = 64;
 /** h() assigns style objects with Object.assign, which ignores custom properties — set them by hand. */
@@ -13,11 +14,15 @@ function vars(el, map) { for (const [k, v] of Object.entries(map)) el.style.setP
 export default async function calendarPage(root, ctx) {
   const context = await loadContext();
   const business = (await biz.get('')).business;
+  // The rooms / devices of the business: the day view can show one room's bookings alone.
+  const resources = (await biz.get('/resources').catch(() => ({ resources: [] }))).resources.filter((r) => r.active);
   const staffCols = context.staff.filter((s) => s.bookable || true);
   let mode = ctx.query.mode || (staffCols.length > 1 ? 'day' : 'week');
   let anchor = ctx.query.date && /^\d{4}-\d{2}-\d{2}$/.test(ctx.query.date) ? ctx.query.date : ymd();
   let filterStaff = '';
+  let filterResource = '';
   const host = h('div');
+  const resHost = h('div', { class: 'bz-cal-res' });
   const title = h('h2');
   let timer = null;
 
@@ -42,7 +47,13 @@ export default async function calendarPage(root, ctx) {
     mount(host, h('div', { class: 'skeleton-card' }, h('div', { class: 'sk' }), h('div', { class: 'sk' })));
     try {
       const [{ appointments }, { timeOff }] = await Promise.all([biz.get('/appointments', { from, to, staffId: filterStaff || undefined }), biz.get('/time-off', { from, to })]);
-      mount(host, grid(appointments, timeOff, from, to));
+      // One chip per room / device in the day view, with that day's count; a chosen one shows only its bookings.
+      const holds = (a, id) => Array.isArray(a.resourceIds) && a.resourceIds.includes(id);
+      if (mode === 'day' && resources.length) {
+        if (filterResource && !resources.some((r) => r.id === filterResource)) filterResource = '';
+        mount(resHost, chips([['', t('ყველა ოთახი', 'Every room')], ...resources.map((r) => [r.id, r.name, appointments.filter((a) => a.status !== 'CANCELLED' && holds(a, r.id)).length])], filterResource, (v) => { filterResource = v; paint(); }));
+      } else mount(resHost);
+      mount(host, grid(mode === 'day' && filterResource ? appointments.filter((a) => holds(a, filterResource)) : appointments, timeOff, from, to));
     } catch (e) { mount(host, emptyBox(t('ვერ ჩაიტვირთა', 'Could not load'), e?.message)); }
   }
 
@@ -113,9 +124,9 @@ export default async function calendarPage(root, ctx) {
         el.appendChild(vars(h('div', {
           class: `bz-cal-event${a.status === 'PENDING' ? ' is-pending' : ''}${a.status === 'CANCELLED' ? ' is-cancelled' : ''}${a.status === 'COMPLETED' || a.status === 'NO_SHOW' ? ' is-done' : ''}`,
           style: { top: `${top}px`, height: `${height}px`, left: `calc(${a._lane * width}% + 4px)`, right: `calc(${(laneCount - a._lane - 1) * width}% + 4px)` },
-          title: `${clock(a.startsAt)}–${clock(a.endsAt)} · ${a.clientName} · ${a.serviceName}`,
+          title: [`${clock(a.startsAt)}–${clock(a.endsAt)} · ${a.clientName} · ${a.serviceName}`, a.resources?.length ? a.resources.map((r) => r.name).join(', ') : null].filter(Boolean).join(' · '),
           onClick: (e) => { e.stopPropagation(); openAppointment(a, context, { onChange: paint }); },
-        }, h('b', null, `${clock(a.startsAt)} ${a.clientName}`), h('span', null, mode === 'week' && a.staffName ? `${a.serviceName} · ${a.staffName}` : a.serviceName)), { '--c': color }));
+        }, h('b', null, `${clock(a.startsAt)} ${a.clientName}`), h('span', null, [mode === 'week' && a.staffName ? `${a.serviceName} · ${a.staffName}` : a.serviceName, mode === 'day' && !filterResource && a.resources?.length ? a.resources.map((r) => r.name).join(', ') : null].filter(Boolean).join(' · '))), { '--c': color }));
       }
       if (col.date === ymd()) {
         const m = minutesOf(new Date());
@@ -186,7 +197,7 @@ export default async function calendarPage(root, ctx) {
     pageHead(t('კალენდარი', 'Calendar'), t('ონლაინ ჯავშნები თავისით ჩნდება; თავისუფალ ადგილზე დაჭერით ვიზიტორს ამატებ.', 'Online bookings appear by themselves; click an empty spot to add a walk-in.'),
       canManage() ? button(t('დასვენება', 'Time off'), { variant: 'ghost', icon: 'moon', onClick: timeOffDialog }) : null,
       button(t('ახალი ჩანაწერი', 'New booking'), { icon: 'plus', onClick: () => newAppointmentDialog(context, { date: anchor }, { onCreated: paint }) })),
-    nav, host);
+    nav, resHost, host);
   await paint();
   timer = setInterval(() => { if (document.contains(host)) paint(); }, 90_000);
   return () => clearInterval(timer);

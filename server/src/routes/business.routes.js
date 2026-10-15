@@ -23,6 +23,7 @@ import * as loyalty from '../lib/book/loyalty.js';
 import * as branches from '../lib/book/branches.js';
 import * as products from '../lib/book/products.js';
 import * as supplies from '../lib/book/supplies.js';
+import * as resources from '../lib/book/resources.js';
 import * as payroll from '../lib/book/payroll.js';
 import { prisma } from '../lib/prisma.js';
 import { addDaysYmd, isYmd, tbilisiInstant, tbilisiYmd } from '../lib/book/time.js';
@@ -226,11 +227,34 @@ businessRouter.post('/:businessId/staff', member(MANAGE), asyncHandler(async (re
 businessRouter.patch('/:businessId/staff/:staffId', member(MANAGE), asyncHandler(async (req, res) => res.json({ staff: await store.updateStaff(req.params.businessId, req.params.staffId, req.body ?? {}) })));
 businessRouter.delete('/:businessId/staff/:staffId', member(MANAGE), asyncHandler(async (req, res) => { await store.deactivateStaff(req.params.businessId, req.params.staffId); res.json({ ok: true }); }));
 
-// services
+// services (a body may carry `resourceIds` — the rooms / devices the service needs)
 businessRouter.get('/:businessId/services', member(ALL), asyncHandler(async (req, res) => res.json({ services: await store.listServices(req.params.businessId, { all: true }) })));
-businessRouter.post('/:businessId/services', member(MANAGE), asyncHandler(async (req, res) => res.status(201).json({ service: await store.createService(req.params.businessId, req.body ?? {}) })));
-businessRouter.patch('/:businessId/services/:serviceId', member(MANAGE), asyncHandler(async (req, res) => res.json({ service: await store.updateService(req.params.businessId, req.params.serviceId, req.body ?? {}) })));
+businessRouter.post('/:businessId/services', member(MANAGE), asyncHandler(async (req, res) => {
+  const { resourceIds, ...body } = req.body ?? {};
+  const service = await store.createService(req.params.businessId, body);
+  service.resourceIds = resourceIds !== undefined ? await resources.setServiceResources({ businessId: req.params.businessId, serviceId: service.id, resourceIds }) : [];
+  res.status(201).json({ service });
+}));
+businessRouter.patch('/:businessId/services/:serviceId', member(MANAGE), asyncHandler(async (req, res) => {
+  const { resourceIds, ...body } = req.body ?? {};
+  let service = Object.keys(body).length ? await store.updateService(req.params.businessId, req.params.serviceId, body) : (await store.listServices(req.params.businessId, { all: true })).find((s) => s.id === req.params.serviceId);
+  if (!service) throw bookError(404, 'სერვისი ვერ მოიძებნა.', 'SERVICE_NOT_FOUND', 'Service not found.');
+  if (resourceIds !== undefined) service = { ...service, resourceIds: await resources.setServiceResources({ businessId: req.params.businessId, serviceId: req.params.serviceId, resourceIds }) };
+  else if (!Array.isArray(service.resourceIds)) service = (await store.listServices(req.params.businessId, { all: true })).find((s) => s.id === req.params.serviceId) ?? service;
+  res.json({ service });
+}));
 businessRouter.delete('/:businessId/services/:serviceId', member(MANAGE), asyncHandler(async (req, res) => { await store.deactivateService(req.params.businessId, req.params.serviceId); res.json({ ok: true }); }));
+
+// rooms and equipment: what a service needs; availability refuses a start while a needed one has no free unit
+const resourceBody = z.object({ name: z.string().trim().max(80).optional(), kind: z.enum(['ROOM', 'EQUIPMENT']).optional(), capacity: z.union([z.number(), z.string()]).optional(), note: z.string().trim().max(200).nullable().optional(), active: z.boolean().optional(), sortOrder: z.number().int().optional() });
+businessRouter.get('/:businessId/resources', member(ALL), asyncHandler(async (req, res) => res.json({ resources: await resources.listResources(req.params.businessId, { all: req.query.all === '1' }) })));
+businessRouter.post('/:businessId/resources', member(MANAGE), asyncHandler(async (req, res) => res.status(201).json({ resource: await resources.createResource(req.params.businessId, resourceBody.parse(req.body ?? {})) })));
+businessRouter.patch('/:businessId/resources/:id', member(MANAGE), asyncHandler(async (req, res) => res.json({ resource: await resources.updateResource(req.params.businessId, req.params.id, resourceBody.parse(req.body ?? {})) })));
+businessRouter.delete('/:businessId/resources/:id', member(MANAGE), asyncHandler(async (req, res) => { await resources.deactivateResource(req.params.businessId, req.params.id); res.json({ ok: true }); }));
+businessRouter.put('/:businessId/services/:serviceId/resources', member(MANAGE), asyncHandler(async (req, res) => {
+  const body = z.object({ resourceIds: z.array(z.string().min(1)).max(20) }).parse(req.body ?? {});
+  res.json({ resourceIds: await resources.setServiceResources({ businessId: req.params.businessId, serviceId: req.params.serviceId, resourceIds: body.resourceIds }) });
+}));
 
 // time off
 function range(req, defaultDays = 7) {
