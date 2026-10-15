@@ -256,6 +256,24 @@ export default function BusinessScreen() {
             </View>
           ) : null}
 
+          {b.branches && b.branches.length ? (
+            <View style={{ marginTop: HUB.sectionGap }}>
+              <HomeSectionHeading title={tx(`სხვა ფილიალები · ${b.branches.length}`, `Other branches · ${b.branches.length}`)} />
+              <FlatCard>
+                {b.branches.map((br, i) => (
+                  <Pressable key={br.id} accessibilityRole="button" onPress={() => router.push(`/book/b/${br.id}` as never)} style={[s.row, { paddingVertical: 12 }, i ? { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: c.bg200 } : null]}>
+                    <Store size={18} color={c.text200} />
+                    <View style={{ flex: 1, gap: 2 }}>
+                      <Text numberOfLines={1} style={[hubText.cardTitle, { color: c.text100 }]}>{br.name}</Text>
+                      <Text numberOfLines={1} style={[hubText.caption, { color: c.text200 }]}>{[br.address, distanceLabel(br.distanceKm)].filter(Boolean).join(' · ')}</Text>
+                    </View>
+                    <ChevronRight size={16} color={c.text300} />
+                  </Pressable>
+                ))}
+              </FlatCard>
+            </View>
+          ) : null}
+
           {Object.values(b.hours).some((l) => l.length) ? (
             <View style={{ marginTop: HUB.sectionGap }}>
               <HomeSectionHeading title={tx('სამუშაო საათები', 'Opening hours')} />

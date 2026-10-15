@@ -295,6 +295,15 @@ body.biz { font-size: 14.5px; }
 .bz-cal-col-head .occ span { display: block; height: 100%; border-radius: 2px; }
 @media (max-width: 760px) { .bz-kpi-spark { display: none; } .bz-kpi:has(.bz-kpi-spark) { padding-right: 16px; } .bz-sources { flex-direction: column; align-items: flex-start; } }
 
+/* Branches: location cards, the comparison table */
+.bz-branches { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; margin-bottom: 16px; }
+.bz-branch { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 14px; display: grid; gap: 12px; }
+.bz-branch.is-current { border-color: var(--book-2); box-shadow: inset 3px 0 0 var(--book-2); }
+.bz-branch-foot { display: flex; align-items: center; gap: 6px; }
+.bz-branch-foot .spacer { flex: 1; }
+.bz-table tr.is-strong td { background: var(--book-soft); }
+.bz-table tr.is-total td { border-top: 2px solid var(--line); }
+
 /* Loyalty: the gift code, the completion summary */
 .bz-gift-code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 28px; letter-spacing: 0.12em; padding: 14px 18px; border: 1.5px dashed var(--book-2); border-radius: 14px; display: inline-block; }
 .bz-code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: 0.06em; }

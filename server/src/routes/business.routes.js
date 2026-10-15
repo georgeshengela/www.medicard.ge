@@ -20,6 +20,7 @@ import { notifyBooked, notifyChanged, notifyWaitlistAdded, notifyWaitlistOpening
 import * as waitlist from '../lib/book/waitlist.js';
 import * as bookSms from '../lib/book/sms.js';
 import * as loyalty from '../lib/book/loyalty.js';
+import * as branches from '../lib/book/branches.js';
 import { prisma } from '../lib/prisma.js';
 import { addDaysYmd, isYmd, tbilisiInstant, tbilisiYmd } from '../lib/book/time.js';
 
@@ -332,6 +333,25 @@ businessRouter.patch('/:businessId/appointments/:id', member(ALL), asyncHandler(
   }
   res.json({ appointment: bookings.appointmentPublic(result.row), waitlistOffered });
 }));
+
+// branches: the chain's locations, a new one from this business, link / unlink, copy services, compare
+businessRouter.get('/:businessId/branches', member(MANAGE), asyncHandler(async (req, res) => res.json(await branches.groupOf(req.params.businessId))));
+businessRouter.post('/:businessId/branches', member(['OWNER']), asyncHandler(async (req, res) => {
+  const body = z.object({ nameKa: z.string().trim().min(1).max(120), name: z.string().trim().max(120).optional(), phone: z.string().trim().max(32).optional(), address: z.string().trim().max(200).optional(), addressKa: z.string().trim().max(200).optional(), city: z.string().trim().max(60).optional(), district: z.string().trim().max(60).optional(), lat: z.number(), lng: z.number(), copyServices: z.boolean().optional(), copyHours: z.boolean().optional() }).parse(req.body ?? {});
+  const row = await branches.registerBranch({ businessId: req.params.businessId, userId: req.user.id, input: body });
+  res.status(201).json({ business: { id: row.id, slug: row.slug, name: row.nameKa || row.name, status: row.status }, memberships: await store.membershipsOf(req.user.id) });
+}));
+businessRouter.post('/:businessId/branches/link', member(['OWNER']), asyncHandler(async (req, res) => {
+  const { businessId } = z.object({ businessId: z.string().min(1) }).parse(req.body ?? {});
+  res.json(await branches.linkBranch({ businessId: req.params.businessId, otherId: businessId, userId: req.user.id }));
+}));
+businessRouter.delete('/:businessId/branches/:otherId', member(['OWNER']), asyncHandler(async (req, res) => res.json(await branches.unlinkBranch({ businessId: req.params.businessId, otherId: req.params.otherId }))));
+businessRouter.post('/:businessId/branches/:otherId/copy-services', member(MANAGE), asyncHandler(async (req, res) => {
+  const { branches: list } = await branches.groupOf(req.params.businessId);
+  if (!list.some((b) => b.id === req.params.otherId)) throw bookError(404, 'ეს ფილიალი ამ ქსელში არ არის.', 'NOT_IN_GROUP', 'That branch is not in this chain.');
+  res.json({ copied: await branches.copyServices({ fromId: req.params.businessId, toId: req.params.otherId }) });
+}));
+businessRouter.get('/:businessId/branches/analytics', member(MANAGE), asyncHandler(async (req, res) => res.json(await branches.branchesAnalytics({ businessId: req.params.businessId, range: String(req.query.range ?? '30') }))));
 
 // loyalty: cashback rules + numbers, gift cards, memberships, the client's card, payment options for a completion
 businessRouter.get('/:businessId/loyalty', member(MANAGE), asyncHandler(async (req, res) => {

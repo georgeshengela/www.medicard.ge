@@ -135,3 +135,15 @@ CREATE TABLE IF NOT EXISTS "BookLoyaltyLedger" (
 );
 CREATE INDEX IF NOT EXISTS "BookLoyaltyLedger_business" ON "BookLoyaltyLedger"("businessId", "createdAt");
 CREATE INDEX IF NOT EXISTS "BookLoyaltyLedger_client" ON "BookLoyaltyLedger"("clientId", "createdAt");
+
+-- Branches: several locations of one brand. A group ties them; each location stays a full business with its own
+-- calendar, team, clients and money — the panel adds a branch from an existing one and compares them.
+CREATE TABLE IF NOT EXISTS "BookGroup" (
+  id TEXT PRIMARY KEY,
+  name TEXT NOT NULL,
+  "ownerUserId" TEXT REFERENCES "User"(id) ON DELETE SET NULL,
+  "createdAt" TIMESTAMPTZ(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "updatedAt" TIMESTAMPTZ(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+ALTER TABLE "BookBusiness" ADD COLUMN IF NOT EXISTS "groupId" TEXT REFERENCES "BookGroup"(id) ON DELETE SET NULL;
+CREATE INDEX IF NOT EXISTS "BookBusiness_group" ON "BookBusiness"("groupId");

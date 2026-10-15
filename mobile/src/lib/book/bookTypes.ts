@@ -106,6 +106,8 @@ export type BookBusinessDetail = BookBusinessCard & {
   reviews: BookReview[];
   status: 'LISTED' | 'PENDING' | 'CLAIMED' | 'HIDDEN';
   me?: BookViewerLoyalty | null;
+  /** Other locations of the same chain, nearest to this one first. */
+  branches?: BookBusinessCard[];
 };
 
 export type BookPin = { id: string; slug: string; name: string; category: BookCategoryId; lat: number; lng: number; claimed: boolean; rating: number | null };

@@ -17,6 +17,7 @@ import * as bookings from '../lib/book/bookings.js';
 import { notifyBooked, notifyClientCancelled, notifyWaitlistJoined, offerOpenings } from '../lib/book/push.js';
 import * as waitlist from '../lib/book/waitlist.js';
 import { viewerLoyalty } from '../lib/book/loyalty.js';
+import { publicSiblings } from '../lib/book/branches.js';
 import { tbilisiYmd } from '../lib/book/time.js';
 
 export const bookRouter = Router();
@@ -74,7 +75,10 @@ bookRouter.get('/businesses/:id', optionalAuth, asyncHandler(async (req, res) =>
   store.recordEvent(business.id, 'VIEW', req.user?.id ?? clientIp(req)).catch(() => undefined);
   // The viewer's own bonus and live memberships at this place (signed-in app users only).
   const me = req.user?.id ? await viewerLoyalty({ businessId: business.id, userId: req.user.id }).catch(() => null) : null;
-  res.json({ business: me ? { ...business, me } : business });
+  // The other locations of the chain, nearest to this one first.
+  const rowForBranches = await store.businessRow(business.id);
+  const siblings = rowForBranches?.groupId ? await publicSiblings(rowForBranches, { lang: lang(req) }).catch(() => []) : [];
+  res.json({ business: { ...business, ...(me ? { me } : {}), ...(siblings.length ? { branches: siblings } : {}) } });
 }));
 
 const eventBody = z.object({ kind: z.enum(['CALL', 'ROUTE', 'WEBSITE', 'SHARE', 'BOOK_START']) });
