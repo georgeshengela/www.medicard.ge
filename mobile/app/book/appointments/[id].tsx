@@ -19,6 +19,7 @@ import type { BookAppointment } from '@/lib/book/bookTypes';
 import { FRESH, invalidate } from '@/lib/queryClient';
 import { HUB, hubText } from '@/theme/hub';
 import { useIsDark, useThemeColors } from '@/theme/colors';
+import { moduleInk } from '@/theme/moduleBrand';
 
 /** One booking: where, what, when, with whom; call, route, add to the calendar, cancel, and a review after the visit. */
 export default function AppointmentScreen() {
@@ -34,7 +35,7 @@ export default function AppointmentScreen() {
   const [rating, setRating] = useState(0);
   const [text, setText] = useState('');
   const [busy, setBusy] = useState(false);
-  const ink = dark ? '#F0ABFC' : '#A21CAF';
+  const ink = moduleInk('book', dark);
   const past = a ? new Date(a.endsAt).getTime() < Date.now() : false;
   const canReview = Boolean(a && !a.reviewed && (a.status === 'COMPLETED' || (a.status === 'CONFIRMED' && past)));
   const open = Boolean(a && (a.status === 'PENDING' || a.status === 'CONFIRMED') && !past);

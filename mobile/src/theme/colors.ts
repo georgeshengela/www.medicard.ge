@@ -119,10 +119,10 @@ const MODULE_TONES: Record<ModuleTone, { light: ToneTokens; dark: ToneTokens }> 
     light: { primary100: '#8A6414', primary200: '#B07F1F', primary300: '#C99A45', accent100: '#F6EBD3', accent200: '#E9C77E' },
     dark: { primary100: '#F3DDA6', primary200: '#E9C77E', primary300: '#C99A45', accent100: '#1A1A3A', accent200: '#5B4A22' },
   },
-  // MEDIBOOK (moduleBrand `book`): #A21CAF / #F0ABFC — fuchsia, the beauty and aesthetics world.
+  // MEDIBOOK (moduleBrand `book`): #7A58C9 / #C6B2F5 — lilac, used lightly: lines and text, neutral fills.
   book: {
-    light: { primary100: '#A21CAF', primary200: '#C026D3', primary300: '#E879F9', accent100: '#FAE8FF', accent200: '#F0ABFC' },
-    dark: { primary100: '#F0ABFC', primary200: '#E879F9', primary300: '#D946EF', accent100: '#3B0A3F', accent200: '#86198F' },
+    light: { primary100: '#7A58C9', primary200: '#8B6CD6', primary300: '#B49CF2', accent100: '#F4F0FC', accent200: '#D9CCF7' },
+    dark: { primary100: '#C6B2F5', primary200: '#B49CF2', primary300: '#9F86E8', accent100: '#221C38', accent200: '#4A3A80' },
   },
 };
 const TONED: Record<ModuleTone, { light: Palette; dark: Palette }> = {

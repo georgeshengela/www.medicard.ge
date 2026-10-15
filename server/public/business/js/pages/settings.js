@@ -35,7 +35,7 @@ export default async function settingsPage(root, ctx) {
     const map = new mapboxgl.Map({ container: mapEl, style: document.documentElement.dataset.theme === 'dark' ? 'mapbox://styles/mapbox/dark-v11' : 'mapbox://styles/mapbox/light-v11', center: coords ? [coords.lng, coords.lat] : [44.8271, 41.7151], zoom: coords ? 15 : 11, attributionControl: false });
     map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), 'top-right');
     let marker = null;
-    const place = (lng, lat, fly) => { coords = { lat, lng }; if (!marker) { marker = new mapboxgl.Marker({ color: '#A21CAF', draggable: true }).setLngLat([lng, lat]).addTo(map); marker.on('dragend', () => { const p = marker.getLngLat(); coords = { lat: p.lat, lng: p.lng }; }); } else marker.setLngLat([lng, lat]); if (fly) map.easeTo({ center: [lng, lat], zoom: 15 }); };
+    const place = (lng, lat, fly) => { coords = { lat, lng }; if (!marker) { marker = new mapboxgl.Marker({ color: '#7A58C9', draggable: true }).setLngLat([lng, lat]).addTo(map); marker.on('dragend', () => { const p = marker.getLngLat(); coords = { lat: p.lat, lng: p.lng }; }); } else marker.setLngLat([lng, lat]); if (fly) map.easeTo({ center: [lng, lat], zoom: 15 }); };
     if (coords) place(coords.lng, coords.lat, false);
     map.on('click', (e) => place(e.lngLat.lng, e.lngLat.lat, false));
     mapEl._place = place;

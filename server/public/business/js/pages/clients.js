@@ -20,7 +20,7 @@ export default async function clientsPage(root, ctx) {
       mount(host, card({ class: 'flush' }, h('div', { class: 'bz-table-wrap' }, h('table', { class: 'bz-table' },
         h('thead', null, h('tr', null, h('th', null, t('კლიენტი', 'Client')), h('th', null, t('ტელეფონი', 'Phone')), h('th', { class: 'num' }, t('ვიზიტი', 'Visits')), h('th', { class: 'num' }, t('გაცდენა', 'No-shows')), h('th', { class: 'num' }, t('თანხა', 'Spent')), h('th', null, t('ბოლო ვიზიტი', 'Last visit')), h('th', null, t('შემდეგი', 'Next')))),
         h('tbody', null, data.clients.map((c) => h('tr', { class: 'is-link', onClick: () => ctx.navigate(`/clients/${c.id}`) },
-          h('td', null, h('div', { class: 'bz-inline' }, avatar(c.name, c.inApp ? '#A21CAF' : '#64748B', 30), h('div', null, h('b', null, c.name), c.inApp ? h('span', { class: 'badge badge-brand', style: { marginLeft: '6px' } }, t('აპი', 'App')) : null, c.tags.length ? h('div', { class: 'bz-tags', style: { marginTop: '2px' } }, c.tags.map((tag) => h('span', { class: 'bz-tag' }, tag))) : null))),
+          h('td', null, h('div', { class: 'bz-inline' }, avatar(c.name, c.inApp ? 'var(--book)' : '#64748B', 30), h('div', null, h('b', null, c.name), c.inApp ? h('span', { class: 'badge badge-brand', style: { marginLeft: '6px' } }, t('აპი', 'App')) : null, c.tags.length ? h('div', { class: 'bz-tags', style: { marginTop: '2px' } }, c.tags.map((tag) => h('span', { class: 'bz-tag' }, tag))) : null))),
           h('td', null, c.phone || h('span', { class: 'bz-dim' }, '—')),
           h('td', { class: 'num' }, String(c.visits)),
           h('td', { class: `num${c.noShows ? ' bz-bad' : ''}` }, String(c.noShows)),

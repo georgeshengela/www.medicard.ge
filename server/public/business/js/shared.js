@@ -2,6 +2,7 @@
 import { h, icon, badge, toast } from '/app/js/ui.js';
 import { get, post, patch, put, del, invalidate } from '/app/js/api.js';
 import { t, isEn } from '/app/js/i18n.js';
+import { timeField } from './fields.js';
 import { currentId } from './state.js';
 
 export const CATEGORIES = [
@@ -9,7 +10,7 @@ export const CATEGORIES = [
   ['BEAUTY', t('სილამაზის სალონი', 'Beauty salon'), '#EC4899'],
   ['HAIR', t('თმა და ბარბერი', 'Hair and barber'), '#F59E0B'],
   ['NAILS', t('ფრჩხილები', 'Nails'), '#F472B6'],
-  ['AESTHETIC', t('ესთეტიკა და კოსმეტოლოგია', 'Aesthetics and cosmetology'), '#A21CAF'],
+  ['AESTHETIC', t('ესთეტიკა და კოსმეტოლოგია', 'Aesthetics and cosmetology'), '#A855F7'],
   ['SPA', t('სპა და მასაჟი', 'Spa and massage'), '#14B8A6'],
   ['CLINIC', t('კლინიკა და ექიმები', 'Clinics and doctors'), '#2563EB'],
   ['FITNESS', t('ფიტნესი და იოგა', 'Fitness and yoga'), '#22C55E'],
@@ -137,14 +138,14 @@ export function hoursEditor(initial = {}, { allowEmpty = true } = {}) {
   const rows = [1, 2, 3, 4, 5, 6, 0].map((d) => {
     const list = Array.isArray(initial[String(d)]) ? initial[String(d)] : [];
     const on = h('input', { type: 'checkbox', checked: list.length > 0 });
-    const from = h('input', { type: 'time', class: 'input', value: list[0]?.from || '10:00', step: 300 });
-    const to = h('input', { type: 'time', class: 'input', value: list[0]?.to || '19:00', step: 300 });
-    const sync = () => { from.disabled = to.disabled = !on.checked; };
+    const from = timeField({ value: list[0]?.from || '10:00', from: '00:00', to: '23:45' });
+    const to = timeField({ value: list[0]?.to || '19:00', from: '00:00', to: '24:00' });
+    const sync = () => { from.button.disabled = to.button.disabled = !on.checked; };
     on.addEventListener('change', sync);
     sync();
     const el = h('div', { class: 'bz-hours-row' },
       h('label', { class: 'toggle' }, on, h('span', { class: 'toggle-track' }, h('span', { class: 'toggle-thumb' })), h('span', { class: 'bz-hours-day' }, WEEKDAYS[d])),
-      from, h('span', { class: 'faint' }, '–'), to);
+      from.el, h('span', { class: 'faint' }, '–'), to.el);
     return { d, el, on, from, to };
   });
   const el = h('div', { class: 'bz-hours' }, rows.map((r) => r.el));
@@ -152,7 +153,7 @@ export function hoursEditor(initial = {}, { allowEmpty = true } = {}) {
     el,
     value() {
       const out = {};
-      for (const r of rows) out[String(r.d)] = r.on.checked && r.from.value && r.to.value ? [{ from: r.from.value, to: r.to.value }] : [];
+      for (const r of rows) out[String(r.d)] = r.on.checked && r.from.get() && r.to.get() ? [{ from: r.from.get(), to: r.to.get() }] : [];
       if (!allowEmpty && !Object.values(out).some((l) => l.length)) throw new Error(t('მონიშნე სამუშაო დღე მაინც ერთი.', 'Mark at least one working day.'));
       return out;
     },

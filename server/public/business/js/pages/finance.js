@@ -3,6 +3,7 @@ import { h, mount, icon, button, segmented, pageHead, card, input, field, select
 import { lineChart, donut, meters } from '/app/js/charts.js';
 import { t } from '/app/js/i18n.js';
 import { biz, gel, methodLabel, METHODS, EXPENSE_CATEGORIES, INCOME_CATEGORIES, txCategoryLabel, dateText, when, emptyBox, fail, ok, MONTHS_SHORT, toIso, ymd } from '../shared.js';
+import { dateField } from '../fields.js';
 
 export default async function financePage(root, ctx) {
   let range = ctx.query.range || '30';
@@ -58,18 +59,18 @@ function txDialog(kind, onSaved) {
   const category = select(cats.map(([value, label]) => ({ value, label })), cats[0][0]);
   const amount = input({ type: 'number', min: 0, step: '0.01', required: true, placeholder: '0.00' });
   const method = select(METHODS.map(([value, label]) => ({ value, label })), 'CASH');
-  const at = input({ type: 'date', value: ymd() });
+  const at = dateField({ value: ymd() });
   const note = input({ placeholder: t('შენიშვნა', 'Note') });
   const save = button(t('შენახვა', 'Save'));
   const m = openModal({
     title: kind === 'EXPENSE' ? t('ხარჯი', 'Expense') : t('შემოსავალი', 'Income'),
     size: 'sm',
-    body: h('div', { class: 'form' }, h('div', { class: 'form-row' }, field(t('თანხა, ₾', 'Amount, ₾'), amount), field(t('თარიღი', 'Date'), at)), field(t('კატეგორია', 'Category'), category), field(t('მეთოდი', 'Method'), method), field(t('შენიშვნა', 'Note'), note)),
+    body: h('div', { class: 'form' }, h('div', { class: 'form-row' }, field(t('თანხა, ₾', 'Amount, ₾'), amount), field(t('თარიღი', 'Date'), at.el)), field(t('კატეგორია', 'Category'), category), field(t('მეთოდი', 'Method'), method), field(t('შენიშვნა', 'Note'), note)),
     footer: (close) => [button(t('გაუქმება', 'Cancel'), { variant: 'ghost', onClick: () => close() }), save],
   });
   save.addEventListener('click', () => busy(save, async () => {
     try {
-      await biz.post('/transactions', { kind, category: category.value, amount: Number(amount.value), method: method.value, note: note.value.trim() || undefined, at: toIso(at.value, '12:00') });
+      await biz.post('/transactions', { kind, category: category.value, amount: Number(amount.value), method: method.value, note: note.value.trim() || undefined, at: toIso(at.get() || ymd(), '12:00') });
       m.close();
       ok(t('შენახულია', 'Saved'));
       onSaved?.();

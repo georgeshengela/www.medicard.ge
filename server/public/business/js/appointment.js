@@ -4,6 +4,7 @@ import { t } from '/app/js/i18n.js';
 import { openDrawer } from './drawer.js';
 import { biz, statusBadge, methodLabel, METHODS, gel, minutes, when, clock, ymd, addDays, toIso, fail, ok, avatar, dayLabel, WEEKDAYS_SHORT, MONTHS_SHORT } from './shared.js';
 import { canManage } from './state.js';
+import { dateField, timeField } from './fields.js';
 
 /** The staff + services lists most dialogs need. */
 export async function loadContext() {
@@ -12,7 +13,7 @@ export async function loadContext() {
 }
 
 const staffName = (ctx, id) => ctx.staff.find((s) => s.id === id)?.name || t('ნებისმიერი', 'Anyone');
-const staffColor = (ctx, id) => ctx.staff.find((s) => s.id === id)?.color || '#A21CAF';
+const staffColor = (ctx, id) => ctx.staff.find((s) => s.id === id)?.color || '#64748B';
 
 /**
  * Opens an appointment in the drawer. `onChange(appointment)` fires after every edit.
@@ -50,14 +51,25 @@ export function openAppointment(appt, ctx, { onChange } = {}) {
 
   function moveEditor() {
     if (a.status === 'CANCELLED' || a.status === 'COMPLETED') return null;
-    const date = input({ type: 'date', value: ymd(a.startsAt) });
-    const time = input({ type: 'time', value: clock(a.startsAt), step: 300 });
     const who = select([{ value: '', label: t('ნებისმიერი', 'Anyone') }, ...ctx.staff.map((s) => ({ value: s.id, label: s.name }))], a.staffId || '');
     const svc = select(ctx.services.map((s) => ({ value: s.id, label: `${s.name} · ${minutes(s.durationMin)}` })), a.serviceId || '');
+    const time = timeField({ value: clock(a.startsAt) });
+    // Free times for the chosen day / person / service tint the time grid.
+    const refresh = async () => {
+      try {
+        const r = await biz.get('/availability', { serviceId: svc.value || a.serviceId, date: date.get(), staffId: who.value || undefined });
+        time.configure({ free: new Set(r.slots.map((s) => s.time)) });
+      } catch { time.configure({ free: null }); }
+    };
+    const date = dateField({ value: ymd(a.startsAt), onChange: refresh });
+    who.addEventListener('change', refresh);
+    svc.addEventListener('change', refresh);
+    refresh();
     const apply = button(t('გადატანა', 'Move'), { size: 'sm', variant: 'secondary', onClick: async () => {
       await busy(apply, async () => {
         try {
-          const patch = { startsAt: toIso(date.value, time.value), staffId: who.value || null };
+          if (!date.get() || !time.get()) throw new Error(t('აირჩიე დღე და დრო.', 'Pick a day and a time.'));
+          const patch = { startsAt: toIso(date.get(), time.get()), staffId: who.value || null };
           if (svc.value && svc.value !== a.serviceId) patch.serviceId = svc.value;
           a = (await biz.patch(`/appointments/${a.id}`, patch)).appointment;
           ok(t('გადატანილია. კლიენტს შეტყობინება მივა.', 'Moved. The client is notified.'));
@@ -69,7 +81,7 @@ export function openAppointment(appt, ctx, { onChange } = {}) {
       });
     } });
     return h('details', { class: 'bz-move' }, h('summary', { style: { cursor: 'pointer', fontWeight: 600, fontSize: '14px' } }, t('დროის, თანამშრომლის ან სერვისის შეცვლა', 'Change time, person or service')),
-      h('div', { class: 'form', style: { marginTop: '10px' } }, h('div', { class: 'form-row' }, field(t('დღე', 'Day'), date), field(t('დრო', 'Time'), time)), field(t('თანამშრომელი', 'Person'), who), ctx.services.length ? field(t('სერვისი', 'Service'), svc) : null, h('div', { style: { display: 'flex', justifyContent: 'flex-end' } }, apply)));
+      h('div', { class: 'form', style: { marginTop: '10px' } }, h('div', { class: 'form-row' }, field(t('დღე', 'Day'), date.el), field(t('დრო', 'Time'), time.el)), field(t('თანამშრომელი', 'Person'), who), ctx.services.length ? field(t('სერვისი', 'Service'), svc) : null, h('div', { style: { display: 'flex', justifyContent: 'flex-end' } }, apply)));
   }
 
   async function setStatus(status, extra = {}) {
@@ -144,31 +156,44 @@ export function newAppointmentDialog(ctx, preset = {}, { onCreated } = {}) {
 
   const svc = select(ctx.services.map((s) => ({ value: s.id, label: `${s.name} · ${minutes(s.durationMin)}${s.price != null ? ` · ${gel(s.price)}` : ''}` })), ctx.services[0]?.id || '');
   const who = select([{ value: '', label: t('ნებისმიერი', 'Anyone') }, ...ctx.staff.map((s) => ({ value: s.id, label: s.name }))], preset.staffId || '');
-  const date = input({ type: 'date', value: preset.date || ymd() });
-  const time = input({ type: 'time', value: preset.time || '', step: 300 });
-  const slots = h('div', { class: 'bz-slots' });
+  const time = timeField({ value: preset.time || '', onChange: () => { chosenIso = null; paintQuick(); } });
+  const date = dateField({ value: preset.date || ymd(), onChange: () => loadSlots() });
+  const quick = h('div', { class: 'bz-quick' });
   const note = textarea({ rows: 2, placeholder: t('შიდა შენიშვნა', 'Internal note') });
   const force = h('input', { type: 'checkbox' });
   let chosenIso = preset.date && preset.time ? toIso(preset.date, preset.time) : null;
+  let freeSlots = [];
 
-  async function loadSlots() {
-    if (!svc.value || !date.value) { mount(slots); return; }
-    mount(slots, h('span', { class: 'faint' }, t('ვეძებ თავისუფალ დროებს…', 'Looking for free times…')));
-    try {
-      const r = await biz.get('/availability', { serviceId: svc.value, date: date.value, staffId: who.value || undefined });
-      if (!r.slots.length) { mount(slots, h('span', { class: 'faint' }, r.reason === 'closed' ? t('ამ დღეს დახურულია — დროის ხელით ჩაწერა მაინც შეიძლება.', 'Closed this day — you can still type a time.') : t('თავისუფალი დრო არ არის — ჩაწერე ხელით და მონიშნე „მაინც“.', 'No free time — type one and tick "anyway".'))); return; }
-      mount(slots, r.slots.map((s) => h('button', { type: 'button', class: chosenIso === s.startsAt ? 'on' : '', onClick: (e) => { chosenIso = s.startsAt; time.value = s.time; slots.querySelectorAll('button').forEach((b) => b.classList.remove('on')); e.currentTarget.classList.add('on'); } }, s.time)));
-    } catch (e) { mount(slots, h('span', { class: 'faint' }, e?.message || '')); }
+  // Under the day/time row: how many free times there are and the first few as one-tap chips; the full grid
+  // (free times tinted) opens from the time field itself.
+  function paintQuick() {
+    if (!freeSlots.length) return;
+    mount(quick,
+      h('span', null, t(`${freeSlots.length} თავისუფალი დრო`, `${freeSlots.length} free ${freeSlots.length === 1 ? 'time' : 'times'}`)),
+      freeSlots.slice(0, 7).map((s) => h('button', { type: 'button', class: time.get() === s.time ? 'on' : '', onClick: () => { time.set(s.time); chosenIso = s.startsAt; paintQuick(); } }, s.time)),
+      freeSlots.length > 7 ? h('button', { type: 'button', class: 'more', onClick: () => time.button.click() }, t('ყველა…', 'All…')) : null);
   }
-  [svc, who, date].forEach((el) => el.addEventListener('change', loadSlots));
-  time.addEventListener('change', () => { chosenIso = date.value && time.value ? toIso(date.value, time.value) : null; slots.querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.textContent === time.value)); });
+  async function loadSlots() {
+    freeSlots = [];
+    if (!svc.value || !date.get()) { time.configure({ free: null }); mount(quick); return; }
+    mount(quick, h('span', null, t('ვეძებ თავისუფალ დროებს…', 'Looking for free times…')));
+    try {
+      const r = await biz.get('/availability', { serviceId: svc.value, date: date.get(), staffId: who.value || undefined });
+      freeSlots = r.slots;
+      time.configure({ free: new Set(r.slots.map((s) => s.time)) });
+      if (!r.slots.length) { mount(quick, h('span', null, r.reason === 'closed' ? t('ამ დღეს დახურულია — დროის არჩევა მაინც შეიძლება.', 'Closed this day — a time can still be picked.') : t('თავისუფალი დრო არ არის — აირჩიე მაინც და მონიშნე „მაინც“.', 'No free time — pick one anyway and tick "anyway".'))); return; }
+      paintQuick();
+    } catch (e) { mount(quick, h('span', null, e?.message || '')); }
+  }
+  [svc, who].forEach((el) => el.addEventListener('change', loadSlots));
   loadSlots();
 
-  const submit = button(t('ჩაწერა', 'Book'), { type: 'submit' });
+  // The button lives in the modal footer, outside the form, so it submits the form by hand.
+  const submit = button(t('ჩაწერა', 'Book'), { icon: 'check' });
   const form = h('form', { class: 'form', onSubmit: async (e) => {
     e.preventDefault();
     err.hidden = true;
-    const startsAt = date.value && time.value ? toIso(date.value, time.value) : chosenIso;
+    const startsAt = date.get() && time.get() ? toIso(date.get(), time.get()) : chosenIso;
     if (!startsAt) { err.textContent = t('აირჩიე დრო.', 'Pick a time.'); err.hidden = false; return; }
     if (!clientId && !clientQ.value.trim()) { err.textContent = t('მიუთითე კლიენტის სახელი.', 'Enter the client name.'); err.hidden = false; return; }
     await busy(submit, async () => {
@@ -184,15 +209,15 @@ export function newAppointmentDialog(ctx, preset = {}, { onCreated } = {}) {
   field(t('ტელეფონი', 'Phone'), clientPhone),
   field(t('სერვისი', 'Service'), svc),
   field(t('თანამშრომელი', 'Person'), who),
-  h('div', { class: 'form-row' }, field(t('დღე', 'Day'), date), field(t('დრო', 'Time'), time)),
-  field(t('თავისუფალი დროები', 'Free times'), slots),
+  h('div', { class: 'form-row' }, field(t('დღე', 'Day'), date.el), field(t('დრო', 'Time'), time.el)),
+  quick,
   field(t('შენიშვნა', 'Note'), note),
   h('label', { class: 'bz-inline', style: { fontSize: '13px', color: 'var(--text2)' } }, force, t('მაინც ჩაწერე, თუ დრო დაკავებულია (ორმაგი ჩანაწერი)', 'Book anyway even if the time is taken (double-booking)')),
   err, h('button', { type: 'submit', hidden: true }));
   let close = () => {};
   const m = openModal({ title: t('ახალი ჩანაწერი', 'New booking'), body: form, footer: (c) => [button(t('გაუქმება', 'Cancel'), { variant: 'ghost', onClick: () => c() }), submit] });
   close = m.close;
-  submit.addEventListener('click', (e) => { if (submit.type !== 'submit') { e.preventDefault(); form.requestSubmit(); } });
+  submit.addEventListener('click', (e) => { e.preventDefault(); form.requestSubmit(); });
   return m;
 }
 

@@ -12,7 +12,7 @@ export const BOOK_CATEGORIES: readonly BookCategoryMeta[] = [
   { id: 'BEAUTY', label: tx('სილამაზის სალონი', 'Beauty salon'), short: tx('სილამაზე', 'Beauty'), color: '#EC4899', icon: Sparkles },
   { id: 'HAIR', label: tx('თმა და ბარბერი', 'Hair and barber'), short: tx('თმა', 'Hair'), color: '#F59E0B', icon: Scissors },
   { id: 'NAILS', label: tx('ფრჩხილები', 'Nails'), short: tx('ფრჩხილები', 'Nails'), color: '#F472B6', icon: HandMetal },
-  { id: 'AESTHETIC', label: tx('ესთეტიკა და კოსმეტოლოგია', 'Aesthetics and cosmetology'), short: tx('ესთეტიკა', 'Aesthetics'), color: '#A21CAF', icon: Syringe },
+  { id: 'AESTHETIC', label: tx('ესთეტიკა და კოსმეტოლოგია', 'Aesthetics and cosmetology'), short: tx('ესთეტიკა', 'Aesthetics'), color: '#A855F7', icon: Syringe },
   { id: 'SPA', label: tx('სპა და მასაჟი', 'Spa and massage'), short: tx('სპა', 'Spa'), color: '#14B8A6', icon: Waves },
   { id: 'CLINIC', label: tx('კლინიკა და ექიმები', 'Clinics and doctors'), short: tx('კლინიკა', 'Clinic'), color: '#2563EB', icon: HeartPulse },
   { id: 'FITNESS', label: tx('ფიტნესი და იოგა', 'Fitness and yoga'), short: tx('ფიტნესი', 'Fitness'), color: '#22C55E', icon: Dumbbell },
