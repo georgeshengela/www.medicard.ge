@@ -272,7 +272,14 @@ a.bk-line:hover { color: var(--text); }
 .bk-round:hover { background: var(--surface2); }
 .bk-map-card { position: absolute; left: 16px; right: 16px; bottom: 24px; z-index: 2; }
 @media (min-width: 761px) { .bk-map-card { right: auto; width: 440px; } }
-@media (max-width: 760px) { .bk-map-card { bottom: calc(100px + env(safe-area-inset-bottom)); } }
+@media (max-width: 760px) {
+  /* The phone layout's bottom nav (≈78px) covers the map's bottom edge: lift the Mapbox logo + attribution
+     above it, drop the +/- buttons (pinch zooms) and keep the card clear of both. */
+  .bk-map .mapboxgl-ctrl-bottom-left, .bk-map .mapboxgl-ctrl-bottom-right { bottom: calc(84px + env(safe-area-inset-bottom)); }
+  .bk-map .mapboxgl-ctrl-group { display: none; }
+  .bk-map-card { bottom: calc(112px + env(safe-area-inset-bottom)); }
+  .bk-map-sel .bk-pill { display: none; }
+}
 .bk-map-card .bk-list { box-shadow: var(--shadow-pop); }
 .bk-map-sel { display: flex; flex-direction: row; align-items: center; }
 .bk-map-sel .bk-biz-row { flex: 1; }

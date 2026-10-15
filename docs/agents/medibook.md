@@ -109,8 +109,12 @@ in). QA without an account: `node scripts/web-app-dev.mjs 4403 --mock scripts/we
 person (one claimed bookable business, bookings, the phone gate with dev code 1234, cancel, review) and proxies the
 public catalogue reads to the main API; set `localStorage.medicard.web.token` to any value to be „signed in“. Verified
 2026-10-15 in the built-in browser: hub, search, business page, booking flow through the gate, cancel, review, Home,
-phone layout, light theme, English. The map loads Mapbox + style but the hidden pane never ran its render loop, so
-pins were not seen drawn — check once in a normal browser.
+phone layout, light theme, English. The map was checked the same day with the pane visible (a hidden pane never draws a
+frame, so Mapbox never fires `load`): tiles, pins by category, clusters, the count pill, pin → card → business page,
+`?focus=<id>`, the locate button, the category chips, light and dark. The map follows the theme button through a
+`MutationObserver` on `data-theme` (`setStyle` + re-added layers from the kept features); the pill says „500+“ at the
+server cap (`MAP_LIMIT`); a chip that excludes the selected place closes its card; on phones the Mapbox logo / attribution
+sit above the bottom nav, the +/- buttons are hidden (pinch zooms) and the card hides the „ჩაწერა“ pill.
 
 ## Business panel (`server/public/business/`, served at /business and /business/*)
 

@@ -907,6 +907,7 @@ function downloadIcs(a) {
 /* ── Map (/book/map?category=&focus=<id>) ────────────────────────────────────────────────────────────────────
    Mapbox GL JS like the app's BookMap: one dot per business in its category colour, a ring for places that take
    bookings, clusters when dense, the person's blue dot once they asked for it. Pins reload as the view moves. */
+const MAP_LIMIT = 500; // /api/book/map's default cap
 let mapboxPromise = null;
 function loadMapbox() {
   if (mapboxPromise) return mapboxPromise;
@@ -926,11 +927,16 @@ async function mapView(root, ctx) {
   let map = null;
   let timer = null;
   root.style.animation = 'none';
-  const st = { category: validCategory(ctx.query.category), selected: null, seq: 0 };
+  const st = { category: validCategory(ctx.query.category), selected: null, selectedBiz: null, seq: 0, features: { type: 'FeatureCollection', features: [] } };
   const mapEl = h('div', { class: 'bk-map' });
   const cardSlot = h('div', { class: 'bk-map-card', hidden: true });
   const countEl = h('div', { class: 'bk-map-count', hidden: true, 'aria-live': 'polite' });
-  const chips = categoryChips(st.category, (next) => { st.category = next; refresh(); });
+  const chips = categoryChips(st.category, (next) => {
+    st.category = next;
+    // A filter that leaves the selected place out closes its card too — its pin is gone from the map.
+    if (next && st.selectedBiz && String(st.selectedBiz.category || '').toUpperCase() !== next) select(null);
+    refresh();
+  });
   const locateBtn = h('button', { type: 'button', class: 'bk-round', title: t('ჩემი მდებარეობა', 'My location'), 'aria-label': t('ჩემი მდებარეობა', 'My location') }, icon('locate', { size: 20 }));
   const backBtn = h('a', { class: 'bk-round', href: '/book', 'data-link': '', 'aria-label': t('უკან', 'Back') }, icon('chevronLeft', { size: 20 }));
   mount(root, h('div', { class: 'bk-map-page' }, mapEl, h('div', { class: 'bk-map-top' }, backBtn, chips, locateBtn), countEl, cardSlot));
@@ -951,13 +957,15 @@ async function mapView(root, ctx) {
     return () => { alive = false; };
   }
 
-  const dark = document.documentElement.dataset.theme === 'dark';
-  // Lilac as a line: clusters are neutral discs with a lilac ring (mobile mapHtml.ts).
-  const ink = dark ? '#C6B2F5' : '#7A58C9';
+  // The style follows the app theme: the theme button only flips `data-theme` on <html>, so the map watches
+  // that attribute and swaps light-v11 ↔ dark-v11; a style swap drops our source and layers, `style.load` re-adds them.
+  const isDark = () => document.documentElement.dataset.theme === 'dark';
+  const styleFor = (d) => (d ? 'mapbox://styles/mapbox/dark-v11' : 'mapbox://styles/mapbox/light-v11');
+  let dark = isDark();
   const colorExpr = ['match', ['get', 'category'], ...CATEGORIES.flatMap((c) => [c.id, c.color]), '#64748B'];
   const o = origin();
   mapboxgl.accessToken = token;
-  map = new mapboxgl.Map({ container: mapEl, style: dark ? 'mapbox://styles/mapbox/dark-v11' : 'mapbox://styles/mapbox/light-v11', center: [o.lng, o.lat], zoom: o.source === 'default' ? 12 : 13.5, attributionControl: false, projection: 'mercator' });
+  map = new mapboxgl.Map({ container: mapEl, style: styleFor(dark), center: [o.lng, o.lat], zoom: o.source === 'default' ? 12 : 13.5, attributionControl: false, projection: 'mercator' });
   map.addControl(new mapboxgl.AttributionControl({ compact: true }));
   map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), 'bottom-right');
   let me = null;
@@ -970,15 +978,21 @@ async function mapView(root, ctx) {
     if (await locate()) { placeMe(); map.easeTo({ center: [gps.lng, gps.lat], zoom: Math.max(map.getZoom(), 14), duration: 600 }); }
   }));
 
+  /** Source + layers for the current theme; the last pins come back at once after a style swap. */
   function addLayers() {
     if (map.getSource('pins')) return;
-    map.addSource('pins', { type: 'geojson', data: { type: 'FeatureCollection', features: [] }, cluster: true, clusterMaxZoom: 15, clusterRadius: 44 });
+    // Lilac as a line: clusters are neutral discs with a lilac ring (mobile mapHtml.ts).
+    const ink = dark ? '#C6B2F5' : '#7A58C9';
+    map.addSource('pins', { type: 'geojson', data: st.features, cluster: true, clusterMaxZoom: 15, clusterRadius: 44 });
     map.addLayer({ id: 'clusters', type: 'circle', source: 'pins', filter: ['has', 'point_count'], paint: { 'circle-color': dark ? '#151319' : '#FFFFFF', 'circle-opacity': 0.96, 'circle-radius': ['step', ['get', 'point_count'], 16, 10, 20, 50, 26], 'circle-stroke-width': 2, 'circle-stroke-color': ink } });
     map.addLayer({ id: 'cluster-count', type: 'symbol', source: 'pins', filter: ['has', 'point_count'], layout: { 'text-field': ['get', 'point_count_abbreviated'], 'text-size': 13, 'text-font': ['DIN Pro Bold', 'Arial Unicode MS Bold'] }, paint: { 'text-color': ink } });
     map.addLayer({ id: 'pin-ring', type: 'circle', source: 'pins', filter: ['all', ['!', ['has', 'point_count']], ['==', ['get', 'bookable'], 1]], paint: { 'circle-color': 'transparent', 'circle-radius': ['interpolate', ['linear'], ['zoom'], 11, 9, 16, 15], 'circle-stroke-width': 2, 'circle-stroke-color': colorExpr, 'circle-stroke-opacity': 0.55 } });
     map.addLayer({ id: 'pin', type: 'circle', source: 'pins', filter: ['!', ['has', 'point_count']], paint: { 'circle-color': colorExpr, 'circle-radius': ['interpolate', ['linear'], ['zoom'], 11, 5, 16, 9], 'circle-stroke-width': 2, 'circle-stroke-color': dark ? '#0b1220' : '#ffffff', 'circle-opacity': 0.92 } });
-    map.addLayer({ id: 'pin-selected', type: 'circle', source: 'pins', filter: ['==', ['get', 'id'], ''], paint: { 'circle-color': 'transparent', 'circle-radius': ['interpolate', ['linear'], ['zoom'], 11, 12, 16, 20], 'circle-stroke-width': 3, 'circle-stroke-color': colorExpr } });
+    map.addLayer({ id: 'pin-selected', type: 'circle', source: 'pins', filter: ['==', ['get', 'id'], st.selected || ''], paint: { 'circle-color': 'transparent', 'circle-radius': ['interpolate', ['linear'], ['zoom'], 11, 12, 16, 20], 'circle-stroke-width': 3, 'circle-stroke-color': colorExpr } });
     map.addLayer({ id: 'pin-label', type: 'symbol', source: 'pins', minzoom: 14.5, filter: ['!', ['has', 'point_count']], layout: { 'text-field': ['get', 'name'], 'text-size': 11, 'text-offset': [0, 1.4], 'text-anchor': 'top', 'text-max-width': 9, 'text-font': ['DIN Pro Medium', 'Arial Unicode MS Regular'], 'text-optional': true }, paint: { 'text-color': dark ? '#E5E7EB' : '#1F2937', 'text-halo-color': dark ? '#0b1220' : '#ffffff', 'text-halo-width': 1.2 } });
+  }
+  // Layer listeners are bound once by layer id: Mapbox keeps them across style swaps.
+  function bindLayerEvents() {
     map.on('click', 'clusters', (e) => {
       const f = map.queryRenderedFeatures(e.point, { layers: ['clusters'] })[0];
       if (!f) return;
@@ -1004,16 +1018,21 @@ async function mapView(root, ctx) {
     try {
       const { pins } = await api.pins({ minLat: bnd.getSouth(), maxLat: bnd.getNorth(), minLng: bnd.getWest(), maxLng: bnd.getEast() }, st.category);
       if (my !== st.seq || !alive) return;
-      map.getSource('pins')?.setData({ type: 'FeatureCollection', features: pins.map((p) => ({ type: 'Feature', geometry: { type: 'Point', coordinates: [p.lng, p.lat] }, properties: { id: p.id, slug: p.slug, name: p.name, category: p.category, bookable: p.claimed ? 1 : 0 } })) });
+      st.features = { type: 'FeatureCollection', features: pins.map((p) => ({ type: 'Feature', geometry: { type: 'Point', coordinates: [p.lng, p.lat] }, properties: { id: p.id, slug: p.slug, name: p.name, category: p.category, bookable: p.claimed ? 1 : 0 } })) };
+      map.getSource('pins')?.setData(st.features);
       countEl.hidden = false;
-      countEl.textContent = pins.length
-        ? t(`${pins.length} ადგილი ამ ხედში`, `${pins.length} ${pins.length === 1 ? 'place' : 'places'} in view`)
+      // The server sends at most MAP_LIMIT pins (claimed and best-rated first): say „500+“ rather than a false exact count.
+      const n = pins.length;
+      const shown = n >= MAP_LIMIT ? `${MAP_LIMIT}+` : String(n);
+      countEl.textContent = n
+        ? t(`${shown} ადგილი ამ ხედში`, `${shown} ${n === 1 ? 'place' : 'places'} in view`)
         : t('ამ ხედში ადგილი არ არის — გადაადგილე რუკა', 'No places in this view — move the map');
     } catch { /* the next move retries */ }
   }
 
   async function select(id, known = null) {
     st.selected = id;
+    st.selectedBiz = known;
     if (map.getLayer('pin-selected')) map.setFilter('pin-selected', ['==', ['get', 'id'], id || '']);
     if (!id) { cardSlot.hidden = true; return; }
     cardSlot.hidden = false;
@@ -1021,13 +1040,24 @@ async function mapView(root, ctx) {
     try {
       const b = known || await api.business(id);
       if (st.selected !== id || !alive) return;
+      st.selectedBiz = b;
       mount(cardSlot, h('div', { class: 'bk-list bk-map-sel' }, bizRow(b), iconButton('x', { title: t('დახურვა', 'Close'), onClick: () => select(null) })));
     } catch { if (st.selected === id) cardSlot.hidden = true; }
   }
 
+  const themeWatch = new MutationObserver(() => {
+    const next = isDark();
+    if (next === dark || !map) return;
+    dark = next;
+    map.once('style.load', () => { if (alive) addLayers(); });
+    map.setStyle(styleFor(dark));
+  });
+  themeWatch.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+
   map.on('load', async () => {
     map.resize();
     addLayers();
+    bindLayerEvents();
     placeMe();
     if (typeof ctx.query.focus === 'string' && ctx.query.focus) {
       try {
@@ -1048,6 +1078,7 @@ async function mapView(root, ctx) {
   return () => {
     alive = false;
     clearTimeout(timer);
+    themeWatch.disconnect();
     root.style.animation = '';
     try { map?.remove(); } catch { /* already gone */ }
   };
