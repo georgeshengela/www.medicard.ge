@@ -59,7 +59,9 @@ document.addEventListener('click', (e) => {
   const a = e.target.closest?.('a[data-link]');
   if (!a || e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
   const href = a.getAttribute('href');
-  if (!href || /^https?:/.test(href) || href.startsWith('/app') || href.startsWith('/privacy') || href.startsWith('/terms')) return;
+  // Links out of the panel (the web app, legal pages, external sites) are left to the browser; everything
+  // else routes inside /business. `/app` is matched as a path, never as a prefix (/appointments is ours).
+  if (!href || /^https?:/.test(href) || href === '/app' || href.startsWith('/app/') || href.startsWith('/privacy') || href.startsWith('/terms')) return;
   e.preventDefault();
   navigate(href.startsWith(BASE) ? href.slice(BASE.length) || '/' : href);
 });
