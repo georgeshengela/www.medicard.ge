@@ -5,7 +5,7 @@ import { getToken, onTokenChange } from '/app/js/api.js';
 import { t, isEn, lang, setLang } from '/app/js/i18n.js';
 import { loadSession, session, signOut, applyTheme, featureOn } from '/app/js/session.js';
 import { state, loadState, switchBusiness, onState, clearState, canManage, currentId } from './state.js';
-import { avatar, dayLabel } from './shared.js';
+import { avatar, dayLabel, biz, ymd, weekdayOf, MONTHS, WEEKDAYS_SHORT } from './shared.js';
 
 const BASE = '/business';
 
@@ -85,19 +85,89 @@ function statusLine(status) {
   return h('span', null, h('i'), t('კატალოგში', 'Listed'));
 }
 
+/** The sidebar reads like a working day: today's pages first, then what the business is, then money and numbers. */
+const GROUPS = [
+  { title: () => t('დღე', 'The day'), paths: ['/', '/calendar', '/appointments', '/clients'] },
+  { title: () => t('ბიზნესი', 'The business'), paths: ['/services', '/team', '/discounts'] },
+  { title: () => t('ფული და ციფრები', 'Money and numbers'), paths: ['/finance', '/analytics', '/reviews'] },
+  { title: null, paths: ['/settings'] },
+];
+let badgeEls = {};
+let miniHost = null;
+let badgeTimer = 0;
+
+/** Small counts next to the pages that need a look: bookings to confirm, reviews without a reply, today's visits. */
+async function refreshBadges() {
+  if (!state.current || !shellEl) return;
+  try {
+    const o = await biz.get('/overview');
+    const set = (p, n, tone) => { const el = badgeEls[p]; if (!el) return; el.textContent = n ? String(n) : ''; el.className = `nav-badge${n ? ' on' : ''}${tone ? ` is-${tone}` : ''}`; el.title = ''; };
+    set('/appointments', o.pending || 0, 'warn');
+    set('/reviews', o.reviews?.unanswered || 0, '');
+    set('/calendar', (o.today || []).filter((x) => x.status !== 'CANCELLED').length, '');
+  } catch { /* the badges are a nicety */ }
+}
+
+/** A month at a glance under the navigation while the calendar is open; a day jumps to it. */
+function miniMonth(selected, mode) {
+  let view = (selected || ymd()).slice(0, 7);
+  const wrap = h('div', { class: 'bz-mini' });
+  const pad = (n) => String(n).padStart(2, '0');
+  const render = () => {
+    const [y, m] = view.split('-').map(Number);
+    const first = `${y}-${pad(m)}-01`;
+    const lead = (weekdayOf(first) + 6) % 7;
+    const daysIn = new Date(Date.UTC(y, m, 0)).getUTCDate();
+    const today = ymd();
+    const cells = [];
+    for (let i = 0; i < lead; i += 1) cells.push(null);
+    for (let d = 1; d <= daysIn; d += 1) cells.push(`${y}-${pad(m)}-${pad(d)}`);
+    mount(wrap,
+      h('div', { class: 'bz-mini-head' },
+        h('button', { type: 'button', 'aria-label': t('წინა თვე', 'Previous month'), onClick: () => { const d = new Date(Date.UTC(y, m - 2, 1)); view = `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}`; render(); } }, icon('chevronLeft', { size: 14 })),
+        h('span', null, `${MONTHS[m - 1]} ${y}`),
+        h('button', { type: 'button', 'aria-label': t('შემდეგი თვე', 'Next month'), onClick: () => { const d = new Date(Date.UTC(y, m, 1)); view = `${d.getUTCFullYear()}-${pad(d.getUTCMonth() + 1)}`; render(); } }, icon('chevronRight', { size: 14 }))),
+      h('div', { class: 'bz-mini-grid' },
+        [1, 2, 3, 4, 5, 6, 0].map((wd) => h('div', { class: 'wd' }, WEEKDAYS_SHORT[wd].slice(0, 2))),
+        cells.map((d) => (d ? h('button', { type: 'button', class: `${d === selected ? 'on' : ''} ${d === today ? 'today' : ''}`, 'aria-current': d === today ? 'date' : undefined, onClick: () => navigate(`/calendar?date=${d}${mode ? `&mode=${mode}` : ''}`) }, String(Number(d.slice(8)))) : h('span')))),
+      h('div', { class: 'bz-mini-foot' },
+        h('button', { type: 'button', onClick: () => navigate(`/calendar?date=${today}${mode ? `&mode=${mode}` : ''}`) }, t('დღეს', 'Today')),
+        h('span', { class: 'faint' }, t('დღეზე დაჭერა გახსნის', 'Tap a day to open it'))));
+  };
+  render();
+  return wrap;
+}
+
+/** Called on every route: the mini calendar only on the calendar page; badges refreshed at most every 20 s. */
+function paintSide(path, query) {
+  if (miniHost) mount(miniHost, path.startsWith('/calendar') ? miniMonth(query.date && /^\d{4}-\d{2}-\d{2}$/.test(query.date) ? query.date : ymd(), query.mode) : null);
+  const now = Date.now();
+  if (now - badgeTimer > 20_000) { badgeTimer = now; void refreshBadges(); }
+}
+
 function buildShell() {
-  const nav = ROUTES.filter((r) => r.nav && (!r.manage || canManage()));
-  const biz = state.current?.business;
+  const allowed = (r) => r.nav && (!r.manage || canManage());
+  const bizRow = state.current?.business;
   const switcher = state.memberships.length > 1
     ? h('div', { class: 'bz-switch' }, select(state.memberships.map((m) => ({ value: m.business.id, label: m.business.name })), currentId(), { onChange: (e) => { switchBusiness(e.target.value); rebuildShell(); route(); } }))
     : null;
+  badgeEls = {};
+  const item = (r) => h('a', { class: 'nav-item', href: r.path, 'data-link': '', 'data-nav': r.path, title: r.title },
+    icon(r.icon, { size: 19 }), h('span', { class: 'label' }, r.title), (badgeEls[r.path] = h('i', { class: 'nav-badge' })));
+  const groups = GROUPS.map((g) => {
+    const items = g.paths.map((p) => ROUTES.find((r) => r.path === p)).filter((r) => r && allowed(r));
+    if (!items.length) return null;
+    return h('div', { class: 'bz-nav-group' }, g.title ? h('div', { class: 'side-group' }, g.title()) : null, items.map(item));
+  });
+  miniHost = h('div', { class: 'bz-side-mini' });
   const side = h('aside', { class: 'side', 'aria-label': t('ნავიგაცია', 'Navigation') },
     h('a', { class: 'side-brand', href: '/', 'data-link': '' }, h('img', { src: '/icon.png', alt: '' }), h('span', null, wordmark(), h('small', null, t('ბიზნესის პანელი', 'Business panel')))),
-    biz ? h('div', { class: 'bz-biz' }, avatar(biz.name, 'var(--brand)', 34), h('div', { class: 'who' }, h('b', null, biz.name), statusLine(biz.status))) : null,
+    bizRow ? h('a', { class: 'bz-biz', href: '/settings', 'data-link': '', title: t('პარამეტრები', 'Settings') }, avatar(bizRow.name, 'var(--brand)', 34), h('div', { class: 'who' }, h('b', null, bizRow.name), statusLine(bizRow.status)), icon('chevronRight', { size: 14 })) : null,
     switcher,
-    h('nav', { class: 'side-nav' }, nav.map((r) => h('a', { class: 'nav-item', href: r.path, 'data-link': '', 'data-nav': r.path, title: r.title }, icon(r.icon, { size: 20 }), h('span', null, r.title)))),
+    h('nav', { class: 'side-nav' }, groups),
+    miniHost,
     h('div', { class: 'side-foot' },
-      h('a', { class: 'nav-item', href: '/start?new=1', 'data-link': '', title: t('ბიზნესის დამატება', 'Add a business') }, icon('plus', { size: 20 }), h('span', null, t('სხვა ბიზნესის დამატება', 'Add another business'))),
+      h('a', { class: 'nav-item is-quiet', href: '/start?new=1', 'data-link': '', title: t('ბიზნესის დამატება', 'Add a business') }, icon('plus', { size: 18 }), h('span', { class: 'label' }, t('სხვა ბიზნესის დამატება', 'Add another business'))),
       h('a', { class: 'side-user', href: 'https://medicard.ge/app/profile', target: '_blank', rel: 'noopener' },
         avatar(session.user?.fullName || '', 'var(--brand)', 34),
         h('div', { class: 'who' }, h('b', null, session.user?.fullName || t('მომხმარებელი', 'User')), h('span', null, session.user?.phone || session.user?.email?.replace(/@phone\.medicard\.ge$/, '') || '')))));
@@ -117,9 +187,10 @@ function buildShell() {
     iconButton('logout', { title: t('გასვლა', 'Sign out'), onClick: () => { signOut(); clearState(); navigate('/', { replace: true }); } }));
   contentEl = h('main', { class: 'content wide', id: 'main' });
   const bottom = h('nav', { class: 'bottom-nav', 'aria-label': t('ნავიგაცია', 'Navigation') },
-    MOBILE_NAV.map((p) => ROUTES.find((r) => r.path === p)).filter((r) => r && (!r.manage || canManage())).map((r) => h('a', { href: r.path, 'data-link': '', 'data-nav': r.path }, icon(r.icon, { size: 22 }), r.title)));
+    MOBILE_NAV.map((p) => ROUTES.find((r) => r.path === p)).filter((r) => r && allowed(r)).map((r) => h('a', { href: r.path, 'data-link': '', 'data-nav': r.path }, icon(r.icon, { size: 22 }), r.title)));
   shellEl = h('div', { class: 'shell' }, side, h('div', { class: 'main' }, top, contentEl, bottom));
   mount(document.getElementById('root'), shellEl);
+  badgeTimer = 0;
 }
 
 function rebuildShell() { shellEl = null; buildShell(); }
@@ -177,6 +248,7 @@ async function route() {
   document.title = `${found.route.title} · MEDIBOOK`;
   if (crumbEl) mount(crumbEl, found.route.title);
   markNav(path);
+  paintSide(path, query);
   cleanup?.();
   cleanup = null;
   mount(contentEl, h('div', { class: 'skeleton-card' }, h('div', { class: 'sk' }), h('div', { class: 'sk' }), h('div', { class: 'sk', style: { width: '60%' } })));

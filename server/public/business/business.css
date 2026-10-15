@@ -343,6 +343,36 @@ body.biz { font-size: 14.5px; }
 .bz-review .meta b { color: var(--text); }
 @media (max-width: 760px) { .bz-search { max-width: none; } .bz-pager { padding: 10px 12px; } .bz-cell-main b { max-width: 150px; } }
 
+/* Sidebar: groups, badges, the mini month on the calendar page */
+.biz .side { padding: 16px 12px 14px; }
+.biz .side-nav { display: flex; flex-direction: column; gap: 2px; }
+.bz-nav-group + .bz-nav-group { margin-top: 4px; }
+.biz .side-group { font-size: 11.5px; letter-spacing: 0; text-transform: none; color: var(--text3); font-weight: 600; padding: 12px 12px 4px; }
+.biz .nav-item .label { flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.biz .nav-item.is-quiet { color: var(--text3); font-size: 13px; }
+.nav-badge { display: none; align-items: center; justify-content: center; min-width: 20px; height: 20px; padding: 0 6px; border-radius: 999px; font-size: 11px; font-weight: 700; font-style: normal; color: var(--text2); border: 1px solid var(--line); background: var(--surface); font-variant-numeric: tabular-nums; }
+.nav-badge.on { display: inline-flex; }
+.nav-badge.is-warn { color: var(--warn); border-color: color-mix(in srgb, var(--warn) 45%, transparent); }
+.biz .nav-item.on .nav-badge { color: var(--book-ink); border-color: var(--book-2); }
+.biz .bz-biz { text-decoration: none; color: inherit; }
+.biz .bz-biz:hover { background: var(--bg); }
+.biz .bz-biz > .ic { color: var(--text3); margin-left: auto; }
+.bz-side-mini { margin: 12px 2px 0; }
+.bz-side-mini:empty { display: none; }
+.bz-mini { background: var(--surface); border: 1px solid var(--line); border-radius: 14px; padding: 10px 10px 8px; }
+.bz-mini-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; font-size: 12.5px; font-weight: 700; }
+.bz-mini-head button { border: 0; background: transparent; width: 26px; height: 26px; border-radius: 8px; cursor: pointer; display: grid; place-items: center; color: var(--text2); }
+.bz-mini-head button:hover { background: var(--bg); color: var(--text); }
+.bz-mini-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 1px; }
+.bz-mini-grid .wd { font-size: 10px; color: var(--text3); text-align: center; padding: 2px 0 4px; font-weight: 600; }
+.bz-mini-grid button { border: 0; background: transparent; height: 28px; border-radius: 8px; font: inherit; font-size: 12px; color: var(--text); cursor: pointer; font-variant-numeric: tabular-nums; }
+.bz-mini-grid button:hover { background: var(--bg); }
+.bz-mini-grid button.today { box-shadow: inset 0 0 0 1px var(--book-2); color: var(--book-ink); font-weight: 700; }
+.bz-mini-grid button.on { background: var(--text); color: var(--surface); font-weight: 700; }
+.bz-mini-foot { display: flex; align-items: center; justify-content: space-between; margin-top: 6px; font-size: 11px; color: var(--text3); }
+.bz-mini-foot button { border: 0; background: none; color: var(--brand-ink); font: inherit; font-size: 11.5px; font-weight: 600; cursor: pointer; padding: 2px 4px; border-radius: 6px; }
+.bz-mini-foot button:hover { background: var(--bg); }
+
 /* Hours editor */
 .bz-hours { display: flex; flex-direction: column; gap: 6px; }
 .bz-hours-row { display: grid; grid-template-columns: 1fr auto auto auto; align-items: center; gap: 8px; }
