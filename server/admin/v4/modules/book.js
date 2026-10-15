@@ -177,6 +177,46 @@
     };
   }
 
+  const ROLE = { OWNER: 'მფლობელი', MANAGER: 'მენეჯერი', STAFF: 'თანამშრომელი' };
+  const DAYS = ['კვი', 'ორშ', 'სამ', 'ოთხ', 'ხუთ', 'პარ', 'შაბ'];
+  /** One place in full: status, contact, hours, who has the panel, services and the team — read-only, edit beside it. */
+  async function showBusiness(row) {
+    let data;
+    try { data = await api(`/businesses/${encodeURIComponent(row.id)}`); } catch (err) { toast(err.message || 'შეცდომა', 'error'); return; }
+    const b = data.business || {};
+    const members = data.members || [];
+    const images = data.images || [];
+    const hours = b.hours || {};
+    const hoursLine = [1, 2, 3, 4, 5, 6, 0].map((d) => `${DAYS[d]} ${(hours[String(d)] || []).map((r) => `${r.from}–${r.to}`).join(', ') || '—'}`).join(' · ');
+    const dialog = V().openDialog?.({
+      title: b.name || row.name,
+      wide: true,
+      description: `${catLabel(b.category)}${b.address ? ` · ${b.address}` : ''}${b.city ? `, ${b.city}` : ''}`,
+      body: `<div id="book-biz-detail" class="s-stack">
+        <div class="s-metrics">
+          ${metric('სტატუსი', (STATUS[b.status] || [b.status])[0], b.claimed ? 'მფლობელი მართავს' : 'მფლობელი არ არის')}
+          ${metric('სერვისი', fmt((b.services || []).length), (b.services || []).filter((s) => s.online).length ? `${fmt((b.services || []).filter((s) => s.online).length)} ონლაინ` : '')}
+          ${metric('გუნდი', fmt((b.staff || []).length), (b.staff || []).filter((p) => p.bookable).length ? `${fmt((b.staff || []).filter((p) => p.bookable).length)} იწერება` : '')}
+          ${metric('შეფასება', b.rating != null ? Number(b.rating).toFixed(1) : '—', b.ratingCount ? `${fmt(b.ratingCount)} შეფასება` : 'ჯერ არ არის')}
+        </div>
+        <div style="display:flex;gap:14px;flex-wrap:wrap;font-size:13px">
+          ${b.phone ? `<span>${ico('phone')} ${esc(b.phone)}</span>` : ''}${b.website ? `<span>${esc(b.website)}</span>` : ''}${b.instagram ? `<span>@${esc(b.instagram)}</span>` : ''}
+          <span class="s-muted">აპში: medicard.ge/app/book/${esc(b.slug || '')}</span><span class="s-muted">${fmt(images.length)} სურათი</span>
+        </div>
+        <p class="s-muted" style="font-size:12.5px">${esc(hoursLine)}</p>
+        ${members.length ? `<div><h4 style="margin:0 0 6px">პანელზე წვდომა</h4><table class="s-table"><tbody>${members.map((m) => `<tr><td><b>${esc(m.name || '—')}</b></td><td>${esc(ROLE[m.role] || m.role)}</td><td class="s-muted">${esc([m.phone, m.email].filter(Boolean).join(' · '))}</td></tr>`).join('')}</tbody></table></div>` : '<p class="s-muted">პანელზე ჯერ არავის აქვს წვდომა — მფლობელი medicard.ge/business-იდან დაადასტურებს.</p>'}
+        ${(b.services || []).length ? `<div><h4 style="margin:0 0 6px">სერვისები</h4><table class="s-table"><tbody>${b.services.slice(0, 12).map((s) => `<tr><td>${esc(s.name)}</td><td class="s-muted">${esc(s.group || '')}</td><td class="num">${fmt(s.durationMin)} წთ</td><td class="num">${s.price != null ? `${fmt(s.price)} ₾` : '—'}</td></tr>`).join('')}</tbody></table>${b.services.length > 12 ? `<p class="s-muted">… და კიდევ ${fmt(b.services.length - 12)}</p>` : ''}</div>` : ''}
+        ${(b.staff || []).length ? `<p><b>გუნდი:</b> ${b.staff.map((p) => esc(p.name + (p.title ? ` (${p.title})` : ''))).join(', ')}</p>` : ''}
+        ${b.description ? `<p class="s-muted">${esc(b.description)}</p>` : ''}
+      </div>`,
+      footer: '<button type="button" class="btn" data-cancel>დახურვა</button><button type="button" class="btn primary" data-edit>რედაქტირება</button>',
+    });
+    const panel = $('book-biz-detail')?.closest('.v3-dialog-panel');
+    if (!panel) return;
+    panel.querySelector('[data-cancel]').onclick = () => void dialog.close();
+    panel.querySelector('[data-edit]').onclick = async () => { await dialog.close(); editBusiness(row); };
+  }
+
   async function setStatus(b, status) {
     try {
       await api(`/businesses/${encodeURIComponent(b.id)}`, { method: 'PATCH', body: { status } });
@@ -199,7 +239,7 @@
       </div>
       ${data.businesses.length ? `<div class="s-card"><div class="s-card-body is-flush"><table class="s-table"><thead><tr><th>ბიზნესი</th><th>კატეგორია</th><th>ქალაქი</th><th>სტატუსი</th><th>მფლობელი</th><th class="num">სერვისი</th><th class="num">გუნდი</th><th class="num">ჯავშანი 30 დღე</th><th class="num">ნახვა</th><th>წყარო</th><th></th></tr></thead><tbody>
         ${data.businesses.map((b) => `<tr data-biz="${esc(b.id)}">
-          <td><b>${esc(b.name)}</b>${b.nameEn && b.nameEn !== b.name ? `<br><small class="s-muted">${esc(b.nameEn)}</small>` : ''}${b.address ? `<br><small class="s-muted">${esc(b.address)}</small>` : ''}</td>
+          <td><b class="s-link" data-view-name style="cursor:pointer">${esc(b.name)}</b>${b.nameEn && b.nameEn !== b.name ? `<br><small class="s-muted">${esc(b.nameEn)}</small>` : ''}${b.address ? `<br><small class="s-muted">${esc(b.address)}</small>` : ''}</td>
           <td>${catDot(b.category)}${esc(catLabel(b.category))}</td>
           <td>${esc(b.city || '—')}${b.district ? `<br><small class="s-muted">${esc(b.district)}</small>` : ''}</td>
           <td>${badge(STATUS, b.status)}${b.ratingCount ? `<br><small class="s-muted">★ ${Number(b.ratingAvg).toFixed(1)} · ${fmt(b.ratingCount)}</small>` : ''}</td>
@@ -207,6 +247,7 @@
           <td class="num">${fmt(b.services)}</td><td class="num">${fmt(b.staff)}</td><td class="num">${fmt(b.appointments30)}</td><td class="num">${fmt(b.viewCount)}</td>
           <td><small>${esc(SOURCE[b.source] || b.source)}</small></td>
           <td class="num"><div style="display:flex;gap:4px;justify-content:flex-end">
+            <button type="button" class="btn ghost compact" data-view title="დეტალები">${ico('info')}</button>
             <button type="button" class="btn ghost compact" data-edit title="რედაქტირება">${ico('edit')}</button>
             ${b.status === 'HIDDEN' ? `<button type="button" class="btn ghost compact" data-status="LISTED" title="კატალოგში დაბრუნება">${ico('eye')}</button>` : b.status === 'LISTED' ? `<button type="button" class="btn ghost compact" data-status="HIDDEN" title="დამალვა">${ico('eyeOff')}</button>` : ''}
           </div></td>
@@ -219,6 +260,8 @@
     host.querySelector('[data-add]').onclick = () => editBusiness(null);
     host.querySelectorAll('[data-biz]').forEach((row) => {
       const b = data.businesses.find((x) => x.id === row.dataset.biz);
+      row.querySelector('[data-view]').onclick = () => showBusiness(b);
+      row.querySelector('[data-view-name]').onclick = () => showBusiness(b);
       row.querySelector('[data-edit]').onclick = () => editBusiness(b);
       row.querySelector('[data-status]')?.addEventListener('click', (e) => setStatus(b, e.currentTarget.dataset.status));
     });

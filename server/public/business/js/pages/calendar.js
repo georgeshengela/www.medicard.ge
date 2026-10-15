@@ -53,6 +53,22 @@ export default async function calendarPage(root, ctx) {
     const cols = mode === 'day'
       ? (filterStaff ? staffCols.filter((s) => s.id === filterStaff) : staffCols.length ? staffCols : [{ id: null, name: t('გუნდი', 'Team'), color: '#64748B' }]).map((s) => ({ key: s.id ?? 'all', label: s.name, sub: s.title || '', color: s.color, date: anchor, staffId: s.id }))
       : Array.from({ length: 7 }, (_, i) => { const d = addDays(from, i); return { key: d, label: `${WEEKDAYS_SHORT[weekdayOf(d)]} ${Number(d.slice(8, 10))}`, sub: MONTHS_SHORT[Number(d.slice(5, 7)) - 1], date: d, staffId: null, today: d === ymd() }; });
+    const toMin = (s2) => { const [hh, mm] = String(s2).split(':').map(Number); return hh * 60 + mm; };
+    const workingOf = (col) => {
+      const dayIdx = weekdayOf(col.date);
+      const open = business.hours?.[String(dayIdx)] || [];
+      const scheduleOf = (person) => (person && Object.values(person.schedule || {}).some((l) => l.length) ? (person.schedule[String(dayIdx)] || []) : open);
+      const sum = (ranges) => ranges.reduce((acc, r) => acc + ((r.to === '24:00' ? 1440 : toMin(r.to)) - toMin(r.from)), 0);
+      if (col.staffId) return sum(scheduleOf(staffCols.find((s) => s.id === col.staffId)));
+      return staffCols.length ? staffCols.reduce((acc, p) => acc + sum(scheduleOf(p)), 0) : sum(open);
+    };
+    const occupancy = (col) => {
+      const working = workingOf(col);
+      const mine = appointments.filter((a) => ymd(a.startsAt) === col.date && a.status !== 'CANCELLED' && (mode === 'week' || !col.staffId || a.staffId === col.staffId));
+      const booked = mine.reduce((acc, a) => acc + Number(a.durationMin || 0), 0);
+      const share = working ? Math.min(100, Math.round((booked / working) * 100)) : 0;
+      return h('span', { class: 'occ', title: working ? t(`${mine.length} ჩანაწერი · ${Math.round(booked / 6) / 10} სთ ${working ? `/ ${Math.round(working / 6) / 10} სთ` : ''}`, `${mine.length} bookings · ${Math.round(booked / 6) / 10} h of ${Math.round(working / 6) / 10} h`) : '' }, h('span', { style: { width: `${share}%`, background: col.color || 'var(--book)' } }));
+    };
     const colEl = (col) => {
       const dayIdx = weekdayOf(col.date);
       const open = business.hours?.[String(dayIdx)] || [];
@@ -117,7 +133,7 @@ export default async function calendarPage(root, ctx) {
     return h('div', { class: 'bz-cal' },
       h('div', { class: 'bz-cal-scroll' },
         vars(h('div', { class: 'bz-cal-grid' },
-          h('div', { class: 'bz-cal-cols' }, h('div'), cols.map((c) => h('div', { class: `bz-cal-col-head${c.today ? ' today' : ''}` }, c.color ? h('span', { class: 'bz-color-dot', style: { background: c.color } }) : null, h('span', { style: { minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, c.label), c.sub ? h('small', null, c.sub) : null))),
+          h('div', { class: 'bz-cal-cols' }, h('div'), cols.map((c) => h('div', { class: `bz-cal-col-head${c.today ? ' today' : ''}` }, c.color ? h('span', { class: 'bz-color-dot', style: { background: c.color } }) : null, h('span', { style: { minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, c.label), c.sub ? h('small', null, c.sub) : null, occupancy(c)))),
           h('div', { class: 'bz-cal-body' },
             h('div', { class: 'bz-cal-hours' }, hours.map((hh) => h('div', { class: 'bz-cal-hour' }, `${String(hh).padStart(2, '0')}:00`))),
             cols.map(colEl))), { '--cols': cols.length, '--hour-h': `${HOUR_H}px` })),

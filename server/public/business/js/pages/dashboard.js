@@ -1,8 +1,9 @@
 // MEDIBOOK business panel — overview: what needs attention now, today, this week, the setup checklist.
 import { h, mount, icon, button, pageHead, card, badge } from '/app/js/ui.js';
+import { barChart, donut, ring, sparkline } from '/app/js/charts.js';
 import { t } from '/app/js/i18n.js';
 import { state } from '../state.js';
-import { biz, gel, pct, when, clock, emptyBox, fail } from '../shared.js';
+import { biz, gel, pct, when, clock, emptyBox, fail, ymd, fromYmd, weekdayOf, dayLabel, minutes } from '../shared.js';
 import { appointmentLine, loadContext, newAppointmentDialog, openAppointment } from '../appointment.js';
 
 export default async function dashboardPage(root, ctx) {
@@ -34,11 +35,58 @@ export default async function dashboardPage(root, ctx) {
   ];
   const doneCount = checklist.filter((c) => c.done).length;
 
+  const todayStr = ymd();
+  const days = Array.isArray(data.days) ? data.days : [];
+  const pastDays = days.filter((d) => d.date <= todayStr);
+  const spark = (key) => pastDays.map((d) => Number(d[key]) || 0);
   const kpis = h('div', { class: 'bz-kpis' },
-    kpi(t('დღეს', 'Today'), String(data.today.filter((a) => a.status !== 'CANCELLED').length), t(`${data.today.filter((a) => a.status === 'COMPLETED').length} დასრულდა`, `${data.today.filter((a) => a.status === 'COMPLETED').length} completed`), 'calendar'),
-    kpi(t('შემოსავალი · 7 დღე', 'Revenue · 7 days'), gel(data.week.revenue), t(`${data.week.done} დასრულებული ვიზიტი`, `${data.week.done} completed visits`), 'wallet', true),
-    kpi(t('ახალი ჯავშნები · 7 დღე', 'New bookings · 7 days'), String(data.week.booked), t(`${data.week.cancelled} გაუქმდა · ${data.week.noShow} არ მოვიდა`, `${data.week.cancelled} cancelled · ${data.week.noShow} no-shows`), 'calendarCheck'),
-    kpi(t('კლიენტები', 'Clients'), String(data.clients.total), t(`+${data.clients.new} ამ კვირაში`, `+${data.clients.new} this week`), 'users'));
+    kpi(t('დღეს', 'Today'), String(data.today.filter((a) => a.status !== 'CANCELLED').length), t(`${data.today.filter((a) => a.status === 'COMPLETED').length} დასრულდა`, `${data.today.filter((a) => a.status === 'COMPLETED').length} completed`), 'calendar', false, spark('bookings')),
+    kpi(t('შემოსავალი · 7 დღე', 'Revenue · 7 days'), gel(data.week.revenue), t(`${data.week.done} დასრულებული ვიზიტი`, `${data.week.done} completed visits`), 'wallet', true, spark('revenue')),
+    kpi(t('ახალი ჯავშნები · 7 დღე', 'New bookings · 7 days'), String(data.week.booked), t(`${data.week.cancelled} გაუქმდა · ${data.week.noShow} არ მოვიდა`, `${data.week.cancelled} cancelled · ${data.week.noShow} no-shows`), 'calendarCheck', false, spark('created')),
+    kpi(t('კლიენტები', 'Clients'), String(data.clients.total), t(`+${data.clients.new} ამ კვირაში`, `+${data.clients.new} this week`), 'users', false, spark('newClients')));
+
+  // Three weeks of days: completed, still ahead, missed — today is the bar in the middle.
+  const weeksCard = days.length ? card(
+    h('div', { class: 'card-head' }, h('div', null, h('div', { class: 'card-title' }, t('სამი კვირა', 'Three weeks')), h('div', { class: 'card-sub' }, t('ორი გასული და ერთი მომავალი: დასრულებული, მომავალი და გაცდენილი ვიზიტები', 'Two weeks back and one ahead: completed, upcoming and missed visits')))),
+    days.some((d) => d.bookings) ? barChart({
+      labels: days.map((d) => (d.date === todayStr ? t('დღეს', 'today') : String(Number(d.date.slice(8))))),
+      tipLabels: days.map((d) => dayLabel(fromYmd(d.date), { long: true })),
+      height: 170,
+      stacked: [
+        { name: t('დასრულებული', 'Completed'), values: days.map((d) => d.completed), color: 'var(--c1)' },
+        { name: t('მომავალი', 'Upcoming'), values: days.map((d) => Math.max(0, d.bookings - d.completed - d.noShow)), color: 'var(--bg3)' },
+        { name: t('არ მოვიდა', 'No-show'), values: days.map((d) => d.noShow), color: 'var(--danger)' },
+      ],
+    }) : emptyBox(t('ჯერ ჩანაწერი არ არის', 'No bookings yet'), t('პირველი ჯავშნებით გრაფიკი ივსება.', 'The chart fills with the first bookings.')),
+    h('div', { class: 'bz-legend bz-legend-inline' },
+      h('span', null, h('i', { style: { background: 'var(--c1)' } }), t('დასრულებული', 'Completed')),
+      h('span', null, h('i', { style: { background: 'var(--bg3)' } }), t('მომავალი', 'Upcoming')),
+      h('span', null, h('i', { style: { background: 'var(--danger)' } }), t('არ მოვიდა', 'No-show')))) : null;
+
+  // The team's day: booked time against each person's hours today.
+  const toMin = (s2) => { const [hh, mm] = String(s2).split(':').map(Number); return hh * 60 + mm; };
+  const todayWd = weekdayOf(todayStr);
+  const teamToday = context.staff.map((p) => {
+    const own = p.schedule && Object.values(p.schedule).some((l) => Array.isArray(l) && l.length) ? (p.schedule[String(todayWd)] || []) : (b.hours?.[String(todayWd)] || []);
+    const working = own.reduce((sum, r) => sum + ((r.to === '24:00' ? 1440 : toMin(r.to)) - toMin(r.from)), 0);
+    const mine = data.today.filter((a) => a.staffId === p.id && a.status !== 'CANCELLED');
+    const booked = mine.reduce((sum, a) => sum + Number(a.durationMin || 0), 0);
+    return { p, working, booked, count: mine.length };
+  }).filter((x) => x.working > 0 || x.count > 0);
+  const teamCard = teamToday.length ? card(
+    h('div', { class: 'card-head' }, h('div', null, h('div', { class: 'card-title' }, t('გუნდი დღეს', 'The team today')), h('div', { class: 'card-sub' }, t('დაჯავშნილი დრო თითო ადამიანის დღევანდელ საათებთან', 'Booked time against each person\'s hours today'))), h('a', { class: 'link', href: '/business/team', 'data-link': '' }, t('გუნდი', 'Team'), icon('chevronRight', { size: 16 }))),
+    h('div', { class: 'bz-team-today' }, teamToday.map((x) => h('div', { class: 'bz-team-today-item', title: x.working ? t(`${minutes(x.booked)} / ${minutes(x.working)}`, `${minutes(x.booked)} of ${minutes(x.working)}`) : '' },
+      ring({ value: x.booked, max: x.working || Math.max(1, x.booked), size: 56, stroke: 6, color: x.p.color || 'var(--book)', label: x.working ? `${Math.min(100, Math.round((x.booked / x.working) * 100))}%` : '—', labelScale: 0.21 }),
+      h('div', { class: 'who' }, h('b', null, x.p.name), h('span', null, x.count ? t(`${x.count} ჩანაწერი · ${minutes(x.booked)}`, `${x.count} ${x.count === 1 ? 'booking' : 'bookings'} · ${minutes(x.booked)}`) : t('ჯერ არავინ', 'Nobody yet'))))))) : null;
+
+  const src = data.sources || {};
+  const srcTotal = (src.APP || 0) + (src.WEB || 0) + (src.BUSINESS || 0);
+  const sourcesBlock = srcTotal ? h('div', { class: 'bz-sources' },
+    donut({ parts: [{ name: t('აპიდან', 'App'), value: src.APP || 0, color: 'var(--c1)' }, { name: t('ვებიდან', 'Web'), value: src.WEB || 0, color: 'var(--c2)' }, { name: t('ხელით', 'By hand'), value: src.BUSINESS || 0, color: 'var(--bg3)' }], size: 96, stroke: 12, center: h('div', null, h('strong', { style: { fontSize: '18px' } }, String(srcTotal)), h('span', null, t('ვიზიტი', 'visits'))) }),
+    h('div', { class: 'bz-src-legend' },
+      legendRow('var(--c1)', t('აპიდან', 'From the app'), src.APP || 0, srcTotal),
+      legendRow('var(--c2)', t('ვებიდან', 'From the web'), src.WEB || 0, srcTotal),
+      legendRow('var(--bg3)', t('ხელით', 'By hand'), src.BUSINESS || 0, srcTotal))) : null;
 
   const attention = [];
   if (data.pending) attention.push(h('a', { class: 'bz-banner is-warn', href: '/business/appointments?status=PENDING', 'data-link': '', style: { margin: 0 } }, icon('bellRing', { size: 20 }), h('p', null, h('b', null, t(`${data.pending} ჯავშანი ელოდება დადასტურებას`, `${data.pending} ${data.pending === 1 ? 'booking is' : 'bookings are'} waiting for confirmation`)), t('კლიენტი ხედავს „ელოდება“-ს, სანამ არ დაადასტურებ.', 'The client sees "waiting" until you confirm.'))));
@@ -57,15 +105,18 @@ export default async function dashboardPage(root, ctx) {
     kpis,
     h('div', { class: 'bz-grid' },
       h('div', { style: { display: 'grid', gap: '16px', alignContent: 'start' } },
+        weeksCard,
         card(h('div', { class: 'card-head' }, h('div', null, h('div', { class: 'card-title' }, t('დღეს', 'Today')), h('div', { class: 'card-sub' }, t(`${data.today.length} ჩანაწერი`, `${data.today.length} entries`))), h('a', { class: 'link', href: '/business/calendar', 'data-link': '' }, t('კალენდარი', 'Calendar'), icon('chevronRight', { size: 16 }))), todayList),
         data.upcoming.length ? card(h('div', { class: 'card-head' }, h('div', { class: 'card-title' }, t('შემდეგი დღეები', 'Coming up')), h('a', { class: 'link', href: '/business/appointments', 'data-link': '' }, t('ყველა', 'All'), icon('chevronRight', { size: 16 }))),
           h('div', { class: 'bz-timeline' }, data.upcoming.map((a) => appointmentLine(a, context, { onOpen: (x) => openAppointment(x, context, { onChange: reload }) })))) : null),
       h('div', { style: { display: 'grid', gap: '16px', alignContent: 'start' } },
+        teamCard,
         doneCount < checklist.length ? card(h('div', { class: 'card-head' }, h('div', null, h('div', { class: 'card-title' }, t('მოამზადე გვერდი', 'Set up your page')), h('div', { class: 'card-sub' }, t(`${doneCount} / ${checklist.length} შესრულებულია`, `${doneCount} / ${checklist.length} done`)))),
           h('div', { class: 'bz-progress', style: { marginBottom: '10px' } }, h('span', { style: { width: `${(doneCount / checklist.length) * 100}%` } })),
-          h('div', { class: 'bz-check' }, checklist.map((c) => h(c.href ? 'a' : 'div', { href: c.href || undefined, 'data-link': c.href ? '' : undefined }, h('span', { class: `dot${c.done ? ' done' : ''}` }, icon(c.done ? 'check' : 'chevronRight', { size: 14 })), h('div', { class: 'main' }, h('b', null, c.title), h('span', null, c.sub)))))) : null,
-        card(h('div', { class: 'card-head' }, h('div', { class: 'card-title' }, t('აპიდან · 7 დღე', 'From the app · 7 days'))),
-          h('div', { class: 'bz-funnel' },
+          h('div', { class: 'bz-check' }, checklist.map((c) => h(c.href ? 'a' : 'div', { href: c.href || undefined, 'data-link': c.href ? '' : undefined, class: c.href ? undefined : 'row-static' }, h('span', { class: `dot${c.done ? ' done' : ''}` }, icon(c.done ? 'check' : 'chevronRight', { size: 14 })), h('div', { class: 'main' }, h('b', null, c.title), h('span', null, c.sub)))))) : null,
+        card(h('div', { class: 'card-head' }, h('div', null, h('div', { class: 'card-title' }, t('საიდან მოდიან', 'Where bookings come from')), h('div', { class: 'card-sub' }, t('ბოლო ორი კვირა · ქვემოთ აპის გვერდის 7 დღე', 'The last two weeks · below, the app page in 7 days')))),
+          sourcesBlock,
+          h('div', { class: 'bz-funnel', style: { marginTop: sourcesBlock ? '14px' : 0 } },
             h('div', null, h('b', null, String(data.funnel.views)), h('span', null, t('გვერდი გაიხსნა', 'Page opened'))),
             h('div', null, h('b', null, String(data.funnel.calls)), h('span', null, t('დარეკვა', 'Calls'))),
             h('div', null, h('b', null, String(data.funnel.booked)), h('span', null, t('დაჯავშნა', 'Booked'))),
@@ -76,11 +127,15 @@ export default async function dashboardPage(root, ctx) {
             : h('p', { class: 'bz-sub' }, t('შეფასებები დასრულებული ვიზიტების შემდეგ ჩნდება — აპი კლიენტს თავად ეკითხება.', 'Reviews come after completed visits — the app asks the client itself.'))))));
 }
 
-function kpi(label, value, delta, ic, accent = false) {
+function kpi(label, value, delta, ic, accent = false, trend = null) {
   return h('div', { class: `bz-kpi${accent ? ' is-accent' : ''}` },
     h('div', { class: 'stat-label' }, icon(ic, { size: 14 }), label),
     h('div', { class: 'stat-value' }, value),
-    h('div', { class: 'stat-delta' }, delta));
+    h('div', { class: 'stat-delta' }, delta),
+    trend && trend.length > 2 && trend.some(Boolean) ? h('div', { class: 'bz-kpi-spark', 'aria-hidden': 'true' }, sparkline(trend, { width: 96, height: 30, color: accent ? 'var(--book)' : 'var(--book-2)' })) : null);
+}
+function legendRow(color, label, value, total) {
+  return h('div', { class: 'row' }, h('i', { style: { background: color } }), h('span', null, label), h('b', null, String(value)), h('small', null, total ? `${Math.round((value / total) * 100)}%` : ''));
 }
 
 export { badge, clock, fail };

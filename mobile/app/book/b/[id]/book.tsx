@@ -36,6 +36,15 @@ export default function BookFlowScreen() {
   const business = useAccountQuery<BookBusinessDetail>({ key: ['book', 'business', businessId], fetch: async () => (await api.book.business(businessId)).business, staleTime: FRESH.SHORT, enabled: Boolean(businessId) });
   const b = business.data;
   const services = useMemo(() => (b?.services ?? []).filter((s) => s.online), [b?.services]);
+  // The same groups the business page shows, so a long list reads as a menu, not a wall.
+  const serviceGroups = useMemo(() => {
+    const map = new Map<string, BookService[]>();
+    for (const svc of services) {
+      const g = svc.group ?? '';
+      map.set(g, [...(map.get(g) ?? []), svc]);
+    }
+    return [...map.entries()];
+  }, [services]);
   const [serviceId, setServiceId] = useState<string | null>(params.serviceId ? String(params.serviceId) : null);
   const service = services.find((s) => s.id === serviceId) ?? (serviceId ? null : services[0] ?? null);
   const [staffId, setStaffId] = useState<string | null>(params.staffId ? String(params.staffId) : null);
@@ -144,12 +153,13 @@ export default function BookFlowScreen() {
     );
   }
 
+  const chosenName = staffId ? eligibleStaff.find((p) => p.id === staffId)?.name ?? null : slot && slot.staffIds.length === 1 ? b?.staff.find((p) => p.id === slot.staffIds[0])?.name ?? null : null;
   const header = <ModuleStackHeader module="book" subtitle={b?.name ?? tx('ჯავშანი', 'Booking')} fallbackHref="/book" />;
   const footer = (
     <View style={{ paddingHorizontal: HUB.gutter, paddingTop: 10, paddingBottom: insets.bottom + 12, backgroundColor: c.bg100 }}>
       {slot && service ? (
         <Text style={[hubText.caption, { color: c.text200, textAlign: 'center', marginBottom: 8 }]}>
-          {whenLabel(slot.startsAt)} · {durationLabel(service.durationMin)} · {priceLabel(service.price, service.priceTo, service.currency)}
+          {whenLabel(slot.startsAt)} · {durationLabel(service.durationMin)} · {priceLabel(service.price, service.priceTo, service.currency)}{chosenName ? ` · ${chosenName}` : ''}
         </Text>
       ) : null}
       <Button label={busy ? tx('იწერება…', 'Booking…') : tx('ჯავშნის დადასტურება', 'Confirm booking')} size="lg" onPress={() => void confirm()} disabled={!slot || !service || busy} loading={busy} />
@@ -161,9 +171,14 @@ export default function BookFlowScreen() {
       {!b ? null : (
         <>
           <Text style={[hubText.sectionTitle, { color: c.text100 }]}>{tx('სერვისი', 'Service')}</Text>
-          <FlatCard style={{ marginTop: 10 }}>
-            {services.map((svc, i) => <ServiceRow key={svc.id} service={svc} on={svc.id === service?.id} first={i === 0} ink={ink} onPress={() => { setServiceId(svc.id); setSlot(null); }} />)}
-          </FlatCard>
+          {serviceGroups.map(([group, list]) => (
+            <View key={group || '_'} style={{ marginTop: 10 }}>
+              {group && serviceGroups.length > 1 ? <Text style={[hubText.caption, { color: c.text300, marginBottom: 6, marginLeft: 4 }]}>{group}</Text> : null}
+              <FlatCard>
+                {list.map((svc, i) => <ServiceRow key={svc.id} service={svc} on={svc.id === service?.id} first={i === 0} ink={ink} onPress={() => { setServiceId(svc.id); setSlot(null); }} />)}
+              </FlatCard>
+            </View>
+          ))}
 
           {b.settings.allowStaffChoice && eligibleStaff.length > 1 ? (
             <>
@@ -186,6 +201,7 @@ export default function BookFlowScreen() {
                   <Text style={[hubText.small, { color: on ? '#fff' : c.text200 }]}>{weekdayShort(dt)}</Text>
                   <Text style={[hubText.value, { color: on ? '#fff' : c.text100, fontSize: 17 }]}>{dt.getDate()}</Text>
                   <Text style={[hubText.small, { color: on ? '#fff' : c.text300, fontSize: 10 }]}>{monthDay(d.date).split(' ')[1]}</Text>
+                  <View accessibilityElementsHidden style={{ width: 5, height: 5, borderRadius: 3, marginTop: 3, backgroundColor: d.count > 0 ? (on ? '#fff' : ink) : 'transparent' }} />
                 </Pressable>
               );
             })}
@@ -267,9 +283,9 @@ function Chip({ on, label, icon: Icon, ink, onPress }: { on: boolean; label: str
 const s = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 14, paddingVertical: 12 },
   radio: { width: 22, height: 22, borderRadius: 11, borderWidth: 2, alignItems: 'center', justifyContent: 'center' },
-  chip: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 12, paddingVertical: 9, borderRadius: 999, borderWidth: 1 },
-  day: { width: 58, paddingVertical: 10, borderRadius: 16, alignItems: 'center', gap: 2 },
-  slot: { paddingHorizontal: 14, paddingVertical: 10, borderRadius: 12, borderWidth: 1, minWidth: 72, alignItems: 'center' },
+  chip: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 14, paddingVertical: 9, minHeight: 44, borderRadius: 999, borderWidth: 1 },
+  day: { width: 60, paddingVertical: 10, borderRadius: 16, alignItems: 'center', gap: 2 },
+  slot: { paddingHorizontal: 14, paddingVertical: 10, borderRadius: 12, borderWidth: 1, minWidth: 76, minHeight: 44, alignItems: 'center', justifyContent: 'center' },
   noteBox: { flexDirection: 'row', alignItems: 'center', gap: 8, padding: 12, borderRadius: 14, marginTop: 10 },
   check: { width: 64, height: 64, borderRadius: 32, alignItems: 'center', justifyContent: 'center' },
 });
