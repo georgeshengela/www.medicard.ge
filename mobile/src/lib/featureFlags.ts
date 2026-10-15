@@ -53,6 +53,7 @@ export const FEATURE_LABELS: Record<FeatureKey, string> = {
   pharmacy: tx('აფთიაქი', 'Pharmacy'),
   news: tx('სიახლეები', 'News'),
   visits: tx('ექიმთან ვიზიტები', 'Doctor visits'),
+  book: 'MEDIBOOK',
   medications: tx('მედიკამენტები', 'Medications'),
   records: tx('სამედიცინო ჩანაწერები', 'Medical records'),
   labs: tx('ლაბორატორიული ანალიზები', 'Lab results'),

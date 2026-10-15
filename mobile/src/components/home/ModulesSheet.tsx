@@ -52,6 +52,7 @@ const MODULES: ModuleTile[] = [
   { id: 'lab', href: '/(tabs)/records', line: tx('ანალიზები', 'Lab results'), icon: FlaskConical },
   { id: 'scan', href: '/scan', line: tx('სკანირება', 'Scan'), icon: ScanLine },
   { id: 'food', href: '/nutrition', line: tx('კვება', 'Food'), icon: Utensils },
+  { id: 'book', href: '/book', line: tx('ჯავშნები', 'Bookings'), icon: CalendarCheck },
   { id: 'cycle', href: '/cycle', line: tx('ციკლი', 'Cycle'), icon: Droplet, female: true },
   { id: 'sleep', href: '/sleep', line: tx('ძილი', 'Sleep'), icon: MoonStar },
   { id: 'run', href: '/run', line: tx('გაანათე ქალაქი', 'Light up the city'), icon: Footprints },
@@ -63,7 +64,6 @@ const MODULES: ModuleTile[] = [
 ];
 
 const UTILITIES: UtilityLink[] = [
-  { href: '/visits', label: tx('ვიზიტები', 'Visits'), icon: CalendarCheck },
   { href: '/health-metrics/hydration', label: tx('წყალი', 'Water'), icon: Droplets },
   { href: '/health-metrics/steps', label: tx('ნაბიჯები', 'Steps'), icon: Footprints },
   { href: '/health-metrics/weight', label: tx('წონა', 'Weight'), icon: Scale },

@@ -80,7 +80,7 @@ const roseDark: Palette = { ...darkColors, ...BRAND_ROSE.dark };
  * pages speak sky blue like its wordmark). Mounted by the module's layout (`ModuleToneProvider`);
  * canvas, surfaces and text stay shared. It wins over the women's rose inside that module.
  */
-export type ModuleTone = 'vet' | 'food' | 'quest' | 'run' | 'sleep' | 'family' | 'horo';
+export type ModuleTone = 'vet' | 'food' | 'quest' | 'run' | 'sleep' | 'family' | 'horo' | 'book';
 type ToneTokens = { primary100: string; primary200: string; primary300: string; accent100: string; accent200: string };
 const MODULE_TONES: Record<ModuleTone, { light: ToneTokens; dark: ToneTokens }> = {
   // MEDIVET (moduleBrand `vet`): #0369A1 / #7DD3FC.
@@ -119,6 +119,11 @@ const MODULE_TONES: Record<ModuleTone, { light: ToneTokens; dark: ToneTokens }> 
     light: { primary100: '#8A6414', primary200: '#B07F1F', primary300: '#C99A45', accent100: '#F6EBD3', accent200: '#E9C77E' },
     dark: { primary100: '#F3DDA6', primary200: '#E9C77E', primary300: '#C99A45', accent100: '#1A1A3A', accent200: '#5B4A22' },
   },
+  // MEDIBOOK (moduleBrand `book`): #A21CAF / #F0ABFC — fuchsia, the beauty and aesthetics world.
+  book: {
+    light: { primary100: '#A21CAF', primary200: '#C026D3', primary300: '#E879F9', accent100: '#FAE8FF', accent200: '#F0ABFC' },
+    dark: { primary100: '#F0ABFC', primary200: '#E879F9', primary300: '#D946EF', accent100: '#3B0A3F', accent200: '#86198F' },
+  },
 };
 const TONED: Record<ModuleTone, { light: Palette; dark: Palette }> = {
   vet: { light: { ...lightColors, ...MODULE_TONES.vet.light }, dark: { ...darkColors, ...MODULE_TONES.vet.dark } },
@@ -128,6 +133,7 @@ const TONED: Record<ModuleTone, { light: Palette; dark: Palette }> = {
   sleep: { light: { ...lightColors, ...MODULE_TONES.sleep.light }, dark: { ...darkColors, ...MODULE_TONES.sleep.dark } },
   family: { light: { ...lightColors, ...MODULE_TONES.family.light }, dark: { ...darkColors, ...MODULE_TONES.family.dark } },
   horo: { light: { ...lightColors, ...MODULE_TONES.horo.light }, dark: { ...darkColors, ...MODULE_TONES.horo.dark } },
+  book: { light: { ...lightColors, ...MODULE_TONES.book.light }, dark: { ...darkColors, ...MODULE_TONES.book.dark } },
 };
 const ModuleToneContext = createContext<ModuleTone | null>(null);
 /**
@@ -146,6 +152,7 @@ const NIGHT: Record<ModuleTone, Palette> = {
   family: { ...TONED.family.dark, ...NIGHT_BASE },
   // MEDIHOROSCOPE's night is deep lapis (the astrolabe sky); moonlit greys keep long readings easy at night.
   horo: { ...TONED.horo.dark, bg100: '#060A1F', bg200: '#141C3D', bg300: '#252F5A', surface: '#0E1533', surfaceRaised: '#172045', text200: '#D3D6E8', text300: '#8A90B3' },
+  book: { ...TONED.book.dark, ...NIGHT_BASE },
 };
 const NIGHT_PLAIN: Palette = { ...darkColors, ...NIGHT_BASE };
 export function NightProvider({ children }: { children: ReactNode }) {

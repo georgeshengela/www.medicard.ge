@@ -7,6 +7,7 @@ import { HubLinkRow } from '@/components/home/HubTiles';
 import { doctorTypeLabel } from '@/constants/visits';
 import { useAccountQuery } from '@/hooks/useAccountQuery';
 import { api, type DoctorVisit } from '@/lib/api';
+import { whenLabel } from '@/lib/book/bookFormat';
 import { isHrefAvailable, useFeatureState } from '@/lib/featureFlags';
 import { formatYmd } from '@/lib/format';
 import { daysUntil, recentLab, upcomingVisit } from '@/lib/home/homeAttention';
@@ -30,6 +31,7 @@ export function HomeAttention() {
   const features = useFeatureState();
   const { user } = useAuth();
   const visitsOn = isHrefAvailable('/visits', features);
+  const bookOn = isHrefAvailable('/book', features);
   const labsOn = isHrefAvailable('/lab', features);
   const today = todayYmd();
 
@@ -39,6 +41,9 @@ export function HomeAttention() {
     staleTime: FRESH.SHORT,
     enabled: visitsOn,
   });
+  // MEDIBOOK: the next booking within a week (same key the hub and the door use).
+  const bookings = useAccountQuery({ key: ['book', 'mine'], fetch: api.book.appointments, staleTime: FRESH.SHORT, enabled: bookOn });
+  const booking = bookOn ? (bookings.data?.upcoming ?? []).find((a) => new Date(a.startsAt).getTime() - Date.now() <= 7 * 86_400_000) ?? null : null;
   const [panels, setPanels] = useState<LabPanel[]>([]);
   useFocusEffect(
     useCallback(() => {
@@ -62,7 +67,7 @@ export function HomeAttention() {
 
   const visit = visitsOn ? upcomingVisit(visits.data ?? [], today) : null;
   const lab = labsOn ? recentLab(panels, today) : null;
-  if (!visit && !lab && !vaccines.length) return null;
+  if (!visit && !lab && !vaccines.length && !booking) return null;
 
   const when = (ymd: string) => {
     const days = daysUntil(ymd, today);
@@ -73,6 +78,15 @@ export function HomeAttention() {
     <View style={{ paddingHorizontal: HUB.gutter, marginTop: HUB.sectionGap }}>
       <HomeSectionHeading title={tx('არ გამოგრჩეს', 'Don’t miss')} />
       <View style={{ gap: 8 }}>
+        {booking ? (
+          <HubLinkRow
+            icon={CalendarCheck}
+            ink="rose"
+            title={tx(`ჯავშანი: ${booking.serviceName}`, `Booking: ${booking.serviceName}`)}
+            detail={`${whenLabel(booking.startsAt)}${booking.business?.name ? ` · ${booking.business.name}` : ''}${booking.status === 'PENDING' ? tx(' · ელოდება დადასტურებას', ' · awaiting confirmation') : ''}`}
+            href={`/book/appointments/${booking.id}`}
+          />
+        ) : null}
         {visit ? (
           <HubLinkRow
             icon={CalendarCheck}

@@ -88,3 +88,6 @@ export const SLEEP_CAPABILITIES = Object.freeze(['SLEEP_VIEW', 'SLEEP_MANAGE']);
 
 /** MEDIHOROSCOPE (#/horoscope): VIEW reads readings, library, generator log and usage counts; MANAGE edits texts, writes again and changes settings. */
 export const HOROSCOPE_CAPABILITIES = Object.freeze(['HOROSCOPE_VIEW', 'HOROSCOPE_MANAGE']);
+
+/** MEDIBOOK (#/book): VIEW reads claims, the catalogue and booking counts; MANAGE approves/rejects claims and edits or hides businesses. */
+export const BOOK_CAPABILITIES = Object.freeze(['BOOK_VIEW', 'BOOK_MANAGE']);

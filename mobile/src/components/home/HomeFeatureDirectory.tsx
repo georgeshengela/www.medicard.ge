@@ -52,9 +52,9 @@ export const HOME_FEATURE_GROUPS: { title: string; items: Feature[] }[] = [
         icon: Pill,
       },
       {
-        title: tx('ვიზიტები', 'Visits'),
-        detail: tx('შენი დაგეგმილი შეხვედრები', 'Your planned appointments'),
-        href: '/visits',
+        title: tx('ჯავშნები · MEDIBOOK', 'Bookings · MEDIBOOK'),
+        detail: tx('სტომატოლოგია, სალონები, კლინიკები — რუკაზე და ონლაინ ჯავშნით', 'Dental, salons, clinics — on the map, booked online'),
+        href: '/book',
         icon: CalendarCheck,
       },
       {

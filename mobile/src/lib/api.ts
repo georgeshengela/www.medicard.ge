@@ -3934,7 +3934,51 @@ export const api = {
       }>(      '/api/medi-companion/reconcile', { method: 'POST' }),
   },
 
+  /** MEDIBOOK — the catalogue, free slots, bookings, reviews and favourites (server/src/routes/book.routes.js). */
+  book: {
+    categories: () => request<{ categories: import('@/lib/book/bookTypes').BookCategory[] }>('/api/book/categories'),
+    nearby: (params: { lat: number; lng: number; radiusKm?: number; category?: string | null; q?: string; limit?: number; bookable?: boolean }) =>
+      request<{ businesses: import('@/lib/book/bookTypes').BookBusinessCard[]; mode: 'nearby' | 'search' }>(
+        `/api/book/businesses?${bookQuery({ lat: params.lat, lng: params.lng, radiusKm: params.radiusKm, category: params.category, q: params.q, limit: params.limit, bookable: params.bookable ? '1' : undefined })}`,
+      ),
+    search: (params: { q?: string; category?: string | null; city?: string; limit?: number; origin?: { lat: number; lng: number } | null }) =>
+      request<{ businesses: import('@/lib/book/bookTypes').BookBusinessCard[]; mode: 'nearby' | 'search' }>(
+        `/api/book/businesses?${bookQuery({ q: params.q, category: params.category, city: params.city, limit: params.limit, originLat: params.origin?.lat, originLng: params.origin?.lng })}`,
+      ),
+    map: (box: { minLat: number; maxLat: number; minLng: number; maxLng: number; category?: string | null; q?: string }) =>
+      request<{ pins: import('@/lib/book/bookTypes').BookPin[] }>(`/api/book/map?${bookQuery(box)}`),
+    business: (idOrSlug: string) => request<{ business: import('@/lib/book/bookTypes').BookBusinessDetail }>(`/api/book/businesses/${encodeURIComponent(idOrSlug)}`),
+    event: (businessId: string, kind: 'CALL' | 'ROUTE' | 'WEBSITE' | 'SHARE' | 'BOOK_START') =>
+      request<{ ok: boolean }>(`/api/book/businesses/${encodeURIComponent(businessId)}/events`, { method: 'POST', body: { kind } }),
+    availability: (businessId: string, params: { serviceId: string; date: string; staffId?: string | null }) =>
+      request<import('@/lib/book/bookTypes').BookAvailability>(`/api/book/businesses/${encodeURIComponent(businessId)}/availability?${bookQuery(params)}`),
+    days: (businessId: string, params: { serviceId: string; from?: string; staffId?: string | null; days?: number }) =>
+      request<import('@/lib/book/bookTypes').BookDayStrip>(`/api/book/businesses/${encodeURIComponent(businessId)}/days?${bookQuery(params)}`),
+    create: (body: { businessId: string; serviceId: string; staffId?: string | null; startsAt: string; note?: string; code?: string }) =>
+      request<{ appointment: import('@/lib/book/bookTypes').BookAppointment }>('/api/book/appointments', { method: 'POST', body }),
+    appointments: () => request<{ upcoming: import('@/lib/book/bookTypes').BookAppointment[]; past: import('@/lib/book/bookTypes').BookAppointment[] }>('/api/book/appointments'),
+    appointment: (id: string) => request<{ appointment: import('@/lib/book/bookTypes').BookAppointment }>(`/api/book/appointments/${encodeURIComponent(id)}`),
+    cancel: (id: string, reason?: string) =>
+      request<{ appointment: import('@/lib/book/bookTypes').BookAppointment; late: boolean }>(`/api/book/appointments/${encodeURIComponent(id)}/cancel`, { method: 'POST', body: { reason } }),
+    review: (id: string, body: { rating: number; text?: string }) =>
+      request<{ appointment: import('@/lib/book/bookTypes').BookAppointment }>(`/api/book/appointments/${encodeURIComponent(id)}/review`, { method: 'POST', body }),
+    favorites: (origin?: { lat: number; lng: number } | null) =>
+      request<{ businesses: import('@/lib/book/bookTypes').BookBusinessCard[] }>(`/api/book/favorites${origin ? `?${bookQuery({ lat: origin.lat, lng: origin.lng })}` : ''}`),
+    setFavorite: (businessId: string, on: boolean) =>
+      request<{ favorite: boolean }>(`/api/book/favorites/${encodeURIComponent(businessId)}`, { method: on ? 'PUT' : 'DELETE' }),
+  },
+
 };
+
+/** Query string without empty values (MEDIBOOK reads carry several optional filters). */
+function bookQuery(params: Record<string, unknown>): string {
+  const q = new URLSearchParams();
+  for (const [k, v] of Object.entries(params)) {
+    if (v === undefined || v === null || v === '') continue;
+    q.set(k, String(v));
+  }
+  return q.toString();
+}
 
 export function absoluteUrl(path: string | null): string | null {
   if (!path) return null;

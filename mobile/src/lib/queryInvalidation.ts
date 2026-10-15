@@ -25,6 +25,8 @@ export const WRITE_INVALIDATES: ReadonlyArray<readonly [prefix: string, keys: re
   ['/api/check-in', ['quest', 'home']],
   ['/api/health-profile', ['home', 'profile']],
   ['/api/visits', ['visits', 'home']],
+  // MEDIBOOK: a booking, a cancellation, a review or a favourite refreshes the hub and the Home row.
+  ['/api/book', ['book', 'home']],
   ['/api/records', ['records']],
   ['/api/pets', ['pets']],
   // MEDISLEEP: plan, nights (sleep mode, check-in, hand entry, Health import). Home shows last night.
@@ -63,7 +65,11 @@ export const READ_ONLY_WRITES: readonly string[] = [
  * focus; that binds the partner on the owner's account and changes nothing this account caches.
  * (The owner's own POST/PATCH/DELETE /api/cycle/share is a real write and does invalidate.)
  */
-export const READ_ONLY_WRITE_PATTERNS: readonly RegExp[] = [/^\/api\/cycle\/share\/[^/]+\/accept$/];
+export const READ_ONLY_WRITE_PATTERNS: readonly RegExp[] = [
+  /^\/api\/cycle\/share\/[^/]+\/accept$/,
+  // MEDIBOOK listing events (call, route, share …) count a tap and change nothing the app shows.
+  /^\/api\/book\/businesses\/[^/]+\/events$/,
+];
 
 /** Pure: which cache keys a successful write to `path` makes stale. */
 export function keysForWrite(method: string, path: string): string[] {

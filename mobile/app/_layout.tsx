@@ -475,6 +475,7 @@ function AppShell() {
               <Stack.Screen name="cycle" options={{ headerShown: false }} />
               <Stack.Screen name="share" options={{ headerShown: false }} />
               <Stack.Screen name="visits" options={{ headerShown: false }} />
+              <Stack.Screen name="book" options={{ headerShown: false }} />
               <Stack.Screen name="community" options={{ headerShown: false }} />
               <Stack.Screen name="pets" options={{ headerShown: false }} />
               <Stack.Screen name="family" options={{ headerShown: false }} />

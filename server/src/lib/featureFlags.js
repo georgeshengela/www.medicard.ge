@@ -36,6 +36,14 @@ export const FEATURES = Object.freeze([
     defaultMessageEn: 'Doctor visits are paused for a moment. Your visits are saved.',
   },
   {
+    key: 'book',
+    group: 'module',
+    label: 'MEDIBOOK',
+    description: 'სტომატოლოგიების, სალონების, ესთეტიკის ცენტრების და კლინიკების კატალოგი, რუკა და ონლაინ ჯავშნა; ბიზნესის პანელი medicard.ge/business. შეჩერებისას ახალი ჯავშანი ვერ კეთდება და პანელი არ იხსნება; არსებული ჯავშნები და შეხსენებები რჩება.',
+    defaultMessage: 'MEDIBOOK დროებით შეჩერებულია. შენი ჯავშნები შენახულია.',
+    defaultMessageEn: 'MEDIBOOK is paused for a moment. Your bookings are saved.',
+  },
+  {
     key: 'records',
     group: 'module',
     label: 'სამედიცინო ჩანაწერები',

@@ -182,7 +182,7 @@ export function engageDestination(
 export const NOTIFICATION_ROUTE_ROOTS = [
   '(tabs)', 'assistant', 'chat', 'community', 'cycle', 'explore', 'health-metrics', 'invite', 'lab',
   'medi-companion', 'medi-quest', 'medications', 'medipulsi', 'module', 'news', 'nutrition', 'package', 'pets', 'family',
-  'pharmacy', 'profile', 'record', 'run', 'scan', 'share', 'sleep', 'symptoms', 'visits', 'weather', 'week', 'trainer', 'coach', 'c', 'u',
+  'pharmacy', 'profile', 'record', 'run', 'scan', 'share', 'sleep', 'horoscope', 'symptoms', 'visits', 'book', 'weather', 'week', 'trainer', 'coach', 'c', 'u',
 ] as const;
 
 export function isNotificationRoute(route: unknown): route is string {
@@ -269,7 +269,7 @@ export function canOpenNotificationRoute(state: {
 export function prefixForNotificationId(id: string): 'med' | 'cycle' | 'visit' | 'steps' | 'weight' | 'engage' | 'quota' | 'qa' | 'pets' | 'nutrition' | 'sleep' | 'other' {
   if (id.startsWith('med:')) return 'med';
   if (id.startsWith('cycle:')) return 'cycle';
-  if (id.startsWith('visit:')) return 'visit';
+  if (id.startsWith('visit:') || id.startsWith('book:')) return 'visit';
   if (id.startsWith('steps:')) return 'steps';
   if (id.startsWith('weight:')) return 'weight';
   if (id.startsWith('engage:')) return 'engage';

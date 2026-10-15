@@ -57,6 +57,7 @@ export const NOTIF_PREFIX = {
   cycle: 'cycle:',
   pregnancyCare: 'pregnancy_care:',
   visit: 'visit:',
+  book: 'book:',
   steps: 'steps:',
   weight: 'weight:',
   engage: 'engage:',

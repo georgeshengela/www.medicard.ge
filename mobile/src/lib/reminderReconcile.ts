@@ -61,6 +61,14 @@ export function reconcileAllLocalReminders(opts: { force?: boolean } = {}): Prom
       if (localAccountId() === owner) await syncVisitReminders(visits);
     });
     await step(async () => {
+      // MEDIBOOK: the day-before and two-hours-before reminders of upcoming bookings (same „ვიზიტები“ switch).
+      const { isFeatureOn } = await import('@/lib/featureFlags');
+      if (!isFeatureOn('book')) return;
+      const { syncBookReminders } = await import('@/lib/book/bookNotifications');
+      const { upcoming } = await api.book.appointments();
+      if (localAccountId() === owner) await syncBookReminders(upcoming);
+    });
+    await step(async () => {
       const { syncNutritionReminders } = await import('@/lib/notifications');
       const { preferences } = await api.nutrition.preferences.get();
       await syncNutritionReminders(preferences.reminders, owner);

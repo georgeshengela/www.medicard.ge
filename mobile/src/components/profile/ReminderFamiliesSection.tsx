@@ -46,7 +46,10 @@ async function applyFamily(key: RowKey, on: boolean, userId: string | undefined)
     case 'visits': {
       await setReminderFamily('visits', on);
       const { syncVisitReminders } = await import('@/lib/visitNotifications');
-      await syncVisitReminders((await api.visits.list()).visits);
+      await syncVisitReminders((await api.visits.list()).visits).catch(() => undefined);
+      // MEDIBOOK bookings share this switch.
+      const { syncBookReminders } = await import('@/lib/book/bookNotifications');
+      await api.book.appointments().then((r) => syncBookReminders(r.upcoming)).catch(() => undefined);
       return;
     }
     case 'pets': {
@@ -122,7 +125,7 @@ export function ReminderFamiliesSection() {
   const noGoal = tx('ჯერ მიზანი არ გაქვს', 'No goal yet');
   const allRows: Row[] = [
     { key: 'meds', icon: Pill, label: tx('წამლის მიღება', 'Medications'), hint: tx('ყოველი მიღების დროს', 'At every dose time'), show: isFeatureOn('medications', features) },
-    { key: 'visits', icon: Stethoscope, label: tx('ექიმთან ვიზიტი', 'Doctor visits'), hint: tx('დღით და საათით ადრე', 'A day and an hour before'), show: isFeatureOn('visits', features) },
+    { key: 'visits', icon: Stethoscope, label: tx('ვიზიტები და ჯავშნები', 'Visits and bookings'), hint: tx('წინა დღეს და რამდენიმე საათით ადრე', 'The day before and a few hours ahead'), show: isFeatureOn('visits', features) || isFeatureOn('book', features) },
     { key: 'family', icon: Baby, label: tx('შვილები (MEDIFAMILY)', 'Children (MEDIFAMILY)'), hint: tx('აცრამდე 2 კვირით ადრე, იმ დღეს და თვის დაბადების დღეები', 'Vaccines two weeks before and on the day, month birthdays'), show: familyVisible() },
     { key: 'pets', icon: PawPrint, label: tx('ცხოველის მოვლა', 'Pet care'), hint: tx('წინა დღეს, იმ დღეს და ვადაზე', 'Day before, on the day, overdue'), show: isFeatureOn('pets', features) },
     { key: 'cycle', icon: CalendarHeart, label: tx('ციკლი', 'Cycle'), hint: tx('მენსტრუაცია, ოვულაცია, PMS', 'Period, ovulation, PMS'), show: female && isFeatureOn('cycle', features) },

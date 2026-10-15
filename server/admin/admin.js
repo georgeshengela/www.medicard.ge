@@ -5,7 +5,7 @@ const EMAIL_KEY = 'medicard.admin.email';
 const TAB_KEY = 'medicard.admin.tab';
 const USERS_PAGE_SIZE = 15;
 const PAGE_SIZE = 25;
-const ADMIN_TABS = ['overview', 'orders', 'users', 'push', 'sms', 'pharmacy', 'rewards', 'ai', 'health', 'audit', 'quality', 'testing', 'nutrition', 'community', 'medipulsi', 'poster-studio', 'settings', 'features', 'quests', 'funnel', 'director', 'email', 'support', 'trainers', 'capacity', 'news', 'errors', 'social', 'campaigns', 'medirun-boxes', 'pets', 'family', 'cycle', 'pills', 'lab', 'sleep', 'horoscope', 'home-sections', 'app-icons'];
+const ADMIN_TABS = ['overview', 'orders', 'users', 'push', 'sms', 'pharmacy', 'rewards', 'ai', 'health', 'audit', 'quality', 'testing', 'nutrition', 'community', 'medipulsi', 'poster-studio', 'settings', 'features', 'quests', 'funnel', 'director', 'email', 'support', 'trainers', 'capacity', 'news', 'errors', 'social', 'campaigns', 'medirun-boxes', 'pets', 'family', 'cycle', 'pills', 'lab', 'sleep', 'horoscope', 'home-sections', 'app-icons', 'book'];
 
 const state = {
   token: localStorage.getItem(TOKEN_KEY) || '',
@@ -652,6 +652,7 @@ async function switchTab(tab, opts = {}) {
     pills: ['Health', 'MEDIPILL', 'ვინ იწერს წამლებს, ნიშნავს დოზებს და ამოწმებს ფასებს.', ''],
     lab: ['Health', 'MEDILAB', 'ანალიზები, გამოსახულება და კანი: ვინ კითხულობს MEDISCAN-ით და როგორ.', ''],
     pets: ['Health', 'MEDIVET', 'ვინ იყენებს ცხოველების მოდულს და როგორ.', ''],
+    book: ['Health', 'MEDIBOOK', 'ბიზნესების კატალოგი და ჯავშნები: განაცხადების განხილვა, კატალოგის მართვა, რიცხვები.', ''],
     family: ['Health', 'MEDIFAMILY', 'შვილები: აცრების დროულობა, ზრდა, დღიური და Medi ბავშვისთვის — მხოლოდ რაოდენობები.', ''],
     community: ['Engagement', 'ქალების სივრცე', 'მოდერაცია, საჩივრები და წევრების უსაფრთხოება.', ''],
     testing: ['Production', 'ტესტირება', 'ტესტირების სესიები, ეტაპები, შედეგები და ხარვეზები.', 'quality.page'],
@@ -719,6 +720,7 @@ async function switchTab(tab, opts = {}) {
     if (tab === 'support' && typeof renderSupportAdmin === 'function') await renderSupportAdmin();
     if (tab === 'trainers') await (window.renderTrainersHost || window.renderTrainersAdmin)?.();
     if (tab === 'pets' && typeof renderPetsAdmin === 'function') await renderPetsAdmin();
+    if (tab === 'book') await window.renderBookAdmin?.();
     if (tab === 'family' && typeof renderFamilyAdmin === 'function') await renderFamilyAdmin();
     if (tab === 'cycle') await window.renderCycleUsage?.();
     if (tab === 'pills') await window.renderPillsUsage?.();

@@ -3,8 +3,12 @@ import { StyleSheet, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { HomeSectionHeading } from '@/components/home/HomeSectionHeading';
 import { HomeModuleTile, QuestTile, RunTile } from '@/components/home/sections/HomeChallenges';
+import { useAccountQuery } from '@/hooks/useAccountQuery';
 import { tx } from '@/i18n/locale';
+import { api } from '@/lib/api';
+import { whenLabel } from '@/lib/book/bookFormat';
 import { isFeatureOn, useFeatureState } from '@/lib/featureFlags';
+import { FRESH } from '@/lib/queryClient';
 import type { HomeLayoutId } from '@/lib/home/homeLayout';
 import type { HomeCard as HoroscopeHomeCard } from '@/lib/horoscope/horoscopeApi';
 import { signName } from '@/lib/horoscope/names';
@@ -13,7 +17,7 @@ import { clockOf, tonight } from '@/lib/sleep/sleepTime';
 import type { SleepHub } from '@/lib/sleep/sleepTypes';
 import { HUB } from '@/theme/hub';
 
-type DoorId = 'sleep' | 'horoscope' | 'quest' | 'run' | 'pill' | 'vet' | 'scan';
+type DoorId = 'sleep' | 'horoscope' | 'quest' | 'run' | 'pill' | 'vet' | 'scan' | 'book';
 
 /**
  * Which doors each Home offers, in order (Home 2.0, owner 2026-10-15). At most four show: a module that already
@@ -22,11 +26,21 @@ type DoorId = 'sleep' | 'horoscope' | 'quest' | 'run' | 'pill' | 'vet' | 'scan';
  * them as cards of their own.
  */
 const PLAN: Record<HomeLayoutId, DoorId[]> = {
-  women: ['sleep', 'horoscope', 'quest', 'run'],
-  standard: ['horoscope', 'sleep', 'pill', 'vet'],
-  active: ['horoscope', 'sleep', 'scan', 'pill'],
-  weight: ['horoscope', 'sleep', 'scan', 'run'],
+  women: ['book', 'sleep', 'horoscope', 'quest', 'run'],
+  standard: ['book', 'horoscope', 'sleep', 'pill', 'vet'],
+  active: ['horoscope', 'book', 'sleep', 'scan', 'pill'],
+  weight: ['horoscope', 'book', 'sleep', 'scan', 'run'],
 };
+
+/** MEDIBOOK door: the next booking when there is one, otherwise the invitation to find a place nearby. */
+function BookTile() {
+  const router = useRouter();
+  const mine = useAccountQuery({ key: ['book', 'mine'], fetch: api.book.appointments, staleTime: FRESH.SHORT });
+  const next = mine.data?.upcoming[0] ?? null;
+  const value = next ? whenLabel(next.startsAt) : tx('ჩაეწერე', 'Book a visit');
+  const caption = next ? `${next.serviceName} · ${next.business?.name ?? ''}` : tx('სტომატოლოგი, სალონი, კლინიკა — რუკაზე', 'Dentist, salon, clinic — on the map');
+  return <HomeModuleTile module="book" value={value} caption={caption} valueSize="text" a11y={`MEDIBOOK. ${value}. ${caption}`} onPress={() => router.push('/book' as never)} />;
+}
 
 type Props = {
   layout: HomeLayoutId;
@@ -78,6 +92,8 @@ export function HomeModuleDoors({ layout, sleepHub, sleepLive, horoscope, medica
             : horoscope?.headline || tx('დღის ჰოროსკოპი შენი ნიშნისთვის', 'Today’s horoscope for your sign');
           return <HomeModuleTile key={id} module="horo" value={value} caption={caption} valueSize={sign ? 'number' : 'text'} a11y={`MEDIHOROSCOPE. ${value}. ${caption}`} onPress={open('/horoscope')} />;
         }
+        case 'book':
+          return isFeatureOn('book', features) ? <BookTile key={id} /> : null;
         case 'quest':
           return isFeatureOn('quest', features) ? <QuestTile key={id} /> : null;
         case 'run':

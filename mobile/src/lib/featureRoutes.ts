@@ -29,6 +29,7 @@ export const FEATURE_KEYS = [
   'pharmacy',
   'news',
   'visits',
+  'book',
   'medications',
   'records',
   'labs',
@@ -126,6 +127,8 @@ export function featureForPath(segments: readonly string[]): FeatureKey | null {
       return 'news';
     case 'visits':
       return 'visits';
+    case 'book':
+      return 'book';
     case 'medications':
       return 'medications';
     case 'records':

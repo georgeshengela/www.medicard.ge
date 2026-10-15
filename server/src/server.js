@@ -36,6 +36,10 @@ import { objectStorageConfigured, objectStoragePublicHint } from './lib/objectSt
 import { adminReferralRouter, referralRouter } from './routes/referral.routes.js';
 import { adminTrainerRouter, trainerRouter } from './routes/trainer.routes.js';
 import { adminPetsRouter } from './routes/adminPets.routes.js';
+import { bookRouter } from './routes/book.routes.js';
+import { businessRouter } from './routes/business.routes.js';
+import { adminBookRouter } from './routes/adminBook.routes.js';
+import { startBookReminders } from './lib/book/push.js';
 import { sleepRouter } from './routes/sleep.routes.js';
 import { adminSleepRouter } from './routes/adminSleep.routes.js';
 import { horoscopeRouter } from './routes/horoscope.routes.js';
@@ -365,6 +369,7 @@ startCommunityPush();
 startPriceDropAlerts();
 startReferralRewards();
 startTrainerReminders();
+startBookReminders();
 startReviewDemoSlots();
 startPushCampaignWorker();
 startEmailWorkers();
@@ -389,6 +394,10 @@ app.use('/api/sleep', requireFeature('sleep'), sleepRouter);
 app.use('/api/horoscope', requireFeature('horoscope'), requireFeature('horoscopeOracle', { match: (req) => req.path.startsWith('/oracle') }), horoscopeRouter);
 app.use('/api/admin/trainers', adminTrainerRouter);
 app.use('/api/admin/pets', adminPetsRouter);
+// MEDIBOOK: the catalogue + bookings for clients, the owner panel behind /business, the admin queue.
+app.use('/api/book', requireFeature('book'), bookRouter);
+app.use('/api/business', requireFeature('book'), businessRouter);
+app.use('/api/admin/book', adminBookRouter);
 app.use('/api/admin/family', adminFamilyRouter);
 app.use('/api/admin/sleep', adminSleepRouter);
 app.use('/api/admin/horoscope', adminHoroscopeRouter);
@@ -459,7 +468,7 @@ if (serveLanding) {
       setHeaders(res, filePath) {
         if (filePath.endsWith('.html')) res.setHeader('Cache-Control', 'no-store');
         // Web app modules import each other without version stamps: revalidate every load.
-        else if (/[\\/]app[\\/]/.test(filePath)) res.setHeader('Cache-Control', 'no-cache');
+        else if (/[\\/](app|business)[\\/]/.test(filePath)) res.setHeader('Cache-Control', 'no-cache');
         // MEDIRUN Glow engine + runner models: the app's map WebView loads them by URL, so a new engine build
         // must reach phones on their next run without an app update (a 304 costs nothing when unchanged).
         else if (/[\\/]medirun[\\/]glow[\\/]/.test(filePath)) res.setHeader('Cache-Control', 'no-cache');
@@ -479,6 +488,14 @@ if (serveLanding) {
     res.set('Cross-Origin-Opener-Policy', 'same-origin-allow-popups');
     res.set('Referrer-Policy', 'strict-origin-when-cross-origin');
     res.sendFile(path.join(PUBLIC_DIST, 'app', 'index.html'));
+  });
+  // MEDIBOOK business panel (vanilla ES modules, history routing under /business): sign-in, claim or
+  // register a business, then the owner's workspace. Same account and tokens as /app.
+  app.get(['/business', /^\/business\/(?!.*\.[a-z0-9]+$).*/i], (_req, res) => {
+    res.set('Cache-Control', 'no-store');
+    res.set('Cross-Origin-Opener-Policy', 'same-origin-allow-popups');
+    res.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+    res.sendFile(path.join(PUBLIC_DIST, 'business', 'index.html'));
   });
   app.get('/i/:code', (_req, res) => {
     res.set('Cache-Control', 'no-store');
