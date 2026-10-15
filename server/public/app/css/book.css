@@ -1,8 +1,16 @@
 /* MEDICARD web — MEDIBOOK (/book): catalogue, business page, booking flow, the person's bookings, the map.
-   On top of app.css. The module's fuchsia marks the wordmark, the one hero and selected states; everyday
-   actions stay brand teal. Category colours mirror server catalog.js (pins, chips, tiles). */
-:root { --book: #a21caf; --book-ink: #a21caf; --book-soft: #fae8ff; --book-2: #e879f9; --book-deep: #4a044e; }
-:root[data-theme='dark'] { --book-ink: #f0abfc; --book-soft: #3b0a3f; }
+   On top of app.css. The module's lilac (moduleBrand `book`, owner 2026-10-15) is used lightly: the wordmark,
+   lines and outlines, links and focus rings — never a fill. Chosen states and the booking button are neutral ink;
+   the hero is a quiet night-violet; everyday actions stay brand teal. Category colours mirror server catalog.js
+   (pins, chips, tiles). Fuchsia, lime and amber were rejected by the owner — never bring them back. */
+:root {
+  --book: #7a58c9; --book-ink: #6a4bb8; --book-2: #b49cf2; --book-soft: #f4f0fc; --book-line: #d9ccf7;
+  --book-deep: #17142a; --book-mid: #352b5e; --book-on-hero: #ede7fb; --book-btn: #16141a; --book-btn-text: #ffffff;
+}
+:root[data-theme='dark'] {
+  --book: #c6b2f5; --book-ink: #cdbcf7; --book-2: #9f86e8; --book-soft: #221c38; --book-line: #4a3a80;
+  --book-btn: #f3f1f6; --book-btn-text: #16141a;
+}
 
 /* ── Hub layout ───────────────────────────────────────── */
 .bk-hub { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(300px, 1fr); gap: 24px 28px; align-items: start; }
@@ -14,18 +22,18 @@
 /* ── Hero: the hub's one spotlight ────────────────────── */
 .bk-hero {
   position: relative; overflow: hidden; border-radius: var(--radius); padding: 24px 26px 26px; color: #fff; min-height: 184px;
-  background: linear-gradient(135deg, var(--book-deep), var(--book) 55%, var(--book-2));
+  background: linear-gradient(135deg, #17142a, #352b5e 55%, #7a58c9);
 }
 .bk-hero::before, .bk-hero::after { content: ''; position: absolute; border-radius: 50%; border: 1px solid rgba(255, 255, 255, .16); pointer-events: none; }
-.bk-hero::before { width: 220px; height: 220px; right: -60px; top: -70px; background: radial-gradient(circle, rgba(240, 171, 252, .5), transparent 65%); }
+.bk-hero::before { width: 220px; height: 220px; right: -60px; top: -70px; background: radial-gradient(circle, rgba(198, 178, 245, .30), transparent 65%); }
 .bk-hero::after { width: 340px; height: 340px; right: -120px; top: -130px; border-color: rgba(255, 255, 255, .09); }
 .bk-hero > * { position: relative; }
 .bk-hero .wm { font-size: 22px; }
 .bk-hero .wm-medi { color: #fff; }
-.bk-hero .wm-suffix { color: #fae8ff; }
-.bk-hero-label { font-size: 12px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: #fae8ff; margin-top: 18px; }
+.bk-hero .wm-suffix { color: #c6b2f5; }
+.bk-hero-label { font-size: 12px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: #ede7fb; margin-top: 18px; }
 .bk-hero h2 { font-size: 21px; line-height: 1.3; margin-top: 8px; font-weight: 800; letter-spacing: -.01em; max-width: 34ch; }
-.bk-hero p { color: #fae8ff; font-size: 14.5px; margin-top: 6px; max-width: 58ch; }
+.bk-hero p { color: #ede7fb; font-size: 14.5px; margin-top: 6px; max-width: 58ch; }
 .bk-hero p.bk-hero-biz { color: #fff; font-weight: 600; }
 .bk-hero-actions { display: flex; gap: 10px; margin-top: 16px; flex-wrap: wrap; }
 .bk-hero .btn-light { color: var(--book-deep); }
@@ -51,16 +59,18 @@
   color: var(--text); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; white-space: nowrap; flex: none; transition: background .15s, border-color .15s, color .15s;
 }
 .bk-chip i { width: 8px; height: 8px; border-radius: 50%; background: var(--chip, var(--book)); flex: none; }
-.bk-chip:hover { border-color: var(--chip, var(--book)); }
-.bk-chip.on { background: var(--chip, var(--book)); border-color: var(--chip, var(--book)); color: #fff; }
-.bk-chip.on i { background: #fff; }
+.bk-chip:hover { border-color: var(--chip, var(--book-2)); }
+/* Chosen = neutral ink; a category chip keeps its own colour (the category's, not the module's). */
+.bk-chip.on { background: var(--book-btn); border-color: var(--book-btn); color: var(--book-btn-text); }
+.bk-chip.cat.on { background: var(--chip); border-color: var(--chip); color: #fff; }
+.bk-chip.on i { background: currentColor; }
 
 /* ── „Use my location“ ────────────────────────────────── */
 .bk-locate {
   display: flex; align-items: center; gap: 12px; width: 100%; text-align: left; padding: 12px 14px; border-radius: 16px; border: 0;
-  background: var(--book-soft); color: var(--text); cursor: pointer; font: inherit; margin-bottom: 10px; transition: filter .15s;
+  background: var(--surface); box-shadow: inset 0 0 0 1px var(--book-line); color: var(--text); cursor: pointer; font: inherit; margin-bottom: 10px; transition: box-shadow .15s;
 }
-.bk-locate:hover { filter: brightness(.98); }
+.bk-locate:hover { box-shadow: inset 0 0 0 1.5px var(--book-2); }
 .bk-locate > .ic { color: var(--book-ink); }
 .bk-locate b { display: block; font-size: 14px; }
 .bk-locate span { font-size: 12.5px; color: var(--text2); }
@@ -99,12 +109,10 @@
 .bk-closed { color: var(--text3); }
 .bk-pill {
   display: inline-flex; align-items: center; gap: 4px; padding: 6px 10px; border-radius: 999px; border: 0; font: inherit; font-size: 12.5px; font-weight: 600; flex: none;
-  background: color-mix(in srgb, var(--book) 12%, transparent); color: var(--book-ink);
+  background: transparent; box-shadow: inset 0 0 0 1px var(--book-line); color: var(--book-ink);
 }
-:root[data-theme='dark'] .bk-pill { background: color-mix(in srgb, var(--book-ink) 18%, transparent); }
-.bk-pill-btn { cursor: pointer; background: var(--book); color: #fff; transition: background .15s; }
-.bk-pill-btn:hover { background: #86198f; }
-:root[data-theme='dark'] .bk-pill-btn { background: var(--book); color: #fff; }
+.bk-pill-btn { cursor: pointer; background: var(--book-btn); color: var(--book-btn-text); box-shadow: none; transition: opacity .15s; }
+.bk-pill-btn:hover { opacity: .86; }
 .bk-chev { color: var(--text3); }
 .bk-hint { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--text3); padding: 0 4px; }
 .bk-note { padding: 18px; font-size: 14px; color: var(--text2); }
@@ -148,9 +156,9 @@ a.bk-line:hover { color: var(--text); }
 .bk-owner { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border-radius: 14px; background: var(--bg); font-size: 13px; color: var(--text2); }
 .bk-owner .ic { color: var(--text3); }
 .bk-owner span { flex: 1; }
-.btn-book { background: var(--book); color: #fff; }
-.btn-book:hover { background: #86198f; }
-.btn-book.is-busy::after { border-color: #fff #fff transparent transparent; }
+.btn-book { background: var(--book-btn); color: var(--book-btn-text); }
+.btn-book:hover { opacity: .88; }
+.btn-book.is-busy::after { border-color: var(--book-btn-text) var(--book-btn-text) transparent transparent; }
 .bk-group { font-size: 11.5px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--text3); margin: 0 4px 6px; }
 .bk-group-wrap + .bk-group-wrap { margin-top: 14px; }
 .bk-svc { display: flex; align-items: center; gap: 12px; padding: 12px 16px; }
@@ -165,7 +173,7 @@ a.bk-line:hover { color: var(--text); }
 .bk-team { display: flex; gap: 10px; overflow-x: auto; scrollbar-width: none; padding: 2px; margin: -2px; }
 .bk-team::-webkit-scrollbar { display: none; }
 .bk-person { width: 132px; flex: none; background: var(--surface); border-radius: 18px; padding: 12px; display: flex; flex-direction: column; gap: 6px; }
-.bk-avatar { width: 48px; height: 48px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; color: #fff; background: var(--book); object-fit: cover; font-size: 18px; }
+.bk-avatar { width: 48px; height: 48px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; color: var(--book-btn-text); background: var(--book-btn); object-fit: cover; font-size: 18px; }
 .bk-person b { font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .bk-person span { font-size: 12px; color: var(--text2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .bk-hours { display: flex; flex-direction: column; padding: 6px 16px; }
@@ -184,14 +192,14 @@ a.bk-line:hover { color: var(--text); }
 /* ── Booking flow ─────────────────────────────────────── */
 .bk-step { margin-bottom: 24px; }
 .bk-step h2 { font-size: 16px; margin-bottom: 10px; display: flex; align-items: center; gap: 10px; }
-.bk-step-n { width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; font-size: 12.5px; font-weight: 700; background: var(--book-soft); color: var(--book-ink); flex: none; }
+.bk-step-n { width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; font-size: 12.5px; font-weight: 700; box-shadow: inset 0 0 0 1.5px var(--book-line); color: var(--book-ink); flex: none; }
 .bk-radio-row {
   display: flex; align-items: center; gap: 12px; padding: 12px 16px; width: 100%; text-align: left; border: 0; background: none; font: inherit; color: inherit; cursor: pointer; transition: background .12s;
 }
 .bk-radio-row + .bk-radio-row { border-top: 1px solid var(--line); }
 .bk-radio-row:hover { background: var(--bg); }
-.bk-radio { width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--bg3); display: grid; place-items: center; flex: none; color: #fff; transition: background .12s, border-color .12s; }
-.bk-radio-row.on .bk-radio { background: var(--book); border-color: var(--book); }
+.bk-radio { width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--bg3); display: grid; place-items: center; flex: none; color: var(--book-btn-text); transition: background .12s, border-color .12s; }
+.bk-radio-row.on .bk-radio { background: var(--book-btn); border-color: var(--book-btn); }
 .bk-days-wrap { display: flex; align-items: center; gap: 8px; }
 .bk-days { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; padding: 2px; margin: -2px; flex: 1; min-width: 0; }
 .bk-days::-webkit-scrollbar { display: none; }
@@ -204,8 +212,8 @@ a.bk-line:hover { color: var(--text); }
 .bk-day small { font-size: 10px; color: var(--text3); }
 .bk-day:hover:not(:disabled) { background: var(--bg2); }
 .bk-day:disabled { opacity: .4; cursor: default; }
-.bk-day.on, .bk-day.on:hover { background: var(--book); color: #fff; }
-.bk-day.on b, .bk-day.on small { color: #fff; }
+.bk-day.on, .bk-day.on:hover { background: var(--book-btn); color: var(--book-btn-text); }
+.bk-day.on b, .bk-day.on small { color: var(--book-btn-text); }
 .bk-day-nav { width: 36px; height: 36px; border-radius: 12px; border: 0; background: var(--surface); color: var(--text); display: grid; place-items: center; cursor: pointer; flex: none; }
 .bk-day-nav:disabled { opacity: .35; cursor: default; }
 .bk-part { font-size: 12.5px; color: var(--text3); margin: 12px 4px 6px; }
@@ -216,7 +224,7 @@ a.bk-line:hover { color: var(--text); }
   font-variant-numeric: tabular-nums; cursor: pointer; color: var(--text); transition: background .12s, border-color .12s;
 }
 .bk-slot:hover { border-color: var(--book-2); }
-.bk-slot.on { background: var(--book); border-color: var(--book); color: #fff; }
+.bk-slot.on { background: var(--book-btn); border-color: var(--book-btn); color: var(--book-btn-text); }
 .bk-note-box { display: flex; gap: 8px; align-items: flex-start; padding: 12px 14px; border-radius: 14px; background: var(--surface); font-size: 13px; color: var(--text2); margin-top: 10px; }
 .bk-note-box .ic { color: var(--text3); flex: none; margin-top: 1px; }
 .bk-summary { display: flex; flex-direction: column; gap: 14px; }
@@ -249,7 +257,6 @@ a.bk-line:hover { color: var(--text); }
   border: 1px solid var(--book-2); width: 100%; text-align: left; font: inherit; color: inherit; cursor: pointer;
 }
 .bk-review-cta > .ic { color: var(--book-ink); }
-.bk-review-cta > .ic svg { fill: currentColor; }
 .bk-cancel-wrap { display: flex; flex-direction: column; align-items: center; gap: 8px; margin-top: 12px; text-align: center; }
 .bk-cancel-wrap p { font-size: 12.5px; color: var(--text3); max-width: 46ch; }
 

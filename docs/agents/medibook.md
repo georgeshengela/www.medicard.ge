@@ -88,7 +88,8 @@ ships with the next store build, not by OTA.
 ## Web app (`server/public/app/js/pages/book.js`, `css/book.css`, routes in `main.js` with `feature: 'book'`)
 
 The same module on https://medicard.ge/app (owner rule: every app feature exists on the web). One page module serves
-`/book` (hub: fuchsia hero with the next booking or the search prompt, live search + category chips — the term stays
+`/book` (hub: night-violet hero with the next booking or the search prompt — lilac only as lines, outlines and the
+wordmark; chosen states and the booking button are neutral ink, `--book*` tokens in `book.css` —, live search + category chips — the term stays
 on the page, only `?category=` is in the URL —, „ახლოს შენთან“ from the browser position after the one-button ask,
 else the profile's saved city (`extraAnswers.location` coordinates or the town centre from the catalogue's city table),
 else Tbilisi; upcoming / past bookings, saved places, „ვიზიტები ხელით“ → `/visits`, „შენი ბიზნესია?“ → `/business`),

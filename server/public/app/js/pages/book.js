@@ -98,7 +98,7 @@ const CATEGORIES = [
   { id: 'BEAUTY', label: t('სილამაზის სალონი', 'Beauty salon'), short: t('სილამაზე', 'Beauty'), color: '#EC4899', icon: 'sparkles' },
   { id: 'HAIR', label: t('თმა და ბარბერი', 'Hair and barber'), short: t('თმა', 'Hair'), color: '#F59E0B', icon: 'scissors' },
   { id: 'NAILS', label: t('ფრჩხილები', 'Nails'), short: t('ფრჩხილები', 'Nails'), color: '#F472B6', icon: 'hand' },
-  { id: 'AESTHETIC', label: t('ესთეტიკა და კოსმეტოლოგია', 'Aesthetics and cosmetology'), short: t('ესთეტიკა', 'Aesthetics'), color: '#A21CAF', icon: 'syringe' },
+  { id: 'AESTHETIC', label: t('ესთეტიკა და კოსმეტოლოგია', 'Aesthetics and cosmetology'), short: t('ესთეტიკა', 'Aesthetics'), color: '#A855F7', icon: 'syringe' },
   { id: 'SPA', label: t('სპა და მასაჟი', 'Spa and massage'), short: t('სპა', 'Spa'), color: '#14B8A6', icon: 'waves' },
   { id: 'CLINIC', label: t('კლინიკა და ექიმები', 'Clinics and doctors'), short: t('კლინიკა', 'Clinic'), color: '#2563EB', icon: 'heartPulse' },
   { id: 'FITNESS', label: t('ფიტნესი და იოგა', 'Fitness and yoga'), short: t('ფიტნესი', 'Fitness'), color: '#22C55E', icon: 'dumbbell' },
@@ -228,7 +228,7 @@ const apptList = (rows) => h('div', { class: 'bk-list' }, rows.map(apptRow));
 function categoryChips(value, onChange, { all = true } = {}) {
   const wrap = h('div', { class: 'bk-chips', role: 'group', 'aria-label': t('კატეგორია', 'Category') });
   const chip = (id, label, color, on) => h('button', {
-    type: 'button', class: `bk-chip ${on ? 'on' : ''}`, style: color ? `--chip:${color}` : null, 'aria-pressed': on ? 'true' : 'false',
+    type: 'button', class: `bk-chip ${color ? 'cat' : ''} ${on ? 'on' : ''}`, style: color ? `--chip:${color}` : null, 'aria-pressed': on ? 'true' : 'false',
     onClick: () => { const next = on ? null : id; paint(next); onChange(next); },
   }, h('i'), label);
   const paint = (current) => mount(wrap,
@@ -487,7 +487,7 @@ async function businessView(root, ctx, slug) {
   const main = h('div', { class: 'bk-main' });
   if (b.discounts?.length) {
     main.append(section(t('ფასდაკლებები', 'Discounts'), h('div', { class: 'bk-list' }, b.discounts.map((d) => h('div', { class: 'bk-discount' },
-      tile('percent', 'book', 40),
+      tile('percent', 'neutral', 40),
       h('div', { class: 'bk-biz-main' },
         h('div', { class: 'bk-name' }, h('span', null, d.title)),
         h('div', { class: 'bk-meta wrap' }, [
@@ -511,7 +511,7 @@ async function businessView(root, ctx, slug) {
   if (b.staff?.length) {
     main.append(section(t('გუნდი', 'The team'), h('div', { class: 'bk-team' }, b.staff.map((p) => h('div', { class: 'bk-person' },
       // The initial as typed: upper-casing Georgian would turn it into Mtavruli.
-      p.imageUrl ? h('img', { class: 'bk-avatar', src: p.imageUrl, alt: '' }) : h('span', { class: 'bk-avatar', style: p.color ? `background:${p.color}` : null }, p.name.trim().slice(0, 1)),
+      p.imageUrl ? h('img', { class: 'bk-avatar', src: p.imageUrl, alt: '' }) : h('span', { class: 'bk-avatar', style: p.color ? `background:${p.color};color:#fff` : null }, p.name.trim().slice(0, 1)),
       h('b', null, p.name), p.title ? h('span', null, p.title) : null)))));
   }
   if (hasHours(b.hours)) {
@@ -952,7 +952,8 @@ async function mapView(root, ctx) {
   }
 
   const dark = document.documentElement.dataset.theme === 'dark';
-  const ink = dark ? '#F0ABFC' : '#A21CAF';
+  // Lilac as a line: clusters are neutral discs with a lilac ring (mobile mapHtml.ts).
+  const ink = dark ? '#C6B2F5' : '#7A58C9';
   const colorExpr = ['match', ['get', 'category'], ...CATEGORIES.flatMap((c) => [c.id, c.color]), '#64748B'];
   const o = origin();
   mapboxgl.accessToken = token;
@@ -972,8 +973,8 @@ async function mapView(root, ctx) {
   function addLayers() {
     if (map.getSource('pins')) return;
     map.addSource('pins', { type: 'geojson', data: { type: 'FeatureCollection', features: [] }, cluster: true, clusterMaxZoom: 15, clusterRadius: 44 });
-    map.addLayer({ id: 'clusters', type: 'circle', source: 'pins', filter: ['has', 'point_count'], paint: { 'circle-color': ink, 'circle-opacity': 0.92, 'circle-radius': ['step', ['get', 'point_count'], 16, 10, 20, 50, 26], 'circle-stroke-width': 3, 'circle-stroke-color': dark ? 'rgba(240,171,252,.3)' : 'rgba(162,28,175,.25)' } });
-    map.addLayer({ id: 'cluster-count', type: 'symbol', source: 'pins', filter: ['has', 'point_count'], layout: { 'text-field': ['get', 'point_count_abbreviated'], 'text-size': 13, 'text-font': ['DIN Pro Bold', 'Arial Unicode MS Bold'] }, paint: { 'text-color': dark ? '#3B0A3F' : '#FFFFFF' } });
+    map.addLayer({ id: 'clusters', type: 'circle', source: 'pins', filter: ['has', 'point_count'], paint: { 'circle-color': dark ? '#151319' : '#FFFFFF', 'circle-opacity': 0.96, 'circle-radius': ['step', ['get', 'point_count'], 16, 10, 20, 50, 26], 'circle-stroke-width': 2, 'circle-stroke-color': ink } });
+    map.addLayer({ id: 'cluster-count', type: 'symbol', source: 'pins', filter: ['has', 'point_count'], layout: { 'text-field': ['get', 'point_count_abbreviated'], 'text-size': 13, 'text-font': ['DIN Pro Bold', 'Arial Unicode MS Bold'] }, paint: { 'text-color': ink } });
     map.addLayer({ id: 'pin-ring', type: 'circle', source: 'pins', filter: ['all', ['!', ['has', 'point_count']], ['==', ['get', 'bookable'], 1]], paint: { 'circle-color': 'transparent', 'circle-radius': ['interpolate', ['linear'], ['zoom'], 11, 9, 16, 15], 'circle-stroke-width': 2, 'circle-stroke-color': colorExpr, 'circle-stroke-opacity': 0.55 } });
     map.addLayer({ id: 'pin', type: 'circle', source: 'pins', filter: ['!', ['has', 'point_count']], paint: { 'circle-color': colorExpr, 'circle-radius': ['interpolate', ['linear'], ['zoom'], 11, 5, 16, 9], 'circle-stroke-width': 2, 'circle-stroke-color': dark ? '#0b1220' : '#ffffff', 'circle-opacity': 0.92 } });
     map.addLayer({ id: 'pin-selected', type: 'circle', source: 'pins', filter: ['==', ['get', 'id'], ''], paint: { 'circle-color': 'transparent', 'circle-radius': ['interpolate', ['linear'], ['zoom'], 11, 12, 16, 20], 'circle-stroke-width': 3, 'circle-stroke-color': colorExpr } });
