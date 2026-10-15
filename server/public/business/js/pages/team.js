@@ -1,5 +1,6 @@
 // MEDIBOOK business panel — the team: people who perform services (with their hours) and panel access.
-import { h, mount, icon, button, pageHead, card, input, field, select, busy, openModal, confirmDialog, badge } from '/app/js/ui.js';
+import { h, mount, icon, button, pageHead, card, input, field, busy, openModal, confirmDialog, badge } from '/app/js/ui.js';
+import { select } from '../fields.js';
 import { t } from '/app/js/i18n.js';
 import { meters } from '/app/js/charts.js';
 import { biz, avatar, hoursEditor, emptyBox, fail, ok, roleLabel, ROLES, gel, pct, WEEKDAYS_SHORT, debounceFn } from '../shared.js';

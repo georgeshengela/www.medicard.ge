@@ -1,6 +1,7 @@
 // MEDIBOOK business panel — the list kit: filters as chips, a pager, day groups and sortable heads.
 // Every long list in the panel paginates (owner: „უკიდეგანო სიები საშინელებაა“); 25 rows a page by default.
-import { h, icon, select } from '/app/js/ui.js';
+import { h, icon } from '/app/js/ui.js';
+import { select } from './fields.js';
 import { t } from '/app/js/i18n.js';
 
 export const PAGE_SIZES = [25, 50, 100];

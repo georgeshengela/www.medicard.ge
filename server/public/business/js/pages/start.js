@@ -1,5 +1,6 @@
 // MEDIBOOK business panel — /start: claim a listed business or register a new one; pending claims.
-import { h, mount, icon, button, busy, field, input, textarea, select, segmented, badge, pageHead, card, toast, debounce } from '/app/js/ui.js';
+import { h, mount, icon, button, busy, field, input, textarea, segmented, badge, pageHead, card, toast, debounce } from '/app/js/ui.js';
+import { select } from '../fields.js';
 import { get, post } from '/app/js/api.js';
 import { t } from '/app/js/i18n.js';
 import { loadState, state, switchBusiness } from '../state.js';

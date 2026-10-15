@@ -1,10 +1,10 @@
 // MEDIBOOK business panel — the calendar: a day with a column per person, or a week with a column per day.
-import { h, mount, icon, button, segmented, pageHead, openModal, field, input, select, busy } from '/app/js/ui.js';
+import { h, mount, icon, button, segmented, pageHead, openModal, field, input, busy } from '/app/js/ui.js';
 import { t } from '/app/js/i18n.js';
 import { state, canManage } from '../state.js';
 import { biz, ymd, addDays, weekdayOf, minutesOf, clock, WEEKDAYS_SHORT, WEEKDAYS, MONTHS, MONTHS_SHORT, fail, ok, toIso, emptyBox } from '../shared.js';
 import { loadContext, newAppointmentDialog, openAppointment } from '../appointment.js';
-import { dateField, timeField } from '../fields.js';
+import { dateField, timeField, select } from '../fields.js';
 
 const HOUR_H = 64;
 /** h() assigns style objects with Object.assign, which ignores custom properties — set them by hand. */

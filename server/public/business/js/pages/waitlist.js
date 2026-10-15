@@ -1,10 +1,10 @@
 // MEDIBOOK business panel — the waiting list: who wants a time that is not free yet, for what, when;
 // offer a time, book them straight in, add a walk-in by hand.
-import { h, mount, icon, button, pageHead, card, input, field, select, busy, openModal, confirmDialog, badge, textarea, debounce } from '/app/js/ui.js';
+import { h, mount, icon, button, pageHead, card, input, field, busy, openModal, confirmDialog, badge, textarea, debounce } from '/app/js/ui.js';
 import { t } from '/app/js/i18n.js';
 import { biz, gel, minutes, emptyBox, fail, ok, when, dateText, relative, phoneText, avatar, ymd, addDays, toIso, WEEKDAYS_SHORT } from '../shared.js';
 import { chips, filterBar, pager, paginate, listState } from '../lists.js';
-import { dateField, timeField } from '../fields.js';
+import { dateField, timeField, select } from '../fields.js';
 import { loadContext, newAppointmentDialog } from '../appointment.js';
 import { canManage } from '../state.js';
 

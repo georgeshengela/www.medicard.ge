@@ -97,3 +97,15 @@ describe('MEDIBOOK catalogue helpers', () => {
     assert.deepEqual(discountedPrice(10, { kind: 'FIXED', value: 15 }), { price: 0, off: 10 });
   });
 });
+
+describe('discount dates from the database', () => {
+  it('a DATE column (a Date at UTC midnight) reads as its day, not as a weekday string', async () => {
+    const { discountPublic, discountApplies, dayOf } = await import('./catalog.js');
+    assert.equal(dayOf(new Date('2026-12-31T00:00:00.000Z')), '2026-12-31');
+    assert.equal(dayOf('2026-12-31'), '2026-12-31');
+    const row = { id: 'd', businessId: 'b', title: 'x', kind: 'PERCENT', value: 10, serviceIds: [], weekdays: [], startsOn: new Date('2026-12-01T00:00:00.000Z'), endsOn: new Date('2026-12-31T00:00:00.000Z'), hoursFrom: null, hoursTo: null, code: null, maxUses: null, usedCount: 0, active: true };
+    assert.equal(discountPublic(row).endsOn, '2026-12-31');
+    assert.equal(discountApplies(row, { serviceId: 's', at: new Date('2026-12-15T10:00:00+04:00') }), true);
+    assert.equal(discountApplies(row, { serviceId: 's', at: new Date('2027-01-02T10:00:00+04:00') }), false);
+  });
+});

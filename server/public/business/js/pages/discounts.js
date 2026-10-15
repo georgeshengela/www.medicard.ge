@@ -1,8 +1,8 @@
 // MEDIBOOK business panel — discounts: percent or fixed, on some services, within dates / weekdays / hours, with a code.
-import { h, mount, icon, button, pageHead, card, input, field, select, busy, openModal, confirmDialog, toggle, badge } from '/app/js/ui.js';
+import { h, mount, icon, button, pageHead, card, input, field, busy, openModal, confirmDialog, toggle, badge } from '/app/js/ui.js';
 import { t } from '/app/js/i18n.js';
-import { biz, gel, emptyBox, fail, ok, WEEKDAYS_SHORT } from '../shared.js';
-import { dateField, timeField } from '../fields.js';
+import { biz, gel, emptyBox, fail, ok, WEEKDAYS_SHORT, dateText } from '../shared.js';
+import { dateField, timeField, select } from '../fields.js';
 
 export default async function discountsPage(root) {
   const host = h('div');
@@ -10,17 +10,22 @@ export default async function discountsPage(root) {
     mount(host, h('div', { class: 'skeleton-card' }, h('div', { class: 'sk' }), h('div', { class: 'sk' })));
     try {
       const [{ discounts }, { services }] = await Promise.all([biz.get('/discounts'), biz.get('/services')]);
-      if (!discounts.length) { mount(host, card(emptyBox(t('ფასდაკლება ჯერ არ არის', 'No discounts yet'), t('Happy hours დილით, პირველი ვიზიტის −20%, პრომო კოდი ინსტაგრამისთვის — აპში ფასი თავისით მცირდება.', 'Morning happy hours, −20% on a first visit, a promo code for Instagram — the price drops by itself in the app.'), button(t('ფასდაკლების შექმნა', 'Create a discount'), { icon: 'plus', onClick: () => dialog(null, services, paint) })))); return; }
-      mount(host, card({ class: 'flush' }, h('div', { class: 'bz-table-wrap' }, h('table', { class: 'bz-table' },
-        h('thead', null, h('tr', null, h('th', null, t('ფასდაკლება', 'Discount')), h('th', null, t('რაზე', 'On')), h('th', null, t('როდის', 'When')), h('th', null, t('კოდი', 'Code')), h('th', { class: 'num' }, t('გამოყენება', 'Used')), h('th', null, t('აქტიური', 'Active')), h('th'))),
-        h('tbody', null, discounts.map((d) => h('tr', null,
-          h('td', null, h('b', null, d.title), h('div', { class: 'faint' }, d.kind === 'PERCENT' ? `−${d.value}%` : `−${gel(d.value)}`)),
-          h('td', null, d.serviceIds.length ? services.filter((s) => d.serviceIds.includes(s.id)).map((s) => s.name).join(', ') : t('ყველა სერვისი', 'Every service')),
-          h('td', null, [d.startsOn || d.endsOn ? `${d.startsOn || '…'} – ${d.endsOn || '…'}` : null, d.weekdays.length ? d.weekdays.map((w) => WEEKDAYS_SHORT[w]).join(', ') : null, d.hoursFrom && d.hoursTo ? `${d.hoursFrom}–${d.hoursTo}` : null].filter(Boolean).join(' · ') || t('ყოველთვის', 'Always')),
-          h('td', null, d.code ? h('code', null, d.code) : h('span', { class: 'bz-dim' }, '—')),
-          h('td', { class: 'num' }, `${d.usedCount}${d.maxUses ? ` / ${d.maxUses}` : ''}`),
-          h('td', null, toggle(d.active, async (on) => { try { await biz.patch(`/discounts/${d.id}`, { active: on }); } catch (e) { fail(e); paint(); } })),
-          h('td', { class: 'num' }, h('div', { class: 'bz-inline', style: { justifyContent: 'flex-end' } }, button('', { variant: 'ghost', size: 'sm', icon: 'edit', ariaLabel: t('რედაქტირება', 'Edit'), onClick: () => dialog(d, services, paint) }), button('', { variant: 'ghost', size: 'sm', icon: 'trash', ariaLabel: t('წაშლა', 'Delete'), onClick: async () => { if (await confirmDialog({ title: t('წავშალო?', 'Delete?'), body: d.title, confirm: t('წაშლა', 'Delete'), danger: true })) { try { await biz.del(`/discounts/${d.id}`); paint(); } catch (e) { fail(e); } } } }))))))))));
+      if (!discounts.length) { mount(host, card(emptyBox(t('ფასდაკლება ჯერ არ არის', 'No discounts yet'), t('Happy hours დილით, პირველი ვიზიტის −20%, პრომო კოდი ინსტაგრამისთვის — აპში ფასი თავისით მცირდება.', 'Morning happy hours, −20% on a first visit, a promo code for Instagram — the price drops by itself in the app.'), button(t('ფასდაკლების შექმნა', 'Create a discount'), { icon: 'plus', onClick: () => dialog(null, services, paint) }), 'percent'))); return; }
+      const when = (d) => [d.startsOn || d.endsOn ? `${d.startsOn ? dateText(d.startsOn) : '…'} – ${d.endsOn ? dateText(d.endsOn) : '…'}` : null, d.weekdays.length ? d.weekdays.map((w) => WEEKDAYS_SHORT[w]).join(', ') : null, d.hoursFrom && d.hoursTo ? `${d.hoursFrom}–${d.hoursTo}` : null].filter(Boolean).join(' · ') || t('ყოველთვის', 'Always');
+      const live = discounts.filter((d) => d.active).length;
+      mount(host, h('div', { class: 'bz-stack' },
+        h('div', { class: 'faint' }, t(`${live} აქტიური · ${discounts.length - live} გამორთული · სულ გამოყენებული ${discounts.reduce((n, d) => n + d.usedCount, 0)}-ჯერ`, `${live} live · ${discounts.length - live} off · used ${discounts.reduce((n, d) => n + d.usedCount, 0)} times in all`)),
+        h('div', { class: 'bz-disc-grid' }, discounts.map((d) => h('div', { class: `bz-disc${d.active ? '' : ' is-off'}` },
+          h('div', { class: 'bz-disc-top' },
+            h('span', { class: 'bz-disc-val' }, d.kind === 'PERCENT' ? `−${d.value}%` : `−${gel(d.value)}`),
+            h('div', { style: { flex: 1, minWidth: 0 } }, h('b', null, d.title), h('div', { class: 'faint' }, d.serviceIds.length ? services.filter((s) => d.serviceIds.includes(s.id)).map((s) => s.name).join(', ') : t('ყველა სერვისზე', 'On every service'))),
+            toggle(d.active, async (on) => { try { await biz.patch(`/discounts/${d.id}`, { active: on }); d.active = on; paint(); } catch (e) { fail(e); paint(); } })),
+          h('div', { class: 'bz-disc-when' }, icon('clock', { size: 14 }), h('span', null, when(d)), d.code ? h('code', { class: 'bz-code' }, d.code) : null),
+          h('div', { class: 'bz-disc-foot' },
+            h('div', { class: 'bz-disc-use' }, h('span', null, t(`გამოყენებული ${d.usedCount}${d.maxUses ? ` / ${d.maxUses}` : '-ჯერ'}`, `Used ${d.usedCount}${d.maxUses ? ` of ${d.maxUses}` : ' times'}`)), d.maxUses ? h('i', null, h('b', { style: { width: `${Math.min(100, Math.round((d.usedCount / d.maxUses) * 100))}%` } })) : null),
+            h('div', { class: 'bz-inline' },
+              button('', { variant: 'ghost', size: 'sm', icon: 'edit', ariaLabel: t('რედაქტირება', 'Edit'), onClick: () => dialog(d, services, paint) }),
+              button('', { variant: 'ghost', size: 'sm', icon: 'trash', ariaLabel: t('წაშლა', 'Delete'), onClick: async () => { if (await confirmDialog({ title: t('წავშალო?', 'Delete?'), body: d.title, confirm: t('წაშლა', 'Delete'), danger: true })) { try { await biz.del(`/discounts/${d.id}`); paint(); } catch (e) { fail(e); } } } }))))))));
     } catch (e) { mount(host, card(emptyBox(t('ვერ ჩაიტვირთა', 'Could not load'), e?.message))); }
   }
   mount(root,

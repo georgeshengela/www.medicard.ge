@@ -1,6 +1,7 @@
 // MEDIBOOK business panel — boot, router and shell (medicard.ge/business).
 // Vanilla ES modules on the /app toolkit: api.js (same /api + Bearer token), ui.js, i18n.js, session.js.
-import { h, mount, icon, iconButton, select, openModal } from '/app/js/ui.js';
+import { h, mount, icon, iconButton, openModal } from '/app/js/ui.js';
+import { select } from './fields.js';
 import { getToken, onTokenChange } from '/app/js/api.js';
 import { t, isEn, lang, setLang } from '/app/js/i18n.js';
 import { loadSession, session, signOut, applyTheme, featureOn } from '/app/js/session.js';

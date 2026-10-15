@@ -1,10 +1,10 @@
 // MEDIBOOK business panel — money: income from completed visits, expenses by hand, profit, methods, people,
 // and a ledger with filters and pages.
-import { h, mount, icon, button, segmented, pageHead, card, input, field, select, busy, openModal, confirmDialog } from '/app/js/ui.js';
+import { h, mount, icon, button, segmented, pageHead, card, input, field, busy, openModal, confirmDialog } from '/app/js/ui.js';
 import { lineChart, donut, meters } from '/app/js/charts.js';
 import { t } from '/app/js/i18n.js';
 import { biz, gel, methodLabel, METHODS, EXPENSE_CATEGORIES, INCOME_CATEGORIES, txCategoryLabel, dateText, when, emptyBox, fail, ok, MONTHS_SHORT, toIso, ymd, debounceFn } from '../shared.js';
-import { dateField } from '../fields.js';
+import { dateField, select } from '../fields.js';
 import { chips, filterBar, listState, pager, paginate, sortRows, sortableHead } from '../lists.js';
 
 export default async function financePage(root, ctx) {

@@ -1,9 +1,9 @@
 // MEDIBOOK business panel — loyalty: cashback rules, gift cards (sell, list), memberships (packages to sell, passes clients hold).
-import { h, mount, icon, button, pageHead, card, input, field, select, busy, openModal, confirmDialog, badge, textarea, debounce } from '/app/js/ui.js';
+import { h, mount, icon, button, pageHead, card, input, field, busy, openModal, confirmDialog, badge, textarea, debounce } from '/app/js/ui.js';
 import { t } from '/app/js/i18n.js';
 import { biz, gel, emptyBox, fail, ok, when, dateText, phoneText, avatar, ymd, addDays, METHODS, minutes } from '../shared.js';
 import { chips, filterBar } from '../lists.js';
-import { dateField } from '../fields.js';
+import { dateField, select } from '../fields.js';
 
 const KIND_LABEL = { BONUS_EARN: t('ბონუსი დაერიცხა', 'Bonus earned'), BONUS_REDEEM: t('ბონუსით გადაიხადა', 'Paid with bonus'), BONUS_ADJUST: t('ბონუსის კორექცია', 'Bonus adjusted'), GIFT_SOLD: t('ბარათი გაიყიდა', 'Gift card sold'), GIFT_REDEEM: t('ბარათით გადაიხადა', 'Paid with a gift card'), MEMBERSHIP_SOLD: t('აბონემენტი გაიყიდა', 'Membership sold'), MEMBERSHIP_USE: t('აბონემენტი გამოიყენა', 'Membership used') };
 const GIFT_STATUS = { ACTIVE: [t('აქტიური', 'Active'), 'ok'], USED: [t('გამოყენებული', 'Used'), 'neutral'], EXPIRED: [t('ვადაგასული', 'Expired'), 'neutral'], CANCELLED: [t('გაუქმებული', 'Cancelled'), 'neutral'] };

@@ -129,8 +129,9 @@ export function fail(e) { toast(e?.message || t('ვერ შესრულდ
 /** Phone input normaliser for forms: 5XX XXX XXX / +995… are both fine. */
 export function phoneText(v) { return String(v || '').replace(/^\+995/, '').replace(/(\d{3})(\d{3})(\d{3})/, '$1 $2 $3'); }
 
-export function emptyBox(title, body, action) {
-  return h('div', { class: 'bz-empty' }, icon('info', { size: 22 }), h('strong', null, title), body ? h('span', null, body) : null, action || null);
+/** An empty state that reads as an invitation: a lilac-outlined tile, a title, one line, the one action. */
+export function emptyBox(title, body, action, ic = 'sparkles') {
+  return h('div', { class: 'bz-empty' }, h('span', { class: 'tile' }, icon(ic, { size: 24 })), h('strong', null, title), body ? h('span', null, body) : null, action || null);
 }
 
 /** 7-day working-hours editor: returns { el, value() } for { "0": [{from,to}], … }. */

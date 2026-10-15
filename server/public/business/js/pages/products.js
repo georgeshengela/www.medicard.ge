@@ -1,5 +1,6 @@
 // MEDIBOOK business panel — products and sales: the shelf (price, cost, stock), restocking, every sale, refunds.
-import { h, mount, icon, button, pageHead, card, input, field, select, busy, openModal, confirmDialog, badge, debounce } from '/app/js/ui.js';
+import { h, mount, icon, button, pageHead, card, input, field, busy, openModal, confirmDialog, badge, debounce } from '/app/js/ui.js';
+import { select } from '../fields.js';
 import { t } from '/app/js/i18n.js';
 import { biz, gel, emptyBox, fail, ok, when, dateText, methodLabel, phoneText } from '../shared.js';
 import { chips, filterBar, pager, paginate, listState } from '../lists.js';

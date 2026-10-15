@@ -120,7 +120,11 @@ body.biz { font-size: 14.5px; }
 .bz-table td { padding: 12px; border-bottom: 1px solid var(--line); vertical-align: middle; }
 .bz-table tr:last-child td { border-bottom: 0; }
 .bz-table tr.is-link { cursor: pointer; }
-.bz-table tr.is-link:hover td { background: var(--surface2); }
+.bz-table tbody tr:hover td { background: var(--surface2); }
+.bz-table tbody tr:hover td:first-child { box-shadow: inset 3px 0 0 var(--book-2); }
+.bz-table tr.is-total:hover td, .bz-table tr.bz-day-row:hover td { background: transparent; box-shadow: none; }
+.biz .btn-primary:hover { background: var(--brand); filter: brightness(1.12); }
+.bz-chip:hover { color: var(--text); }
 .bz-table td.num, .bz-table th.num { text-align: right; font-variant-numeric: tabular-nums; }
 .bz-table .faint { font-size: 12.5px; }
 .bz-table-wrap { overflow-x: auto; }
@@ -250,6 +254,25 @@ body.biz { font-size: 14.5px; }
 .bz-time-note { font-size: 12px; color: var(--text3); margin: 8px 2px 0; display: flex; gap: 10px; }
 .bz-time-note i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; background: transparent; border: 1px solid var(--book-2); margin-right: 4px; vertical-align: -1px; }
 
+/* Select: a field button + a popover list (search when long); the real <select> is hidden underneath */
+.bz-select .bz-native { position: absolute; width: 0; height: 0; opacity: 0; pointer-events: none; inset: 0; }
+.bz-select-btn { cursor: pointer; }
+.bz-select-btn .lbl { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bz-select-btn .ic { color: var(--text3); flex: none; transition: transform .15s; }
+.bz-select-btn.open .ic { transform: rotate(180deg); }
+.bz-select-pop { padding: 6px; }
+.bz-select-search { margin: 2px 2px 6px; width: calc(100% - 4px); }
+.bz-select-list { max-height: 300px; overflow: auto; display: grid; gap: 2px; }
+.bz-select-list button { display: flex; align-items: center; gap: 8px; width: 100%; text-align: left; border: 0; background: none; padding: 9px 10px; border-radius: 10px; font: inherit; font-size: 14px; color: var(--text); cursor: pointer; }
+.bz-select-list button:hover, .bz-select-list button:focus-visible { background: var(--bg); outline: none; }
+.bz-select-list button.on { color: var(--book-ink); font-weight: 600; }
+.bz-select-list button small { color: var(--text3); font-size: 12px; margin-left: auto; }
+.bz-select-list button.on svg { margin-left: auto; color: var(--book-ink); }
+.bz-select-list button small + svg { margin-left: 0; }
+.bz-select.bz-pager-size { width: auto; min-width: 150px; }
+.bz-select.is-sm .bz-field-btn { padding: 6px 10px; font-size: 13px; }
+.form-row .bz-select { min-width: 0; }
+
 /* Pieces the dialogs add around the fields */
 .bz-field-btn:disabled { opacity: .5; cursor: default; }
 .bz-hours-row .bz-field { width: 128px; }
@@ -335,6 +358,52 @@ body.biz { font-size: 14.5px; }
 .bz-svc-total b { color: var(--text); }
 .bz-svc-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
 .bz-svc-list li { display: flex; justify-content: space-between; gap: 10px; padding-left: 10px; border-left: 2px solid var(--book-line); }
+
+/* Services: group cards with a header strip, one row per service */
+.bz-service-card { overflow: hidden; }
+.bz-service-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 18px; border-bottom: 1px solid var(--line); }
+.bz-service-head .card-sub { margin-top: 2px; }
+.bz-service-rows { display: grid; }
+.bz-service-row { display: grid; grid-template-columns: 84px minmax(0, 1fr) 150px 120px 52px 84px; align-items: center; gap: 12px; padding: 12px 18px; border-bottom: 1px solid var(--line); transition: background .12s; }
+.bz-service-row:last-child { border-bottom: 0; }
+.bz-service-row:hover { background: var(--surface2); }
+.bz-service-row.is-offline .bz-service-main b { color: var(--text2); }
+.bz-service-dur { display: inline-flex; align-items: baseline; justify-content: center; gap: 3px; padding: 6px 8px; border-radius: 999px; border: 1px solid var(--book-line); color: var(--book-ink); font-size: 12.5px; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.bz-service-dur small { font-size: 10.5px; color: var(--text3); font-weight: 600; }
+.bz-service-main { min-width: 0; }
+.bz-service-main b { display: block; font-size: 14.5px; }
+.bz-service-main .faint { font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bz-service-who { display: flex; align-items: center; gap: 4px; min-width: 0; }
+.bz-service-who .bz-avatar { margin-right: -6px; box-shadow: 0 0 0 2px var(--surface); }
+.bz-service-who .more, .bz-service-who .faint { margin-left: 10px; font-size: 12px; color: var(--text3); white-space: nowrap; }
+.bz-service-who .bz-bad { display: inline-flex; align-items: center; font-size: 12.5px; }
+.bz-service-price { text-align: right; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.bz-service-online { display: flex; justify-content: center; }
+.bz-service-row .bz-row-actions { justify-content: flex-end; }
+@media (max-width: 900px) { .bz-service-row { grid-template-columns: 72px minmax(0, 1fr) 52px; } .bz-service-who, .bz-service-price, .bz-service-row .bz-row-actions { display: none; } }
+
+/* Discounts as cards */
+.bz-disc-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 12px; }
+.bz-disc { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 14px 16px; display: grid; gap: 10px; transition: border-color .15s; }
+.bz-disc:hover { border-color: var(--bg3); }
+.bz-disc.is-off { opacity: .6; }
+.bz-disc-top { display: flex; align-items: center; gap: 12px; }
+.bz-disc-val { flex: none; min-width: 64px; padding: 8px 10px; border-radius: 12px; border: 1.5px solid var(--book-2); color: var(--book-ink); font-weight: 800; font-size: 16px; text-align: center; font-variant-numeric: tabular-nums; }
+.bz-disc-top b { display: block; font-size: 14.5px; }
+.bz-disc-when { display: flex; align-items: center; gap: 6px; font-size: 13px; color: var(--text2); flex-wrap: wrap; }
+.bz-disc-when svg { color: var(--text3); }
+.bz-disc-when code { margin-left: auto; }
+.bz-disc-foot { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.bz-disc-use { display: grid; gap: 4px; font-size: 12.5px; color: var(--text3); flex: 1; }
+.bz-disc-use i { display: block; height: 4px; border-radius: 2px; background: var(--bg2); overflow: hidden; }
+.bz-disc-use i b { display: block; height: 100%; background: var(--book-2); border-radius: 2px; }
+
+/* Settings: anchor tabs that stay at the top while the long page scrolls */
+.bz-anchors { position: sticky; top: 56px; z-index: 5; display: flex; gap: 6px; flex-wrap: wrap; padding: 8px 0 10px; margin-bottom: 6px; background: linear-gradient(var(--bg) 70%, transparent); }
+.bz-anchors button { border: 1px solid transparent; background: var(--surface); border-radius: 999px; padding: 7px 12px; font: inherit; font-size: 13px; font-weight: 600; color: var(--text2); cursor: pointer; }
+.bz-anchors button:hover { color: var(--text); }
+.bz-anchors button.on { color: var(--book-ink); border-color: var(--book-2); }
+@media (max-width: 760px) { .bz-anchors { top: 52px; } }
 
 /* Phone: the „მეტი“ sheet with every page; the QR card in Settings */
 .bz-more-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
@@ -469,10 +538,12 @@ body.biz { font-size: 14.5px; }
 .bz-heat .lbl { display: grid; place-items: center; }
 
 /* Empty */
-.bz-empty { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 6px; padding: 32px 16px; color: var(--text2); }
-.bz-empty strong { color: var(--text); font-size: 15px; }
-.bz-empty .ic { color: var(--text3); }
-.bz-empty .btn { margin-top: 8px; }
+.bz-empty { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 6px; padding: 40px 20px; color: var(--text2); max-width: 520px; margin: 0 auto; }
+.bz-empty .tile { width: 56px; height: 56px; border-radius: 18px; border: 1.5px solid var(--book-2); display: grid; place-items: center; color: var(--book-ink); margin-bottom: 8px; background: var(--surface); }
+.bz-empty strong { color: var(--text); font-size: 16px; }
+.bz-empty span { line-height: 1.5; }
+.bz-empty .btn { margin-top: 10px; }
+.bz-empty .bz-inline { margin-top: 10px; justify-content: center; }
 
 /* Misc */
 .bz-sub { color: var(--text2); font-size: 13.5px; }

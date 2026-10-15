@@ -1,5 +1,6 @@
 // MEDIBOOK business panel — the sale dialog: products with quantities, a client (optional), who sold, the method.
-import { h, mount, icon, button, busy, field, input, select, openModal, debounce } from '/app/js/ui.js';
+import { h, mount, icon, button, busy, field, input, openModal, debounce } from '/app/js/ui.js';
+import { select } from './fields.js';
 import { t } from '/app/js/i18n.js';
 import { biz, gel, fail, ok, METHODS } from './shared.js';
 

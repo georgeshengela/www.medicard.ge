@@ -1,10 +1,10 @@
 // MEDIBOOK business panel — one appointment: the drawer (status, move, money, notes) and the new-booking dialog.
-import { h, mount, icon, button, busy, field, input, textarea, select, badge, openModal, confirmDialog, debounce } from '/app/js/ui.js';
+import { h, mount, icon, button, busy, field, input, textarea, badge, openModal, confirmDialog, debounce } from '/app/js/ui.js';
 import { t } from '/app/js/i18n.js';
 import { openDrawer } from './drawer.js';
 import { biz, statusBadge, methodLabel, METHODS, gel, minutes, when, clock, ymd, addDays, toIso, fail, ok, avatar, dayLabel, WEEKDAYS_SHORT, MONTHS_SHORT } from './shared.js';
 import { canManage } from './state.js';
-import { dateField, timeField } from './fields.js';
+import { dateField, timeField, select } from './fields.js';
 import { saleDialog } from './sale.js';
 
 /** The staff + services lists most dialogs need. */
@@ -186,7 +186,7 @@ export function openAppointment(appt, ctx, { onChange } = {}) {
     }));
     biz.get(`/appointments/${a.id}/payment-options`).then((o) => {
       opts = o;
-      mount(member, [h('option', { value: '' }, t('არ გამოიყენო', 'Do not use')), ...o.memberships.map((x) => h('option', { value: x.id }, `${x.title} · ${x.kind === 'VISITS' ? t(`დარჩა ${x.visitsLeft}`, `${x.visitsLeft} left`) : gel(x.amountLeft)}`))]);
+      member.setOptions([{ value: '', label: t('არ გამოიყენო', 'Do not use') }, ...o.memberships.map((x) => ({ value: x.id, label: `${x.title} · ${x.kind === 'VISITS' ? t(`დარჩა ${x.visitsLeft}`, `${x.visitsLeft} left`) : gel(x.amountLeft)}` }))]);
       if (o.memberships.length) member.value = o.memberships[0].id;
       mount(bonusInfo, o.bonusBalance > 0 ? t(`კლიენტს აქვს ${gel(o.bonusBalance)} ბონუსი; ამ ვიზიტზე მაქს. ${gel(o.maxBonus)}`, `The client has ${gel(o.bonusBalance)} in bonus; at most ${gel(o.maxBonus)} on this visit`) : t('ბონუსი არ აქვს.', 'No bonus yet.'));
       paintSummary();

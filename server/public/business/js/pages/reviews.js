@@ -1,5 +1,6 @@
 // MEDIBOOK business panel — reviews from the app: the average with its distribution, filters, a public reply, pages.
-import { h, mount, icon, button, pageHead, card, textarea, busy, select } from '/app/js/ui.js';
+import { h, mount, icon, button, pageHead, card, textarea, busy } from '/app/js/ui.js';
+import { select } from '../fields.js';
 import { meters } from '/app/js/charts.js';
 import { t } from '/app/js/i18n.js';
 import { biz, dateText, emptyBox, fail, ok } from '../shared.js';

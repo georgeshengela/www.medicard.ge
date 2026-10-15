@@ -1,6 +1,7 @@
 // MEDIBOOK business panel — the client book: the book in numbers, filters, a sortable table 25 a page,
 // one client's card with history, notes and tags.
-import { h, mount, icon, button, pageHead, card, input, select, textarea, field, busy, openModal, badge } from '/app/js/ui.js';
+import { h, mount, icon, button, pageHead, card, input, textarea, field, busy, openModal, badge } from '/app/js/ui.js';
+import { select } from '../fields.js';
 import { donut } from '/app/js/charts.js';
 import { t } from '/app/js/i18n.js';
 import { biz, gel, when, dateText, avatar, emptyBox, debounceFn, fail, ok, statusBadge, minutes, phoneText } from '../shared.js';

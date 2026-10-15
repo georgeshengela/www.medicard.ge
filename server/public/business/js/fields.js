@@ -143,3 +143,64 @@ export function timeField({ value = '', step = 15, from = '08:00', to = '22:00',
   };
 }
 
+
+/**
+ * select(options, value, props) — a drop-in for ui.js's select: the same `.value`, bubbling `change` events and
+ * `onChange`, but drawn by us — a field button and a popover list (with a search box when it is long) instead of
+ * the browser's own menu. `options` = [{ value, label, hint? }]. Extra: `el.setOptions(list, value?)`, `el.disabled`.
+ */
+export function select(options, value, props = {}) {
+  const { onChange, class: cls, style, placeholder = t('აირჩიე', 'Choose'), ...rest } = props;
+  const native = h('select', { class: 'bz-native', tabindex: -1, 'aria-hidden': 'true', ...rest });
+  const label = h('span', { class: 'lbl' });
+  const button = h('button', { type: 'button', class: 'bz-field-btn bz-select-btn', 'aria-haspopup': 'listbox' }, label, icon('chevronDown', { size: 16, class: 'ic' }));
+  const wrap = h('div', { class: `bz-field bz-select${cls ? ` ${cls}` : ''}`, style }, button, native);
+  let list = [];
+  const same = (a, b) => String(a) === String(b);
+  const current = () => list.find((o) => same(o.value, native.value)) || null;
+  const paint = () => { const c = current(); label.textContent = c ? c.label : placeholder; label.className = c ? 'lbl' : 'lbl ph'; };
+  const setOptions = (opts, v) => {
+    list = (opts || []).map((o) => ({ value: o.value, label: String(o.label ?? o.value), hint: o.hint ?? null }));
+    fill(native, list.map((o) => h('option', { value: o.value }, o.label)));
+    if (v !== undefined && v !== null) native.value = String(v);
+    else if (!current() && list[0]) native.value = String(list[0].value);
+    paint();
+  };
+  setOptions(options, value);
+  const choose = (v) => {
+    if (same(native.value, v)) return;
+    native.value = String(v);
+    paint();
+    native.dispatchEvent(new Event('change', { bubbles: true }));
+  };
+  if (onChange) wrap.addEventListener('change', onChange);
+  button.addEventListener('click', () => {
+    if (button.classList.contains('open')) { closeOpen(); return; }
+    const { pop, close, place } = popover(wrap, button, 'bz-select-pop', Math.max(220, button.offsetWidth));
+    let q = '';
+    const rows = h('div', { class: 'bz-select-list', role: 'listbox' });
+    const paintRows = () => fill(rows, list.filter((o) => !q || o.label.toLowerCase().includes(q)).map((o) => h('button', {
+      type: 'button', role: 'option', class: same(o.value, native.value) ? 'on' : '', 'aria-selected': String(same(o.value, native.value)),
+      onClick: () => { choose(o.value); close(); openPop = null; button.focus(); },
+    }, h('span', null, o.label), o.hint ? h('small', null, o.hint) : null, same(o.value, native.value) ? icon('check', { size: 14 }) : null)));
+    const search = list.length > 8 ? h('input', { class: 'input bz-select-search', placeholder: t('ძებნა…', 'Search…'), onInput: (e) => { q = e.target.value.trim().toLowerCase(); paintRows(); } }) : null;
+    paintRows();
+    fill(pop, search, rows);
+    // Arrows walk the list, Enter picks (the buttons do that themselves), Escape closes (handled globally).
+    pop.addEventListener('keydown', (e) => {
+      if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return;
+      e.preventDefault();
+      const items = [...rows.querySelectorAll('button')];
+      const i = items.indexOf(document.activeElement);
+      const next = e.key === 'ArrowDown' ? items[Math.min(items.length - 1, i + 1)] : items[Math.max(0, i - 1)];
+      next?.focus();
+    });
+    place();
+    (search || rows.querySelector('button.on') || rows.querySelector('button'))?.focus();
+  });
+  Object.defineProperty(wrap, 'value', { get: () => native.value, set: (v) => { native.value = String(v); paint(); } });
+  Object.defineProperty(wrap, 'disabled', { get: () => button.disabled, set: (v) => { button.disabled = Boolean(v); native.disabled = Boolean(v); } });
+  wrap.setOptions = setOptions;
+  wrap.native = native;
+  return wrap;
+}

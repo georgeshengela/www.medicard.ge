@@ -488,6 +488,9 @@ export function staffPublic(row) {
   };
 }
 
+/** A DATE column comes back as a Date at UTC midnight; a string stays as its first ten characters. */
+export const dayOf = (v) => (v instanceof Date ? v.toISOString().slice(0, 10) : String(v).slice(0, 10));
+
 export function discountPublic(row) {
   return {
     id: row.id,
@@ -495,8 +498,8 @@ export function discountPublic(row) {
     kind: row.kind,
     value: Number(row.value),
     serviceIds: Array.isArray(row.serviceIds) ? row.serviceIds : [],
-    startsOn: row.startsOn ? String(row.startsOn).slice(0, 10) : null,
-    endsOn: row.endsOn ? String(row.endsOn).slice(0, 10) : null,
+    startsOn: row.startsOn ? dayOf(row.startsOn) : null,
+    endsOn: row.endsOn ? dayOf(row.endsOn) : null,
     weekdays: Array.isArray(row.weekdays) ? row.weekdays : [],
     hoursFrom: row.hoursFrom ?? null,
     hoursTo: row.hoursTo ?? null,
@@ -512,8 +515,8 @@ export function discountApplies(d, { serviceId, at = new Date(), code = null }) 
   if (ids.length && !ids.includes(serviceId)) return false;
   if (d.code && String(d.code).toUpperCase() !== String(code ?? '').toUpperCase()) return false;
   const ymd = new Date(at.getTime() + 4 * 3600_000).toISOString().slice(0, 10);
-  if (d.startsOn && ymd < String(d.startsOn).slice(0, 10)) return false;
-  if (d.endsOn && ymd > String(d.endsOn).slice(0, 10)) return false;
+  if (d.startsOn && ymd < dayOf(d.startsOn)) return false;
+  if (d.endsOn && ymd > dayOf(d.endsOn)) return false;
   const wds = Array.isArray(d.weekdays) ? d.weekdays.map(Number) : [];
   if (wds.length && !wds.includes(tbilisiWeekday(at))) return false;
   const from = clockToMinutes(d.hoursFrom);

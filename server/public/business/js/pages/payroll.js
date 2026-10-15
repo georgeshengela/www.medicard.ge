@@ -1,8 +1,8 @@
 // MEDIBOOK business panel — payroll: pay rules per person, what each earned over a period, payouts.
-import { h, mount, icon, button, pageHead, card, input, field, select, busy, openModal, confirmDialog, badge, segmented } from '/app/js/ui.js';
+import { h, mount, icon, button, pageHead, card, input, field, busy, openModal, confirmDialog, badge, segmented } from '/app/js/ui.js';
 import { t } from '/app/js/i18n.js';
 import { biz, gel, pct, emptyBox, fail, ok, avatar, dateText, when, methodLabel, METHODS, ymd, addDays } from '../shared.js';
-import { dateField } from '../fields.js';
+import { dateField, select } from '../fields.js';
 
 export default async function payrollPage(root) {
   const host = h('div');

@@ -1,11 +1,11 @@
 // MEDIBOOK business panel — every booking as a table: filters (period, status, person, source, search),
 // day groups, quick actions in the row, 25 a page.
-import { h, mount, icon, button, segmented, pageHead, card, input, select, confirmDialog } from '/app/js/ui.js';
+import { h, mount, icon, button, segmented, pageHead, card, input, confirmDialog } from '/app/js/ui.js';
 import { t } from '/app/js/i18n.js';
 import { biz, ymd, addDays, fromYmd, STATUS, statusBadge, emptyBox, debounceFn, clock, dayLabel, gel, minutes, avatar, phoneText, fail, ok } from '../shared.js';
 import { appointmentLine, loadContext, newAppointmentDialog, openAppointment } from '../appointment.js';
 import { chips, filterBar, groupBy, listState, pager, paginate, sortRows, sortableHead } from '../lists.js';
-import { dateField } from '../fields.js';
+import { dateField, select } from '../fields.js';
 import { canManage } from '../state.js';
 
 const SOURCE = { APP: [t('აპიდან', 'App'), 'smartphone'], WEB: [t('ვებიდან', 'Web'), 'link'], BUSINESS: [t('ხელით', 'Walk-in'), 'userPlus'] };

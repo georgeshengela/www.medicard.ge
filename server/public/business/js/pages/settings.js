@@ -1,5 +1,6 @@
 // MEDIBOOK business panel — settings: the public page (names, contacts, address, hours, pictures) and booking rules.
-import { h, mount, icon, button, pageHead, card, input, textarea, field, select, busy, toggle, confirmDialog, debounce, openModal } from '/app/js/ui.js';
+import { h, mount, icon, button, pageHead, card, input, textarea, field, busy, toggle, confirmDialog, debounce, openModal } from '/app/js/ui.js';
+import { select } from '../fields.js';
 import { get, request } from '/app/js/api.js';
 import { t } from '/app/js/i18n.js';
 import { state, loadState } from '../state.js';
@@ -97,15 +98,28 @@ export default async function settingsPage(root, ctx) {
   const saveSettings = async (patch) => { try { await biz.patch('', { settings: patch }); ok(t('შენახულია', 'Saved')); } catch (e) { fail(e); } };
   const saveRules = button(t('შენახვა', 'Save'), { onClick: () => busy(saveRules, () => saveSettings({ slotMinutes: Number(slot.value), leadMinutes: Number(lead.value), horizonDays: Number(horizon.value), cancelHours: Number(cancelHours.value), bookingNote: bookingNote.value.trim() })) });
 
-  const notifHost = h('div');
+  const notifHost = h('div', { id: 'notify' });
   void paintNotifications(notifHost, b);
+  // Five sections on one long page: a sticky row of anchors keeps the place.
+  const anchors = [['public', t('საჯარო გვერდი', 'Public page')], ['photos', t('სურათები', 'Pictures')], ['booking', t('ონლაინ ჯავშნა', 'Online booking')], ['notify', t('შეტყობინებები', 'Notifications')], ['status', t('სტატუსი', 'Status')]];
+  const anchorRow = h('div', { class: 'bz-anchors' }, anchors.map(([id, label]) => h('button', { type: 'button', 'data-anchor': id, onClick: () => { document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' }); } }, label)));
+  setTimeout(() => {
+    anchors.forEach(([id], i) => { const el = document.getElementById(id); if (!el && i < 4) return; });
+    const io = new IntersectionObserver((entries) => {
+      const seen = entries.filter((e) => e.isIntersecting).sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top)[0];
+      if (!seen) return;
+      anchorRow.querySelectorAll('button').forEach((bt) => bt.classList.toggle('on', bt.dataset.anchor === seen.target.id));
+    }, { rootMargin: '-120px 0px -60% 0px', threshold: 0.01 });
+    anchors.forEach(([id]) => { const el = document.getElementById(id); if (el) io.observe(el); });
+  }, 300);
 
   mount(root,
     pageHead(t('პარამეტრები', 'Settings'), t('რას ხედავს კლიენტი აპში და როგორ იწერება.', 'What the client sees in the app and how booking works.')),
+    anchorRow,
     b.status === 'PENDING' ? h('div', { class: 'bz-banner is-warn' }, icon('clock', { size: 20 }), h('p', null, h('b', null, t('ბიზნესი განიხილება', 'Under review')), t('ყველაფერი, რასაც აქ შეავსებ, დადასტურების მომენტში აპში გამოჩნდება.', 'Everything you fill in here goes live in the app the moment it is approved.'))) : null,
     h('div', { class: 'bz-grid' },
       h('div', { style: { display: 'grid', gap: '16px', alignContent: 'start' } },
-        card(h('div', { class: 'card-head' }, h('div', null, h('div', { class: 'card-title' }, t('საჯარო გვერდი', 'Public page')), h('div', { class: 'card-sub' }, t('სახელი, კონტაქტი, მისამართი, საათები, აღწერა.', 'Name, contact, address, hours, about.')))),
+        card({ id: 'public' }, h('div', { class: 'card-head' }, h('div', null, h('div', { class: 'card-title' }, t('საჯარო გვერდი', 'Public page')), h('div', { class: 'card-sub' }, t('სახელი, კონტაქტი, მისამართი, საათები, აღწერა.', 'Name, contact, address, hours, about.')))),
           h('div', { class: 'form' },
             h('div', { class: 'form-row' }, field(t('სახელი ქართულად', 'Name in Georgian'), nameKa), field(t('სახელი ლათინურად', 'Name in Latin letters'), name)),
             h('div', { class: 'form-row' }, field(t('კატეგორია', 'Category'), category), field(t('ტეგები', 'Tags'), tags)),
@@ -118,9 +132,9 @@ export default async function settingsPage(root, ctx) {
             field(t('აღწერა ქართულად', 'About in Georgian'), descriptionKa), field(t('აღწერა ინგლისურად', 'About in English'), descriptionEn),
             h('div', { class: 'card-title', style: { marginTop: '6px' } }, t('სამუშაო საათები', 'Opening hours')), hours.el,
             h('div', { style: { display: 'flex', justifyContent: 'flex-end' } }, saveProfile))),
-        card(h('div', { class: 'card-head' }, h('div', null, h('div', { class: 'card-title' }, t('სურათები', 'Pictures')), h('div', { class: 'card-sub' }, t('ფოტოიანი გვერდი 3-ჯერ მეტ ჯავშანს იღებს.', 'A page with pictures gets three times the bookings.')))), photosHost)),
+        card({ id: 'photos' }, h('div', { class: 'card-head' }, h('div', null, h('div', { class: 'card-title' }, t('სურათები', 'Pictures')), h('div', { class: 'card-sub' }, t('ფოტოიანი გვერდი 3-ჯერ მეტ ჯავშანს იღებს.', 'A page with pictures gets three times the bookings.')))), photosHost)),
       h('div', { style: { display: 'grid', gap: '16px', alignContent: 'start' } },
-        card(h('div', { class: 'card-head' }, h('div', null, h('div', { class: 'card-title' }, t('ონლაინ ჯავშნა', 'Online booking')), h('div', { class: 'card-sub' }, t('როგორ ეწერებიან აპიდან.', 'How people book from the app.')))),
+        card({ id: 'booking' }, h('div', { class: 'card-head' }, h('div', null, h('div', { class: 'card-title' }, t('ონლაინ ჯავშნა', 'Online booking')), h('div', { class: 'card-sub' }, t('როგორ ეწერებიან აპიდან.', 'How people book from the app.')))),
           h('div', { style: { display: 'grid', gap: '12px' } },
             h('div', { class: 'bz-muted-row' }, h('div', null, h('b', null, t('ონლაინ ჯავშნა ჩართულია', 'Online booking on')), h('div', { class: 'faint' }, t('გამორთვისას გვერდი რჩება, ღილაკი „ჩაწერა“ ქრება.', 'Off: the page stays, the Book button disappears.'))), toggle(s.onlineBooking, (on) => saveSettings({ onlineBooking: on }))),
             h('div', { class: 'bz-muted-row' }, h('div', null, h('b', null, t('ავტომატური დადასტურება', 'Automatic confirmation')), h('div', { class: 'faint' }, t('გამორთვისას ყოველი ჯავშანი „დასადასტურებელი“ მოდის.', 'Off: every booking arrives as "to confirm".'))), toggle(s.autoConfirm, (on) => saveSettings({ autoConfirm: on }))),
@@ -131,7 +145,7 @@ export default async function settingsPage(root, ctx) {
               field(t('შენიშვნა ჯავშნის წინ', 'Note before booking'), bookingNote),
               h('div', { style: { display: 'flex', justifyContent: 'flex-end' } }, saveRules)))),
         notifHost,
-        card(h('div', { class: 'card-title', style: { marginBottom: '8px' } }, t('სტატუსი', 'Status')),
+        card({ id: 'status' }, h('div', { class: 'card-title', style: { marginBottom: '8px' } }, t('სტატუსი', 'Status')),
           h('dl', { class: 'bz-kv' },
             h('dt', null, t('აპში', 'In the app')), h('dd', null, b.status === 'CLAIMED' ? h('span', { class: 'badge badge-ok' }, t('ჩართულია', 'Live')) : b.status === 'PENDING' ? h('span', { class: 'badge badge-warn' }, t('განიხილება', 'Under review')) : h('span', { class: 'badge badge-neutral' }, b.status)),
             h('dt', null, t('ბმული', 'Link')), h('dd', null, h('code', { style: { fontSize: '12px' } }, `medicard.ge/app/book/${b.slug}`),
