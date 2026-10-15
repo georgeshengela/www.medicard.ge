@@ -84,6 +84,13 @@ redirects to `/book`; `/visits/editor` stays. Home: MEDIBOOK door in every layou
 booking row, directory and modules sheet entries. `api.book.*` in `api.ts`; `/api/book` writes invalidate
 `book` + `home` (events are read-only). Version 1.0.0.25.5 on main — a new module is review-worthy (2.5.2): it
 ships with the next store build, not by OTA.
+**Clocks and days are the business's — Georgia, fixed UTC+4 — never the phone's zone** (1.0.0.25.14, after the
+web's 6ca6f336): `bookFormat.ts` `tbilisi()` shifts an instant by +4 h and reads UTC fields (`clockOf`,
+`tbilisiYmd`, `tbilisiWeekday`, `dayLabel`, `whenLabel`, `todayHoursLine`, `weekHours`); `dayLabel` /
+`weekdayShort` take a `YYYY-MM-DD` civil day as it is or an instant in Tbilisi — never pass `dateFromYmd(x)` to
+them (its local midnight can be another Tbilisi day). `discountFor` matches weekday / day / clock in Tbilisi like
+the server. Calendar exports and reminder triggers stay real instants. Test `npm --prefix mobile run test:book`
+(a Brussels phone: 07:30Z prints „11:30“, 20:30Z is already tomorrow).
 
 ## Web app (`server/public/app/js/pages/book.js`, `css/book.css`, routes in `main.js` with `feature: 'book'`)
 

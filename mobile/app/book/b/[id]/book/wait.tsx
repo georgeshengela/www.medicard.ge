@@ -12,7 +12,7 @@ import { KeyboardFormShell } from '@/components/ui/KeyboardFormShell';
 import { RecordsPageSkeleton } from '@/components/ui/Skeleton';
 import { tx } from '@/i18n/locale';
 import { api } from '@/lib/api';
-import { addDays, dateFromYmd, dayLabel, monthDay, ymdLocal } from '@/lib/book/bookFormat';
+import { addDays, dayLabel, monthDay, tbilisiYmd } from '@/lib/book/bookFormat';
 import type { BookDayPart, BookWaitlistEntry } from '@/lib/book/bookTypes';
 import { isPhoneRequiredError, offerPhoneVerification } from '@/lib/phoneGate';
 import { invalidate } from '@/lib/queryClient';
@@ -39,7 +39,7 @@ export default function BookWaitStep() {
   const ink = moduleInk('book', dark);
   const insets = useSafeAreaInsets();
   const { router, b, query, service, serviceIds, selected, bundle, staffId, person, params } = useBookingFlow();
-  const fromDay = params.date && /^\d{4}-\d{2}-\d{2}$/.test(String(params.date)) && String(params.date) >= ymdLocal() ? String(params.date) : null;
+  const fromDay = params.date && /^\d{4}-\d{2}-\d{2}$/.test(String(params.date)) && String(params.date) >= tbilisiYmd() ? String(params.date) : null;
   const [range, setRange] = useState<RangeKey>(fromDay ? 'day' : '14');
   const [parts, setParts] = useState<BookDayPart[]>([]);
   const [note, setNote] = useState('');
@@ -48,7 +48,7 @@ export default function BookWaitStep() {
 
   const horizon = Math.max(1, b?.settings.horizonDays ?? 30);
   const dates = useMemo(() => {
-    const today = ymdLocal();
+    const today = tbilisiYmd();
     if (range === 'day' && fromDay) return { from: fromDay, to: fromDay };
     const days = Math.min(horizon, Number(range));
     return { from: today, to: addDays(today, days) };
@@ -129,7 +129,7 @@ export default function BookWaitStep() {
 
           <Text style={[hubText.sectionTitle, { color: c.text100, marginTop: 4 }]}>{tx('რომელ დღეებში?', 'Which days?')}</Text>
           <View style={[s.wrap, { marginTop: 10 }]}>
-            {fromDay ? <Chip on={range === 'day'} label={dayLabel(dateFromYmd(fromDay))} onPress={() => setRange('day')} /> : null}
+            {fromDay ? <Chip on={range === 'day'} label={dayLabel(fromDay)} onPress={() => setRange('day')} /> : null}
             {(['7', '14', '30'] as RangeKey[]).filter((k) => Number(k) <= horizon || k === '7').map((k) => (
               <Chip key={k} on={range === k} label={tx(`უახლოეს ${k} დღეში`, `Next ${k} days`)} onPress={() => setRange(k)} />
             ))}
@@ -159,7 +159,7 @@ export default function BookWaitStep() {
 }
 
 function rangeLabel(from: string, to: string): string {
-  return from === to ? dayLabel(dateFromYmd(from)) : `${monthDay(from)} – ${monthDay(to)}`;
+  return from === to ? dayLabel(from) : `${monthDay(from)} – ${monthDay(to)}`;
 }
 
 function Chip({ on, label, onPress }: { on: boolean; label: string; onPress: () => void }) {

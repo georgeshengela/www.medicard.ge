@@ -7,7 +7,7 @@ import { imageUri } from '@/components/book/BookUI';
 import { useAccountQuery } from '@/hooks/useAccountQuery';
 import { isEn, tx } from '@/i18n/locale';
 import { api } from '@/lib/api';
-import { dateFromYmd, dayLabel, durationLabel, priceLabel } from '@/lib/book/bookFormat';
+import { clockOf, dayLabel, durationLabel, priceLabel, tbilisiWeekday, tbilisiYmd } from '@/lib/book/bookFormat';
 import type { BookBusinessDetail, BookDiscount, BookService, BookStaff } from '@/lib/book/bookTypes';
 import { FRESH } from '@/lib/queryClient';
 import { HUB, hubText } from '@/theme/hub';
@@ -144,13 +144,16 @@ export function ChosenPills({ items }: { items: Array<string | null | undefined>
   );
 }
 
-/** A discount that covers this service today (public, active ones only); the server applies the exact one. */
+/**
+ * A discount that covers this service today (public, active ones only); the server applies the exact one.
+ * Weekday, day and clock are the business's (Tbilisi), like the server's `discountApplies`.
+ */
 export function discountFor(discounts: BookDiscount[] | undefined, service: BookService | null, at?: Date): BookDiscount | null {
   if (!discounts?.length || !service) return null;
   const when = at ?? new Date();
-  const wd = when.getDay();
-  const hhmm = `${String(when.getHours()).padStart(2, '0')}:${String(when.getMinutes()).padStart(2, '0')}`;
-  const ymd = `${when.getFullYear()}-${String(when.getMonth() + 1).padStart(2, '0')}-${String(when.getDate()).padStart(2, '0')}`;
+  const wd = tbilisiWeekday(when);
+  const hhmm = clockOf(when);
+  const ymd = tbilisiYmd(when);
   return discounts.find((d) => {
     if (d.serviceIds?.length && !d.serviceIds.includes(service.id)) return false;
     if (d.weekdays?.length && !d.weekdays.includes(wd)) return false;
@@ -223,7 +226,7 @@ export function PersonRow({ person, first, nearest, onPress }: { person: BookSta
 
 export function nearestFromStrip(days: Array<{ date: string; count: number }>): string | null {
   const hit = days.find((d) => d.count > 0);
-  return hit ? dayLabel(dateFromYmd(hit.date)) : null;
+  return hit ? dayLabel(hit.date) : null;
 }
 
 const s = StyleSheet.create({

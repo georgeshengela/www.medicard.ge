@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/Button';
 import { RecordsPageSkeleton } from '@/components/ui/Skeleton';
 import { tx } from '@/i18n/locale';
 import { api } from '@/lib/api';
-import { addDays, dateFromYmd, dayLabel, durationLabel, weekdayShort, ymdLocal } from '@/lib/book/bookFormat';
+import { addDays, dateFromYmd, dayLabel, durationLabel, tbilisiYmd, weekdayOfYmd, weekdayShort } from '@/lib/book/bookFormat';
 import type { BookAvailability, BookDayStrip, BookSlot } from '@/lib/book/bookTypes';
 import { HUB, hubText } from '@/theme/hub';
 import { useIsDark, useThemeColors } from '@/theme/colors';
@@ -52,7 +52,7 @@ export default function BookWhenStep() {
         if (!alive) return;
         setStrip(res);
         const firstFree = res.days.find((d) => d.count > 0) ?? null;
-        if (!date || !res.days.some((d) => d.date === date && d.count > 0)) setDate(firstFree?.date ?? res.days[0]?.date ?? ymdLocal());
+        if (!date || !res.days.some((d) => d.date === date && d.count > 0)) setDate(firstFree?.date ?? res.days[0]?.date ?? tbilisiYmd());
         if (!firstFree) { setEarliest(null); return; }
         try {
           const av = await api.book.availability(b.id, { ...serviceParams(serviceIds), date: firstFree.date, staffId });
@@ -82,8 +82,7 @@ export default function BookWhenStep() {
     const days = strip?.days ?? [];
     if (!days.length) return [] as Day[][];
     const byDate = new Map(days.map((d) => [d.date, d]));
-    const first = dateFromYmd(days[0].date);
-    const start = addDays(days[0].date, -((first.getDay() + 6) % 7));
+    const start = addDays(days[0].date, -((weekdayOfYmd(days[0].date) + 6) % 7));
     const last = days[days.length - 1].date;
     const out: Day[][] = [];
     let cursor = start;
@@ -185,7 +184,7 @@ export default function BookWhenStep() {
                 <View style={[s.zap, { borderColor: ink }]}><Zap size={16} color={ink} strokeWidth={2.2} /></View>
                 <View style={{ flex: 1 }}>
                   <Text style={[hubText.cardTitle, { color: c.text100 }]}>{tx('ყველაზე ახლო თავისუფალი დრო', 'Earliest free time')}</Text>
-                  <Text style={[hubText.caption, { color: c.text200 }]}>{dayLabel(dateFromYmd(earliest.date))} · {earliest.slot.time}</Text>
+                  <Text style={[hubText.caption, { color: c.text200 }]}>{dayLabel(earliest.date)} · {earliest.slot.time}</Text>
                 </View>
                 <Text style={[hubText.small, { color: ink, fontFamily: 'NotoSansGeorgian_600SemiBold' }]}>{tx('ავიღოთ', 'Take it')}</Text>
               </Pressable>
@@ -217,21 +216,20 @@ export default function BookWhenStep() {
                       {row.map((d) => {
                         const on = d.date === date;
                         const free = d.count > 0;
-                        const dt = dateFromYmd(d.date);
-                        const isToday = d.date === ymdLocal();
+                        const isToday = d.date === tbilisiYmd();
                         return (
                           <Pressable
                             key={d.date}
                             accessibilityRole="button"
                             accessibilityState={{ selected: on, disabled: !free }}
-                            accessibilityLabel={`${dayLabel(dt)}${free ? tx(`, ${d.count} თავისუფალი დრო`, `, ${d.count} free slots`) : d.count === 0 ? tx(', თავისუფალი დრო არ არის', ', no free time') : tx(', არ იწერება', ', not open')}`}
+                            accessibilityLabel={`${dayLabel(d.date)}${free ? tx(`, ${d.count} თავისუფალი დრო`, `, ${d.count} free slots`) : d.count === 0 ? tx(', თავისუფალი დრო არ არის', ', no free time') : tx(', არ იწერება', ', not open')}`}
                             disabled={!free}
                             onPress={() => pickDay(d)}
                             style={[s.day, { backgroundColor: on ? ink : 'transparent' }]}
                           >
-                            <Text style={[hubText.small, { color: on ? '#fff' : c.text300 }]}>{weekdayShort(dt)}</Text>
+                            <Text style={[hubText.small, { color: on ? '#fff' : c.text300 }]}>{weekdayShort(d.date)}</Text>
                             <View style={[s.dayNum, isToday && !on ? { borderWidth: 1, borderColor: ink } : null]}>
-                              <Text style={[hubText.value, { color: on ? '#fff' : free ? c.text100 : c.text300, fontSize: 16, opacity: free || on ? 1 : 0.5 }]}>{dt.getDate()}</Text>
+                              <Text style={[hubText.value, { color: on ? '#fff' : free ? c.text100 : c.text300, fontSize: 16, opacity: free || on ? 1 : 0.5 }]}>{Number(d.date.slice(8, 10))}</Text>
                             </View>
                             <View style={{ width: 5, height: 5, borderRadius: 3, backgroundColor: free ? (on ? '#fff' : ink) : 'transparent' }} />
                           </Pressable>
@@ -246,7 +244,7 @@ export default function BookWhenStep() {
             {date ? (
               <View style={{ marginTop: HUB.sectionGap }}>
                 <View style={{ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 10 }}>
-                  <Text style={[hubText.sectionTitle, { color: c.text100 }]}>{dayLabel(dateFromYmd(date))}</Text>
+                  <Text style={[hubText.sectionTitle, { color: c.text100 }]}>{dayLabel(date)}</Text>
                   <Text style={[hubText.caption, { color: c.text300 }]}>{slots ? tx(`${slots.slots.length} თავისუფალი დრო · ${durationLabel(bundle.durationMin)}`, `${slots.slots.length} free · ${durationLabel(bundle.durationMin)}`) : ''}</Text>
                 </View>
                 {!slots ? (
@@ -290,7 +288,7 @@ export default function BookWhenStep() {
       {b && service ? (
         <View style={[s.footer, { paddingBottom: insets.bottom + 12, backgroundColor: c.bg100, borderTopColor: c.bg200 }]}>
           <Text style={[hubText.caption, { color: slot ? c.text100 : c.text300, textAlign: 'center', marginBottom: 8 }]}>
-            {slot && date ? `${dayLabel(dateFromYmd(date))} · ${slot.time} · ${bundleLine(bundle)}` : tx('აირჩიე დღე და დრო', 'Pick a day and a time')}
+            {slot && date ? `${dayLabel(date)} · ${slot.time} · ${bundleLine(bundle)}` : tx('აირჩიე დღე და დრო', 'Pick a day and a time')}
           </Text>
           <Button label={tx('გაგრძელება', 'Continue')} size="lg" onPress={next} disabled={!slot} />
         </View>

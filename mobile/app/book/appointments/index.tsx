@@ -9,7 +9,7 @@ import { ListRowsSkeleton } from '@/components/ui/Skeleton';
 import { useAccountQuery } from '@/hooks/useAccountQuery';
 import { tx } from '@/i18n/locale';
 import { api } from '@/lib/api';
-import { dateFromYmd, dayLabel, monthDay, whenLabel, ymdLocal } from '@/lib/book/bookFormat';
+import { dayLabel, monthDay, tbilisiYmd, whenLabel } from '@/lib/book/bookFormat';
 import type { BookAppointment, BookWaitlistEntry } from '@/lib/book/bookTypes';
 import { FRESH, invalidate } from '@/lib/queryClient';
 import { HUB, hubText } from '@/theme/hub';
@@ -34,7 +34,7 @@ export default function MyBookingsScreen() {
   const groups = useMemo(() => {
     const map = new Map<string, BookAppointment[]>();
     for (const a of list) {
-      const key = ymdLocal(new Date(a.startsAt));
+      const key = tbilisiYmd(a.startsAt);
       map.set(key, [...(map.get(key) ?? []), a]);
     }
     return [...map.entries()];
@@ -46,7 +46,7 @@ export default function MyBookingsScreen() {
     const q: Record<string, string> = { serviceId: e.serviceIds[0] ?? e.serviceId ?? '' };
     if (e.serviceIds.length > 1) q.serviceIds = e.serviceIds.join(',');
     if (e.staffId) q.staffId = e.staffId;
-    q.date = e.offeredStartsAt ? ymdLocal(new Date(e.offeredStartsAt)) : e.fromDate;
+    q.date = e.offeredStartsAt ? tbilisiYmd(e.offeredStartsAt) : e.fromDate;
     router.push({ pathname: `/book/b/${e.businessId}/book/when`, params: q } as never);
   };
   const leave = (e: BookWaitlistEntry) => {
@@ -86,7 +86,7 @@ export default function MyBookingsScreen() {
                 <View style={[s.waitIcon, { borderColor: ink }]}><BellRing size={16} color={ink} strokeWidth={2.2} /></View>
                 <View style={{ flex: 1, minWidth: 0, gap: 3 }}>
                   <Text numberOfLines={1} style={[hubText.cardTitle, { color: c.text100 }]}>{e.serviceName}</Text>
-                  <Text numberOfLines={1} style={[hubText.caption, { color: c.text200 }]}>{e.business?.name ?? ''}{e.staffName ? ` · ${e.staffName}` : ''} · {e.fromDate === e.toDate ? dayLabel(dateFromYmd(e.fromDate)) : `${monthDay(e.fromDate)} – ${monthDay(e.toDate)}`}</Text>
+                  <Text numberOfLines={1} style={[hubText.caption, { color: c.text200 }]}>{e.business?.name ?? ''}{e.staffName ? ` · ${e.staffName}` : ''} · {e.fromDate === e.toDate ? dayLabel(e.fromDate) : `${monthDay(e.fromDate)} – ${monthDay(e.toDate)}`}</Text>
                   {e.status === 'OFFERED' && e.offeredStartsAt ? (
                     <Pressable accessibilityRole="button" onPress={() => bookOffer(e)} style={[s.offer, { borderColor: ink }]}>
                       <Text style={[hubText.small, { color: c.text100, fontFamily: 'NotoSansGeorgian_600SemiBold' }]}>{tx('გათავისუფლდა: ', 'Opened up: ')}{whenLabel(e.offeredStartsAt)}</Text>

@@ -1,6 +1,13 @@
 /**
- * MEDIBOOK formatting — pure. Dates and clocks in the phone's own zone (every business is in Georgia;
- * the phone of someone booking from abroad shows their local clock, like a calendar app would).
+ * MEDIBOOK formatting — pure. Every clock and day is the business's own: Georgia, a fixed UTC+4 (the server's
+ * `lib/book/time.js` and the web's `tbilisi()` use the same rule) — never the phone's zone. The slots arrive as
+ * Tbilisi labels („11:30“), so the summary, the done card, the hub, the appointment page, the cancel dialog, Home
+ * and the local reminder text must say the same time whatever zone the phone is in: a person booking from Belgium
+ * picked „11:30“ and read „ხვალ · 09:30“ before. Calendar exports and reminder triggers stay real instants.
+ *
+ * Two kinds of value travel here: an instant (ISO string / Date — `startsAt`, `endsAt`, now) and a civil day
+ * (`YYYY-MM-DD` from the day strip, `fromDate`, `date` params). A civil day is read as it is; an instant is shifted
+ * by +4 h and read through its UTC fields.
  */
 import { isEn, tx } from '../../i18n/locale.js';
 const en = () => isEn();
@@ -13,51 +20,98 @@ const EN_DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const KA_DAYS_LONG = ['კვირა', 'ორშაბათი', 'სამშაბათი', 'ოთხშაბათი', 'ხუთშაბათი', 'პარასკევი', 'შაბათი'];
 const EN_DAYS_LONG = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 
-export function ymdLocal(d = new Date()): string {
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+/** Georgia has kept UTC+4 all year since 2005, so a fixed offset is exact and needs no tz database. */
+export const TBILISI_OFFSET_MS = 4 * 3600_000;
+const YMD = /^\d{4}-\d{2}-\d{2}$/;
+const pad = (n: number) => String(n).padStart(2, '0');
+
+type Instant = string | number | Date;
+
+/** The instant shifted so that its UTC fields read as Tbilisi wall-clock fields. */
+export function tbilisi(at: Instant): Date {
+  const ms = at instanceof Date ? at.getTime() : typeof at === 'number' ? at : new Date(at).getTime();
+  return new Date(ms + TBILISI_OFFSET_MS);
 }
 
+/** `YYYY-MM-DD` of an instant (default: now) in Tbilisi. */
+export function tbilisiYmd(at: Instant = new Date()): string {
+  return tbilisi(at).toISOString().slice(0, 10);
+}
+
+/** 0 = Sunday … 6 = Saturday of an instant (default: now) in Tbilisi. */
+export function tbilisiWeekday(at: Instant = new Date()): number {
+  return tbilisi(at).getUTCDay();
+}
+
+/** `HH:mm` of an instant in Tbilisi — the same label the server's slots carry. */
+export function clockOf(at: Instant): string {
+  const d = tbilisi(at);
+  return `${pad(d.getUTCHours())}:${pad(d.getUTCMinutes())}`;
+}
+
+/** Civil-day arithmetic on `YYYY-MM-DD`, free of any zone (and of the phone's DST days). */
 export function addDays(ymd: string, days: number): string {
   const [y, m, d] = ymd.split('-').map(Number);
-  return ymdLocal(new Date(y, m - 1, d + days));
+  return new Date(Date.UTC(y, m - 1, d + days)).toISOString().slice(0, 10);
 }
 
+/** Weekday (0 = Sunday) of a `YYYY-MM-DD`. */
+export function weekdayOfYmd(ymd: string): number {
+  const [y, m, d] = ymd.split('-').map(Number);
+  return new Date(Date.UTC(y, m - 1, d)).getUTCDay();
+}
+
+/** Days between two `YYYY-MM-DD` (b − a). */
+export function daysBetweenYmd(a: string, b: string): number {
+  return Math.round((Date.parse(`${b}T00:00:00Z`) - Date.parse(`${a}T00:00:00Z`)) / 86_400_000);
+}
+
+/**
+ * A civil day as a Date at the phone's local midnight — only for reading calendar fields of that day
+ * (`getDate()`, `getMonth()`, `getFullYear()`), never for clocks or for `dayLabel`, which takes the `YYYY-MM-DD` itself.
+ */
 export function dateFromYmd(ymd: string): Date {
   const [y, m, d] = ymd.split('-').map(Number);
   return new Date(y, m - 1, d);
 }
 
-export function clockOf(iso: string | Date): string {
-  const d = typeof iso === 'string' ? new Date(iso) : iso;
-  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
+/** The calendar fields of a value: a `YYYY-MM-DD` as it is, an instant in Tbilisi. */
+function civil(v: string | Date): { ymd: string; weekday: number; date: number; month: number } {
+  if (typeof v === 'string' && YMD.test(v)) {
+    const [, m, d] = v.split('-').map(Number);
+    return { ymd: v, weekday: weekdayOfYmd(v), date: d, month: m - 1 };
+  }
+  const t = tbilisi(v);
+  return { ymd: t.toISOString().slice(0, 10), weekday: t.getUTCDay(), date: t.getUTCDate(), month: t.getUTCMonth() };
 }
 
-export function weekdayShort(d: Date): string {
-  return (en() ? EN_DAYS : KA_DAYS)[d.getDay()];
+/** „ორშ“ / „Mon“ of a `YYYY-MM-DD`, or of an instant in Tbilisi. */
+export function weekdayShort(v: string | Date): string {
+  return (en() ? EN_DAYS : KA_DAYS)[civil(v).weekday];
 }
 
 export function weekdayLong(index: number): string {
   return (en() ? EN_DAYS_LONG : KA_DAYS_LONG)[index];
 }
 
-/** „ორშ, 19 ოქტ“ / „Mon, 19 Oct“; today and tomorrow by name. */
-export function dayLabel(iso: string | Date, now = new Date()): string {
-  const d = typeof iso === 'string' ? new Date(iso) : iso;
-  const diff = Math.round((dateFromYmd(ymdLocal(d)).getTime() - dateFromYmd(ymdLocal(now)).getTime()) / 86_400_000);
+/** „ორშ, 19 ოქტ“ / „Mon, 19 Oct“; today, tomorrow and yesterday by name — all on Tbilisi's calendar. */
+export function dayLabel(v: string | Date, now: Instant = new Date()): string {
+  const c = civil(v);
+  const diff = daysBetweenYmd(tbilisiYmd(now), c.ymd);
   if (diff === 0) return tx('დღეს', 'Today');
   if (diff === 1) return tx('ხვალ', 'Tomorrow');
   if (diff === -1) return tx('გუშინ', 'Yesterday');
-  return `${weekdayShort(d)}, ${d.getDate()} ${(en() ? EN_MONTHS : KA_MONTHS)[d.getMonth()]}`;
+  return `${(en() ? EN_DAYS : KA_DAYS)[c.weekday]}, ${c.date} ${(en() ? EN_MONTHS : KA_MONTHS)[c.month]}`;
 }
 
-/** „ორშ, 19 ოქტ · 15:00“ */
-export function whenLabel(iso: string, now = new Date()): string {
-  return `${dayLabel(iso, now)} · ${clockOf(iso)}`;
+/** „ორშ, 19 ოქტ · 15:00“ — the day and the clock of an instant, both in Tbilisi. */
+export function whenLabel(at: Instant, now: Instant = new Date()): string {
+  return `${dayLabel(new Date(at), now)} · ${clockOf(at)}`;
 }
 
 export function monthDay(ymd: string): string {
-  const d = dateFromYmd(ymd);
-  return `${d.getDate()} ${(en() ? EN_MONTHS : KA_MONTHS)[d.getMonth()]}`;
+  const c = civil(ymd);
+  return `${c.date} ${(en() ? EN_MONTHS : KA_MONTHS)[c.month]}`;
 }
 
 export function priceLabel(price: number | null, priceTo?: number | null, currency = 'GEL'): string {
@@ -112,17 +166,17 @@ export function isUpcoming(a: BookAppointment, now = new Date()): boolean {
   return (a.status === 'PENDING' || a.status === 'CONFIRMED') && new Date(a.endsAt).getTime() >= now.getTime();
 }
 
-/** Today's opening line: „დღეს 10:00–19:00“ / „დახურულია“ / unknown → null. */
-export function todayHoursLine(hours: BookHours | null | undefined, now = new Date()): string | null {
+/** Today's opening line (Tbilisi's today): „დღეს 10:00–19:00“ / „დახურულია“ / unknown → null. */
+export function todayHoursLine(hours: BookHours | null | undefined, now: Instant = new Date()): string | null {
   if (!hours || !Object.values(hours).some((l) => Array.isArray(l) && l.length)) return null;
-  const list = hours[String(now.getDay())] ?? [];
+  const list = hours[String(tbilisiWeekday(now))] ?? [];
   if (!list.length) return tx('დღეს დახურულია', 'Closed today');
   return tx(`დღეს ${list.map((r) => `${r.from}–${r.to}`).join(', ')}`, `Today ${list.map((r) => `${r.from}–${r.to}`).join(', ')}`);
 }
 
-/** Seven rows for the hours card, Monday first. */
-export function weekHours(hours: BookHours): Array<{ day: string; ranges: string; today: boolean }> {
-  const todayIndex = new Date().getDay();
+/** Seven rows for the hours card, Monday first; „today“ is Tbilisi's. */
+export function weekHours(hours: BookHours, now: Instant = new Date()): Array<{ day: string; ranges: string; today: boolean }> {
+  const todayIndex = tbilisiWeekday(now);
   return [1, 2, 3, 4, 5, 6, 0].map((d) => {
     const list = hours[String(d)] ?? [];
     return { day: weekdayLong(d), ranges: list.length ? list.map((r) => `${r.from}–${r.to}`).join(', ') : tx('დახურულია', 'Closed'), today: d === todayIndex };

@@ -7,7 +7,7 @@ import { ChosenPills, FlowHeader, PersonRow, StepBar, StepTitle, serviceParams, 
 import { RecordsPageSkeleton } from '@/components/ui/Skeleton';
 import { tx } from '@/i18n/locale';
 import { api } from '@/lib/api';
-import { dateFromYmd, dayLabel } from '@/lib/book/bookFormat';
+import { dayLabel } from '@/lib/book/bookFormat';
 import type { BookSlot } from '@/lib/book/bookTypes';
 import { HUB, hubText } from '@/theme/hub';
 import { useIsDark, useThemeColors } from '@/theme/colors';
@@ -64,9 +64,9 @@ export default function BookWhoStep() {
     if (!n || !n.slots.length) return null;
     return (
       <View style={s.chipsRow}>
-        <Text style={[hubText.small, { color: c.text300, marginRight: 2 }]}>{dayLabel(dateFromYmd(n.date))}:</Text>
+        <Text style={[hubText.small, { color: c.text300, marginRight: 2 }]}>{dayLabel(n.date)}:</Text>
         {n.slots.map((sl) => (
-          <Pressable key={sl.startsAt} accessibilityRole="button" accessibilityLabel={tx(`${dayLabel(dateFromYmd(n.date))} ${sl.time}`, `${dayLabel(dateFromYmd(n.date))} ${sl.time}`)} onPress={() => pickSlot(id, n.date, sl)} style={[s.chip, { borderColor: ink }]}>
+          <Pressable key={sl.startsAt} accessibilityRole="button" accessibilityLabel={tx(`${dayLabel(n.date)} ${sl.time}`, `${dayLabel(n.date)} ${sl.time}`)} onPress={() => pickSlot(id, n.date, sl)} style={[s.chip, { borderColor: ink }]}>
             <Text style={[hubText.small, { color: c.text100, fontFamily: 'NotoSansGeorgian_600SemiBold' }]}>{sl.time}</Text>
           </Pressable>
         ))}
@@ -87,12 +87,12 @@ export default function BookWhoStep() {
             <ChosenPills items={selected.map((x) => x.name)} />
             <FlatCard>
               <View>
-                <PersonRow person={null} first nearest={'*' in nearest ? (nearest['*'] ? dayLabel(dateFromYmd(nearest['*'].date)) : null) : undefined} onPress={() => pick(null)} />
+                <PersonRow person={null} first nearest={'*' in nearest ? (nearest['*'] ? dayLabel(nearest['*'].date) : null) : undefined} onPress={() => pick(null)} />
                 {chips(null)}
               </View>
               {eligibleStaff.map((p) => (
                 <View key={p.id}>
-                  <PersonRow person={p} first={false} nearest={p.id in nearest ? (nearest[p.id] ? dayLabel(dateFromYmd(nearest[p.id]!.date)) : null) : undefined} onPress={() => pick(p.id)} />
+                  <PersonRow person={p} first={false} nearest={p.id in nearest ? (nearest[p.id] ? dayLabel(nearest[p.id]!.date) : null) : undefined} onPress={() => pick(p.id)} />
                   {chips(p.id)}
                 </View>
               ))}
