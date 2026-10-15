@@ -147,3 +147,76 @@ CREATE TABLE IF NOT EXISTS "BookGroup" (
 );
 ALTER TABLE "BookBusiness" ADD COLUMN IF NOT EXISTS "groupId" TEXT REFERENCES "BookGroup"(id) ON DELETE SET NULL;
 CREATE INDEX IF NOT EXISTS "BookBusiness_group" ON "BookBusiness"("groupId");
+
+-- Products and sales: what the business sells over the counter (shampoo, a cream), stock per product, every
+-- sale as one row with its items; a sale is income (category PRODUCT) and a stock move; a refund puts both back.
+CREATE TABLE IF NOT EXISTS "BookProduct" (
+  id TEXT PRIMARY KEY,
+  "businessId" TEXT NOT NULL REFERENCES "BookBusiness"(id) ON DELETE CASCADE,
+  name TEXT NOT NULL,
+  sku TEXT,
+  category TEXT,
+  price NUMERIC(12,2) NOT NULL,
+  cost NUMERIC(12,2),
+  stock NUMERIC(12,2),
+  unit TEXT NOT NULL DEFAULT 'pc',
+  "lowStock" NUMERIC(12,2) NOT NULL DEFAULT 3,
+  active BOOLEAN NOT NULL DEFAULT TRUE,
+  "sortOrder" INTEGER NOT NULL DEFAULT 0,
+  "createdAt" TIMESTAMPTZ(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "updatedAt" TIMESTAMPTZ(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS "BookProduct_business" ON "BookProduct"("businessId", active, "sortOrder");
+
+CREATE TABLE IF NOT EXISTS "BookSale" (
+  id TEXT PRIMARY KEY,
+  "businessId" TEXT NOT NULL REFERENCES "BookBusiness"(id) ON DELETE CASCADE,
+  "clientId" TEXT REFERENCES "BookClient"(id) ON DELETE SET NULL,
+  "clientName" TEXT,
+  "appointmentId" TEXT REFERENCES "BookAppointment"(id) ON DELETE SET NULL,
+  "staffId" TEXT REFERENCES "BookStaff"(id) ON DELETE SET NULL,
+  items JSONB NOT NULL DEFAULT '[]'::jsonb,
+  total NUMERIC(12,2) NOT NULL,
+  cost NUMERIC(12,2) NOT NULL DEFAULT 0,
+  "paidMethod" TEXT,
+  note TEXT,
+  status TEXT NOT NULL DEFAULT 'DONE' CHECK (status IN ('DONE', 'REFUNDED')),
+  "transactionId" TEXT,
+  at TIMESTAMPTZ(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "createdBy" TEXT,
+  "createdAt" TIMESTAMPTZ(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "updatedAt" TIMESTAMPTZ(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS "BookSale_business_at" ON "BookSale"("businessId", at);
+CREATE INDEX IF NOT EXISTS "BookSale_staff" ON "BookSale"("staffId", at);
+
+CREATE TABLE IF NOT EXISTS "BookStockMove" (
+  id TEXT PRIMARY KEY,
+  "businessId" TEXT NOT NULL REFERENCES "BookBusiness"(id) ON DELETE CASCADE,
+  "productId" TEXT NOT NULL REFERENCES "BookProduct"(id) ON DELETE CASCADE,
+  delta NUMERIC(12,2) NOT NULL,
+  reason TEXT NOT NULL CHECK (reason IN ('SALE', 'REFUND', 'RESTOCK', 'ADJUST')),
+  "saleId" TEXT REFERENCES "BookSale"(id) ON DELETE SET NULL,
+  note TEXT,
+  "createdBy" TEXT,
+  "createdAt" TIMESTAMPTZ(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS "BookStockMove_product" ON "BookStockMove"("productId", "createdAt");
+
+-- Payroll: pay rules per person (a share of service value, of product sales, a fixed monthly amount) and the
+-- payouts made; a payout is an expense (category SALARY) for that person.
+ALTER TABLE "BookStaff" ADD COLUMN IF NOT EXISTS pay JSONB NOT NULL DEFAULT '{}'::jsonb;
+CREATE TABLE IF NOT EXISTS "BookPayout" (
+  id TEXT PRIMARY KEY,
+  "businessId" TEXT NOT NULL REFERENCES "BookBusiness"(id) ON DELETE CASCADE,
+  "staffId" TEXT NOT NULL REFERENCES "BookStaff"(id) ON DELETE CASCADE,
+  "periodFrom" TEXT NOT NULL,
+  "periodTo" TEXT NOT NULL,
+  amount NUMERIC(12,2) NOT NULL,
+  method TEXT,
+  note TEXT,
+  "transactionId" TEXT,
+  "createdBy" TEXT,
+  "createdAt" TIMESTAMPTZ(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS "BookPayout_staff" ON "BookPayout"("staffId", "periodFrom");

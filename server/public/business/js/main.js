@@ -22,7 +22,9 @@ const ROUTES = [
   { path: '/discounts', page: () => import('./pages/discounts.js'), title: t('ფასდაკლებები', 'Discounts'), icon: 'gift', nav: true, manage: true },
   { path: '/loyalty', page: () => import('./pages/loyalty.js'), title: t('ლოიალობა', 'Loyalty'), icon: 'award', nav: true, manage: true },
   { path: '/branches', page: () => import('./pages/branches.js'), title: t('ფილიალები', 'Branches'), icon: 'store', nav: true, manage: true },
+  { path: '/products', page: () => import('./pages/products.js'), title: t('პროდუქტები', 'Products'), icon: 'archive', nav: true },
   { path: '/finance', page: () => import('./pages/finance.js'), title: t('ფინანსები', 'Finance'), icon: 'wallet', nav: true, manage: true },
+  { path: '/payroll', page: () => import('./pages/payroll.js'), title: t('ხელფასები', 'Payroll'), icon: 'coins', nav: true, manage: true },
   { path: '/analytics', page: () => import('./pages/analytics.js'), title: t('ანალიტიკა', 'Analytics'), icon: 'trendUp', nav: true, manage: true },
   { path: '/reviews', page: () => import('./pages/reviews.js'), title: t('შეფასებები', 'Reviews'), icon: 'star', nav: true },
   { path: '/settings', page: () => import('./pages/settings.js'), title: t('პარამეტრები', 'Settings'), icon: 'settings', nav: true, manage: true },
@@ -93,7 +95,7 @@ function statusLine(status) {
 const GROUPS = [
   { title: () => t('დღე', 'The day'), paths: ['/', '/calendar', '/appointments', '/waitlist', '/clients'] },
   { title: () => t('ბიზნესი', 'The business'), paths: ['/services', '/team', '/discounts', '/loyalty', '/branches'] },
-  { title: () => t('ფული და ციფრები', 'Money and numbers'), paths: ['/finance', '/analytics', '/reviews'] },
+  { title: () => t('ფული და ციფრები', 'Money and numbers'), paths: ['/products', '/finance', '/payroll', '/analytics', '/reviews'] },
   { title: null, paths: ['/settings'] },
 ];
 let badgeEls = {};

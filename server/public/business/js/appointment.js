@@ -5,6 +5,7 @@ import { openDrawer } from './drawer.js';
 import { biz, statusBadge, methodLabel, METHODS, gel, minutes, when, clock, ymd, addDays, toIso, fail, ok, avatar, dayLabel, WEEKDAYS_SHORT, MONTHS_SHORT } from './shared.js';
 import { canManage } from './state.js';
 import { dateField, timeField } from './fields.js';
+import { saleDialog } from './sale.js';
 
 /** The staff + services lists most dialogs need. */
 export async function loadContext() {
@@ -213,6 +214,7 @@ export function openAppointment(appt, ctx, { onChange } = {}) {
     }
     if (a.status === 'PENDING' || a.status === 'CONFIRMED') out.push(button(t('გაუქმება', 'Cancel'), { variant: 'ghost', class: 'bz-bad', onClick: cancelDialog }));
     if (a.status === 'CANCELLED' || a.status === 'NO_SHOW') out.push(button(t('აღდგენა', 'Restore'), { variant: 'secondary', onClick: () => setStatus('CONFIRMED') }));
+    if (a.status === 'CONFIRMED' || a.status === 'COMPLETED') out.push(button(t('პროდუქტი', 'Product'), { variant: 'ghost', icon: 'archive', title: t('პროდუქტის გაყიდვა ამ კლიენტზე', 'Sell a product to this client'), onClick: () => saleDialog({ clientId: a.clientId, clientName: a.clientName, appointmentId: a.id, staffId: a.staffId || '' }) }));
     if (a.status === 'COMPLETED' && manage) out.push(button(t('დასრულების გაუქმება', 'Undo completion'), { variant: 'ghost', onClick: () => setStatus('CONFIRMED') }));
     return out;
   }

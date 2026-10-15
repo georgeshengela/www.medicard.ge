@@ -295,6 +295,12 @@ body.biz { font-size: 14.5px; }
 .bz-cal-col-head .occ span { display: block; height: 100%; border-radius: 2px; }
 @media (max-width: 760px) { .bz-kpi-spark { display: none; } .bz-kpi:has(.bz-kpi-spark) { padding-right: 16px; } .bz-sources { flex-direction: column; align-items: flex-start; } }
 
+/* Products: the sale dialog's lines */
+.bz-sale-lines { display: grid; gap: 6px; }
+.bz-sale-line { display: grid; grid-template-columns: 1fr 80px auto; gap: 6px; align-items: center; }
+.bz-add-line { background: none; border: 1px dashed var(--line); border-radius: 10px; padding: 6px 10px; color: var(--text2); cursor: pointer; font: inherit; font-size: 13px; }
+.bz-add-line:hover { border-color: var(--book-2); color: var(--text); }
+
 /* Branches: location cards, the comparison table */
 .bz-branches { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 12px; margin-bottom: 16px; }
 .bz-branch { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 14px; display: grid; gap: 12px; }

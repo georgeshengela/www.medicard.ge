@@ -21,6 +21,8 @@ import * as waitlist from '../lib/book/waitlist.js';
 import * as bookSms from '../lib/book/sms.js';
 import * as loyalty from '../lib/book/loyalty.js';
 import * as branches from '../lib/book/branches.js';
+import * as products from '../lib/book/products.js';
+import * as payroll from '../lib/book/payroll.js';
 import { prisma } from '../lib/prisma.js';
 import { addDaysYmd, isYmd, tbilisiInstant, tbilisiYmd } from '../lib/book/time.js';
 
@@ -333,6 +335,41 @@ businessRouter.patch('/:businessId/appointments/:id', member(ALL), asyncHandler(
   }
   res.json({ appointment: bookings.appointmentPublic(result.row), waitlistOffered });
 }));
+
+// products and sales
+const productBody = z.object({ name: z.string().trim().max(120).optional(), sku: z.string().trim().max(60).nullable().optional(), category: z.string().trim().max(60).nullable().optional(), price: z.union([z.number(), z.string()]).optional(), cost: z.union([z.number(), z.string(), z.null()]).optional(), stock: z.union([z.number(), z.string(), z.null()]).optional(), unit: z.string().max(12).optional(), lowStock: z.union([z.number(), z.string()]).optional(), active: z.boolean().optional(), sortOrder: z.number().int().optional() });
+businessRouter.get('/:businessId/products/overview', member(ALL), asyncHandler(async (req, res) => res.json(await products.productsOverview(req.params.businessId))));
+businessRouter.get('/:businessId/products', member(ALL), asyncHandler(async (req, res) => res.json({ products: await products.listProducts(req.params.businessId, { all: req.query.all === '1' }) })));
+businessRouter.post('/:businessId/products', member(MANAGE), asyncHandler(async (req, res) => res.status(201).json({ product: await products.createProduct(req.params.businessId, productBody.parse(req.body ?? {})) })));
+businessRouter.patch('/:businessId/products/:id', member(MANAGE), asyncHandler(async (req, res) => res.json({ product: await products.updateProduct(req.params.businessId, req.params.id, productBody.parse(req.body ?? {})) })));
+businessRouter.delete('/:businessId/products/:id', member(MANAGE), asyncHandler(async (req, res) => { await products.deactivateProduct(req.params.businessId, req.params.id); res.json({ ok: true }); }));
+businessRouter.post('/:businessId/products/:id/restock', member(MANAGE), asyncHandler(async (req, res) => {
+  const body = z.object({ qty: z.union([z.number(), z.string()]), cost: z.union([z.number(), z.string()]).optional(), note: z.string().trim().max(300).optional() }).parse(req.body ?? {});
+  res.json({ product: await products.moveStock({ businessId: req.params.businessId, productId: req.params.id, delta: Number(body.qty), reason: Number(body.qty) < 0 ? 'ADJUST' : 'RESTOCK', cost: body.cost ?? null, note: body.note ?? null, actorUserId: req.user.id }) });
+}));
+businessRouter.get('/:businessId/sales', member(ALL), asyncHandler(async (req, res) => {
+  const from = isYmd(req.query.from) ? tbilisiInstant(String(req.query.from), 0) : null;
+  const to = isYmd(req.query.to) ? tbilisiInstant(addDaysYmd(String(req.query.to), 1), 0) : null;
+  res.json({ sales: await products.listSales({ businessId: req.params.businessId, from, to, staffId: req.query.staffId ? String(req.query.staffId) : null, limit: Number(req.query.limit) || 500 }) });
+}));
+businessRouter.post('/:businessId/sales', member(ALL), asyncHandler(async (req, res) => {
+  const body = z.object({ items: z.array(z.object({ productId: z.string().min(1), qty: z.union([z.number(), z.string()]).optional(), price: z.union([z.number(), z.string()]).optional() })).min(1).max(50), clientId: z.string().optional(), clientName: z.string().trim().max(120).optional(), appointmentId: z.string().optional(), staffId: z.string().nullable().optional(), paidMethod: z.string().max(16).optional(), note: z.string().trim().max(300).optional(), at: z.string().optional() }).parse(req.body ?? {});
+  const staffId = req.member.role === 'STAFF' && req.member.staffId ? req.member.staffId : body.staffId ?? null;
+  res.status(201).json({ sale: await products.createSale({ businessId: req.params.businessId, ...body, staffId, actorUserId: req.user.id }) });
+}));
+businessRouter.post('/:businessId/sales/:id/refund', member(MANAGE), asyncHandler(async (req, res) => res.json({ sale: await products.refundSale({ businessId: req.params.businessId, id: req.params.id, actorUserId: req.user.id }) })));
+
+// payroll: rules per person, the period report, payouts
+businessRouter.get('/:businessId/payroll', member(MANAGE), asyncHandler(async (req, res) => res.json(await payroll.payrollReport({ businessId: req.params.businessId, from: req.query.from ? String(req.query.from) : null, to: req.query.to ? String(req.query.to) : null }))));
+businessRouter.patch('/:businessId/staff/:staffId/pay', member(['OWNER']), asyncHandler(async (req, res) => {
+  const body = z.object({ servicePercent: z.union([z.number(), z.string()]).optional(), productPercent: z.union([z.number(), z.string()]).optional(), fixedMonthly: z.union([z.number(), z.string()]).optional() }).parse(req.body ?? {});
+  res.json({ pay: await payroll.setPay({ businessId: req.params.businessId, staffId: req.params.staffId, pay: body }) });
+}));
+businessRouter.post('/:businessId/payouts', member(['OWNER']), asyncHandler(async (req, res) => {
+  const body = z.object({ staffId: z.string().min(1), periodFrom: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), periodTo: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), amount: z.union([z.number(), z.string()]), method: z.string().max(16).optional(), note: z.string().trim().max(300).optional() }).parse(req.body ?? {});
+  res.status(201).json({ payout: await payroll.createPayout({ businessId: req.params.businessId, ...body, actorUserId: req.user.id }) });
+}));
+businessRouter.delete('/:businessId/payouts/:id', member(['OWNER']), asyncHandler(async (req, res) => { await payroll.deletePayout({ businessId: req.params.businessId, id: req.params.id }); res.json({ ok: true }); }));
 
 // branches: the chain's locations, a new one from this business, link / unlink, copy services, compare
 businessRouter.get('/:businessId/branches', member(MANAGE), asyncHandler(async (req, res) => res.json(await branches.groupOf(req.params.businessId))));

@@ -576,7 +576,9 @@ export async function addTransaction({ businessId, kind, category, amount, metho
 
 export async function deleteTransaction({ businessId, id }, db = prisma) {
   // Income written by a completed appointment is undone by changing the appointment, not here.
-  await db.$executeRaw`DELETE FROM "BookTransaction" WHERE id = ${id} AND "businessId" = ${businessId} AND "appointmentId" IS NULL`;
+  // Rows written by a sale or a payout are undone there, not here.
+  await db.$executeRaw`DELETE FROM "BookTransaction" WHERE id = ${id} AND "businessId" = ${businessId} AND "appointmentId" IS NULL
+    AND id NOT IN (SELECT "transactionId" FROM "BookSale" WHERE "transactionId" IS NOT NULL) AND id NOT IN (SELECT "transactionId" FROM "BookPayout" WHERE "transactionId" IS NOT NULL)`;
 }
 
 // ——— raw numbers for analytics (aggregated in analytics.js) ———
