@@ -22,6 +22,7 @@ import * as bookSms from '../lib/book/sms.js';
 import * as loyalty from '../lib/book/loyalty.js';
 import * as branches from '../lib/book/branches.js';
 import * as products from '../lib/book/products.js';
+import * as supplies from '../lib/book/supplies.js';
 import * as payroll from '../lib/book/payroll.js';
 import { prisma } from '../lib/prisma.js';
 import { addDaysYmd, isYmd, tbilisiInstant, tbilisiYmd } from '../lib/book/time.js';
@@ -183,9 +184,10 @@ businessRouter.patch('/:businessId', member(MANAGE), asyncHandler(async (req, re
 businessRouter.get('/:businessId/overview', member(ALL), asyncHandler(async (req, res) => {
   const data = await bookings.overviewRaw({ businessId: req.params.businessId });
   // What needs a look besides bookings: people waiting for a time, products running low.
-  const [waiting, stock] = await Promise.all([waitlist.countOpen(req.params.businessId).catch(() => 0), products.productsOverview(req.params.businessId).catch(() => null)]);
+  const [waiting, stock, lowSupplies] = await Promise.all([waitlist.countOpen(req.params.businessId).catch(() => 0), products.productsOverview(req.params.businessId).catch(() => null), supplies.countLow(req.params.businessId).catch(() => 0)]);
   data.waitlist = waiting;
   data.lowStock = stock?.low ?? 0;
+  data.lowSupplies = lowSupplies;
   if (req.member.role === 'STAFF' && req.member.staffId) {
     data.today = data.today.filter((a) => a.staffId === req.member.staffId);
     data.upcoming = data.upcoming.filter((a) => a.staffId === req.member.staffId);
@@ -362,6 +364,32 @@ businessRouter.post('/:businessId/sales', member(ALL), asyncHandler(async (req, 
   res.status(201).json({ sale: await products.createSale({ businessId: req.params.businessId, ...body, staffId, actorUserId: req.user.id }) });
 }));
 businessRouter.post('/:businessId/sales/:id/refund', member(MANAGE), asyncHandler(async (req, res) => res.json({ sale: await products.refundSale({ businessId: req.params.businessId, id: req.params.id, actorUserId: req.user.id }) })));
+
+// the stock room: supplies a visit uses up, norms per service, deliveries / write-offs / counts, the ledger
+const qtyBody = z.object({ qty: z.union([z.number(), z.string()]), cost: z.union([z.number(), z.string()]).optional(), note: z.string().trim().max(300).optional(), expense: z.boolean().optional() });
+businessRouter.get('/:businessId/supplies/overview', member(ALL), asyncHandler(async (req, res) => res.json(await supplies.suppliesOverview(req.params.businessId))));
+businessRouter.get('/:businessId/supplies/moves', member(ALL), asyncHandler(async (req, res) => res.json({ moves: await supplies.listMoves(req.params.businessId, { productId: req.query.productId ? String(req.query.productId) : null, limit: Number(req.query.limit) || 300 }) })));
+businessRouter.get('/:businessId/supplies/norms', member(ALL), asyncHandler(async (req, res) => res.json({ services: await supplies.listNorms(req.params.businessId) })));
+businessRouter.put('/:businessId/supplies/norms/:serviceId', member(MANAGE), asyncHandler(async (req, res) => {
+  const body = z.object({ items: z.array(z.object({ productId: z.string().min(1), qty: z.union([z.number(), z.string()]) })).max(60) }).parse(req.body ?? {});
+  res.json({ service: await supplies.setNorms({ businessId: req.params.businessId, serviceId: req.params.serviceId, items: body.items }) });
+}));
+businessRouter.get('/:businessId/supplies', member(ALL), asyncHandler(async (req, res) => res.json({ supplies: await supplies.listSupplies(req.params.businessId, { all: req.query.all === '1' }) })));
+businessRouter.post('/:businessId/supplies', member(MANAGE), asyncHandler(async (req, res) => res.status(201).json({ supply: await supplies.createSupply(req.params.businessId, productBody.parse(req.body ?? {})) })));
+businessRouter.patch('/:businessId/supplies/:id', member(MANAGE), asyncHandler(async (req, res) => res.json({ supply: await supplies.updateSupply(req.params.businessId, req.params.id, productBody.parse(req.body ?? {})) })));
+businessRouter.delete('/:businessId/supplies/:id', member(MANAGE), asyncHandler(async (req, res) => { await supplies.deactivateSupply(req.params.businessId, req.params.id); res.json({ ok: true }); }));
+businessRouter.post('/:businessId/supplies/:id/restock', member(MANAGE), asyncHandler(async (req, res) => {
+  const body = qtyBody.parse(req.body ?? {});
+  res.json({ supply: await supplies.restock({ businessId: req.params.businessId, id: req.params.id, qty: Number(body.qty), cost: body.cost ?? null, note: body.note ?? null, expense: Boolean(body.expense), actorUserId: req.user.id }) });
+}));
+businessRouter.post('/:businessId/supplies/:id/write-off', member(ALL), asyncHandler(async (req, res) => {
+  const body = qtyBody.parse(req.body ?? {});
+  res.json({ supply: await supplies.writeOff({ businessId: req.params.businessId, id: req.params.id, qty: Number(body.qty), note: body.note ?? null, actorUserId: req.user.id }) });
+}));
+businessRouter.post('/:businessId/supplies/:id/count', member(MANAGE), asyncHandler(async (req, res) => {
+  const body = z.object({ counted: z.union([z.number(), z.string()]), note: z.string().trim().max(300).optional() }).parse(req.body ?? {});
+  res.json({ supply: await supplies.countStock({ businessId: req.params.businessId, id: req.params.id, counted: Number(body.counted), note: body.note ?? null, actorUserId: req.user.id }) });
+}));
 
 // payroll: rules per person, the period report, payouts
 businessRouter.get('/:businessId/payroll', member(MANAGE), asyncHandler(async (req, res) => res.json(await payroll.payrollReport({ businessId: req.params.businessId, from: req.query.from ? String(req.query.from) : null, to: req.query.to ? String(req.query.to) : null }))));

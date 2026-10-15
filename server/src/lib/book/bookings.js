@@ -10,6 +10,7 @@ import { canCancelFree, daysWithSlots, findConflict, isOfferedSlot, slotsForDay 
 import { addDaysYmd, isYmd, tbilisiInstant, tbilisiYmd } from './time.js';
 import { businessRow, requireBusiness } from './store.js';
 import * as loyalty from './loyalty.js';
+import * as supplies from './supplies.js';
 
 const sql = Prisma.sql;
 const join = Prisma.join;
@@ -398,12 +399,15 @@ export async function updateByBusiness({ businessId, id, patch = {}, actorUserId
       const amount = parts.cashAmount;
       const spent = Math.round(((parts.cashAmount || 0) + (parts.giftAmount || 0) + (parts.membershipAmount || 0)) * 100) / 100;
       if (amount > 0) await tx.$executeRaw`INSERT INTO "BookTransaction" (id, "businessId", "appointmentId", "staffId", kind, category, amount, method, at, "createdBy") VALUES (${newId()}, ${businessId}, ${id}, ${next.staffId}, 'INCOME', 'SERVICE', ${amount}, ${next.paidMethod ?? null}, ${new Date(next.startsAt)}, ${actorUserId}) ON CONFLICT DO NOTHING`;
+      // The services' norms leave the stock room (never blocks the visit).
+      await supplies.writeOffVisit(tx, { businessId, appointment: next, actorUserId });
       if (next.clientId) await tx.$executeRaw`UPDATE "BookClient" SET visits = visits + 1, "totalSpent" = "totalSpent" + ${spent}, "firstVisitAt" = COALESCE("firstVisitAt", ${new Date(next.startsAt)}), "lastVisitAt" = GREATEST(COALESCE("lastVisitAt", ${new Date(next.startsAt)}), ${new Date(next.startsAt)}), "updatedAt" = CURRENT_TIMESTAMP WHERE id = ${next.clientId}`;
     } else if (row.status === 'COMPLETED' && status !== 'COMPLETED') {
       const [t] = await tx.$queryRaw`SELECT amount FROM "BookTransaction" WHERE "appointmentId" = ${id} AND kind = 'INCOME'`;
       const reverted = await loyalty.revertPayment(tx, { businessId, appointment: row, actorUserId });
       const undoSpent = reverted ? Math.round(((reverted.cashAmount || 0) + (reverted.giftAmount || 0) + (reverted.membershipAmount || 0)) * 100) / 100 : t ? Number(t.amount) : 0;
       await tx.$executeRaw`DELETE FROM "BookTransaction" WHERE "appointmentId" = ${id} AND kind = 'INCOME'`;
+      await supplies.revertVisit(tx, { businessId, appointmentId: id });
       if (next.clientId) await tx.$executeRaw`UPDATE "BookClient" SET visits = GREATEST(0, visits - 1), "totalSpent" = GREATEST(0, "totalSpent" - ${undoSpent}), "updatedAt" = CURRENT_TIMESTAMP WHERE id = ${next.clientId}`;
     } else if (status === 'COMPLETED' && (patch.paidAmount !== undefined || patch.price !== undefined)) {
       const amount = next.paidAmount != null ? Number(next.paidAmount) : next.price != null ? Number(next.price) : 0;
