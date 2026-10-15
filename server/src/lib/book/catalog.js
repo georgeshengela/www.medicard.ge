@@ -277,6 +277,18 @@ export function normalizeNotify(raw) {
   };
 }
 
+/** Cashback rules: a share of the money paid comes back as bonus; off until the business turns it on. */
+export const DEFAULT_LOYALTY = Object.freeze({ cashbackPercent: 0, welcomeBonus: 0, maxRedeemPercent: 50 });
+export function normalizeLoyalty(raw) {
+  const l = raw && typeof raw === 'object' ? raw : {};
+  const pick = (v, list, d) => (list.includes(Number(v)) ? Number(v) : d);
+  return {
+    cashbackPercent: pick(l.cashbackPercent, [0, 3, 5, 7, 10, 15, 20], DEFAULT_LOYALTY.cashbackPercent),
+    welcomeBonus: pick(l.welcomeBonus, [0, 5, 10, 20], DEFAULT_LOYALTY.welcomeBonus),
+    maxRedeemPercent: pick(l.maxRedeemPercent, [20, 30, 50, 100], DEFAULT_LOYALTY.maxRedeemPercent),
+  };
+}
+
 export function normalizeSettings(raw) {
   const s = raw && typeof raw === 'object' ? raw : {};
   const int = (v, d, lo, hi) => (Number.isFinite(Number(v)) ? Math.min(hi, Math.max(lo, Math.round(Number(v)))) : d);
@@ -291,6 +303,7 @@ export function normalizeSettings(raw) {
     allowStaffChoice: bool(s.allowStaffChoice, DEFAULT_SETTINGS.allowStaffChoice),
     bookingNote: String(s.bookingNote ?? '').trim().slice(0, 300),
     notify: normalizeNotify(s.notify),
+    loyalty: normalizeLoyalty(s.loyalty),
   };
 }
 

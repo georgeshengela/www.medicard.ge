@@ -3,7 +3,7 @@ import { Image, Linking, Platform, Pressable, ScrollView, Share, StyleSheet, Tex
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
-import { AtSign, BadgeCheck, ChevronDown, ChevronRight, ChevronUp, Clock, Globe, Heart, MapPin, Navigation, Percent, Phone, Share2, Store } from 'lucide-react-native';
+import { AtSign, Award, BadgeCheck, ChevronDown, ChevronRight, ChevronUp, Clock, Globe, Heart, MapPin, Navigation, Percent, Phone, Share2, Store } from 'lucide-react-native';
 import { ModuleHeader, ModuleHeaderButton } from '@/components/brand/ModuleHeader';
 import { HomeSectionHeading } from '@/components/home/HomeSectionHeading';
 import { FlatCard, Stars, imageUri } from '@/components/book/BookUI';
@@ -146,6 +146,19 @@ export default function BusinessScreen() {
                 <Text style={[hubText.caption, { color: c.text100, flex: 1 }]}>{b.address}</Text>
                 <ChevronRight size={14} color={c.text300} />
               </Pressable>
+            ) : null}
+            {b.me && (b.me.bonusBalance > 0 || b.me.memberships.length) ? (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, marginTop: 6, paddingVertical: 8, paddingHorizontal: 10, borderRadius: 12, borderWidth: 1, borderColor: ink }}>
+                <Award size={16} color={ink} strokeWidth={2.2} />
+                <Text style={[hubText.caption, { color: c.text100, flex: 1 }]}>
+                  {[b.me.bonusBalance > 0 ? tx(`შენი ბონუსი: ${priceLabel(b.me.bonusBalance)}`, `Your bonus: ${priceLabel(b.me.bonusBalance)}`) : null, ...b.me.memberships.map((m) => (m.kind === 'VISITS' ? tx(`${m.title}: დარჩა ${m.visitsLeft}`, `${m.title}: ${m.visitsLeft} left`) : tx(`${m.title}: ${priceLabel(m.amountLeft)}`, `${m.title}: ${priceLabel(m.amountLeft)}`)))].filter(Boolean).join(' · ')}
+                </Text>
+              </View>
+            ) : b.settings.loyalty && b.settings.loyalty.cashbackPercent > 0 && b.claimed ? (
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 6 }}>
+                <Award size={14} color={ink} strokeWidth={2.2} />
+                <Text style={[hubText.caption, { color: c.text200 }]}>{tx(`ყოველი ვიზიტიდან ${b.settings.loyalty.cashbackPercent}% ბონუსად გიბრუნდება`, `${b.settings.loyalty.cashbackPercent}% of every visit comes back as bonus`)}</Text>
+              </View>
             ) : null}
             <View style={{ flexDirection: 'row', gap: 8, marginTop: 4 }}>
               <Action icon={Phone} label={tx('დარეკვა', 'Call')} onPress={call} disabled={!b.phone} />

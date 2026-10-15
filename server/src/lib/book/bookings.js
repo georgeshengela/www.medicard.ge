@@ -9,6 +9,7 @@ import { bookError, businessCard, discountApplies, discountPublic, discountedPri
 import { canCancelFree, daysWithSlots, findConflict, isOfferedSlot, slotsForDay } from './availability.js';
 import { addDaysYmd, isYmd, tbilisiInstant, tbilisiYmd } from './time.js';
 import { businessRow, requireBusiness } from './store.js';
+import * as loyalty from './loyalty.js';
 
 const sql = Prisma.sql;
 const join = Prisma.join;
@@ -131,6 +132,7 @@ export function appointmentPublic(row, { lang = 'ka', now = new Date() } = {}) {
     discountAmount: row.discountAmount == null ? null : Number(row.discountAmount),
     paidAmount: row.paidAmount == null ? null : Number(row.paidAmount),
     paidMethod: row.paidMethod ?? null,
+    paidParts: row.paidParts && typeof row.paidParts === 'object' ? row.paidParts : null,
     note: row.note ?? null,
     internalNote: row.internalNote ?? null,
     cancelledBy: row.cancelledBy ?? null,
@@ -391,20 +393,26 @@ export async function updateByBusiness({ businessId, id, patch = {}, actorUserId
     const next = await appointmentRow(id, tx);
     // Money and client history follow the status.
     if (status === 'COMPLETED' && row.status !== 'COMPLETED') {
-      const amount = next.paidAmount != null ? Number(next.paidAmount) : next.price != null ? Number(next.price) : 0;
+      // Gift card, bonus and membership parts first; what is left in money is the income. The business may type the money it received.
+      const parts = await loyalty.applyPayment(tx, { businessId, appointment: next, payment: { ...(patch.payment ?? {}), cashAmount: patch.paidAmount !== undefined ? patch.paidAmount : patch.payment?.cashAmount }, actorUserId });
+      const amount = parts.cashAmount;
+      const spent = Math.round(((parts.cashAmount || 0) + (parts.giftAmount || 0) + (parts.membershipAmount || 0)) * 100) / 100;
       if (amount > 0) await tx.$executeRaw`INSERT INTO "BookTransaction" (id, "businessId", "appointmentId", "staffId", kind, category, amount, method, at, "createdBy") VALUES (${newId()}, ${businessId}, ${id}, ${next.staffId}, 'INCOME', 'SERVICE', ${amount}, ${next.paidMethod ?? null}, ${new Date(next.startsAt)}, ${actorUserId}) ON CONFLICT DO NOTHING`;
-      if (next.clientId) await tx.$executeRaw`UPDATE "BookClient" SET visits = visits + 1, "totalSpent" = "totalSpent" + ${amount}, "firstVisitAt" = COALESCE("firstVisitAt", ${new Date(next.startsAt)}), "lastVisitAt" = GREATEST(COALESCE("lastVisitAt", ${new Date(next.startsAt)}), ${new Date(next.startsAt)}), "updatedAt" = CURRENT_TIMESTAMP WHERE id = ${next.clientId}`;
+      if (next.clientId) await tx.$executeRaw`UPDATE "BookClient" SET visits = visits + 1, "totalSpent" = "totalSpent" + ${spent}, "firstVisitAt" = COALESCE("firstVisitAt", ${new Date(next.startsAt)}), "lastVisitAt" = GREATEST(COALESCE("lastVisitAt", ${new Date(next.startsAt)}), ${new Date(next.startsAt)}), "updatedAt" = CURRENT_TIMESTAMP WHERE id = ${next.clientId}`;
     } else if (row.status === 'COMPLETED' && status !== 'COMPLETED') {
       const [t] = await tx.$queryRaw`SELECT amount FROM "BookTransaction" WHERE "appointmentId" = ${id} AND kind = 'INCOME'`;
+      const reverted = await loyalty.revertPayment(tx, { businessId, appointment: row, actorUserId });
+      const undoSpent = reverted ? Math.round(((reverted.cashAmount || 0) + (reverted.giftAmount || 0) + (reverted.membershipAmount || 0)) * 100) / 100 : t ? Number(t.amount) : 0;
       await tx.$executeRaw`DELETE FROM "BookTransaction" WHERE "appointmentId" = ${id} AND kind = 'INCOME'`;
-      if (next.clientId) await tx.$executeRaw`UPDATE "BookClient" SET visits = GREATEST(0, visits - 1), "totalSpent" = GREATEST(0, "totalSpent" - ${t ? Number(t.amount) : 0}), "updatedAt" = CURRENT_TIMESTAMP WHERE id = ${next.clientId}`;
+      if (next.clientId) await tx.$executeRaw`UPDATE "BookClient" SET visits = GREATEST(0, visits - 1), "totalSpent" = GREATEST(0, "totalSpent" - ${undoSpent}), "updatedAt" = CURRENT_TIMESTAMP WHERE id = ${next.clientId}`;
     } else if (status === 'COMPLETED' && (patch.paidAmount !== undefined || patch.price !== undefined)) {
       const amount = next.paidAmount != null ? Number(next.paidAmount) : next.price != null ? Number(next.price) : 0;
       await tx.$executeRaw`UPDATE "BookTransaction" SET amount = ${amount}, method = ${next.paidMethod ?? null} WHERE "appointmentId" = ${id} AND kind = 'INCOME'`;
     }
     if (status === 'NO_SHOW' && row.status !== 'NO_SHOW' && next.clientId) await tx.$executeRaw`UPDATE "BookClient" SET "noShows" = "noShows" + 1, "updatedAt" = CURRENT_TIMESTAMP WHERE id = ${next.clientId}`;
     if (row.status === 'NO_SHOW' && status !== 'NO_SHOW' && next.clientId) await tx.$executeRaw`UPDATE "BookClient" SET "noShows" = GREATEST(0, "noShows" - 1), "updatedAt" = CURRENT_TIMESTAMP WHERE id = ${next.clientId}`;
-    return { row: next, moved, statusChanged: status !== row.status, previousStatus: row.status, previousStartsAt: row.startsAt };
+    // The loyalty step wrote paidParts / paidAmount after `next` was read: hand back the fresh row.
+    return { row: await appointmentRow(id, tx), moved, statusChanged: status !== row.status, previousStatus: row.status, previousStartsAt: row.startsAt };
   }, { timeout: 20_000 });
 }
 
@@ -552,7 +560,7 @@ export async function listTransactions({ businessId, from, to, limit = 500 }, db
 }
 
 export const EXPENSE_CATEGORIES = Object.freeze(['RENT', 'SALARY', 'SUPPLIES', 'MARKETING', 'UTILITIES', 'EQUIPMENT', 'TAX', 'OTHER']);
-export const INCOME_CATEGORIES = Object.freeze(['SERVICE', 'PRODUCT', 'GIFT_CARD', 'OTHER']);
+export const INCOME_CATEGORIES = Object.freeze(['SERVICE', 'PRODUCT', 'GIFT_CARD', 'MEMBERSHIP', 'OTHER']);
 
 export async function addTransaction({ businessId, kind, category, amount, method = null, note = null, at = null, staffId = null, actorUserId = null }, db = prisma) {
   const k = kind === 'EXPENSE' ? 'EXPENSE' : 'INCOME';

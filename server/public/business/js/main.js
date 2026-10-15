@@ -20,6 +20,7 @@ const ROUTES = [
   { path: '/services', page: () => import('./pages/services.js'), title: t('სერვისები', 'Services'), icon: 'grid', nav: true },
   { path: '/team', page: () => import('./pages/team.js'), title: t('გუნდი', 'Team'), icon: 'userPlus', nav: true },
   { path: '/discounts', page: () => import('./pages/discounts.js'), title: t('ფასდაკლებები', 'Discounts'), icon: 'gift', nav: true, manage: true },
+  { path: '/loyalty', page: () => import('./pages/loyalty.js'), title: t('ლოიალობა', 'Loyalty'), icon: 'award', nav: true, manage: true },
   { path: '/finance', page: () => import('./pages/finance.js'), title: t('ფინანსები', 'Finance'), icon: 'wallet', nav: true, manage: true },
   { path: '/analytics', page: () => import('./pages/analytics.js'), title: t('ანალიტიკა', 'Analytics'), icon: 'trendUp', nav: true, manage: true },
   { path: '/reviews', page: () => import('./pages/reviews.js'), title: t('შეფასებები', 'Reviews'), icon: 'star', nav: true },
@@ -90,7 +91,7 @@ function statusLine(status) {
 /** The sidebar reads like a working day: today's pages first, then what the business is, then money and numbers. */
 const GROUPS = [
   { title: () => t('დღე', 'The day'), paths: ['/', '/calendar', '/appointments', '/waitlist', '/clients'] },
-  { title: () => t('ბიზნესი', 'The business'), paths: ['/services', '/team', '/discounts'] },
+  { title: () => t('ბიზნესი', 'The business'), paths: ['/services', '/team', '/discounts', '/loyalty'] },
   { title: () => t('ფული და ციფრები', 'Money and numbers'), paths: ['/finance', '/analytics', '/reviews'] },
   { title: null, paths: ['/settings'] },
 ];

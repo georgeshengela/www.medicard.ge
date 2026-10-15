@@ -19,6 +19,7 @@ import { buildAnalytics, periodFor } from '../lib/book/analytics.js';
 import { notifyBooked, notifyChanged, notifyWaitlistAdded, notifyWaitlistOpening, offerOpenings } from '../lib/book/push.js';
 import * as waitlist from '../lib/book/waitlist.js';
 import * as bookSms from '../lib/book/sms.js';
+import * as loyalty from '../lib/book/loyalty.js';
 import { prisma } from '../lib/prisma.js';
 import { addDaysYmd, isYmd, tbilisiInstant, tbilisiYmd } from '../lib/book/time.js';
 
@@ -165,6 +166,7 @@ businessRouter.patch('/:businessId', member(MANAGE), asyncHandler(async (req, re
     const current = normalizeSettings((await store.businessRow(req.params.businessId))?.settings);
     const next = { ...current, ...input.settings };
     // notify is nested: a partial patch keeps what it does not mention.
+    if (input.settings?.loyalty && typeof input.settings.loyalty === 'object') next.loyalty = { ...current.loyalty, ...input.settings.loyalty };
     if (input.settings?.notify && typeof input.settings.notify === 'object') {
       const n = input.settings.notify;
       next.notify = { ...current.notify, ...n, push: { ...current.notify.push, ...(n.push ?? {}) }, sms: { ...current.notify.sms, ...(n.sms ?? {}) }, email: { ...current.notify.email, ...(n.email ?? {}) } };
@@ -307,6 +309,8 @@ const patchBody = z.object({
   clientName: z.string().trim().max(120).optional(),
   clientPhone: z.string().trim().max(32).nullable().optional(),
   force: z.boolean().optional(),
+  /** On completion: how the visit is paid besides money (a gift-card code, bonus to spend, a membership to use). */
+  payment: z.object({ giftCode: z.string().trim().max(16).optional(), bonusAmount: z.union([z.number(), z.string()]).optional(), clientMembershipId: z.string().optional() }).optional(),
 });
 
 businessRouter.patch('/:businessId/appointments/:id', member(ALL), asyncHandler(async (req, res) => {
@@ -327,6 +331,50 @@ businessRouter.patch('/:businessId/appointments/:id', member(ALL), asyncHandler(
     waitlistOffered = await offerOpenings({ businessId: req.params.businessId, dates: [tbilisiYmd(new Date(result.previousStartsAt ?? result.row.startsAt))] });
   }
   res.json({ appointment: bookings.appointmentPublic(result.row), waitlistOffered });
+}));
+
+// loyalty: cashback rules + numbers, gift cards, memberships, the client's card, payment options for a completion
+businessRouter.get('/:businessId/loyalty', member(MANAGE), asyncHandler(async (req, res) => {
+  const row = await store.businessRow(req.params.businessId);
+  res.json({ loyalty: normalizeSettings(row?.settings).loyalty, overview: await loyalty.loyaltyOverview(req.params.businessId) });
+}));
+businessRouter.get('/:businessId/gift-cards', member(ALL), asyncHandler(async (req, res) => res.json({ giftCards: await loyalty.listGiftCards(req.params.businessId, { status: req.query.status ? String(req.query.status) : 'ACTIVE' }) })));
+businessRouter.get('/:businessId/gift-cards/find', member(ALL), asyncHandler(async (req, res) => {
+  const row = await loyalty.findGiftCard(req.params.businessId, String(req.query.code ?? ''));
+  res.json({ giftCard: row ? loyalty.giftCardPublic(row) : null });
+}));
+businessRouter.post('/:businessId/gift-cards', member(ALL), asyncHandler(async (req, res) => {
+  const body = z.object({ amount: z.union([z.number(), z.string()]), buyerClientId: z.string().optional(), buyerName: z.string().trim().max(120).optional(), recipientName: z.string().trim().max(120).optional(), recipientPhone: z.string().trim().max(32).optional(), note: z.string().trim().max(300).optional(), expiresOn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(), paidMethod: z.string().max(16).optional() }).parse(req.body ?? {});
+  res.status(201).json({ giftCard: await loyalty.sellGiftCard({ businessId: req.params.businessId, ...body, actorUserId: req.user.id }) });
+}));
+businessRouter.patch('/:businessId/gift-cards/:id', member(MANAGE), asyncHandler(async (req, res) => {
+  const patch = z.object({ status: z.enum(['CANCELLED']).optional(), note: z.string().trim().max(300).nullable().optional(), recipientName: z.string().trim().max(120).nullable().optional(), recipientPhone: z.string().trim().max(32).nullable().optional() }).parse(req.body ?? {});
+  res.json({ giftCard: await loyalty.updateGiftCard({ businessId: req.params.businessId, id: req.params.id, patch }) });
+}));
+businessRouter.get('/:businessId/memberships', member(ALL), asyncHandler(async (req, res) => res.json({ memberships: await loyalty.listMemberships(req.params.businessId, { all: req.query.all === '1' }) })));
+const membershipBody = z.object({ title: z.string().trim().max(120), description: z.string().trim().max(300).optional(), kind: z.enum(['VISITS', 'AMOUNT']).optional(), serviceIds: z.array(z.string()).max(50).optional(), visitsTotal: z.union([z.number(), z.string()]).optional(), amountTotal: z.union([z.number(), z.string()]).optional(), price: z.union([z.number(), z.string()]), validDays: z.union([z.number(), z.string()]).optional(), active: z.boolean().optional() });
+businessRouter.post('/:businessId/memberships', member(MANAGE), asyncHandler(async (req, res) => res.status(201).json({ membership: await loyalty.saveMembership({ businessId: req.params.businessId, input: membershipBody.parse(req.body ?? {}) }) })));
+businessRouter.patch('/:businessId/memberships/:id', member(MANAGE), asyncHandler(async (req, res) => res.json({ membership: await loyalty.saveMembership({ businessId: req.params.businessId, id: req.params.id, input: membershipBody.parse(req.body ?? {}) }) })));
+businessRouter.delete('/:businessId/memberships/:id', member(MANAGE), asyncHandler(async (req, res) => { await loyalty.deactivateMembership({ businessId: req.params.businessId, id: req.params.id }); res.json({ ok: true }); }));
+businessRouter.get('/:businessId/client-memberships', member(ALL), asyncHandler(async (req, res) => res.json({ clientMemberships: await loyalty.listClientMemberships(req.params.businessId, { clientId: req.query.clientId ? String(req.query.clientId) : null, status: req.query.status ? String(req.query.status) : 'ACTIVE' }) })));
+businessRouter.post('/:businessId/client-memberships', member(ALL), asyncHandler(async (req, res) => {
+  const body = z.object({ membershipId: z.string().min(1), clientId: z.string().min(1), paidMethod: z.string().max(16).optional(), startsOn: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional() }).parse(req.body ?? {});
+  res.status(201).json({ clientMembership: await loyalty.sellMembership({ businessId: req.params.businessId, ...body, actorUserId: req.user.id }) });
+}));
+businessRouter.patch('/:businessId/client-memberships/:id', member(MANAGE), asyncHandler(async (req, res) => {
+  z.object({ status: z.enum(['CANCELLED']) }).parse(req.body ?? {});
+  await loyalty.cancelClientMembership({ businessId: req.params.businessId, id: req.params.id });
+  res.json({ ok: true });
+}));
+businessRouter.get('/:businessId/clients/:clientId/loyalty', member(ALL), asyncHandler(async (req, res) => res.json(await loyalty.clientLoyalty({ businessId: req.params.businessId, clientId: req.params.clientId }))));
+businessRouter.post('/:businessId/clients/:clientId/bonus', member(MANAGE), asyncHandler(async (req, res) => {
+  const body = z.object({ amount: z.union([z.number(), z.string()]), note: z.string().trim().max(300).optional() }).parse(req.body ?? {});
+  res.json(await loyalty.adjustBonus({ businessId: req.params.businessId, clientId: req.params.clientId, amount: Number(body.amount), note: body.note ?? null, actorUserId: req.user.id }));
+}));
+businessRouter.get('/:businessId/appointments/:id/payment-options', member(ALL), asyncHandler(async (req, res) => {
+  const row = await bookings.appointmentRow(req.params.id);
+  if (!row || row.businessId !== req.params.businessId) throw bookError(404, 'ჯავშანი ვერ მოიძებნა.', 'APPOINTMENT_NOT_FOUND', 'Appointment not found.');
+  res.json(await loyalty.paymentOptions({ businessId: req.params.businessId, appointment: row }));
 }));
 
 // notifications: what the clients get (push / SMS / email), this month's SMS usage, sample texts

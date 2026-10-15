@@ -168,6 +168,7 @@ export default function BookConfirmStep() {
           ) : null}
           <Text style={[hubText.small, { color: c.text300, marginTop: 12 }]}>
             {tx(`უფასო გაუქმება ვიზიტამდე ${b.settings.cancelHours} საათით ადრე. გადახდა ადგილზე — MEDICARD-ში არაფერი იხდის. ${b.settings.autoConfirm ? 'ჯავშანი მაშინვე დასტურდება.' : 'ბიზნესი ჯავშანს თავად დაადასტურებს.'}`, `Free cancellation up to ${b.settings.cancelHours} hours before. You pay on site — nothing is charged in MEDICARD. ${b.settings.autoConfirm ? 'The booking is confirmed at once.' : 'The business confirms the booking itself.'}`)}
+            {b.settings.loyalty && b.settings.loyalty.cashbackPercent > 0 && finalPrice ? tx(` ვიზიტის შემდეგ ~${priceLabel(Math.round((finalPrice * b.settings.loyalty.cashbackPercent) / 100 * 100) / 100)} ბონუსი დაგერიცხება.`, ` After the visit about ${priceLabel(Math.round((finalPrice * b.settings.loyalty.cashbackPercent) / 100 * 100) / 100)} comes back as bonus.`) : ''}
           </Text>
         </>
       )}

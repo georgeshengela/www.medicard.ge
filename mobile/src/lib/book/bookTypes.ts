@@ -85,7 +85,11 @@ export type BookSettings = {
   onlineBooking: boolean;
   allowStaffChoice: boolean;
   bookingNote: string;
+  loyalty?: { cashbackPercent: number; welcomeBonus: number; maxRedeemPercent: number };
 };
+
+/** The viewer's own loyalty at one place: bonus to spend, live memberships. */
+export type BookViewerLoyalty = { bonusBalance: number; memberships: Array<{ id: string; title: string; kind: 'VISITS' | 'AMOUNT'; visitsLeft: number | null; amountLeft: number | null; endsOn: string }> };
 
 export type BookBusinessDetail = BookBusinessCard & {
   description: string | null;
@@ -101,6 +105,7 @@ export type BookBusinessDetail = BookBusinessCard & {
   discounts: BookDiscount[];
   reviews: BookReview[];
   status: 'LISTED' | 'PENDING' | 'CLAIMED' | 'HIDDEN';
+  me?: BookViewerLoyalty | null;
 };
 
 export type BookPin = { id: string; slug: string; name: string; category: BookCategoryId; lat: number; lng: number; claimed: boolean; rating: number | null };

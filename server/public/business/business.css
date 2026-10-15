@@ -295,6 +295,14 @@ body.biz { font-size: 14.5px; }
 .bz-cal-col-head .occ span { display: block; height: 100%; border-radius: 2px; }
 @media (max-width: 760px) { .bz-kpi-spark { display: none; } .bz-kpi:has(.bz-kpi-spark) { padding-right: 16px; } .bz-sources { flex-direction: column; align-items: flex-start; } }
 
+/* Loyalty: the gift code, the completion summary */
+.bz-gift-code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 28px; letter-spacing: 0.12em; padding: 14px 18px; border: 1.5px dashed var(--book-2); border-radius: 14px; display: inline-block; }
+.bz-code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; letter-spacing: 0.06em; }
+.bz-pay-summary { display: grid; gap: 4px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; font-size: 13.5px; }
+.bz-pay-summary > div { display: flex; justify-content: space-between; gap: 10px; }
+.bz-pay-summary > div.total { border-top: 1px solid var(--line); padding-top: 6px; margin-top: 2px; font-size: 15px; }
+.bz-pay-summary > div.earn { color: var(--book-ink); }
+
 /* Notifications card (settings): section labels and SMS previews */
 .bz-section-label { font-size: 12.5px; color: var(--text3); margin-top: 6px; padding-bottom: 4px; border-bottom: 1px solid var(--line); }
 .bz-sms-preview { display: grid; gap: 6px; font-size: 13px; }

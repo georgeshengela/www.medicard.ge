@@ -189,9 +189,33 @@ async function clientDetail(root, ctx, id) {
           history.length ? h('div', { class: 'bz-timeline' }, history.slice(0, 30).map((a) => appointmentLine(a, context, { onOpen: (x) => openAppointment(x, context, { onChange: reload }) }))) : h('p', { class: 'bz-sub' }, t('ჯერ ვიზიტი არ ყოფილა.', 'No visits yet.')),
           history.length > 30 ? h('p', { class: 'bz-note', style: { marginTop: '8px' } }, t(`ბოლო 30 ჩანს; სულ ${history.length}.`, `The last 30 are shown; ${history.length} in all.`)) : null)),
       h('div', { style: { display: 'grid', gap: '16px', alignContent: 'start' } },
+        loyaltyCard(c, reload),
         card(h('div', { class: 'card-title', style: { marginBottom: '8px' } }, t('შენიშვნები', 'Notes')), notes, h('p', { style: { marginTop: '6px' } }, saved)),
         card(h('div', { class: 'card-title', style: { marginBottom: '8px' } }, t('ტეგები', 'Tags')), c.tags.length ? h('div', { class: 'bz-tags' }, c.tags.map((tag) => h('span', { class: 'bz-tag' }, tag))) : h('p', { class: 'bz-sub' }, t('ტეგები რედაქტირებით დაემატება.', 'Add tags through Edit.'))),
         data.reviews.length ? card(h('div', { class: 'card-title', style: { marginBottom: '8px' } }, t('შეფასებები', 'Reviews')), data.reviews.map((r) => h('div', { class: 'bz-review' }, h('div', { class: 'meta' }, h('span', { class: 'bz-stars' }, [1, 2, 3, 4, 5].map((i) => h('span', { class: i <= r.rating ? '' : 'off' }, icon('star', { size: 13 })))), dateText(r.createdAt)), r.text ? h('div', null, r.text) : null))) : null)));
+}
+
+/** Bonus balance with a correction, the passes the client holds, gift cards they bought. Loads by itself. */
+function loyaltyCard(c, reload) {
+  const host = card(h('div', { class: 'skeleton-card' }, h('div', { class: 'sk' })));
+  biz.get(`/clients/${c.id}/loyalty`).then((L) => {
+    const live = L.memberships.filter((m) => m.status === 'ACTIVE');
+    mount(host,
+      h('div', { class: 'card-head' }, h('div', { class: 'card-title' }, t('ლოიალობა', 'Loyalty')),
+        button(t('კორექცია', 'Adjust'), { size: 'sm', variant: 'ghost', icon: 'edit', onClick: () => {
+          const amount = input({ type: 'number', step: '0.5', placeholder: t('+10 ან −5', '+10 or −5') });
+          const note = input({ placeholder: t('მიზეზი', 'Reason') });
+          const save = button(t('შენახვა', 'Save'));
+          const m = openModal({ title: t('ბონუსის კორექცია', 'Adjust bonus'), size: 'sm', body: h('div', { class: 'form' }, h('p', { class: 'muted' }, t(`ახლა: ${gel(L.bonusBalance)}`, `Now: ${gel(L.bonusBalance)}`)), field(t('თანხა, ₾ (მინუსით — ჩამოჭრა)', 'Amount, ₾ (negative takes away)'), amount), field(t('მიზეზი', 'Reason'), note)), footer: (close) => [button(t('გაუქმება', 'Cancel'), { variant: 'ghost', onClick: () => close() }), save] });
+          save.addEventListener('click', () => busy(save, async () => { try { await biz.post(`/clients/${c.id}/bonus`, { amount: Number(amount.value), note: note.value.trim() || undefined }); m.close(); ok(t('შენახულია', 'Saved')); reload(); } catch (e) { fail(e); } }));
+        } })),
+      h('div', { class: 'bz-kv', style: { gridTemplateColumns: '1fr auto' } },
+        h('dt', null, t('ბონუსი', 'Bonus')), h('dd', null, h('b', null, gel(L.bonusBalance))),
+        h('dt', null, t('აბონემენტები', 'Memberships')), h('dd', null, live.length ? live.map((m) => h('div', null, `${m.title} · ${m.kind === 'VISITS' ? t(`დარჩა ${m.visitsLeft}`, `${m.visitsLeft} left`) : gel(m.amountLeft)} · ${dateText(m.endsOn)}`)) : h('span', { class: 'bz-dim' }, '—')),
+        L.giftCards.length ? [h('dt', null, t('ბარათები', 'Gift cards')), h('dd', null, L.giftCards.slice(0, 5).map((g) => h('div', null, h('code', null, g.code), ` · ${gel(g.balance)} / ${gel(g.amount)}`)))] : null),
+      L.ledger.length ? h('div', { class: 'bz-note', style: { marginTop: '8px' } }, t(`ბოლო: ${L.ledger[0].kind === 'BONUS_EARN' ? 'დაერიცხა' : L.ledger[0].kind === 'BONUS_REDEEM' ? 'დახარჯა' : 'მოძრაობა'} ${gel(Math.abs(L.ledger[0].amount))} · ${dateText(L.ledger[0].createdAt)}`, `Last: ${L.ledger[0].kind.toLowerCase().replace('_', ' ')} ${gel(Math.abs(L.ledger[0].amount))} · ${dateText(L.ledger[0].createdAt)}`)) : null);
+  }).catch((e) => mount(host, h('div', { class: 'card-title' }, t('ლოიალობა', 'Loyalty')), h('p', { class: 'bz-sub' }, e?.message || '')));
+  return host;
 }
 
 function kpi(label, value, delta, accent = false) {

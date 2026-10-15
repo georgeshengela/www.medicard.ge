@@ -50,3 +50,88 @@ CREATE INDEX IF NOT EXISTS "BookWaitlist_client_user" ON "BookWaitlist"("clientU
 -- SMS reminders: which SMS already went out for a booking (push keeps remindedDay / remindedSoon).
 ALTER TABLE "BookAppointment" ADD COLUMN IF NOT EXISTS "smsDay" BOOLEAN NOT NULL DEFAULT FALSE;
 ALTER TABLE "BookAppointment" ADD COLUMN IF NOT EXISTS "smsSoon" BOOLEAN NOT NULL DEFAULT FALSE;
+
+-- Loyalty: cashback on the client card, gift cards, memberships (visit packages / prepaid amounts), and a
+-- ledger of every movement. A completed visit may be paid partly by a gift card, bonus points or a
+-- membership: the parts are kept on the appointment ("paidParts") so undoing the completion puts them back.
+ALTER TABLE "BookClient" ADD COLUMN IF NOT EXISTS "bonusBalance" NUMERIC(12,2) NOT NULL DEFAULT 0;
+ALTER TABLE "BookAppointment" ADD COLUMN IF NOT EXISTS "paidParts" JSONB;
+
+CREATE TABLE IF NOT EXISTS "BookGiftCard" (
+  id TEXT PRIMARY KEY,
+  "businessId" TEXT NOT NULL REFERENCES "BookBusiness"(id) ON DELETE CASCADE,
+  code TEXT NOT NULL,
+  amount NUMERIC(12,2) NOT NULL,
+  balance NUMERIC(12,2) NOT NULL,
+  "buyerClientId" TEXT REFERENCES "BookClient"(id) ON DELETE SET NULL,
+  "buyerName" TEXT,
+  "recipientName" TEXT,
+  "recipientPhone" TEXT,
+  note TEXT,
+  status TEXT NOT NULL DEFAULT 'ACTIVE' CHECK (status IN ('ACTIVE', 'USED', 'EXPIRED', 'CANCELLED')),
+  "expiresOn" TEXT,
+  "paidMethod" TEXT,
+  "createdBy" TEXT,
+  "createdAt" TIMESTAMPTZ(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "updatedAt" TIMESTAMPTZ(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE UNIQUE INDEX IF NOT EXISTS "BookGiftCard_code" ON "BookGiftCard"("businessId", code);
+CREATE INDEX IF NOT EXISTS "BookGiftCard_business_status" ON "BookGiftCard"("businessId", status);
+
+CREATE TABLE IF NOT EXISTS "BookMembership" (
+  id TEXT PRIMARY KEY,
+  "businessId" TEXT NOT NULL REFERENCES "BookBusiness"(id) ON DELETE CASCADE,
+  title TEXT NOT NULL,
+  description TEXT,
+  kind TEXT NOT NULL DEFAULT 'VISITS' CHECK (kind IN ('VISITS', 'AMOUNT')),
+  "serviceIds" JSONB NOT NULL DEFAULT '[]'::jsonb,
+  "visitsTotal" INTEGER,
+  "amountTotal" NUMERIC(12,2),
+  price NUMERIC(12,2) NOT NULL,
+  "validDays" INTEGER NOT NULL DEFAULT 90,
+  active BOOLEAN NOT NULL DEFAULT TRUE,
+  "sortOrder" INTEGER NOT NULL DEFAULT 0,
+  "createdAt" TIMESTAMPTZ(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "updatedAt" TIMESTAMPTZ(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS "BookMembership_business" ON "BookMembership"("businessId", active);
+
+CREATE TABLE IF NOT EXISTS "BookClientMembership" (
+  id TEXT PRIMARY KEY,
+  "businessId" TEXT NOT NULL REFERENCES "BookBusiness"(id) ON DELETE CASCADE,
+  "membershipId" TEXT REFERENCES "BookMembership"(id) ON DELETE SET NULL,
+  "clientId" TEXT NOT NULL REFERENCES "BookClient"(id) ON DELETE CASCADE,
+  title TEXT NOT NULL,
+  kind TEXT NOT NULL,
+  "serviceIds" JSONB NOT NULL DEFAULT '[]'::jsonb,
+  "visitsTotal" INTEGER,
+  "visitsLeft" INTEGER,
+  "amountTotal" NUMERIC(12,2),
+  "amountLeft" NUMERIC(12,2),
+  price NUMERIC(12,2) NOT NULL,
+  "paidMethod" TEXT,
+  "startsOn" TEXT NOT NULL,
+  "endsOn" TEXT NOT NULL,
+  status TEXT NOT NULL DEFAULT 'ACTIVE' CHECK (status IN ('ACTIVE', 'USED', 'EXPIRED', 'CANCELLED')),
+  "createdBy" TEXT,
+  "createdAt" TIMESTAMPTZ(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  "updatedAt" TIMESTAMPTZ(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS "BookClientMembership_client" ON "BookClientMembership"("clientId", status);
+CREATE INDEX IF NOT EXISTS "BookClientMembership_business" ON "BookClientMembership"("businessId", status);
+
+CREATE TABLE IF NOT EXISTS "BookLoyaltyLedger" (
+  id TEXT PRIMARY KEY,
+  "businessId" TEXT NOT NULL REFERENCES "BookBusiness"(id) ON DELETE CASCADE,
+  "clientId" TEXT REFERENCES "BookClient"(id) ON DELETE SET NULL,
+  kind TEXT NOT NULL CHECK (kind IN ('BONUS_EARN', 'BONUS_REDEEM', 'BONUS_ADJUST', 'GIFT_SOLD', 'GIFT_REDEEM', 'MEMBERSHIP_SOLD', 'MEMBERSHIP_USE')),
+  amount NUMERIC(12,2) NOT NULL,
+  "appointmentId" TEXT REFERENCES "BookAppointment"(id) ON DELETE SET NULL,
+  "giftCardId" TEXT REFERENCES "BookGiftCard"(id) ON DELETE SET NULL,
+  "clientMembershipId" TEXT REFERENCES "BookClientMembership"(id) ON DELETE SET NULL,
+  note TEXT,
+  "createdBy" TEXT,
+  "createdAt" TIMESTAMPTZ(3) NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS "BookLoyaltyLedger_business" ON "BookLoyaltyLedger"("businessId", "createdAt");
+CREATE INDEX IF NOT EXISTS "BookLoyaltyLedger_client" ON "BookLoyaltyLedger"("clientId", "createdAt");

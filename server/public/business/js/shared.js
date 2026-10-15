@@ -48,7 +48,7 @@ export const METHODS = [['CASH', t('ნაღდი', 'Cash')], ['CARD', t('ბ�
 export const methodLabel = (m) => METHODS.find(([k]) => k === m)?.[1] || (m ? m : '—');
 
 export const EXPENSE_CATEGORIES = [['RENT', t('ქირა', 'Rent')], ['SALARY', t('ხელფასი', 'Salaries')], ['SUPPLIES', t('მასალები', 'Supplies')], ['MARKETING', t('მარკეტინგი', 'Marketing')], ['UTILITIES', t('კომუნალური', 'Utilities')], ['EQUIPMENT', t('ტექნიკა', 'Equipment')], ['TAX', t('გადასახადი', 'Tax')], ['OTHER', t('სხვა', 'Other')]];
-export const INCOME_CATEGORIES = [['SERVICE', t('სერვისი', 'Service')], ['PRODUCT', t('პროდუქტი', 'Product')], ['GIFT_CARD', t('სასაჩუქრე ბარათი', 'Gift card')], ['OTHER', t('სხვა', 'Other')]];
+export const INCOME_CATEGORIES = [['SERVICE', t('სერვისი', 'Service')], ['PRODUCT', t('პროდუქტი', 'Product')], ['GIFT_CARD', t('სასაჩუქრე ბარათი', 'Gift card')], ['MEMBERSHIP', t('აბონემენტი', 'Membership')], ['OTHER', t('სხვა', 'Other')]];
 export const txCategoryLabel = (c) => [...EXPENSE_CATEGORIES, ...INCOME_CATEGORIES].find(([k]) => k === c)?.[1] || c;
 
 export const ROLES = [['OWNER', t('მფლობელი', 'Owner')], ['MANAGER', t('მენეჯერი', 'Manager')], ['STAFF', t('თანამშრომელი', 'Staff')]];

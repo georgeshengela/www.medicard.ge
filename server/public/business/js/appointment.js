@@ -35,6 +35,7 @@ export function openAppointment(appt, ctx, { onChange } = {}) {
         h('dt', null, t('ვინ', 'Who')), h('dd', null, h('span', { class: 'bz-inline' }, h('span', { class: 'bz-color-dot', style: { background: a.staffColor || staffColor(ctx, a.staffId) } }), a.staffName || t('ნებისმიერი', 'Anyone'))),
         a.services && a.services.length > 1 ? [h('dt', null, t('სერვისები', 'Services')), h('dd', null, h('ul', { class: 'bz-svc-list' }, a.services.map((x) => h('li', null, h('span', null, x.name), h('span', { class: 'bz-sub' }, [minutes(x.durationMin), x.price != null ? gel(x.price) : null].filter(Boolean).join(' · '))))))] : null,
         h('dt', null, t('ფასი', 'Price')), h('dd', null, gel(a.price), a.discountAmount ? h('span', { class: 'bz-sub' }, t(` (ფასდაკლება −${gel(a.discountAmount)})`, ` (discount −${gel(a.discountAmount)})`)) : null),
+        a.paidParts && (a.paidParts.giftAmount || a.paidParts.bonusAmount || a.paidParts.membershipAmount) ? [h('dt', null, t('როგორ გადაიხადა', 'How it was paid')), h('dd', { class: 'bz-sub' }, [a.paidParts.cashAmount ? t(`${gel(a.paidParts.cashAmount)} ფულით`, `${gel(a.paidParts.cashAmount)} in money`) : null, a.paidParts.membershipAmount ? t(`${gel(a.paidParts.membershipAmount)} აბონემენტით`, `${gel(a.paidParts.membershipAmount)} by membership`) : null, a.paidParts.giftAmount ? t(`${gel(a.paidParts.giftAmount)} ბარათით ${a.paidParts.giftCode || ''}`, `${gel(a.paidParts.giftAmount)} by gift card ${a.paidParts.giftCode || ''}`) : null, a.paidParts.bonusAmount ? t(`${gel(a.paidParts.bonusAmount)} ბონუსით`, `${gel(a.paidParts.bonusAmount)} in bonus`) : null, a.paidParts.bonusEarned ? t(`დაერიცხა +${gel(a.paidParts.bonusEarned)}`, `earned +${gel(a.paidParts.bonusEarned)}`) : null].filter(Boolean).join(' · '))] : null,
         a.paidAmount != null ? [h('dt', null, t('გადახდილი', 'Paid')), h('dd', null, `${gel(a.paidAmount)} · ${methodLabel(a.paidMethod)}`)] : null,
         a.note ? [h('dt', null, t('კლიენტის შენიშვნა', 'Client note')), h('dd', null, a.note)] : null,
         a.cancelReason ? [h('dt', null, t('გაუქმების მიზეზი', 'Cancel reason')), h('dd', null, a.cancelReason)] : null,
@@ -97,15 +98,99 @@ export function openAppointment(appt, ctx, { onChange } = {}) {
     } catch (e) { fail(e); }
   }
 
+  /**
+   * Completing: the price, then what covers it besides money — a membership the client holds, a gift-card code,
+   * bonus from the client card (up to the business's share) — and the money that is left, editable. Cashback the
+   * client earns is shown before the button.
+   */
   function completeDialog() {
-    const price = input({ type: 'number', step: '0.01', min: 0, value: a.price ?? '' });
+    const price = Number(a.price ?? 0);
+    const err = h('div', { class: 'form-error', hidden: true });
+    const member = select([{ value: '', label: t('არ გამოიყენო', 'Do not use') }], '');
+    const giftCode = input({ placeholder: t('მაგ. AB12-CD34', 'e.g. AB12-CD34'), style: { textTransform: 'uppercase' }, autocomplete: 'off' });
+    const giftInfo = h('div', { class: 'bz-note' });
+    const bonus = input({ type: 'number', min: 0, step: '0.5', value: 0 });
+    const bonusInfo = h('div', { class: 'bz-note' });
+    const cash = input({ type: 'number', step: '0.01', min: 0, value: a.paidAmount ?? (a.price ?? '') });
     const method = select(METHODS.map(([value, label]) => ({ value, label })), a.paidMethod || 'CASH');
-    openModal({
+    const summary = h('div', { class: 'bz-pay-summary' });
+    let opts = null;
+    let gift = null;
+    let cashTouched = false;
+    cash.addEventListener('input', () => { cashTouched = true; paintSummary(); });
+    const n2 = (v) => Math.round(Number(v || 0) * 100) / 100;
+    function parts() {
+      let left = price;
+      const m = opts?.memberships.find((x) => x.id === member.value) || null;
+      let membershipAmount = 0;
+      if (m && left > 0) { membershipAmount = m.kind === 'VISITS' ? left : Math.min(left, n2(m.amountLeft)); left = n2(left - membershipAmount); }
+      let giftAmount = 0;
+      if (gift && left > 0) { giftAmount = Math.min(left, n2(gift.balance)); left = n2(left - giftAmount); }
+      const cap = opts ? Math.min(n2(opts.maxBonus), left) : 0;
+      const bonusAmount = Math.min(n2(bonus.value), cap);
+      left = n2(left - bonusAmount);
+      return { membershipAmount, giftAmount, bonusAmount, cap, rest: left, m };
+    }
+    function paintSummary() {
+      const x = parts();
+      bonus.max = String(x.cap);
+      if (!cashTouched) cash.value = x.rest;
+      const pct = opts?.loyalty?.cashbackPercent || 0;
+      const earn = pct > 0 ? n2(Number(cash.value || 0) * pct / 100) + (opts?.firstVisit ? n2(opts.loyalty.welcomeBonus || 0) : 0) : 0;
+      mount(summary,
+        h('div', null, h('span', null, t('ფასი', 'Price')), h('b', null, gel(price))),
+        x.membershipAmount ? h('div', null, h('span', null, t('აბონემენტი', 'Membership')), h('b', null, `−${gel(x.membershipAmount)}`)) : null,
+        x.giftAmount ? h('div', null, h('span', null, t('სასაჩუქრე ბარათი', 'Gift card')), h('b', null, `−${gel(x.giftAmount)}`)) : null,
+        x.bonusAmount ? h('div', null, h('span', null, t('ბონუსი', 'Bonus')), h('b', null, `−${gel(x.bonusAmount)}`)) : null,
+        h('div', { class: 'total' }, h('span', null, t('ფულით', 'In money')), h('b', null, gel(Number(cash.value || 0)))),
+        earn > 0 ? h('div', { class: 'earn' }, h('span', null, t('კლიენტს დაერიცხება', 'The client earns')), h('b', null, `+${gel(earn)}`)) : null);
+    }
+    const checkGift = debounce(async () => {
+      const code = giftCode.value.trim();
+      gift = null;
+      if (code.length < 8) { mount(giftInfo); paintSummary(); return; }
+      try {
+        const r = await biz.get('/gift-cards/find', { code });
+        if (!r.giftCard) mount(giftInfo, h('span', { class: 'bz-bad' }, t('ასეთი ბარათი არ არის.', 'No such card.')));
+        else if (r.giftCard.status !== 'ACTIVE' || r.giftCard.balance <= 0) mount(giftInfo, h('span', { class: 'bz-bad' }, t('ბარათი აქტიური არ არის.', 'The card is not active.')));
+        else { gift = r.giftCard; mount(giftInfo, t(`ბალანსი ${gel(gift.balance)}${gift.recipientName ? ` · ${gift.recipientName}` : ''}`, `Balance ${gel(gift.balance)}${gift.recipientName ? ` · ${gift.recipientName}` : ''}`)); }
+      } catch (e) { mount(giftInfo, h('span', { class: 'bz-bad' }, e?.message || '')); }
+      paintSummary();
+    }, 300);
+    giftCode.addEventListener('input', checkGift);
+    bonus.addEventListener('input', paintSummary);
+    member.addEventListener('change', paintSummary);
+    const allBonus = button(t('ყველა', 'All'), { size: 'sm', variant: 'ghost', onClick: () => { bonus.value = parts().cap; paintSummary(); } });
+    const complete = button(t('დასრულება', 'Complete'));
+    const m = openModal({
       title: t('ვიზიტის დასრულება', 'Complete the visit'),
       size: 'sm',
-      body: h('div', { class: 'form' }, h('p', { class: 'muted' }, t('თანხა შემოსავალში ჩაიწერება და კლიენტის ისტორიაში დაემატება.', 'The amount goes into income and onto the client history.')), field(t('გადახდილი თანხა, ₾', 'Amount paid, ₾'), price), field(t('გადახდის მეთოდი', 'Payment method'), method)),
-      footer: (close) => [button(t('გაუქმება', 'Cancel'), { variant: 'ghost', onClick: () => close() }), button(t('დასრულება', 'Complete'), { onClick: async () => { close(); await setStatus('COMPLETED', { paidAmount: price.value === '' ? null : Number(price.value), paidMethod: method.value }); } })],
+      body: h('div', { class: 'form' },
+        a.clientId ? field(t('აბონემენტი', 'Membership'), member) : null,
+        field(t('სასაჩუქრე ბარათი', 'Gift card'), giftCode), giftInfo,
+        a.clientId ? [field(t('ბონუსით, ₾', 'With bonus, ₾'), h('div', { class: 'bz-inline' }, bonus, allBonus)), bonusInfo] : null,
+        h('div', { class: 'form-row' }, field(t('ფულით, ₾', 'In money, ₾'), cash), field(t('გადახდის მეთოდი', 'Payment method'), method)),
+        summary, err),
+      footer: (close) => [button(t('გაუქმება', 'Cancel'), { variant: 'ghost', onClick: () => close() }), complete],
     });
+    complete.addEventListener('click', () => busy(complete, async () => {
+      err.hidden = true;
+      const x = parts();
+      const payment = {};
+      if (gift) payment.giftCode = gift.code;
+      if (x.bonusAmount > 0) payment.bonusAmount = x.bonusAmount;
+      if (x.m) payment.clientMembershipId = x.m.id;
+      m.close();
+      await setStatus('COMPLETED', { paidAmount: cash.value === '' ? null : Number(cash.value), paidMethod: method.value, payment });
+    }));
+    biz.get(`/appointments/${a.id}/payment-options`).then((o) => {
+      opts = o;
+      mount(member, [h('option', { value: '' }, t('არ გამოიყენო', 'Do not use')), ...o.memberships.map((x) => h('option', { value: x.id }, `${x.title} · ${x.kind === 'VISITS' ? t(`დარჩა ${x.visitsLeft}`, `${x.visitsLeft} left`) : gel(x.amountLeft)}`))]);
+      if (o.memberships.length) member.value = o.memberships[0].id;
+      mount(bonusInfo, o.bonusBalance > 0 ? t(`კლიენტს აქვს ${gel(o.bonusBalance)} ბონუსი; ამ ვიზიტზე მაქს. ${gel(o.maxBonus)}`, `The client has ${gel(o.bonusBalance)} in bonus; at most ${gel(o.maxBonus)} on this visit`) : t('ბონუსი არ აქვს.', 'No bonus yet.'));
+      paintSummary();
+    }).catch(() => { opts = { memberships: [], bonusBalance: 0, maxBonus: 0, loyalty: { cashbackPercent: 0 } }; paintSummary(); });
+    paintSummary();
   }
 
   function cancelDialog() {
