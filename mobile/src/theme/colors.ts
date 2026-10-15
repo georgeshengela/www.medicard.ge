@@ -119,10 +119,10 @@ const MODULE_TONES: Record<ModuleTone, { light: ToneTokens; dark: ToneTokens }> 
     light: { primary100: '#8A6414', primary200: '#B07F1F', primary300: '#C99A45', accent100: '#F6EBD3', accent200: '#E9C77E' },
     dark: { primary100: '#F3DDA6', primary200: '#E9C77E', primary300: '#C99A45', accent100: '#1A1A3A', accent200: '#5B4A22' },
   },
-  // MEDIBOOK (moduleBrand `book`): #B45309 / #FCD34D — honey amber, the golden hour of a salon or clinic.
+  // MEDIBOOK (moduleBrand `book`): #7A58C9 / #C6B2F5 — lilac, used lightly: lines and text, neutral fills.
   book: {
-    light: { primary100: '#B45309', primary200: '#D97706', primary300: '#FBBF24', accent100: '#FEF3C7', accent200: '#FDE68A' },
-    dark: { primary100: '#FCD34D', primary200: '#FBBF24', primary300: '#F59E0B', accent100: '#2A1B05', accent200: '#78350F' },
+    light: { primary100: '#7A58C9', primary200: '#8B6CD6', primary300: '#B49CF2', accent100: '#F4F0FC', accent200: '#D9CCF7' },
+    dark: { primary100: '#C6B2F5', primary200: '#B49CF2', primary300: '#9F86E8', accent100: '#221C38', accent200: '#4A3A80' },
   },
 };
 const TONED: Record<ModuleTone, { light: Palette; dark: Palette }> = {

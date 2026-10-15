@@ -162,7 +162,7 @@ function registerForm(container, ctx, pre) {
     map.addControl(new mapboxgl.NavigationControl({ showCompass: false }), 'top-right');
     const place = (lng, lat, fly) => {
       coords = { lat, lng };
-      if (!marker) { marker = new mapboxgl.Marker({ color: '#B45309', draggable: true }).setLngLat([lng, lat]).addTo(map); marker.on('dragend', () => { const p = marker.getLngLat(); coords = { lat: p.lat, lng: p.lng }; paintCoords(); }); }
+      if (!marker) { marker = new mapboxgl.Marker({ color: '#7A58C9', draggable: true }).setLngLat([lng, lat]).addTo(map); marker.on('dragend', () => { const p = marker.getLngLat(); coords = { lat: p.lat, lng: p.lng }; paintCoords(); }); }
       else marker.setLngLat([lng, lat]);
       if (fly) map.easeTo({ center: [lng, lat], zoom: Math.max(map.getZoom(), 15) });
       paintCoords();

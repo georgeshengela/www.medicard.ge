@@ -93,7 +93,7 @@ function buildShell() {
     : null;
   const side = h('aside', { class: 'side', 'aria-label': t('ნავიგაცია', 'Navigation') },
     h('a', { class: 'side-brand', href: '/', 'data-link': '' }, h('img', { src: '/icon.png', alt: '' }), h('span', null, wordmark(), h('small', null, t('ბიზნესის პანელი', 'Business panel')))),
-    biz ? h('div', { class: 'bz-biz' }, avatar(biz.name, 'var(--book)', 34), h('div', { class: 'who' }, h('b', null, biz.name), statusLine(biz.status))) : null,
+    biz ? h('div', { class: 'bz-biz' }, avatar(biz.name, 'var(--brand)', 34), h('div', { class: 'who' }, h('b', null, biz.name), statusLine(biz.status))) : null,
     switcher,
     h('nav', { class: 'side-nav' }, nav.map((r) => h('a', { class: 'nav-item', href: r.path, 'data-link': '', 'data-nav': r.path, title: r.title }, icon(r.icon, { size: 20 }), h('span', null, r.title)))),
     h('div', { class: 'side-foot' },
