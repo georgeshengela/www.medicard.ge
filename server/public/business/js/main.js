@@ -246,12 +246,13 @@ function markNav(path) {
   if (more) more.classList.toggle('on', ![...document.querySelectorAll('.bottom-nav a[data-nav]:not([data-nav="more"])')].some((a) => a.classList.contains('on')));
 }
 
+// Signed out (a sign-out inside the panel, an expired token): the public page /business holds the sign-in box.
+// A sign-out calls this twice in one tick (the token listener, then navigate('/')), so the redirect is decided
+// once the tick is over: from the panel root to the page itself, from a deeper path onto the box.
+let leaving = null;
 async function renderLanding() {
-  cleanup?.();
-  cleanup = null;
-  shellEl = null;
-  const mod = await import('./pages/landing.js');
-  mod.renderLanding(document.getElementById('root'), { onSignedIn: () => boot() });
+  if (leaving) return;
+  leaving = setTimeout(() => location.replace('/business' + (/^[/]business[/]?$/.test(location.pathname) ? '' : '#signin')), 0);
 }
 
 async function renderBare(route, params, query) {
