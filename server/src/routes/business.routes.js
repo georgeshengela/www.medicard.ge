@@ -24,6 +24,7 @@ import * as branches from '../lib/book/branches.js';
 import * as products from '../lib/book/products.js';
 import * as supplies from '../lib/book/supplies.js';
 import * as segments from '../lib/book/segments.js';
+import * as clients from '../lib/book/clients.js';
 import * as resources from '../lib/book/resources.js';
 import * as payroll from '../lib/book/payroll.js';
 import { prisma } from '../lib/prisma.js';
@@ -194,6 +195,7 @@ businessRouter.get('/:businessId/overview', member(ALL), asyncHandler(async (req
   data.waitlist = waiting;
   data.lowStock = stock?.low ?? 0;
   data.lowSupplies = lowSupplies;
+  data.birthdays = await clients.upcomingBirthdays(req.params.businessId, { days: 7 }).catch(() => []);
   if (req.member.role === 'STAFF' && req.member.staffId) {
     data.today = data.today.filter((a) => a.staffId === req.member.staffId);
     data.upcoming = data.upcoming.filter((a) => a.staffId === req.member.staffId);
@@ -552,9 +554,61 @@ businessRouter.delete('/:businessId/waitlist/:id', member(MANAGE), asyncHandler(
 
 // clients
 businessRouter.get('/:businessId/clients', member(ALL), asyncHandler(async (req, res) => res.json(await bookings.listClients({ businessId: req.params.businessId, q: String(req.query.q ?? ''), sort: String(req.query.sort ?? 'recent'), limit: Number(req.query.limit) || 200, offset: Number(req.query.offset) || 0 }))));
-businessRouter.get('/:businessId/clients/:clientId', member(ALL), asyncHandler(async (req, res) => res.json(await bookings.clientDetail({ businessId: req.params.businessId, clientId: req.params.clientId }))));
-businessRouter.post('/:businessId/clients', member(ALL), asyncHandler(async (req, res) => res.status(201).json({ client: await bookings.createClient({ businessId: req.params.businessId, ...(req.body ?? {}) }) })));
-businessRouter.patch('/:businessId/clients/:clientId', member(ALL), asyncHandler(async (req, res) => res.json({ client: await bookings.updateClient({ businessId: req.params.businessId, clientId: req.params.clientId, patch: req.body ?? {} }) })));
+businessRouter.get('/:businessId/clients/:clientId', member(ALL), asyncHandler(async (req, res) => res.json(await clients.clientProfile({ businessId: req.params.businessId, clientId: req.params.clientId }))));
+const CLIENT_BASE = ['name', 'phone', 'email', 'notes', 'tags'];
+const CLIENT_EXTRA = ['birthday', 'gender', 'source', 'address', 'preferredStaffId', 'card'];
+const splitClientBody = (body) => { const base = {}; const extra = {}; for (const k of CLIENT_BASE) if (body[k] !== undefined) base[k] = body[k]; for (const k of CLIENT_EXTRA) if (body[k] !== undefined) extra[k] = body[k]; return { base, extra }; };
+businessRouter.post('/:businessId/clients', member(ALL), asyncHandler(async (req, res) => {
+  const { base, extra } = splitClientBody(req.body ?? {});
+  let client = await bookings.createClient({ businessId: req.params.businessId, ...base });
+  if (Object.keys(extra).length) client = await clients.updateClientCard({ businessId: req.params.businessId, clientId: client.id, patch: extra }) || client;
+  res.status(201).json({ client });
+}));
+businessRouter.patch('/:businessId/clients/:clientId', member(ALL), asyncHandler(async (req, res) => {
+  const { base, extra } = splitClientBody(req.body ?? {});
+  let client = null;
+  if (Object.keys(base).length) client = await bookings.updateClient({ businessId: req.params.businessId, clientId: req.params.clientId, patch: base });
+  if (Object.keys(extra).length) client = (await clients.updateClientCard({ businessId: req.params.businessId, clientId: req.params.clientId, patch: extra })) || client;
+  if (!client) throw bookError(400, 'შესაცვლელი არაფერია.', 'NOTHING_TO_UPDATE', 'Nothing to update.');
+  res.json({ client });
+}));
+// the card's dated notes (plain, colour formula, injection, treatment step), private files, birthdays
+businessRouter.post('/:businessId/clients/:clientId/notes', member(ALL), asyncHandler(async (req, res) => {
+  const body = z.object({ kind: z.string().max(20).optional(), text: z.string().max(4000).optional(), data: z.record(z.any()).optional(), appointmentId: z.string().optional() }).parse(req.body ?? {});
+  res.status(201).json({ note: await clients.addNote({ businessId: req.params.businessId, clientId: req.params.clientId, kind: body.kind, text: body.text, data: body.data, appointmentId: body.appointmentId ?? null, actorUserId: req.user.id }) });
+}));
+businessRouter.delete('/:businessId/clients/:clientId/notes/:noteId', member(ALL), asyncHandler(async (req, res) => {
+  await clients.deleteNote({ businessId: req.params.businessId, clientId: req.params.clientId, noteId: req.params.noteId, actorUserId: req.user.id, manage: MANAGE.includes(req.member.role) });
+  res.json({ ok: true });
+}));
+businessRouter.post('/:businessId/clients/:clientId/files', member(ALL), upload.single('file'), asyncHandler(async (req, res) => {
+  if (!req.file?.buffer) throw bookError(400, 'აირჩიე სურათი.', 'FILE_REQUIRED', 'Choose a picture.');
+  let image;
+  try {
+    const out = await sharp(req.file.buffer, { limitInputPixels: 60_000_000, failOn: 'error' }).rotate().resize(2000, 2000, { fit: 'inside', withoutEnlargement: true }).jpeg({ quality: 84, mozjpeg: true }).toBuffer({ resolveWithObject: true });
+    image = { buffer: out.data, width: out.info.width, height: out.info.height };
+  } catch {
+    throw bookError(400, 'სურათი ვერ წავიკითხეთ. სცადე JPG ან PNG.', 'BAD_IMAGE', 'We could not read this picture. Try a JPG or PNG.');
+  }
+  const file = await clients.addFile({ businessId: req.params.businessId, clientId: req.params.clientId, buffer: image.buffer, width: image.width, height: image.height, kind: String(req.body?.kind ?? 'PHOTO'), caption: req.body?.caption ?? null, appointmentId: req.body?.appointmentId || null, actorUserId: req.user.id });
+  res.status(201).json({ file });
+}));
+businessRouter.get('/:businessId/clients/:clientId/files/:fileId/image', member(ALL), asyncHandler(async (req, res) => {
+  const f = await clients.fileBytes({ businessId: req.params.businessId, clientId: req.params.clientId, fileId: req.params.fileId });
+  res.set('Content-Type', f.mime);
+  res.set('Cache-Control', 'private, max-age=3600');
+  res.send(f.bytes);
+}));
+businessRouter.patch('/:businessId/clients/:clientId/files/:fileId', member(ALL), asyncHandler(async (req, res) => {
+  const body = z.object({ caption: z.string().max(200).nullable().optional(), kind: z.string().max(10).optional() }).parse(req.body ?? {});
+  await clients.updateFile({ businessId: req.params.businessId, clientId: req.params.clientId, fileId: req.params.fileId, caption: body.caption, kind: body.kind });
+  res.json({ ok: true });
+}));
+businessRouter.delete('/:businessId/clients/:clientId/files/:fileId', member(ALL), asyncHandler(async (req, res) => {
+  await clients.deleteFile({ businessId: req.params.businessId, clientId: req.params.clientId, fileId: req.params.fileId, actorUserId: req.user.id, manage: MANAGE.includes(req.member.role) });
+  res.json({ ok: true });
+}));
+businessRouter.get('/:businessId/clients-birthdays', member(ALL), asyncHandler(async (req, res) => res.json({ birthdays: await clients.upcomingBirthdays(req.params.businessId, { days: Math.min(60, Math.max(0, Number(req.query.days) || 7)) }) })));
 
 // discounts
 businessRouter.get('/:businessId/discounts', member(ALL), asyncHandler(async (req, res) => res.json({ discounts: await bookings.listDiscounts(req.params.businessId) })));

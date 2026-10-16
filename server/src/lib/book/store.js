@@ -502,7 +502,7 @@ export async function saveImage({ businessId, buffer, mime, width = null, height
 }
 
 export async function readImage(id, db = prisma) {
-  const rows = await db.$queryRaw`SELECT mime, bytes FROM "BookImage" WHERE id = ${String(id)}`;
+  const rows = await db.$queryRaw`SELECT mime, bytes, private FROM "BookImage" WHERE id = ${String(id)}`;
   return rows[0] ?? null;
 }
 

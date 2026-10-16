@@ -163,7 +163,7 @@ export function appointmentPublic(row, { lang = 'ka', now = new Date() } = {}) {
 
 const ITEMS_JSON = sql`(SELECT COALESCE(json_agg(json_build_object('id', i."serviceId", 'name', i."serviceName", 'durationMin', i."durationMin", 'price', i.price, 'discountAmount', i."discountAmount") ORDER BY i."sortOrder"), '[]'::json) FROM "BookAppointmentItem" i WHERE i."appointmentId" = a.id)`;
 const RESOURCES_JSON = sql`(SELECT COALESCE(json_agg(json_build_object('id', r.id, 'name', r.name, 'kind', r.kind) ORDER BY r."sortOrder", r.name), '[]'::json) FROM "BookResource" r WHERE r."businessId" = a."businessId" AND a."resourceIds" @> to_jsonb(r.id))`;
-const APPOINTMENT_SELECT = sql`SELECT a.*, s.name AS "staffName", s.color AS "staffColor", ${ITEMS_JSON} AS items, ${RESOURCES_JSON} AS resources,
+export const APPOINTMENT_SELECT = sql`SELECT a.*, s.name AS "staffName", s.color AS "staffColor", ${ITEMS_JSON} AS items, ${RESOURCES_JSON} AS resources,
   b.name AS "businessName", b."nameKa" AS "businessNameKa", b.slug AS "businessSlug", b.category AS "businessCategory", b.address AS "businessAddress", b."addressKa" AS "businessAddressKa",
   b.phone AS "businessPhone", b.lat AS "businessLat", b.lng AS "businessLng", b."logoImageId" AS "businessLogoImageId", b."coverImageId" AS "businessCoverImageId", b.settings AS "businessSettings"
   FROM "BookAppointment" a JOIN "BookBusiness" b ON b.id = a."businessId" LEFT JOIN "BookStaff" s ON s.id = a."staffId"`;

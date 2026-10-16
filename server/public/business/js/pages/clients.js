@@ -1,12 +1,13 @@
 // MEDIBOOK business panel — the client book: the book in numbers, filters, a sortable table 25 a page,
 // one client's card with history, notes and tags.
-import { h, mount, icon, button, pageHead, card, input, textarea, field, busy, openModal, badge } from '/app/js/ui.js';
+import { h, mount, icon, button, pageHead, card, input, badge } from '/app/js/ui.js';
 import { select } from '../fields.js';
 import { donut } from '/app/js/charts.js';
 import { t } from '/app/js/i18n.js';
 import { biz, gel, when, dateText, avatar, emptyBox, debounceFn, fail, ok, statusBadge, minutes, phoneText, vocab } from '../shared.js';
 import { appointmentLine, loadContext, newAppointmentDialog, openAppointment } from '../appointment.js';
 import { chips, filterBar, listState, pager, paginate, sortRows, sortableHead } from '../lists.js';
+import { clientCard, clientDialog } from '../client-card.js';
 
 const D = 86_400_000;
 
@@ -135,92 +136,11 @@ export default async function clientsPage(root, ctx) {
   await load();
 }
 
-function clientDialog(client, onSaved) {
-  const name = input({ value: client?.name || '', required: true, placeholder: t('სახელი გვარი', 'Full name') });
-  const phone = input({ type: 'tel', value: client?.phone || '', placeholder: '5XX XXX XXX' });
-  const email = input({ type: 'email', value: client?.email || '' });
-  const notes = textarea({ rows: 3, value: client?.notes || '', placeholder: t('ალერგია, სურვილები, რა მოსწონს…', 'Preferences, what they like, what to remember…') });
-  const tags = input({ value: (client?.tags || []).join(', '), placeholder: t('VIP, ახალი, მეგობრის რეკომენდაცია… (მძიმით)', 'VIP, new, referred… (comma-separated)') });
-  const save = button(t('შენახვა', 'Save'));
-  const m = openModal({
-    title: client ? t('კლიენტის რედაქტირება', 'Edit client') : t('ახალი კლიენტი', 'New client'),
-    body: h('div', { class: 'form' }, field(t('სახელი', 'Name'), name), h('div', { class: 'form-row' }, field(t('ტელეფონი', 'Phone'), phone), field(t('ელ-ფოსტა', 'Email'), email)), field(t('შენიშვნები', 'Notes'), notes), field(t('ტეგები', 'Tags'), tags)),
-    footer: (close) => [button(t('გაუქმება', 'Cancel'), { variant: 'ghost', onClick: () => close() }), save],
-  });
-  save.addEventListener('click', () => busy(save, async () => {
-    try {
-      const body = { name: name.value.trim(), phone: phone.value.trim() || null, email: email.value.trim() || null, notes: notes.value.trim() || null, tags: tags.value.split(',').map((s) => s.trim()).filter(Boolean) };
-      const res = client ? await biz.patch(`/clients/${client.id}`, body) : await biz.post('/clients', body);
-      m.close();
-      ok(t('შენახულია', 'Saved'));
-      onSaved?.(res.client);
-    } catch (e) { fail(e); }
-  }));
-}
-
-async function clientDetail(root, ctx, id) {
-  const context = await loadContext();
-  let data;
-  try { data = await biz.get(`/clients/${id}`); } catch (e) { mount(root, card(emptyBox(t('კლიენტი ვერ მოიძებნა', 'Client not found'), e?.message))); return; }
-  const reload = () => clientDetail(root, ctx, id);
-  const c = data.client;
-  const upcoming = data.appointments.filter((a) => (a.status === 'PENDING' || a.status === 'CONFIRMED') && new Date(a.endsAt) > new Date());
-  const history = data.appointments.filter((a) => !upcoming.includes(a));
-  const notes = textarea({ rows: 4, value: c.notes || '', placeholder: t('შენიშვნები — მხოლოდ გუნდი ხედავს', 'Notes — only the team sees them') });
-  const saved = h('span', { class: 'bz-note' }, t('ინახება თავისით.', 'Saves by itself.'));
-  notes.addEventListener('input', debounceFn(async () => { try { await biz.patch(`/clients/${id}`, { notes: notes.value }); saved.textContent = t('შენახულია ✓', 'Saved ✓'); setTimeout(() => { saved.textContent = t('ინახება თავისით.', 'Saves by itself.'); }, 1500); } catch (e) { fail(e); } }, 700));
-  const favService = (() => { const m = new Map(); for (const a of data.appointments) if (a.status === 'COMPLETED') m.set(a.serviceName, (m.get(a.serviceName) || 0) + 1); return [...m.entries()].sort((x, y) => y[1] - x[1])[0] || null; })();
-  const favStaff = (() => { const m = new Map(); for (const a of data.appointments) if (a.status === 'COMPLETED' && a.staffName) m.set(a.staffName, (m.get(a.staffName) || 0) + 1); return [...m.entries()].sort((x, y) => y[1] - x[1])[0] || null; })();
-
-  mount(root,
-    h('a', { class: 'back', href: '/business/clients', 'data-link': '' }, icon('chevronLeft', { size: 16 }), t('კლიენტები', 'Clients')),
-    pageHead(c.name, [c.phone ? phoneText(c.phone) : null, c.email, c.inApp ? t('MEDICARD აპის მომხმარებელი', 'MEDICARD app user') : t('ხელით დამატებული', 'Added by hand'), t(`ბაზაში ${dateText(c.createdAt)}-დან`, `in the book since ${dateText(c.createdAt)}`)].filter(Boolean).join(' · '),
-      c.phone ? button(t('დარეკვა', 'Call'), { variant: 'ghost', icon: 'phone', href: `tel:${c.phone}`, external: true }) : null,
-      button(t('რედაქტირება', 'Edit'), { variant: 'ghost', icon: 'edit', onClick: () => clientDialog(c, reload) }),
-      button(t('ახალი ჩანაწერი', 'New booking'), { icon: 'plus', onClick: () => newAppointmentDialog(context, { clientId: c.id, clientName: c.name, clientPhone: c.phone || '' }, { onCreated: reload }) })),
-    h('div', { class: 'bz-kpis' },
-      kpi(t('ვიზიტები', 'Visits'), String(c.visits), favService ? t(`ყველაზე ხშირად: ${favService[0]}`, `most often: ${favService[0]}`) : ''),
-      kpi(t('გაცდენები', 'No-shows'), String(c.noShows), c.visits ? t(`${Math.round((c.noShows / (c.visits + c.noShows)) * 100)}% ვიზიტებიდან`, `${Math.round((c.noShows / (c.visits + c.noShows)) * 100)}% of visits`) : ''),
-      kpi(t('სულ თანხა', 'Total spent'), gel(c.totalSpent), c.visits ? t(`საშ. ${gel(c.totalSpent / c.visits)} ვიზიტზე`, `avg ${gel(c.totalSpent / c.visits)} a visit`) : '', true),
-      kpi(t('პირველი ვიზიტი', 'First visit'), c.firstVisitAt ? dateText(c.firstVisitAt) : '—', favStaff ? t(`ჩვეულებრივ: ${favStaff[0]}`, `usually with ${favStaff[0]}`) : '')),
-    h('div', { class: 'bz-grid' },
-      h('div', { style: { display: 'grid', gap: '16px', alignContent: 'start' } },
-        upcoming.length ? card(h('div', { class: 'card-title', style: { marginBottom: '8px' } }, t('მომავალი', 'Upcoming')), h('div', { class: 'bz-timeline' }, upcoming.map((a) => appointmentLine(a, context, { onOpen: (x) => openAppointment(x, context, { onChange: reload }) })))) : null,
-        card(h('div', { class: 'card-head' }, h('div', { class: 'card-title' }, t('ისტორია', 'History')), h('span', { class: 'bz-sub' }, t(`${history.length} ჩანაწერი`, `${history.length} entries`))),
-          history.length ? h('div', { class: 'bz-timeline' }, history.slice(0, 30).map((a) => appointmentLine(a, context, { onOpen: (x) => openAppointment(x, context, { onChange: reload }) }))) : h('p', { class: 'bz-sub' }, t('ჯერ ვიზიტი არ ყოფილა.', 'No visits yet.')),
-          history.length > 30 ? h('p', { class: 'bz-note', style: { marginTop: '8px' } }, t(`ბოლო 30 ჩანს; სულ ${history.length}.`, `The last 30 are shown; ${history.length} in all.`)) : null)),
-      h('div', { style: { display: 'grid', gap: '16px', alignContent: 'start' } },
-        loyaltyCard(c, reload),
-        card(h('div', { class: 'card-title', style: { marginBottom: '8px' } }, t('შენიშვნები', 'Notes')), notes, h('p', { style: { marginTop: '6px' } }, saved)),
-        card(h('div', { class: 'card-title', style: { marginBottom: '8px' } }, t('ტეგები', 'Tags')), c.tags.length ? h('div', { class: 'bz-tags' }, c.tags.map((tag) => h('span', { class: 'bz-tag' }, tag))) : h('p', { class: 'bz-sub' }, t('ტეგები რედაქტირებით დაემატება.', 'Add tags through Edit.'))),
-        data.reviews.length ? card(h('div', { class: 'card-title', style: { marginBottom: '8px' } }, t('შეფასებები', 'Reviews')), data.reviews.map((r) => h('div', { class: 'bz-review' }, h('div', { class: 'meta' }, h('span', { class: 'bz-stars' }, [1, 2, 3, 4, 5].map((i) => h('span', { class: i <= r.rating ? '' : 'off' }, icon('star', { size: 13 })))), dateText(r.createdAt)), r.text ? h('div', null, r.text) : null))) : null)));
-}
-
-/** Bonus balance with a correction, the passes the client holds, gift cards they bought. Loads by itself. */
-function loyaltyCard(c, reload) {
-  const host = card(h('div', { class: 'skeleton-card' }, h('div', { class: 'sk' })));
-  biz.get(`/clients/${c.id}/loyalty`).then((L) => {
-    const live = L.memberships.filter((m) => m.status === 'ACTIVE');
-    mount(host,
-      h('div', { class: 'card-head' }, h('div', { class: 'card-title' }, t('ლოიალობა', 'Loyalty')),
-        button(t('კორექცია', 'Adjust'), { size: 'sm', variant: 'ghost', icon: 'edit', onClick: () => {
-          const amount = input({ type: 'number', step: '0.5', placeholder: t('+10 ან −5', '+10 or −5') });
-          const note = input({ placeholder: t('მიზეზი', 'Reason') });
-          const save = button(t('შენახვა', 'Save'));
-          const m = openModal({ title: t('ბონუსის კორექცია', 'Adjust bonus'), size: 'sm', body: h('div', { class: 'form' }, h('p', { class: 'muted' }, t(`ახლა: ${gel(L.bonusBalance)}`, `Now: ${gel(L.bonusBalance)}`)), field(t('თანხა, ₾ (მინუსით — ჩამოჭრა)', 'Amount, ₾ (negative takes away)'), amount), field(t('მიზეზი', 'Reason'), note)), footer: (close) => [button(t('გაუქმება', 'Cancel'), { variant: 'ghost', onClick: () => close() }), save] });
-          save.addEventListener('click', () => busy(save, async () => { try { await biz.post(`/clients/${c.id}/bonus`, { amount: Number(amount.value), note: note.value.trim() || undefined }); m.close(); ok(t('შენახულია', 'Saved')); reload(); } catch (e) { fail(e); } }));
-        } })),
-      h('div', { class: 'bz-kv', style: { gridTemplateColumns: '1fr auto' } },
-        h('dt', null, t('ბონუსი', 'Bonus')), h('dd', null, h('b', null, gel(L.bonusBalance))),
-        h('dt', null, t('აბონემენტები', 'Memberships')), h('dd', null, live.length ? live.map((m) => h('div', null, `${m.title} · ${m.kind === 'VISITS' ? t(`დარჩა ${m.visitsLeft}`, `${m.visitsLeft} left`) : gel(m.amountLeft)} · ${dateText(m.endsOn)}`)) : h('span', { class: 'bz-dim' }, '—')),
-        L.giftCards.length ? [h('dt', null, t('ბარათები', 'Gift cards')), h('dd', null, L.giftCards.slice(0, 5).map((g) => h('div', null, h('code', null, g.code), ` · ${gel(g.balance)} / ${gel(g.amount)}`)))] : null),
-      L.ledger.length ? h('div', { class: 'bz-note', style: { marginTop: '8px' } }, t(`ბოლო: ${L.ledger[0].kind === 'BONUS_EARN' ? 'დაერიცხა' : L.ledger[0].kind === 'BONUS_REDEEM' ? 'დახარჯა' : 'მოძრაობა'} ${gel(Math.abs(L.ledger[0].amount))} · ${dateText(L.ledger[0].createdAt)}`, `Last: ${L.ledger[0].kind.toLowerCase().replace('_', ' ')} ${gel(Math.abs(L.ledger[0].amount))} · ${dateText(L.ledger[0].createdAt)}`)) : null);
-  }).catch((e) => mount(host, h('div', { class: 'card-title' }, t('ლოიალობა', 'Loyalty')), h('p', { class: 'bz-sub' }, e?.message || '')));
-  return host;
-}
+/** The card itself lives in client-card.js (header, six numbers, tabs); the list page only routes to it. */
+async function clientDetail(root, ctx, id) { return clientCard(root, ctx, id); }
 
 function kpi(label, value, delta, accent = false) {
   return h('div', { class: `bz-kpi${accent ? ' is-accent' : ''}` }, h('div', { class: 'stat-label' }, label), h('div', { class: 'stat-value' }, value), delta ? h('div', { class: 'stat-delta' }, delta) : null);
 }
 
-export { badge, statusBadge, minutes };
+export { badge, statusBadge, minutes, clientDialog };
