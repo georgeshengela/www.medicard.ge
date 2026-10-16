@@ -24,7 +24,7 @@
     // A business owner who has used the panel before goes straight in; everyone else reads this page.
     (function () {
       // Only from exactly /business: /business/ is the panel shell, so this can never loop.
-      try { if (location.pathname === '/business' && localStorage.getItem('medicard.web.token') && localStorage.getItem('medicard.business.current') && !/signin|stay/.test(location.hash)) location.replace('/business/'); } catch (e) {}
+      try { if (location.pathname === '/business' && localStorage.getItem('medicard.web.token') && localStorage.getItem('medicard.business.current') && !/signin|stay/.test(location.hash) && !/[?&]p=1/.test(location.search)) location.replace('/business/'); } catch (e) {}
     })();
   </script>
   <meta name="theme-color" content="#F3F0FB" />

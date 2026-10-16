@@ -26,7 +26,10 @@
     (function () {
       var token = null;
       try { token = localStorage.getItem('medicard.web.token'); } catch (e) {}
-      if (!token) location.replace('/business' + (location.pathname === '/business/' ? '' : '#signin'));
+      // ?p=1 matters: before the landing existed, /business answered with a 301 to /business/ and browsers cache
+      // that redirect for good — a bare /business would bounce straight back here and loop. A query string is a
+      // different cache key, so it always reaches the page; landing.js drops it from the address bar.
+      if (!token) location.replace('/business?p=1' + (location.hash || (location.pathname === '/business/' ? '' : '#signin')));
     })();
   </script>
   <link rel="preconnect" href="https://fonts.googleapis.com" />

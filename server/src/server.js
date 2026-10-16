@@ -475,6 +475,9 @@ if (serveLanding) {
   app.use(
     express.static(PUBLIC_DIST, {
       index: false,
+      // No directory 301s: browsers cache them permanently, and /business → /business/ (from before the landing
+      // existed) is exactly how a signed-out visitor got stuck bouncing between the page and the panel.
+      redirect: false,
       setHeaders(res, filePath) {
         if (filePath.endsWith('.html')) res.setHeader('Cache-Control', 'no-store');
         // Web app modules import each other without version stamps: revalidate every load.

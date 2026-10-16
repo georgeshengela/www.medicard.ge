@@ -252,7 +252,8 @@ function markNav(path) {
 let leaving = null;
 async function renderLanding() {
   if (leaving) return;
-  leaving = setTimeout(() => location.replace('/business' + (/^[/]business[/]?$/.test(location.pathname) ? '' : '#signin')), 0);
+  // ?p=1 sidesteps the 301 (/business → /business/) that browsers cached before the landing existed (see panel.html).
+  leaving = setTimeout(() => location.replace('/business?p=1' + (location.hash || (/^[/]business[/]?$/.test(location.pathname) ? '' : '#signin'))), 0);
 }
 
 async function renderBare(route, params, query) {

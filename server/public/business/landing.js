@@ -8,6 +8,10 @@ const I18N = window.MedicardI18n || { lang: 'ka', isEn: false, t: (ka) => ka };
 const T = I18N.t;
 const PANEL = '/business/'; // the trailing slash is the panel shell; /business alone is this page
 
+// The panel sends signed-out visitors here as /business?p=1 (a query string beats the 301 browsers cached for
+// a bare /business before this page existed); the address bar does not need to show it.
+if (/[?&]p=1/.test(location.search)) { try { history.replaceState(null, '', '/business' + location.hash); } catch { /* ignore */ } }
+
 const year = document.getElementById('y');
 if (year) year.textContent = String(new Date().getFullYear());
 
