@@ -42,14 +42,15 @@ referralRouter.get(
   }),
 );
 
-// Entering a friend's code works for any new account and pays both sides at once.
+// „ვინ მოგიწვია?“: a friend's code (any new account, both sides paid at once) or an influencer's code
+// (verified phone, registration credited to the influencer after the hold — lib/influencer/store.js).
 referralRouter.post(
   '/claim',
   claimLimiter,
   asyncHandler(async (req, res) => {
     const body = claimSchema.parse(req.body ?? {});
     const result = await claimReferral({ invitee: req.user, code: body.code, installId: body.installId, ip: clientIp(req), lang: req.lang });
-    if (!result.ok) return res.status(409).json({ error: result.error, code: result.code });
+    if (!result.ok) return res.status(result.httpStatus || 409).json({ error: result.error, code: result.code, ...(result.feature ? { feature: result.feature } : {}) });
     return res.status(201).json(result);
   }),
 );

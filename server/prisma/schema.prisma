@@ -3041,3 +3041,109 @@ model SleepConfig {
   data      Json     @default("{}")
   updatedAt DateTime @default(now()) @db.Timestamptz(6)
 }
+
+/// Influencer program (raw SQL: prisma/20261016-influencers.sql, install-influencers.mjs). Declared here only so
+/// nothing ever drops these tables; the code reads and writes them with raw SQL (lib/influencer/store.js).
+model Influencer {
+  id              String    @id
+  email           String    @unique(map: "Influencer_email_key")
+  passwordHash    String
+  fullName        String
+  displayName     String
+  phone           String
+  socials         Json      @default("{}")
+  photoKey        String?
+  status          String    @default("PENDING")
+  statusReason    String?
+  adminNote       String?
+  lang            String    @default("ka")
+  termsVersion    String?
+  termsAcceptedAt DateTime? @db.Timestamptz(6)
+  approvedAt      DateTime? @db.Timestamptz(6)
+  lastLoginAt     DateTime? @db.Timestamptz(6)
+  createdAt       DateTime  @default(now()) @db.Timestamptz(6)
+  updatedAt       DateTime  @default(now()) @db.Timestamptz(6)
+}
+
+model InfluencerSession {
+  id           String   @id
+  influencerId String
+  tokenHash    String   @unique(map: "InfluencerSession_token")
+  createdAt    DateTime @default(now()) @db.Timestamptz(6)
+  lastSeenAt   DateTime @default(now()) @db.Timestamptz(6)
+  expiresAt    DateTime @db.Timestamptz(6)
+}
+
+model InfluencerPasswordReset {
+  id           String    @id
+  influencerId String
+  codeHash     String
+  attempts     Int       @default(0)
+  expiresAt    DateTime  @db.Timestamptz(6)
+  usedAt       DateTime? @db.Timestamptz(6)
+  createdAt    DateTime  @default(now()) @db.Timestamptz(6)
+}
+
+model InfluencerCode {
+  code         String   @id
+  influencerId String
+  kind         String
+  primary      Boolean  @default(false)
+  createdAt    DateTime @default(now()) @db.Timestamptz(6)
+}
+
+model InfluencerReferral {
+  id            String    @id
+  influencerId  String
+  code          String
+  userId        String?   @unique(map: "InfluencerReferral_user")
+  userRef       String
+  userCreatedAt DateTime? @db.Timestamptz(6)
+  deviceHash    String?   @unique(map: "InfluencerReferral_device")
+  networkHash   String?
+  status        String    @default("PENDING")
+  reason        String?
+  flags         Json      @default("[]")
+  seq           Int?
+  amount        Int?
+  holdUntil     DateTime  @db.Timestamptz(6)
+  creditedAt    DateTime? @db.Timestamptz(6)
+  decidedAt     DateTime? @db.Timestamptz(6)
+  decidedBy     String?
+  createdAt     DateTime  @default(now()) @db.Timestamptz(6)
+}
+
+model InfluencerLedger {
+  id           String   @id
+  influencerId String
+  kind         String
+  amount       Int
+  refId        String
+  note         String?
+  adminEmail   String?
+  createdAt    DateTime @default(now()) @db.Timestamptz(6)
+
+  @@unique([kind, refId], map: "InfluencerLedger_event")
+}
+
+model InfluencerPayout {
+  id           String    @id
+  influencerId String
+  amount       Int
+  status       String    @default("REQUESTED")
+  details      Json
+  reference    String?
+  rejectReason String?
+  decidedBy    String?
+  requestedAt  DateTime  @default(now()) @db.Timestamptz(6)
+  approvedAt   DateTime? @db.Timestamptz(6)
+  paidAt       DateTime? @db.Timestamptz(6)
+  rejectedAt   DateTime? @db.Timestamptz(6)
+}
+
+model InfluencerConfig {
+  id        Int      @id @default(1)
+  data      Json     @default("{}")
+  updatedAt DateTime @default(now()) @db.Timestamptz(6)
+  updatedBy String?
+}

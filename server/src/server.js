@@ -34,6 +34,9 @@ import { startReferralRewards } from './lib/referral.js';
 import { startPushCampaignWorker } from './lib/pushCampaigns.js';
 import { objectStorageConfigured, objectStoragePublicHint } from './lib/objectStorage.js';
 import { adminReferralRouter, referralRouter } from './routes/referral.routes.js';
+import { promoRouter } from './routes/promo.routes.js';
+import { adminInfluencersRouter } from './routes/adminInfluencers.routes.js';
+import { startInfluencerJobs } from './lib/influencer/store.js';
 import { adminTrainerRouter, trainerRouter } from './routes/trainer.routes.js';
 import { adminPetsRouter } from './routes/adminPets.routes.js';
 import { bookRouter } from './routes/book.routes.js';
@@ -368,6 +371,7 @@ app.use('/api/admin/community', adminCommunityRouter);
 startCommunityPush();
 startPriceDropAlerts();
 startReferralRewards();
+startInfluencerJobs();
 startTrainerReminders();
 startBookReminders();
 startReviewDemoSlots();
@@ -388,6 +392,7 @@ app.use('/api/location', locationRouter);
 app.use('/api/quests', requireFeature('quest'), questsRouter);
 app.use('/api/achievements', achievementsRouter);
 app.use('/api/rewards', requireFeature('rewardsStore', { match: (req) => /\/redeem$/.test(req.path) }), rewardsRouter);
+// `invites` stops every code entry („ვინ მოგიწვია?“); influencer codes also need `influencers` (lib/referral.js).
 app.use('/api/referrals', requireFeature('invites'), referralRouter);
 app.use('/api/trainer', requireFeature('coach'), trainerRouter);
 app.use('/api/sleep', requireFeature('sleep'), sleepRouter);
@@ -405,6 +410,9 @@ app.use('/api/admin/usage', adminUsageRouter);
 app.use('/api/admin/feed', adminFeedRouter);
 app.use('/api/identity', identityRouter);
 app.use('/api/admin/referrals', adminReferralRouter);
+// Influencer program: the portal at medicard.ge/promo (own accounts, cookie session) and admin #/influencers.
+app.use('/api/promo', promoRouter);
+app.use('/api/admin/influencers', adminInfluencersRouter);
 app.use('/api/funnel', funnelRouter);
 app.use('/api/contact', contactRouter);
 app.use('/api/admin/funnel', adminFunnelRouter);
@@ -481,7 +489,7 @@ if (serveLanding) {
       setHeaders(res, filePath) {
         if (filePath.endsWith('.html')) res.setHeader('Cache-Control', 'no-store');
         // Web app modules import each other without version stamps: revalidate every load.
-        else if (/[\\/](app|business)[\\/]/.test(filePath)) res.setHeader('Cache-Control', 'no-cache');
+        else if (/[\\/](app|business|promo)[\\/]/.test(filePath)) res.setHeader('Cache-Control', 'no-cache');
         // MEDIRUN Glow engine + runner models: the app's map WebView loads them by URL, so a new engine build
         // must reach phones on their next run without an app update (a 304 costs nothing when unchanged).
         else if (/[\\/]medirun[\\/]glow[\\/]/.test(filePath)) res.setHeader('Cache-Control', 'no-cache');
@@ -509,6 +517,11 @@ if (serveLanding) {
     res.set('Cross-Origin-Opener-Policy', 'same-origin-allow-popups');
     res.set('Referrer-Policy', 'strict-origin-when-cross-origin');
     res.sendFile(path.join(PUBLIC_DIST, 'business', 'panel.html'));
+  });
+  // Influencer portal (promo/index.html — sign-up, sign-in, dashboard; vanilla JS, its API is /api/promo).
+  app.get(['/promo', '/promo/'], (_req, res) => {
+    res.set('Cache-Control', 'no-store');
+    res.sendFile(path.join(PUBLIC_DIST, 'promo', 'index.html'));
   });
   app.get('/i/:code', (_req, res) => {
     res.set('Cache-Control', 'no-store');

@@ -14,7 +14,7 @@ This file is loaded into every session, so it holds only rules that apply everyw
 | MEDIHOROSCOPE: real-sky readings (native Georgian, 3-pass writer), library, the Oracle (Medi in a witch hat), astrolabe/night sky, admin #/horoscope, web /app/horoscope, release gate (train 24) | [docs/agents/horoscope.md](docs/agents/horoscope.md) |
 | Admin panel | [docs/agents/admin.md](docs/agents/admin.md) |
 | Ads, posters, social posts, landing pages (every creative leads with the app name MEDICARD AI) | [docs/agents/marketing.md](docs/agents/marketing.md) |
-| Sign-in, accounts, phone gate, onboarding, referral | [docs/agents/accounts.md](docs/agents/accounts.md) |
+| Sign-in, accounts, phone gate, onboarding, referral, influencer program (medicard.ge/promo, „ვინ მოგიწვია?“) | [docs/agents/accounts.md](docs/agents/accounts.md) |
 | Server: loop guards, cache, schema installs, email, support, capacity, errors, module switches, news, pharmacy price compare | [docs/agents/server-ops.md](docs/agents/server-ops.md) |
 | MEDI QUEST, MEDI COACH, nutrition, reminders, Notification Brain (Medi's own pushes), web `/app` | [docs/agents/features.md](docs/agents/features.md) |
 | MEDIBOOK: catalogue + map, online booking, business panel `/business`, claims, admin `#/book` | [docs/agents/medibook.md](docs/agents/medibook.md) |

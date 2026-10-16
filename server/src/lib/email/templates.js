@@ -98,6 +98,42 @@ export const DEFAULT_TEMPLATES = Object.freeze({
     ctaLabel: '',
     ctaUrl: '',
   },
+  promo_code: {
+    key: 'promo_code',
+    name: 'ინფლუენსერის პორტალი — პაროლის აღდგენის კოდი',
+    category: 'transactional',
+    trigger: 'medicard.ge/promo → „დაგავიწყდა პაროლი?“ (/api/promo/password/forgot).',
+    vars: [...COMMON_VARS, 'code', 'minutes'],
+    required: ['code'],
+    subject: 'MEDICARD Promo — პაროლის აღდგენის კოდი',
+    preheader: 'კოდი მოქმედებს {{minutes}} წუთის განმავლობაში.',
+    heading: 'გამარჯობა, {{name}}!',
+    body: [
+      'შეიყვანე ეს კოდი medicard.ge/promo-ზე ახალი პაროლის დასაყენებლად. კოდი მოქმედებს **{{minutes}} წუთის** განმავლობაში.',
+      '{{code}}',
+      'თუ ეს შენ არ მოგითხოვია, უბრალოდ უგულებელყავი წერილი — პაროლი არ შეიცვლება.',
+    ].join('\n\n'),
+    ctaLabel: '',
+    ctaUrl: '',
+  },
+  promo_notice: {
+    key: 'promo_notice',
+    name: 'ინფლუენსერის პორტალი — სტატუსის შეტყობინება',
+    category: 'transactional',
+    trigger: 'ადმინი ადასტურებს ან აჩერებს ინფლუენსერს, ან ამუშავებს გატანის მოთხოვნას (#/influencers).',
+    vars: [...COMMON_VARS, 'title', 'message', 'portalUrl'],
+    required: ['message'],
+    subject: 'MEDICARD Promo — {{title}}',
+    preheader: '{{title}}',
+    heading: '{{title}}',
+    body: [
+      'გამარჯობა, {{name}}!',
+      '{{message}}',
+      'კითხვა გაქვს? უპასუხე ამ წერილს ან მოგვწერე [{{supportEmail}}](mailto:{{supportEmail}}).',
+    ].join('\n\n'),
+    ctaLabel: 'პორტალის გახსნა',
+    ctaUrl: '{{portalUrl}}',
+  },
 });
 
 /**
@@ -155,6 +191,30 @@ export const DEFAULT_TEMPLATES_EN = Object.freeze({
     ctaLabel: '',
     ctaUrl: '',
   },
+  promo_code: {
+    subject: 'MEDICARD Promo — password reset code',
+    preheader: 'The code is valid for {{minutes}} minutes.',
+    heading: 'Hello, {{name}}!',
+    body: [
+      'Enter this code on medicard.ge/promo to set a new password. The code is valid for **{{minutes}} minutes**.',
+      '{{code}}',
+      "If you didn't ask for this, just ignore this email — your password won't change.",
+    ].join('\n\n'),
+    ctaLabel: '',
+    ctaUrl: '',
+  },
+  promo_notice: {
+    subject: 'MEDICARD Promo — {{title}}',
+    preheader: '{{title}}',
+    heading: '{{title}}',
+    body: [
+      'Hello, {{name}}!',
+      '{{message}}',
+      'Questions? Reply to this email or write to [{{supportEmail}}](mailto:{{supportEmail}}).',
+    ].join('\n\n'),
+    ctaLabel: 'Open the portal',
+    ctaUrl: '{{portalUrl}}',
+  },
 });
 
 /** Campaign content is edited per campaign; this is only its variable allow-list. */
@@ -170,6 +230,9 @@ export const SAMPLE_VARS = Object.freeze({
   playStoreUrl: `${SITE_URL}/#download`,
   code: '482913',
   minutes: '10',
+  title: 'ანგარიში დადასტურდა',
+  message: 'შენი ინფლუენსერის ანგარიში დადასტურებულია — კოდი აქტიურია და თანხის გატანაც შეგიძლია.',
+  portalUrl: `${SITE_URL}/promo`,
 });
 
 export function escapeHtml(value) {

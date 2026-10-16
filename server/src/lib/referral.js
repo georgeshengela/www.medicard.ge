@@ -7,6 +7,8 @@ import { getLevelForXp } from './questLevels.js';
 import { maskedUserRef } from './rewardsAdmin.js';
 import { getUserLanguages, langOf } from './i18n.js';
 import { DEFAULT_SOCIAL_NAME } from './socialAuth.js';
+import { hasVerifiedPhone, PHONE_REQUIRED_CODE } from './phoneGate.js';
+import { CLAIM_ERRORS, influencerClaimDecision, insertInfluencerReferral, loadConfig as loadInfluencerConfig, resolveInfluencerCode } from './influencer/store.js';
 
 /**
  * Referral with Medi coins (Phase 3.4, simplified by the owner 2026-10-05).
@@ -123,6 +125,9 @@ export async function getOrCreateCode(userId, { db = prisma } = {}) {
   if (row) return row.code;
   for (let attempt = 0; attempt < 6; attempt += 1) {
     const code = generateCode();
+    // Influencer codes (medicard.ge/promo) share the same 6-sign space: one code, one owner.
+    const [influencer] = await db.$queryRaw`SELECT 1 AS x FROM "InfluencerCode" WHERE code = ${code}`.catch(() => []);
+    if (influencer) continue;
     const inserted = await db.$queryRaw`INSERT INTO "ReferralCode" ("userId", code) VALUES (${userId}, ${code})
       ON CONFLICT DO NOTHING RETURNING code`;
     if (inserted.length) return inserted[0].code;
@@ -136,7 +141,72 @@ async function referralRewardsOn(db) {
   return db !== prisma || isFeatureEnabled('referralRewards');
 }
 
+/** One account, one code, one device — across friends' codes and influencer codes (both claim paths take these). */
+async function lockClaim(tx, inviteeId, deviceHash) {
+  await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`referral-user:${inviteeId}`}))`;
+  await tx.$executeRaw`SELECT pg_advisory_xact_lock(hashtext(${`referral-device:${deviceHash}`}))`;
+}
+
+/** { claimed, device } already recorded in either table for this account / device. */
+async function priorClaims(db, inviteeId, deviceHash) {
+  const [[friend], [influencer], [friendDevice], [influencerDevice]] = await Promise.all([
+    db.$queryRaw`SELECT 1 AS x FROM "Referral" WHERE "inviteeId" = ${inviteeId}`,
+    db.$queryRaw`SELECT 1 AS x FROM "InfluencerReferral" WHERE "userId" = ${inviteeId}`,
+    db.$queryRaw`SELECT 1 AS x FROM "Referral" WHERE "deviceHash" = ${deviceHash}`,
+    db.$queryRaw`SELECT 1 AS x FROM "InfluencerReferral" WHERE "deviceHash" = ${deviceHash}`,
+  ]);
+  return { claimed: Boolean(friend || influencer), device: Boolean(friendDevice || influencerDevice) };
+}
+
+/**
+ * „ვინ მოგიწვია?“ with an influencer's code (medicard.ge/promo). Needs a verified phone (real money is at stake);
+ * the registration waits out the hold before it is paid to the influencer. The new user gets the same Medi coins
+ * as with a friend's code (no cash value).
+ */
+async function claimInfluencerCode({ invitee, influencer, installId, ip, lang }, { db, now }) {
+  const en = langOf(lang) === 'en';
+  const config = await loadInfluencerConfig({ db });
+  const fail = (key) => {
+    const text = CLAIM_ERRORS[key] || CLAIM_ERRORS.INVITER_INACTIVE;
+    const pick = en ? text.en : text.ka;
+    return { ok: false, code: `REFERRAL_${key}`, error: typeof pick === 'function' ? pick(config.entryWindowDays) : pick };
+  };
+  if (!hasVerifiedPhone(invitee)) {
+    return {
+      ok: false,
+      httpStatus: 403,
+      code: PHONE_REQUIRED_CODE,
+      error: en
+        ? 'Verify your phone number first, then enter the code: Profile → Sign-in methods → Phone.'
+        : 'კოდის შესაყვანად ჯერ დაადასტურე ტელეფონის ნომერი: პროფილი → შესვლის გზები → ტელეფონი.',
+    };
+  }
+  const deviceHash = deviceHashOf(installId);
+  if (!deviceHash) return { ok: false, code: 'REFERRAL_DEVICE_REQUIRED', error: (en ? REFERRAL_ERRORS_EN : REFERRAL_ERRORS).DEVICE_REQUIRED };
+  const networkHash = networkHashOf(ip);
+  const featureOn = db !== prisma || await isFeatureEnabled('influencers');
+  const prior = await priorClaims(db, invitee.id, deviceHash);
+  const reason = influencerClaimDecision({ invitee, influencer, config, now, alreadyClaimed: prior.claimed, deviceUsed: prior.device, featureOn });
+  if (reason) return fail(reason);
+  const coins = config.inviteeCoins > 0 && await referralRewardsOn(db) ? config.inviteeCoins : 0;
+  const result = await db.$transaction(async (tx) => {
+    await lockClaim(tx, invitee.id, deviceHash);
+    const again = await priorClaims(tx, invitee.id, deviceHash);
+    if (again.claimed) return { error: 'ALREADY_CLAIMED' };
+    if (again.device) return { error: 'DEVICE_USED' };
+    const row = await insertInfluencerReferral(tx, { invitee, influencer, code: influencer.code, deviceHash, networkHash, config, now });
+    if (row.error) return row;
+    const balance = coins ? await earn(tx, invitee.id, 'invitee', row.id, now, coins) : null;
+    return { ...row, balance };
+  });
+  if (result.error) return fail(result.error);
+  return { ok: true, kind: 'influencer', status: 'PENDING', coins, balance: result.balance, inviter: influencer.displayName };
+}
+
 export async function claimReferral({ invitee, code: rawCode, installId, ip, lang = 'ka' }, { db = prisma, now = new Date(), send = sendExpoPush } = {}) {
+  // Influencer codes first: they may use every Latin letter (and 0 → O, 1 → I), friends' codes never collide with them.
+  const influencer = await resolveInfluencerCode(rawCode, { db }).catch(() => null);
+  if (influencer) return claimInfluencerCode({ invitee, influencer, installId, ip, lang }, { db, now });
   const code = normalizeCode(rawCode);
   const errors = langOf(lang) === 'en' ? REFERRAL_ERRORS_EN : REFERRAL_ERRORS;
   const fail = (key) => ({ ok: false, code: `REFERRAL_${key}`, error: errors[key] });
@@ -148,10 +218,9 @@ export async function claimReferral({ invitee, code: rawCode, installId, ip, lan
   const networkHash = networkHashOf(ip);
   const networkSince = new Date(now.getTime() - NETWORK_WINDOW_DAYS * DAY);
   const monthStart = tbilisiMonthStart(now);
-  const [[referred], [cycle], [device], [network], [invites]] = await Promise.all([
-    db.$queryRaw`SELECT 1 AS x FROM "Referral" WHERE "inviteeId" = ${invitee.id}`,
+  const [prior, [cycle], [network], [invites]] = await Promise.all([
+    priorClaims(db, invitee.id, deviceHash),
     owner ? db.$queryRaw`SELECT 1 AS x FROM "Referral" WHERE "inviterId" = ${invitee.id} AND "inviteeId" = ${owner.id}` : Promise.resolve([]),
-    db.$queryRaw`SELECT 1 AS x FROM "Referral" WHERE "deviceHash" = ${deviceHash}`,
     owner && networkHash
       ? db.$queryRaw`SELECT COUNT(*)::int AS n FROM "Referral" WHERE "inviterId" = ${owner.id} AND "networkHash" = ${networkHash} AND "createdAt" >= ${networkSince}`
       : Promise.resolve([{ n: 0 }]),
@@ -159,13 +228,17 @@ export async function claimReferral({ invitee, code: rawCode, installId, ip, lan
   ]);
   const reason = claimDecision({
     invitee, inviter: owner, now,
-    alreadyReferred: Boolean(referred), inviterReferredByInvitee: Boolean(cycle), deviceUsed: Boolean(device),
+    alreadyReferred: prior.claimed, inviterReferredByInvitee: Boolean(cycle), deviceUsed: prior.device,
     networkClaims: Number(network?.n ?? 0), inviterInvites: Number(invites?.n ?? 0),
   });
   if (reason) return fail(reason);
   const pay = await referralRewardsOn(db);
   const id = randomUUID();
   const result = await db.$transaction(async (tx) => {
+    await lockClaim(tx, invitee.id, deviceHash);
+    const again = await priorClaims(tx, invitee.id, deviceHash);
+    if (again.claimed) return { error: 'ALREADY_CLAIMED' };
+    if (again.device) return { error: 'DEVICE_USED' };
     // Claims on one code queue behind this row lock, so the monthly cap holds under concurrency.
     await tx.$queryRaw`SELECT 1 AS x FROM "ReferralCode" WHERE "userId" = ${owner.id} FOR UPDATE`;
     const [{ n }] = await tx.$queryRaw`SELECT COUNT(*)::int AS n FROM "Referral" WHERE "inviterId" = ${owner.id} AND status <> 'REJECTED' AND "createdAt" >= ${monthStart}`;
@@ -204,9 +277,9 @@ async function syncQuestCache(tx, userId) {
   return coins;
 }
 
-async function earn(tx, userId, side, referralId, now) {
+async function earn(tx, userId, side, referralId, now, amount = REFERRAL_COINS) {
   await tx.rewardLedger.create({
-    data: { userId, currency: 'COIN', amount: REFERRAL_COINS, transactionType: 'EARN', sourceType: 'REFERRAL', sourceId: `${side}:${referralId}`, createdAt: now, metadata: { side } },
+    data: { userId, currency: 'COIN', amount, transactionType: 'EARN', sourceType: 'REFERRAL', sourceId: `${side}:${referralId}`, createdAt: now, metadata: { side } },
   });
   return syncQuestCache(tx, userId);
 }
@@ -267,7 +340,9 @@ export async function referralSummary(userId, { db = prisma, now = new Date(), w
     db.$queryRaw`SELECT r.status, u."fullName" FROM "Referral" r JOIN "User" u ON u.id = r."inviterId" WHERE r."inviteeId" = ${userId}`,
     db.$queryRaw`SELECT "createdAt" FROM "User" WHERE id = ${userId}`,
   ]);
-  const canClaim = !mine && Boolean(me) && now.getTime() - new Date(me.createdAt).getTime() <= CLAIM_WINDOW_DAYS * DAY;
+  // An influencer's code (medicard.ge/promo) counts as „who invited you“ too: one per account, never changed.
+  const [byInfluencer] = mine ? [] : await db.$queryRaw`SELECT i."displayName" FROM "InfluencerReferral" r JOIN "Influencer" i ON i.id = r."influencerId" WHERE r."userId" = ${userId}`.catch(() => []);
+  const canClaim = !mine && !byInfluencer && Boolean(me) && now.getTime() - new Date(me.createdAt).getTime() <= CLAIM_WINDOW_DAYS * DAY;
   const invited = invitees.length;
   const rewarded = invitees.filter((r) => r.status === 'REWARDED').length;
   const monthStart = tbilisiMonthStart(now);
@@ -292,7 +367,7 @@ export async function referralSummary(userId, { db = prisma, now = new Date(), w
     monthlyCap: MONTHLY_INVITES,
     invitedThisMonth,
     monthRemaining,
-    invitedBy: mine ? { status: mine.status, name: inviteeLabel(mine.fullName, friend) } : null,
+    invitedBy: mine ? { status: mine.status, name: inviteeLabel(mine.fullName, friend), kind: 'friend' } : byInfluencer ? { status: 'REWARDED', name: byInfluencer.displayName, kind: 'influencer' } : null,
     canClaim,
   };
 }

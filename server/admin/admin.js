@@ -5,7 +5,7 @@ const EMAIL_KEY = 'medicard.admin.email';
 const TAB_KEY = 'medicard.admin.tab';
 const USERS_PAGE_SIZE = 15;
 const PAGE_SIZE = 25;
-const ADMIN_TABS = ['overview', 'orders', 'users', 'push', 'sms', 'pharmacy', 'rewards', 'ai', 'health', 'audit', 'quality', 'testing', 'nutrition', 'community', 'medipulsi', 'poster-studio', 'settings', 'features', 'quests', 'funnel', 'director', 'email', 'support', 'trainers', 'capacity', 'news', 'errors', 'social', 'campaigns', 'medirun-boxes', 'pets', 'family', 'cycle', 'pills', 'lab', 'sleep', 'horoscope', 'home-sections', 'app-icons', 'book'];
+const ADMIN_TABS = ['overview', 'orders', 'users', 'push', 'sms', 'pharmacy', 'rewards', 'ai', 'health', 'audit', 'quality', 'testing', 'nutrition', 'community', 'medipulsi', 'poster-studio', 'settings', 'features', 'quests', 'funnel', 'director', 'email', 'support', 'trainers', 'capacity', 'news', 'errors', 'social', 'campaigns', 'medirun-boxes', 'pets', 'family', 'cycle', 'pills', 'lab', 'sleep', 'horoscope', 'home-sections', 'app-icons', 'book', 'influencers'];
 
 const state = {
   token: localStorage.getItem(TOKEN_KEY) || '',
@@ -671,6 +671,7 @@ async function switchTab(tab, opts = {}) {
     quests: ['Engagement', 'MEDIQUEST', 'ვინ ასრულებს მისიებს და როგორ; შაბლონები, სამიზნეები და ჯილდოები.', ''],
     news: ['Engagement', 'სიახლეები', 'ბარათები აპის მთავარ გვერდზე: ღონისძიებები, საჩუქრები და სიახლეები.', ''],
     campaigns: ['Engagement', 'კამპანიები', 'კამპანიის გეგმა, ყველა პოსტი ტექსტით და ბეჭდვის ფაილები. ჩანს მხოლოდ ადმინში.', ''],
+    influencers: ['Growth', 'ინფლუენსერები', 'medicard.ge/promo: ინფლუენსერები, მათი რეგისტრაციები, გატანის მოთხოვნები და ანაზღაურების წესები.', ''],
     social: ['Engagement', 'სოციალური ქსელები', 'კამპანიის პოსტები და სთორები: როდის, სად და რა ტექსტით გავიდა.', ''],
     errors: ['System', 'შეცდომები', 'აპის ავარიები და სერვერის შეცდომები: რა გატყდა, სად და რამდენს შეეხო.', ''],
     capacity: ['System', 'სერვერის დატვირთვა', 'CPU, მეხსიერება, პასუხის დრო და როდის გაზარდო სერვერი Render-ზე.', ''],
@@ -712,6 +713,7 @@ async function switchTab(tab, opts = {}) {
     if (tab === 'capacity' && typeof renderCapacity === 'function') await renderCapacity();
     if (tab === 'errors' && typeof renderErrorsAdmin === 'function') await renderErrorsAdmin();
     if (tab === 'news' && typeof renderNews === 'function') await renderNews();
+    if (tab === 'influencers') await window.renderInfluencersAdmin?.();
     if (tab === 'social' && typeof renderSocialAdmin === 'function') await renderSocialAdmin();
     if (tab === 'campaigns' && typeof renderCampaignsAdmin === 'function') await renderCampaignsAdmin();
     if (tab === 'medirun-boxes' && typeof renderMedirunBoxes === 'function') await renderMedirunBoxes();

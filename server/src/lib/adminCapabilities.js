@@ -91,3 +91,10 @@ export const HOROSCOPE_CAPABILITIES = Object.freeze(['HOROSCOPE_VIEW', 'HOROSCOP
 
 /** MEDIBOOK (#/book): VIEW reads claims, the catalogue and booking counts; MANAGE approves/rejects claims and edits or hides businesses. */
 export const BOOK_CAPABILITIES = Object.freeze(['BOOK_VIEW', 'BOOK_MANAGE']);
+
+/**
+ * Influencer program (#/influencers): VIEW reads influencers, registrations (masked accounts) and payout queues;
+ * MANAGE approves / pauses / blocks, decides flagged registrations and edits settings; PAYOUTS sees bank details,
+ * processes payout requests and adjusts balances.
+ */
+export const INFLUENCER_CAPABILITIES = Object.freeze(['INFLUENCERS_VIEW', 'INFLUENCERS_MANAGE', 'INFLUENCER_PAYOUTS']);

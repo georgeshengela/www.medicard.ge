@@ -10,15 +10,22 @@
   <link rel="stylesheet" href="/landing.css" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Georgian:wght@400;600;700&display=swap" rel="stylesheet" />
+  <style>
+    .inv-who { display: none; align-items: center; gap: 14px; margin: 0 0 18px; }
+    .inv-who.is-on { display: flex; }
+    .inv-who img { width: 64px; height: 64px; border-radius: 50%; object-fit: cover; border: 2px solid rgba(255, 182, 72, .6); box-shadow: 0 0 24px rgba(255, 182, 72, .35); }
+    .inv-who span { font-size: 18px; font-weight: 600; }
+  </style>
 </head>
 <body>
   <main class="hero" style="min-height:70vh;display:flex;align-items:center">
     <div class="wrap" style="max-width:560px">
       <p class="kicker">Medicard.GE</p>
-      <h1 style="max-width:none;font-size:32px" data-en="You’ve been invited to MEDICARD">მოგიწვიეს MEDICARD-ში</h1>
-      <p class="lead" data-en="Install MEDICARD, sign up and enter the code in Profile → “Invite a friend” → “I have an invite code”. You both get 25 Medi Coins at once.">
-        დააყენე MEDICARD, დარეგისტრირდი და პროფილში → „მოიწვიე მეგობარი“ → „მოწვევის კოდი მაქვს“ შეიყვანე კოდი.
-        ორივე მაშინვე მიიღებთ 25 Medi Coins-ს.
+      <div class="inv-who" id="who"><img id="who-photo" alt="" hidden /><span id="who-name"></span></div>
+      <h1 id="title" style="max-width:none;font-size:32px" data-en="You’ve been invited to MEDICARD">მოგიწვიეს MEDICARD-ში</h1>
+      <p class="lead" id="lead" data-en="Install MEDICARD, sign up and enter the code in Profile → “Who invited you?”. You both get 25 Medi Coins at once.">
+        დააყენე MEDICARD, დარეგისტრირდი და პროფილში → „ვინ მოგიწვია?“ შეიყვანე კოდი.
+        ორივე მაშინვე მიიღებთ 25 Medi მონეტას.
       </p>
       <p id="code" style="font-size:34px;font-weight:700;letter-spacing:6px;margin:18px 0"></p>
       <div class="hero-actions">
@@ -33,7 +40,7 @@
     (function () {
       var T = (window.MedicardI18n || { t: function (k) { return k; } }).t;
       var match = location.pathname.match(/\/i\/([A-Za-z0-9]{6})\/?$/);
-      var code = match ? match[1].toUpperCase() : '';
+      var code = match ? match[1].toUpperCase().replace(/0/g, 'O').replace(/1/g, 'I') : '';
       var btn = document.getElementById('open-app');
       if (!code) {
         btn.href = '/';
@@ -46,6 +53,33 @@
       btn.href = android
         ? 'intent://invite/' + code + '#Intent;scheme=medicard;package=ge.medicard.app;end'
         : 'medicard://invite/' + code;
+      // An influencer's code (medicard.ge/promo): show who invites — their public name and photo, nothing else.
+      Promise.all([
+        fetch('/api/promo/public/code/' + encodeURIComponent(code)).then(function (r) { return r.ok ? r.json() : null; }),
+        fetch('/api/promo/program').then(function (r) { return r.ok ? r.json() : null; }),
+      ]).then(function (res) {
+        var who = res[0];
+        var program = res[1] || {};
+        if (!who || who.kind !== 'influencer') return;
+        var coins = Number(program.inviteeCoins || 0);
+        var lead = document.getElementById('lead');
+        lead.removeAttribute('data-en');
+        lead.textContent = T(
+          'დააყენე MEDICARD, დარეგისტრირდი და პროფილში → „ვინ მოგიწვია?“ შეიყვანე კოდი.' + (coins ? ' მაშინვე მიიღებ ' + coins + ' Medi მონეტას.' : ''),
+          'Install MEDICARD, sign up and enter the code in Profile → “Who invited you?”.' + (coins ? ' You get ' + coins + ' Medi Coins at once.' : '')
+        );
+        if (!who.name) return;
+        var title = document.getElementById('title');
+        title.removeAttribute('data-en');
+        title.textContent = T(who.name + ' გიწვევს MEDICARD-ში', who.name + ' invites you to MEDICARD');
+        document.getElementById('who-name').textContent = who.name;
+        document.getElementById('who').classList.add('is-on');
+        if (who.photo) {
+          var img = document.getElementById('who-photo');
+          img.src = '/api/promo/public/photo/' + encodeURIComponent(code);
+          img.hidden = false;
+        }
+      }).catch(function () { /* the plain invitation stays */ });
     })();
   </script>
 </body>

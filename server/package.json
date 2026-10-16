@@ -9,6 +9,7 @@
   },
   "scripts": {
     "test:assistant": "node --test src/lib/assistant.test.js src/lib/assistantFlow.test.js src/lib/assistantSpeech.test.js src/lib/assistantKnowledge.test.js ../mobile/src/lib/assistantOptions.test.ts",
+    "test:influencer": "node --test src/lib/influencer/rules.test.js",
     "dev": "node --watch src/server.js",
     "start": "node src/server.js",
     "prisma:generate": "prisma generate",

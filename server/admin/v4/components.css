@@ -2993,3 +2993,58 @@ html[data-theme="dark"] #tab-home-sections .hs-block.is-l.is-mod { background: l
   #tab-app-icons .ai-thumb.is-m { width: 52px; height: 52px; }
   #tab-app-icons .ai-people th:last-child, #tab-app-icons .ai-people td:last-child { display: none; }
 }
+
+/* ───────────── #/influencers „ინფლუენსერები“ (owner 2026-10-16) — generous padding on every card ───────────── */
+.s-inf .s-card-body.is-flush .s-table th:first-child, .s-inf .s-card-body.is-flush .s-table td:first-child,
+.s-inf-detail .s-card-body.is-flush .s-table th:first-child, .s-inf-detail .s-card-body.is-flush .s-table td:first-child { padding-left: 20px; }
+.s-inf .s-card-body.is-flush .s-table th:last-child, .s-inf .s-card-body.is-flush .s-table td:last-child,
+.s-inf-detail .s-card-body.is-flush .s-table th:last-child, .s-inf-detail .s-card-body.is-flush .s-table td:last-child { padding-right: 20px; }
+.s-inf .s-table td, .s-inf-detail .s-table td { padding-top: 12px; padding-bottom: 12px; vertical-align: top; }
+.s-inf-who { display: flex; align-items: center; gap: 12px; min-width: 180px; }
+.s-inf-who b { display: block; font-weight: 650; color: var(--s-ink); }
+.s-inf-who small { display: block; color: var(--s-muted); font-size: 12px; }
+.s-inf-ava { position: relative; flex: none; display: inline-grid; place-items: center; overflow: hidden; border-radius: 50%; background: linear-gradient(135deg, #2a2569, #15123d); color: #ffb648; font-size: 13px; font-weight: 700; }
+.s-inf-ava img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.s-inf-socials { display: flex; flex-wrap: wrap; gap: 6px; }
+.s-inf-social { display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px; border-radius: 99px; background: var(--s-sunken); color: var(--s-text-2); font-size: 12px; font-weight: 600; text-decoration: none; white-space: nowrap; }
+.s-inf-social span { font-weight: 400; color: var(--s-muted); max-width: 160px; overflow: hidden; text-overflow: ellipsis; }
+.s-inf-social:hover { color: var(--s-ink); }
+.s-inf-code { display: inline-block; padding: 2px 8px; border-radius: 6px; border: 1px solid var(--s-line-strong); font-size: 12.5px; font-weight: 650; letter-spacing: .12em; color: var(--s-ink); background: var(--s-surface); }
+.s-inf-code.is-primary { border-color: #e0a03a; color: #b26b00; background: color-mix(in srgb, #ffb648 14%, transparent); }
+.s-inf-code.is-small { font-size: 11px; padding: 1px 6px; }
+.s-inf-tier { display: inline-flex; align-items: center; gap: 6px; padding: 2px 10px 2px 8px; border-radius: 99px; font-size: 12px; font-weight: 650; white-space: nowrap; }
+.s-inf-tier::before { content: ""; width: 8px; height: 8px; border-radius: 50%; }
+.s-inf-tier.is-spark { background: color-mix(in srgb, #ffb648 16%, transparent); color: #a86200; }
+.s-inf-tier.is-spark::before { background: #ffb648; box-shadow: 0 0 6px #ffb648; }
+.s-inf-tier.is-star { background: color-mix(in srgb, #7fa6ff 16%, transparent); color: #3757a8; }
+.s-inf-tier.is-star::before { background: #9bbcff; box-shadow: 0 0 6px #9bbcff; }
+.s-inf-tier.is-supernova, .s-inf-tier.is-galaxy, .s-inf-tier.is-cosmos { background: color-mix(in srgb, #ff6fae 16%, transparent); color: #b0306c; }
+.s-inf-tier.is-supernova::before, .s-inf-tier.is-galaxy::before, .s-inf-tier.is-cosmos::before { background: #ff6fae; box-shadow: 0 0 6px #ff6fae; }
+html[data-theme="dark"] .s-inf-tier.is-spark { color: #ffc56e; }
+html[data-theme="dark"] .s-inf-tier.is-star { color: #b9d2ff; }
+html[data-theme="dark"] .s-inf-tier.is-supernova, html[data-theme="dark"] .s-inf-tier.is-galaxy, html[data-theme="dark"] .s-inf-tier.is-cosmos { color: #ff9cc7; }
+html[data-theme="dark"] .s-inf-code.is-primary { color: #ffc56e; }
+.v3-dialog-panel.is-wide.s-inf-dialog { width: min(1120px, calc(100vw - 48px)); max-width: none; }
+.s-inf-hero { display: flex; gap: 22px; align-items: flex-start; padding: 22px; border-radius: var(--s-radius-lg, 14px); background: var(--s-sunken); }
+.s-inf-hero-main { display: grid; gap: 12px; min-width: 0; flex: 1; }
+.s-inf-hero-badges { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.s-inf-facts { margin: 0; }
+.s-inf-split { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 16px; }
+.s-inf-pad { padding: 4px 20px 20px; margin: 0; }
+.s-inf-note { width: 100%; box-sizing: border-box; min-height: 84px; padding: 10px 12px; border-radius: 10px; }
+.s-inf-note-foot { display: flex; justify-content: flex-end; margin-top: 10px; }
+.s-inf-payout .s-card-body { padding: 4px 22px 18px; }
+.s-inf-payout .s-claim-foot { padding: 14px 22px 18px; }
+.s-inf-bank { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px 24px; margin: 0; }
+.s-inf-bank dd { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.s-inf-bank code { font-size: 13px; letter-spacing: .04em; }
+.s-inf-settings .s-card-body { padding: 4px 22px 22px; }
+.s-inf-tiers input { max-width: 180px; }
+.s-inf-tiers td { vertical-align: middle; }
+.s-inf-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 18px 28px; }
+.s-inf-grid .s-switch-row { grid-column: 1 / -1; border-top: 1px solid var(--s-line-soft); }
+.s-inf .s-bad, .s-inf-detail .s-bad { color: var(--s-bad); }
+@media (max-width: 720px) {
+  .s-inf-hero { flex-direction: column; }
+  .s-inf-table th:nth-child(2), .s-inf-table td:nth-child(2) { display: none; }
+}

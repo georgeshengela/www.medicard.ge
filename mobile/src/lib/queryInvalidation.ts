@@ -20,7 +20,7 @@ export const WRITE_INVALIDATES: ReadonlyArray<readonly [prefix: string, keys: re
   ['/api/identity', ['coach', 'identity']],
   ['/api/quests', ['quest']],
   ['/api/rewards', ['quest', 'rewards']],
-  ['/api/referrals', ['quest']],
+  ['/api/referrals', ['quest', 'referrals']],
   ['/api/achievements', ['quest']],
   ['/api/check-in', ['quest', 'home']],
   ['/api/health-profile', ['home', 'profile']],

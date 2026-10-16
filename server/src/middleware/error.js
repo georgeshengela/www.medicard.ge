@@ -96,6 +96,7 @@ export function errorHandler(error, req, res, next) {
     return res.status(error.status).json({
       error: t(req, error.message || 'მოთხოვნა უარყოფილია.', english || error.message || 'The request was declined.'),
       ...(error.code ? { code: error.code } : {}),
+      ...(typeof error.field === 'string' ? { field: error.field } : {}),
     });
   }
 
