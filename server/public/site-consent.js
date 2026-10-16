@@ -154,6 +154,8 @@
       '<div class="mc-consent-row"><button type="button" data-no>' + t('უარი', 'Decline') + '</button><button type="button" data-yes>' + t('ვეთანხმები', 'Accept') + '</button></div>';
     box.querySelector('[data-no]').addEventListener('click', function () { choose(false); });
     box.querySelector('[data-yes]').addEventListener('click', function () { choose(true); });
+    // The script is async: on a slow parse it may run before <body> exists — then wait for it instead of throwing.
+    if (!document.body) { document.addEventListener("DOMContentLoaded", open, { once: true }); return; }
     document.body.appendChild(box);
     requestAnimationFrame(function () { requestAnimationFrame(function () { if (box) box.classList.add('is-in'); }); });
   }

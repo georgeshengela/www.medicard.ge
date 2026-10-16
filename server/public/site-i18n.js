@@ -111,7 +111,7 @@
 
   // Cookie consent + Meta Pixel + GA4 (site-consent.js decides per page; nothing from Meta or Google loads before „ვეთანხმები“).
   var consent = document.createElement('script');
-  consent.src = '/site-consent.js?v=4';
+  consent.src = '/site-consent.js?v=5';
   consent.async = true;
   document.head.appendChild(consent);
 })();
