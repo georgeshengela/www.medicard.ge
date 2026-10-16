@@ -462,6 +462,16 @@ if (serveAdmin) {
 }
 
 if (serveLanding) {
+  // MEDIBOOK for businesses: exactly /business is the public landing (business/index.html — what a business sees
+  // before signing in, with the panel's sign-in box). It sits before the static middleware, whose directory
+  // redirect would otherwise send /business to /business/, which is the panel shell (business/panel.html, below).
+  app.get('/business', (req, res, next) => {
+    if (req.path !== '/business') return next();
+    res.set('Cache-Control', 'no-store');
+    res.set('Cross-Origin-Opener-Policy', 'same-origin-allow-popups');
+    res.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+    res.sendFile(path.join(PUBLIC_DIST, 'business', 'index.html'));
+  });
   app.use(
     express.static(PUBLIC_DIST, {
       index: false,
@@ -489,13 +499,13 @@ if (serveLanding) {
     res.set('Referrer-Policy', 'strict-origin-when-cross-origin');
     res.sendFile(path.join(PUBLIC_DIST, 'app', 'index.html'));
   });
-  // MEDIBOOK business panel (vanilla ES modules, history routing under /business): sign-in, claim or
-  // register a business, then the owner's workspace. Same account and tokens as /app.
-  app.get(['/business', /^\/business\/(?!.*\.[a-z0-9]+$).*/i], (_req, res) => {
+  // MEDIBOOK business panel shell (business/panel.html — vanilla ES modules, history routing): /business/ and
+  // every deeper path. Same account and tokens as /app. The landing at exactly /business is served above.
+  app.get(['/business', /^\/business\/(?!.*\.[a-z0-9]+$).*/i], (req, res) => {
     res.set('Cache-Control', 'no-store');
     res.set('Cross-Origin-Opener-Policy', 'same-origin-allow-popups');
     res.set('Referrer-Policy', 'strict-origin-when-cross-origin');
-    res.sendFile(path.join(PUBLIC_DIST, 'business', 'index.html'));
+    res.sendFile(path.join(PUBLIC_DIST, 'business', 'panel.html'));
   });
   app.get('/i/:code', (_req, res) => {
     res.set('Cache-Control', 'no-store');
