@@ -35,7 +35,8 @@ export default function ProfileSetupHomeLayoutScreen() {
   const [selected, setSelected] = useState<HomeLayoutId>(stored ?? recommended);
   const [busy, setBusy] = useState(false);
 
-  const goNext = () => router.replace(onboardingStepHref('/(auth)/profile-setup/analyzing', preview) as never);
+  // Next: „ვინ მოგიწვია?“ (skips itself when there is nothing to ask), then the final save.
+  const goNext = () => router.replace(onboardingStepHref('/(auth)/profile-setup/invited-by', preview) as never);
 
   if (!ready) {
     return (
@@ -50,7 +51,7 @@ export default function ProfileSetupHomeLayoutScreen() {
   if (blocked === 'assessment') return <Redirect href="/(auth)/assessment" />;
   if (blocked === 'home') return <Redirect href="/(tabs)/home" />;
   // Admin paused the layouts: nothing to choose, go straight on (the choice is never required).
-  if (!layoutsOn && !preview) return <Redirect href="/(auth)/profile-setup/analyzing" />;
+  if (!layoutsOn && !preview) return <Redirect href="/(auth)/profile-setup/invited-by" />;
 
   const choice = homeLayoutAvailable(selected, gender, features) ? selected : 'standard';
 
