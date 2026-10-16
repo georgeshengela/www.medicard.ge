@@ -129,7 +129,7 @@ function noteRow(n, client, reload, fields = null) {
 }
 
 /* ── private photos ── */
-async function blobUrl(path) {
+export async function blobUrl(path) {
   const res = await fetch(path, { headers: { Authorization: `Bearer ${getToken()}` } });
   if (!res.ok) throw new Error('image');
   return URL.createObjectURL(await res.blob());

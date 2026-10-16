@@ -2,13 +2,16 @@
 import { h, mount, icon, button, segmented, pageHead, openModal, field, input, busy } from '/app/js/ui.js';
 import { t } from '/app/js/i18n.js';
 import { state, canManage } from '../state.js';
-import { biz, ymd, addDays, weekdayOf, minutesOf, clock, WEEKDAYS_SHORT, WEEKDAYS, MONTHS, MONTHS_SHORT, fail, ok, toIso, emptyBox } from '../shared.js';
+import { biz, ymd, addDays, weekdayOf, minutesOf, clock, gel, minutes, WEEKDAYS_SHORT, WEEKDAYS, MONTHS, MONTHS_SHORT, fail, ok, toIso, emptyBox } from '../shared.js';
 import { loadContext, newAppointmentDialog, openAppointment } from '../appointment.js';
 import { classDialog, classServices, openClass, seatsLabel } from '../class.js';
 import { dateField, timeField, select } from '../fields.js';
 import { chips } from '../lists.js';
 
-const HOUR_H = 64;
+const HOUR_H = 72;
+/** How many text lines a block of this height holds without cutting the last one (0 = a tiny strip). */
+const linesFor = (height) => (height >= 68 ? 3 : height >= 46 ? 2 : height >= 28 ? 1 : 0);
+const sizeClass = (lines) => (lines === 0 ? ' is-tiny' : lines === 1 ? ' is-short' : lines === 3 ? ' is-tall' : '');
 /** h() assigns style objects with Object.assign, which ignores custom properties — set them by hand. */
 function vars(el, map) { for (const [k, v] of Object.entries(map)) el.style.setProperty(k, String(v)); return el; }
 
@@ -129,7 +132,8 @@ export default async function calendarPage(root, ctx) {
       const laneCount = Math.max(1, lanes.length);
       for (const b of sorted) {
         const top = ((minutesOf(b.startsAt) - start * 60) / 60) * HOUR_H;
-        const height = Math.max(26, ((new Date(b.endsAt) - new Date(b.startsAt)) / 60000 / 60) * HOUR_H - 2);
+        const height = Math.max(20, ((new Date(b.endsAt) - new Date(b.startsAt)) / 60000 / 60) * HOUR_H - 2);
+        const lines = linesFor(height);
         const color = b.staffColor || staffCols.find((s) => s.id === b.staffId)?.color || '#64748B';
         const width = 100 / laneCount;
         const place = { top: `${top}px`, height: `${height}px`, left: `calc(${b._lane * width}% + 4px)`, right: `calc(${(laneCount - b._lane - 1) * width}% + 4px)` };
@@ -137,22 +141,29 @@ export default async function calendarPage(root, ctx) {
         if (b.kind === 'class') {
           const c = b.ref;
           const past = new Date(c.endsAt) < new Date();
+          const seats = t(`${c.booked} / ${c.seats} ადგილი`, `${c.booked} / ${c.seats} seats`);
           el.appendChild(vars(h('div', {
-            class: `bz-cal-event is-class${c.status === 'CANCELLED' ? ' is-cancelled' : ''}${past && c.status !== 'CANCELLED' ? ' is-done' : ''}${c.seatsLeft === 0 ? ' is-full' : ''}`,
+            class: `bz-cal-event is-class${c.status === 'CANCELLED' ? ' is-cancelled' : ''}${past && c.status !== 'CANCELLED' ? ' is-done' : ''}${c.seatsLeft === 0 ? ' is-full' : ''}${sizeClass(lines)}`,
             style: place,
             title: [`${clock(c.startsAt)}–${clock(c.endsAt)} · ${c.serviceName} · ${c.label} ${seatsLabel(c.seats).replace(/^\d+ /, '')}`, c.staffName, rooms].filter(Boolean).join(' · '),
             onClick: (e) => { e.stopPropagation(); openClass(c, context, { onChange: paint }); },
-          }, h('b', null, `${clock(c.startsAt)} ${c.serviceName}`), h('em', { class: 'seats' }, c.label), h('span', null, [t(`${c.booked} / ${c.seats} ადგილი`, `${c.booked} / ${c.seats} seats`), mode === 'week' && c.staffName ? c.staffName : null, rooms].filter(Boolean).join(' · ')),
+          }, h('b', null, `${clock(c.startsAt)} ${c.serviceName}`), h('em', { class: 'seats' }, c.label),
+          lines >= 2 ? h('span', null, [seats, mode === 'week' && c.staffName ? c.staffName : null, rooms].filter(Boolean).join(' · ')) : null,
+          lines >= 3 ? h('span', null, [minutes(c.durationMin), c.label].filter(Boolean).join(' · ')) : null,
           h('i', { class: 'fill', style: { width: `${c.seats ? Math.min(100, Math.round((c.booked / c.seats) * 100)) : 0}%` } })), { '--c': color }));
           continue;
         }
         const a = b.ref;
+        const second = [mode === 'week' && a.staffName ? `${a.serviceName} · ${a.staffName}` : a.serviceName, rooms].filter(Boolean).join(' · ');
+        const third = [minutes(a.durationMin), a.price != null ? gel(a.price) : null, a.status === 'PENDING' ? t('დასადასტურებელი', 'to confirm') : a.status === 'COMPLETED' ? t('დასრულდა', 'done') : a.status === 'NO_SHOW' ? t('არ მოვიდა', 'no-show') : null].filter(Boolean).join(' · ');
         el.appendChild(vars(h('div', {
-          class: `bz-cal-event${a.status === 'PENDING' ? ' is-pending' : ''}${a.status === 'CANCELLED' ? ' is-cancelled' : ''}${a.status === 'COMPLETED' || a.status === 'NO_SHOW' ? ' is-done' : ''}`,
+          class: `bz-cal-event${a.status === 'PENDING' ? ' is-pending' : ''}${a.status === 'CANCELLED' ? ' is-cancelled' : ''}${a.status === 'COMPLETED' || a.status === 'NO_SHOW' ? ' is-done' : ''}${sizeClass(lines)}`,
           style: place,
-          title: [`${clock(a.startsAt)}–${clock(a.endsAt)} · ${a.clientName} · ${a.serviceName}`, a.resources?.length ? a.resources.map((r) => r.name).join(', ') : null].filter(Boolean).join(' · '),
+          title: [`${clock(a.startsAt)}–${clock(a.endsAt)} · ${a.clientName} · ${a.serviceName}`, a.staffName, third, a.resources?.length ? a.resources.map((r) => r.name).join(', ') : null].filter(Boolean).join(' · '),
           onClick: (e) => { e.stopPropagation(); openAppointment(a, context, { onChange: paint }); },
-        }, h('b', null, `${clock(a.startsAt)} ${a.clientName}`), h('span', null, [mode === 'week' && a.staffName ? `${a.serviceName} · ${a.staffName}` : a.serviceName, rooms].filter(Boolean).join(' · '))), { '--c': color }));
+        }, h('b', null, `${clock(a.startsAt)} ${a.clientName}${lines === 1 ? ` · ${a.serviceName}` : ''}`),
+        lines >= 2 ? h('span', null, second) : null,
+        lines >= 3 ? h('span', null, third) : null), { '--c': color }));
       }
       if (col.date === ymd()) {
         const m = minutesOf(new Date());

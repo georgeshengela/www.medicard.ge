@@ -179,6 +179,13 @@ export function appointmentPublic(row, { lang = 'ka', now = new Date() } = {}) {
     cancelledBy: row.cancelledBy ?? null,
     cancelReason: row.cancelReason ?? null,
     reviewed: Boolean(row.reviewedAt),
+    reviewedAt: row.reviewedAt instanceof Date ? row.reviewedAt.toISOString() : row.reviewedAt ?? null,
+    reviewAsked: Boolean(row.reviewAsked),
+    completedAt: row.completedAt instanceof Date ? row.completedAt.toISOString() : row.completedAt ?? null,
+    cancelledAt: row.cancelledAt instanceof Date ? row.cancelledAt.toISOString() : row.cancelledAt ?? null,
+    updatedAt: row.updatedAt instanceof Date ? row.updatedAt.toISOString() : row.updatedAt ?? null,
+    /** Which reminders went out (push to the app account, SMS to the phone). */
+    reminders: { pushDay: Boolean(row.remindedDay), pushSoon: Boolean(row.remindedSoon), smsDay: Boolean(row.smsDay), smsSoon: Boolean(row.smsSoon) },
     canCancelFree: OPEN_STATUSES.includes(row.status) && canCancelFree(row, settings, now),
     cancelHours: settings.cancelHours,
     createdAt: row.createdAt,

@@ -66,7 +66,7 @@ export async function clientProfile({ businessId, clientId }, db = prisma) {
   if (!row) throw bookError(404, 'კლიენტი ვერ მოიძებნა.', 'CLIENT_NOT_FOUND', 'Client not found.');
   const [appointments, reviews, notes, files, sales] = await Promise.all([
     db.$queryRaw`${APPOINTMENT_SELECT} WHERE a."clientId" = ${row.id} ORDER BY a."startsAt" DESC LIMIT 300`,
-    db.$queryRaw`SELECT r.id, r.rating, r.text, r.reply, r."createdAt", a."serviceName" FROM "BookReview" r JOIN "BookAppointment" a ON a.id = r."appointmentId" WHERE a."clientId" = ${row.id} ORDER BY r."createdAt" DESC LIMIT 20`,
+    db.$queryRaw`SELECT r.id, r.rating, r.text, r.reply, r."createdAt", r."appointmentId", a."serviceName" FROM "BookReview" r JOIN "BookAppointment" a ON a.id = r."appointmentId" WHERE a."clientId" = ${row.id} ORDER BY r."createdAt" DESC LIMIT 20`,
     db.$queryRaw`SELECT n.*, u."fullName" AS "byName" FROM "BookClientNote" n LEFT JOIN "User" u ON u.id = n."createdBy" WHERE n."clientId" = ${row.id} ORDER BY n."createdAt" DESC LIMIT 200`,
     db.$queryRaw`SELECT f.id, f.kind, f.caption, f."appointmentId", f."createdAt", f."createdBy", i.width, i.height, u."fullName" AS "byName" FROM "BookClientFile" f JOIN "BookImage" i ON i.id = f."imageId" LEFT JOIN "User" u ON u.id = f."createdBy" WHERE f."clientId" = ${row.id} ORDER BY f."createdAt" DESC LIMIT 200`,
     db.$queryRaw`SELECT s.*, st.name AS "staffName" FROM "BookSale" s LEFT JOIN "BookStaff" st ON st.id = s."staffId" WHERE s."clientId" = ${row.id} ORDER BY s.at DESC LIMIT 100`,
