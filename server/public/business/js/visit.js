@@ -176,8 +176,10 @@ export function openAppointment(appt, ctx, { onChange } = {}) {
     items.push({ at: a.createdAt, label: t(`ჩაიწერა ${src}`, `Booked ${String(src).toLowerCase()}`) });
     const r = a.reminders || {};
     const open = OPEN.includes(a.status);
-    const dayAt = new Date(s - 24 * 3600e3).toISOString();
-    const soonAt = new Date(s - 3600e3).toISOString();
+    // A reminder goes out at its nominal time, or right after the booking when that time had already passed.
+    const made = new Date(a.createdAt).getTime();
+    const dayAt = new Date(Math.max(s - 24 * 3600e3, made + 60e3)).toISOString();
+    const soonAt = new Date(Math.max(s - 3600e3, made + 120e3)).toISOString();
     const channels = (push, sms) => [push ? t('აპში', 'in the app') : null, sms ? 'SMS' : null].filter(Boolean).join(' · ');
     if (r.pushDay || r.smsDay) items.push({ at: dayAt, approx: true, label: t('შეხსენება წინა დღეს', 'Reminder the day before'), sub: channels(r.pushDay, r.smsDay), tone: 'ok' });
     else if (open && a.clientUserId && Date.now() < s - 24 * 3600e3) items.push({ at: dayAt, approx: true, label: t('შეხსენება წინა დღეს', 'Reminder the day before'), sub: t('გაიგზავნება აპში', 'will go to the app'), tone: 'plan' });
