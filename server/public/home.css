@@ -231,20 +231,42 @@ h1, h2, h3, p { margin: 0; }
 .about-grid .serif-title { grid-area: title; }
 .about-text { grid-area: text; display: grid; gap: 18px; padding-top: 10px; }
 .about-text p { color: var(--ink-2); font-size: 18px; line-height: 1.7; max-width: 36rem; }
-.numbers { margin-top: clamp(72px, 9vw, 120px); }
-.numbers-title { margin: 0 0 22px; font-size: 14px; font-weight: 700; letter-spacing: .04em; color: var(--ink-2); }
-.numbers-row {
-  margin: 0; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr));
-  border-top: 1px solid rgba(11, 43, 46, .14);
+/* MEDICARD in numbers: one night card, one huge figure, six live totals */
+.numbers {
+  position: relative; isolation: isolate; overflow: hidden; margin-top: clamp(72px, 9vw, 120px);
+  display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.2fr); gap: clamp(36px, 5vw, 80px); align-items: center;
+  padding: clamp(36px, 5.5vw, 76px); border-radius: 32px; color: #fff;
+  background:
+    radial-gradient(60% 80% at 12% 100%, rgba(20, 184, 166, .32), transparent 70%),
+    radial-gradient(50% 60% at 100% 0%, rgba(94, 234, 212, .12), transparent 70%),
+    linear-gradient(160deg, #063B38 0%, #042F2E 45%, #031B1B 100%);
 }
-.numbers-row > div { padding: 30px 24px 0 0; }
-.numbers-row > div + div { padding-left: 24px; border-left: 1px solid rgba(11, 43, 46, .1); }
-.numbers-row dt {
-  font-family: "Noto Serif Georgian", Georgia, serif; font-weight: 300; font-size: clamp(46px, 5.2vw, 76px);
-  line-height: 1; letter-spacing: -.02em; color: var(--teal); white-space: nowrap;
+.numbers::before {
+  content: ""; position: absolute; inset: 0; z-index: -1; opacity: .12;
+  background: url("/world/land.svg?v=1") center 30% / 140% auto no-repeat; filter: invert(1);
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 40%); mask-image: linear-gradient(90deg, transparent, #000 40%);
 }
-.numbers-row dt .unit { margin-left: .12em; font-family: var(--body); font-weight: 400; font-size: .56em; vertical-align: .32em; }
-.numbers-row dd { margin: 14px 0 0; color: var(--ink-2); font-size: 15px; line-height: 1.5; max-width: 15rem; }
+.numbers-title { margin: 0 0 18px; font-size: 14px; font-weight: 700; letter-spacing: .04em; color: var(--foam); }
+.numbers-hero {
+  display: flex; align-items: flex-start; margin: 0;
+  font-family: "Noto Serif Georgian", Georgia, serif; font-weight: 300; line-height: .95; letter-spacing: -.03em;
+  font-size: clamp(64px, 7.2vw, 116px); white-space: nowrap;
+  background: linear-gradient(180deg, #fff 20%, var(--foam) 100%); -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.numbers-plus { font-size: .5em; margin-left: .06em; color: var(--teal-2); -webkit-text-fill-color: var(--teal-2); }
+.numbers-hero-label { margin-top: 14px; font-size: clamp(17px, 1.5vw, 20px); color: rgba(255, 255, 255, .82); max-width: 20rem; }
+.numbers-live { display: inline-flex; align-items: center; gap: 9px; margin-top: 28px; padding: 7px 14px; border-radius: 999px;
+  background: rgba(255, 255, 255, .06); border: 1px solid rgba(153, 246, 228, .18); font-size: 13px; color: rgba(255, 255, 255, .7); }
+.numbers-live i { width: 7px; height: 7px; border-radius: 50%; background: #2DD4BF; box-shadow: 0 0 0 0 rgba(45, 212, 191, .6); animation: live-dot 2s infinite; }
+@keyframes live-dot { 70% { box-shadow: 0 0 0 8px rgba(45, 212, 191, 0); } 100% { box-shadow: 0 0 0 0 rgba(45, 212, 191, 0); } }
+.numbers-grid { margin: 0; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: clamp(24px, 3vw, 44px); }
+.numbers-grid > div { padding: 22px 0 24px; border-top: 1px solid rgba(153, 246, 228, .16); }
+.numbers-grid dt {
+  font-family: "Noto Serif Georgian", Georgia, serif; font-weight: 300; font-size: clamp(36px, 3.6vw, 54px);
+  line-height: 1; letter-spacing: -.02em; color: #fff; white-space: nowrap; font-variant-numeric: tabular-nums;
+}
+.numbers-grid dt small { margin-left: .14em; font-family: var(--body); font-size: .42em; font-weight: 600; color: var(--teal-2); letter-spacing: 0; }
+.numbers-grid dd { margin: 10px 0 0; color: rgba(255, 255, 255, .66); font-size: 14.5px; line-height: 1.5; max-width: 15rem; }
 
 /* ───────────── Modules: one card per module, its own colour, a real app screen ───────────── */
 .mods { background: var(--paper); padding: clamp(96px, 12vw, 160px) 0; }
@@ -266,14 +288,24 @@ h1, h2, h3, p { margin: 0; }
 .mod-name b { display: inline-block; font-weight: 800; color: var(--mod); transform: skewX(-16deg); }
 .mod p { color: var(--ink-2); font-size: 15.5px; line-height: 1.6; }
 .mod-link { justify-self: start; color: var(--mod); font-weight: 700; font-size: 15px; text-underline-offset: 4px; }
-.mod-screen { margin-top: auto; padding-top: 30px; display: flex; justify-content: center; height: 330px; }
-.mod-screen img {
-  width: min(78%, 270px); height: auto; align-self: flex-start; display: block;
-  border-radius: 30px 30px 0 0; border: 7px solid #13201F; border-bottom: 0;
-  box-shadow: 0 -10px 40px -18px color-mix(in srgb, var(--mod) 55%, transparent);
+.mod-screen { margin-top: auto; padding-top: 30px; display: flex; justify-content: center; height: 350px; }
+/* A real iPhone 16 Pro Max frame (/iphone-16-pro-max.svg, 470×956, screen 418×908 at 26,24, radius 54) with the island */
+.phone {
+  position: relative; flex: none; width: min(82%, 280px); aspect-ratio: 470 / 956; align-self: flex-start;
+  filter: drop-shadow(0 24px 34px rgba(11, 43, 46, .22)) drop-shadow(0 -6px 30px color-mix(in srgb, var(--mod) 30%, transparent));
   transition: transform .6s var(--ease);
 }
-.mod:hover .mod-screen img { transform: translateY(-8px); }
+.phone img {
+  position: absolute; left: 5.532%; top: 2.51%; width: 88.936%; height: 94.98%; display: block;
+  object-fit: cover; object-position: top; border-radius: 12.92% / 5.95%; background: var(--screen, #F5F8F7);
+  box-sizing: border-box; padding-top: 13%; /* the status bar the island sits in */
+}
+.phone::before {
+  content: ""; position: absolute; z-index: 2; left: 50%; top: 4.1%; width: 26%; height: 3.4%;
+  transform: translateX(-50%); border-radius: 999px; background: #0a0a0b;
+}
+.phone::after { content: ""; position: absolute; inset: 0; z-index: 1; background: url("/iphone-16-pro-max.svg") center / 100% 100% no-repeat; }
+.mod:hover .phone { transform: translateY(-8px); }
 /* MEDIRUN: the night city, two columns wide */
 .mod.is-wide { grid-column: span 2; padding: 0; justify-content: flex-end; background: #030712; box-shadow: none; }
 .mod.is-wide .mod-art { position: absolute; inset: 0; }
@@ -288,8 +320,9 @@ h1, h2, h3, p { margin: 0; }
 .mod.is-wide .mod-name { color: #fff; font-size: 32px; }
 .mod.is-wide p { color: #CBD5E1; }
 .mod.is-wide:hover { box-shadow: 0 30px 60px -30px rgba(20, 184, 166, .45); }
-.mod.is-wide .mod-screen { position: absolute; z-index: 1; right: 9%; bottom: 0; height: 86%; padding: 0; width: 34%; }
-.mod.is-wide .mod-screen img { width: 100%; max-width: 250px; border-color: #26383A; box-shadow: 0 -10px 60px -12px rgba(45, 212, 191, .5); }
+.mod.is-wide .mod-screen { position: absolute; z-index: 1; right: 8%; bottom: 0; height: 88%; padding: 0; width: 34%; }
+.mod.is-wide .phone img { background: #0A0F1B; }
+.mod.is-wide .phone { width: min(100%, 270px); filter: drop-shadow(0 0 40px rgba(45, 212, 191, .35)) drop-shadow(0 30px 40px rgba(0, 0, 0, .5)); }
 
 /* ───────────── How we look after you ───────────── */
 .care { background: var(--deep); color: #fff; padding: clamp(96px, 12vw, 160px) 0; }
@@ -315,8 +348,7 @@ h1, h2, h3, p { margin: 0; }
 
 @media (max-width: 1100px) {
   .mods-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .numbers-row { grid-template-columns: repeat(3, minmax(0, 1fr)); row-gap: 34px; }
-  .numbers-row > div:nth-child(4) { padding-left: 0; border-left: 0; }
+  .numbers { grid-template-columns: 1fr; }
 }
 
 /* ───────────── FAQ ───────────── */
@@ -390,12 +422,13 @@ h1, h2, h3, p { margin: 0; }
   .about-grid { grid-template-columns: 1fr; grid-template-areas: "eye" "title" "text"; row-gap: 22px; }
   .about-text { padding-top: 0; }
   .about-text p { font-size: 17px; }
-  .numbers-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .numbers-row > div, .numbers-row > div + div { padding: 24px 12px 0 0; border-left: 0; }
-  .numbers-row > div:first-child { grid-column: span 2; }
+  .numbers { padding: 32px 22px; border-radius: 26px; }
+  .numbers-grid { column-gap: 18px; }
+  .numbers-grid dd { font-size: 13.5px; }
   .mods-grid { grid-template-columns: 1fr; gap: 16px; }
   .mod { min-height: 0; padding: 26px 24px 0; }
-  .mod-screen { height: 290px; }
+  .mod-screen { height: 300px; }
+  .phone { width: min(74%, 260px); }
   .mod.is-wide { grid-column: auto; min-height: 460px; }
   .mod.is-wide::after { background: linear-gradient(0deg, rgba(3, 7, 18, .95) 0%, rgba(3, 7, 18, .7) 45%, rgba(3, 7, 18, .1) 80%); }
   .mod.is-wide .mod-copy { padding: 26px 24px; }
@@ -423,5 +456,5 @@ h1, h2, h3, p { margin: 0; }
 .foot-brand img { border-radius: 8px; }
 
 @media (prefers-reduced-motion: reduce) {
-  .hero-title > span, .hero-lead, .hero-actions, .hero-modules, .pulse-beat { animation: none; opacity: 1; }
+  .hero-title > span, .hero-lead, .hero-actions, .hero-modules, .pulse-beat, .numbers-live i { animation: none; opacity: 1; }
 }

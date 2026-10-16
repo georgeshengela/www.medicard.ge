@@ -7,6 +7,49 @@
   var year = document.getElementById('y');
   if (year) year.textContent = String(new Date().getFullYear());
 
+  /* ───── MEDICARD in numbers: live whole-app totals (/api/site/stats), counted up once in view ───── */
+  // Fallbacks = the totals on 2026-10-16, so the block never reads empty if the API is slow
+  var STATS = { steps: 28166754, medicines: 10014, mediAnswers: 1255, coins: 12520, cycleLogs: 1128, waterLiters: 410, countries: 10 };
+  var countEls = Array.prototype.slice.call(document.querySelectorAll('.numbers .count'));
+  var counted = false;
+  function statKey(el) { return el.id === 'countries-count' ? 'countries' : el.dataset.stat; }
+  function fmt(n, format) {
+    if (format === 'millions') { var m = Math.floor(n / 1e6); return I18N.isEn ? m + 'M' : m + ' მლნ'; }
+    return String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, I18N.isEn ? ',' : ' ');
+  }
+  function paint(el, n) { el.textContent = fmt(n, el.dataset.format); }
+  function setStat(key, n) {
+    if (!(n > 0)) return;
+    STATS[key] = n;
+    if (!counted) return; // the count-up will land on the new value
+    countEls.forEach(function (el) { if (statKey(el) === key) paint(el, n); });
+  }
+  function countUp() {
+    counted = true;
+    var t0 = performance.now(), dur = 1700;
+    (function frame(now) {
+      var k = reduced ? 1 : Math.min(1, (now - t0) / dur), e = 1 - Math.pow(1 - k, 4);
+      countEls.forEach(function (el) { paint(el, STATS[statKey(el)] * e); });
+      if (k < 1) requestAnimationFrame(frame);
+    })(t0);
+  }
+  countEls.forEach(function (el) { paint(el, STATS[statKey(el)]); });
+  if (countEls.length && window.fetch) {
+    fetch('/api/site/stats').then(function (r) { return r.ok ? r.json() : null; }).then(function (s) {
+      if (s) Object.keys(s).forEach(function (k) { if (k in STATS) setStat(k, Number(s[k])); });
+    }).catch(function () {});
+  }
+  if (countEls.length && 'IntersectionObserver' in window && !reduced) {
+    var numIo = new IntersectionObserver(function (entries) {
+      if (!entries[0].isIntersecting) return;
+      numIo.disconnect();
+      countUp();
+    }, { threshold: 0.3 });
+    numIo.observe(document.querySelector('.numbers'));
+  } else {
+    counted = true;
+  }
+
   /* ───── World map: light every country with at least one MEDICARD user ───── */
   var worldDots = document.getElementById('world-dots');
   if (worldDots && window.fetch) {
@@ -30,8 +73,7 @@
         worldDots.appendChild(dot);
         return { el: dot, name: (names[code] && names[code][I18N.isEn ? 'en' : 'ka']) || code };
       });
-      var count = document.getElementById('countries-count');
-      if (count && dots.length) count.textContent = String(dots.length);
+      if (dots.length) setStat('countries', dots.length);
       if (!dots.length) return;
       // One name at a time: neighbours in Europe sit too close for every label at once
       var tag = document.createElement('span');

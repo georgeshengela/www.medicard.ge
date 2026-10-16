@@ -3,6 +3,7 @@ import rateLimit from 'express-rate-limit';
 import { asyncHandler } from '../middleware/error.js';
 import { RATE_LIMIT_VALIDATE } from '../lib/rateLimitKey.js';
 import { getSitePresence } from '../lib/sitePresence.js';
+import { getSiteStats } from '../lib/siteStats.js';
 import { countryNameEn, countryNameKa } from '../lib/geoPlace.js';
 
 /** Public data for the marketing site (no auth). */
@@ -15,4 +16,10 @@ siteRouter.get('/presence', publicLimit, asyncHandler(async (_req, res) => {
   const countries = await getSitePresence();
   const names = Object.fromEntries(countries.map((code) => [code, { ka: countryNameKa(code) || countryNameEn(code), en: countryNameEn(code) }]));
   res.json({ countries, names });
+}));
+
+// Front-page „MEDICARD in numbers“: whole-app totals only (steps, medicines compared, Medi answers …)
+siteRouter.get('/stats', publicLimit, asyncHandler(async (_req, res) => {
+  res.set('Cache-Control', 'public, max-age=900');
+  res.json(await getSiteStats());
 }));

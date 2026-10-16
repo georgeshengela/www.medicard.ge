@@ -34,7 +34,7 @@
   <link rel="preload" href="/fonts/firago/FiraGO-Bold.woff2" as="font" type="font/woff2" crossorigin />
   <link rel="preload" href="/fonts/noto-serif-georgian/NotoSerifGeorgian-Light-georgian.woff2" as="font" type="font/woff2" crossorigin />
   <link rel="stylesheet" href="/site-nav.css?v=11" />
-  <link rel="stylesheet" href="/home.css?v=23" />
+  <link rel="stylesheet" href="/home.css?v=24" />
 </head>
 <body>
   <a class="skip" href="#main" data-en="Skip to content">გადადი შინაარსზე</a>
@@ -111,14 +111,21 @@
             <a class="text-link" href="/about"><span data-en="More about us">მეტი ჩვენ შესახებ</span><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg></a>
           </div>
         </div>
+        <!-- Live whole-app totals from /api/site/stats (the HTML holds the 2026-10-16 values until it answers) -->
         <div class="numbers" aria-labelledby="numbers-title">
-          <p class="numbers-title" id="numbers-title" data-en="MEDICARD in numbers">MEDICARD ციფრებში</p>
-          <dl class="numbers-row">
-            <div><dt>0<span class="unit">₾</span></dt><dd data-en="Price of every module">ფასი ყველა მოდულზე</dd></div>
-            <div><dt>8</dt><dd data-en="Modules on one account">მოდული ერთ ანგარიშზე</dd></div>
-            <div><dt id="countries-count">10</dt><dd data-en="Countries where people use MEDICARD">ქვეყანა, სადაც MEDICARD-ს იყენებენ</dd></div>
-            <div><dt>2</dt><dd data-en="Languages: Georgian and English">ენა — ქართული და ინგლისური</dd></div>
-            <div><dt>10</dt><dd data-en="Free calculators on this site">უფასო კალკულატორი საიტზე</dd></div>
+          <div class="numbers-lead">
+            <p class="numbers-title" id="numbers-title" data-en="MEDICARD in numbers">MEDICARD ციფრებში</p>
+            <p class="numbers-hero"><span class="count" data-stat="steps" data-format="millions">28 მლნ</span><span class="numbers-plus">+</span></p>
+            <p class="numbers-hero-label" data-en="steps counted by MEDICARD">ნაბიჯი, რომელიც MEDICARD-მა დათვალა</p>
+            <p class="numbers-live"><i aria-hidden="true"></i><span data-en="Live totals from the app, refreshed every hour">ცოცხალი ციფრები აპიდან, ახლდება ყოველ საათში</span></p>
+          </div>
+          <dl class="numbers-grid">
+            <div><dt><span class="count" data-stat="medicines">10 014</span></dt><dd data-en="medicines you can compare across Georgian pharmacies">წამალი, რომლის ფასს ქართულ აფთიაქებში ადარებ</dd></div>
+            <div><dt><span class="count" data-stat="mediAnswers">1 255</span></dt><dd data-en="answers from Medi">პასუხი Medi-სგან</dd></div>
+            <div><dt><span class="count" data-stat="coins">12 520</span></dt><dd data-en="Medi Coins earned by moving and missions">Medi Coin, მოპოვებული მოძრაობითა და მისიებით</dd></div>
+            <div><dt><span class="count" data-stat="cycleLogs">1 128</span></dt><dd data-en="entries in MEDICYCLE">ჩანაწერი MEDICYCLE-ში</dd></div>
+            <div><dt><span class="count" data-stat="waterLiters">410</span><small data-en="L">ლ</small></dt><dd data-en="of water logged in the app">წყალი, ჩაწერილი აპში</dd></div>
+            <div><dt><span class="count" id="countries-count">10</span></dt><dd data-en="countries where people use MEDICARD">ქვეყანა, სადაც MEDICARD-ს იყენებენ</dd></div>
           </dl>
         </div>
       </div>
@@ -143,57 +150,57 @@
               <source media="(max-width: 860px)" srcset="/medirun/img/city-sm.webp" />
               <img src="/medirun/img/city.webp" alt="" width="1920" height="1072" loading="lazy" decoding="async" />
             </picture>
-            <div class="mod-screen"><img src="/screens/v4/run.webp?v=1" alt="" width="880" height="1904" loading="lazy" decoding="async" /></div>
+            <div class="mod-screen"><div class="phone"><img src="/screens/v4/run.webp?v=1" alt="" width="880" height="1904" loading="lazy" decoding="async" /></div></div>
           </li>
           <li class="mod" id="medi" style="--mod:#0D9488">
             <div class="mod-copy">
               <h3 class="mod-name">Medi</h3>
               <p data-en="The app’s assistant answers with your own records — by voice too. MEDISCAN looks at symptoms, medical images and skin photos.">აპის ასისტენტი, რომელიც შენი ჩანაწერებით გპასუხობს — ხმითაც. MEDISCAN-ით სიმპტომს, გამოსახულებას და კანის ფოტოს უყურებს.</p>
             </div>
-            <div class="mod-screen"><img src="/screens/v4/medi.webp?v=1" alt="" width="880" height="1904" loading="lazy" decoding="async" /></div>
+            <div class="mod-screen"><div class="phone"><img src="/screens/v4/medi.webp?v=1" alt="" width="880" height="1904" loading="lazy" decoding="async" /></div></div>
           </li>
-          <li class="mod" style="--mod:#C92A55">
+          <li class="mod" style="--mod:#C92A55; --screen:#FBF6F8">
             <div class="mod-copy">
               <h3 class="mod-name">MEDI<b>CYCLE</b></h3>
               <p data-en="Cycle calendar, forecasts, pregnancy mode and a private journal that belongs to you.">ციკლის კალენდარი, პროგნოზი, ორსულობის რეჟიმი და პირადი დღიური, რომელიც შენ გეკუთვნის.</p>
               <a class="mod-link" href="/cycle" data-en="Learn more">დეტალურად</a>
             </div>
-            <div class="mod-screen"><img src="/screens/v4/cycle.webp?v=1" alt="" width="880" height="1904" loading="lazy" decoding="async" /></div>
+            <div class="mod-screen"><div class="phone"><img src="/screens/v4/cycle.webp?v=1" alt="" width="880" height="1904" loading="lazy" decoding="async" /></div></div>
           </li>
           <li class="mod" style="--mod:#047857">
             <div class="mod-copy">
               <h3 class="mod-name">MEDI<b>FOOD</b></h3>
               <p data-en="A photo, a barcode or a few words — calories and macros per portion, which you check and save.">ფოტო, ბარკოდი ან რამდენიმე სიტყვა — კალორია და მაკროები პორციით, რომელსაც შენ ამოწმებ და ინახავ.</p>
             </div>
-            <div class="mod-screen"><img src="/screens/v4/food.webp?v=1" alt="" width="880" height="1904" loading="lazy" decoding="async" /></div>
+            <div class="mod-screen"><div class="phone"><img src="/screens/v4/food.webp?v=1" alt="" width="880" height="1904" loading="lazy" decoding="async" /></div></div>
           </li>
           <li class="mod" style="--mod:#1D4ED8">
             <div class="mod-copy">
               <h3 class="mod-name">MEDI<b>PILL</b></h3>
               <p data-en="Your medications, dose reminders and price comparison across Georgian pharmacies.">მედიკამენტები, დოზების შეხსენება და ფასების შედარება ქართულ აფთიაქებში.</p>
             </div>
-            <div class="mod-screen"><img src="/screens/v4/pill.webp?v=1" alt="" width="880" height="1904" loading="lazy" decoding="async" /></div>
+            <div class="mod-screen"><div class="phone"><img src="/screens/v4/pill.webp?v=1" alt="" width="880" height="1904" loading="lazy" decoding="async" /></div></div>
           </li>
           <li class="mod" style="--mod:#4F46E5">
             <div class="mod-copy">
               <h3 class="mod-name">MEDI<b>LAB</b></h3>
               <p data-en="Upload a photo or PDF of your results — Medi reads the values and explains them in plain words.">ატვირთე ანალიზის ფოტო ან PDF — Medi მაჩვენებლებს ამოიკითხავს და გასაგებად აგიხსნის.</p>
             </div>
-            <div class="mod-screen"><img src="/screens/v4/lab.webp?v=1" alt="" width="880" height="1904" loading="lazy" decoding="async" /></div>
+            <div class="mod-screen"><div class="phone"><img src="/screens/v4/lab.webp?v=1" alt="" width="880" height="1904" loading="lazy" decoding="async" /></div></div>
           </li>
           <li class="mod" style="--mod:#6D28D9">
             <div class="mod-copy">
               <h3 class="mod-name">MEDI<b>QUEST</b></h3>
               <p data-en="Daily missions, levels and Medi Coins you can spend in the rewards store.">ყოველდღიური მისიები, დონეები და Medi Coins, რომელსაც ჯილდოების მაღაზიაში ხარჯავ.</p>
             </div>
-            <div class="mod-screen"><img src="/screens/v4/quest.webp?v=1" alt="" width="880" height="1904" loading="lazy" decoding="async" /></div>
+            <div class="mod-screen"><div class="phone"><img src="/screens/v4/quest.webp?v=1" alt="" width="880" height="1904" loading="lazy" decoding="async" /></div></div>
           </li>
           <li class="mod" style="--mod:#0369A1">
             <div class="mod-copy">
               <h3 class="mod-name">MEDI<b>VET</b></h3>
               <p data-en="Your pet’s weight, vaccines and care reminders, with an assistant kept apart from your own Medi.">შინაური ცხოველის წონა, აცრები და მოვლის შეხსენებები — ასისტენტით, რომელიც შენი Medi-სგან ცალკეა.</p>
             </div>
-            <div class="mod-screen"><img src="/screens/v4/vet.webp?v=1" alt="" width="880" height="1904" loading="lazy" decoding="async" /></div>
+            <div class="mod-screen"><div class="phone"><img src="/screens/v4/vet.webp?v=1" alt="" width="880" height="1904" loading="lazy" decoding="async" /></div></div>
           </li>
         </ul>
       </div>
@@ -310,6 +317,6 @@
     </div>
   </footer>
 
-  <script src="/home.js?v=10" defer></script>
+  <script src="/home.js?v=11" defer></script>
 </body>
 </html>
