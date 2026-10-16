@@ -341,7 +341,7 @@ export default function Profile() {
           {coachOn && coachCard === false ? (
             <ProfileMenuRow icon={Dumbbell} ink="neutral" label={tx('ტრენერი და ფიტნესი', 'Trainer and fitness')} value="MEDICOACH" onPress={() => router.push('/trainer' as never)} />
           ) : null}
-          {isFeatureOn('invites', features) ? <ProfileMenuRow icon={Gift} ink="amber" label={ka.referral.profileRow} onPress={() => router.push('/profile/invite' as never)} /> : null}
+          {isFeatureOn('invites', features) ? <ProfileMenuRow icon={Gift} ink="amber" label={ka.referral.profileRow} onPress={() => router.push('/profile/invite-code' as never)} /> : null}
           <ProfileMenuRow icon={Lock} ink="neutral" label={ka.profile.privacyPolicy} onPress={() => router.push('/profile/privacy')} />
           <ProfileMenuRow icon={FileText} ink="neutral" label={ka.profile.terms} onPress={() => router.push('/profile/terms')} />
           <ProfileMenuRow icon={Mail} ink="neutral" label={ka.profile.support} value={ka.profile.supportEmail} onPress={() => void openEmail(SUPPORT_EMAIL)} />
