@@ -903,3 +903,11 @@ body.biz { font-size: 14.5px; }
 .bz-cfile.is-after .bz-tag { color: var(--ok); background: var(--ok-bg); }
 .bz-cfile.is-doc .bz-tag { color: var(--book-ink); background: var(--book-soft); }
 .bz-cfile-full img { width: 100%; max-height: 75vh; object-fit: contain; border-radius: 12px; }
+
+/* Appointment drawer: the client snippet (allergies, the pinned note, the rhythm) */
+.bz-client-snip { display: grid; gap: 6px; padding: 10px 12px; border-radius: 12px; background: var(--surface2); border: 1px solid var(--line); font-size: 13px; }
+.bz-client-snip[hidden] { display: none; }
+.bz-client-snip .warn { display: flex; gap: 6px; align-items: flex-start; color: var(--danger); font-weight: 600; }
+.bz-client-snip .pin { display: flex; gap: 6px; align-items: flex-start; color: var(--text); white-space: pre-wrap; }
+.bz-client-snip svg { flex: none; margin-top: 2px; }
+.bz-client-snip .facts { color: var(--text2); font-size: 12.5px; }
