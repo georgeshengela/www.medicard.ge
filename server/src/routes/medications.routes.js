@@ -33,7 +33,9 @@ export const createSchema = z.object({
   config: z.record(z.string(), z.unknown()).optional(),
 });
 
-const updateSchema = createSchema.partial();
+// zod 4 fills `.default()` values in even under `.partial()`: an edit without `active` would switch a paused
+// medicine back on, so the update schema carries no defaults.
+export const updateSchema = createSchema.omit({ active: true }).partial().extend({ active: z.boolean().optional() });
 const idParam = z.object({ id: z.string().uuid('არასწორი იდენტიფიკატორი') });
 
 medicationsRouter.get(

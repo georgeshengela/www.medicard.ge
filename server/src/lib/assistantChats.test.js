@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { appendAssistantTurns, assistantTitle, ASSISTANT_MAX_MESSAGES, linkedConsultationIds } from '../routes/chats.routes.js';
+import { appendAssistantTurns, assistantTitle, ASSISTANT_MAX_MESSAGES, consultationsToDelete, deleteChatSession, linkedConsultationIds } from '../routes/chats.routes.js';
 
 test('assistant turns are appended with timestamps and capped', () => {
   const now = new Date('2026-09-27T10:00:00Z');
@@ -36,4 +36,54 @@ test('a clinical answer inside a Medi thread keeps its kind and link; the linked
     { id: 'b', mode: 'DOCTOR', messages: [{ role: 'assistant', content: 'x', linkedSessionId: 'zzz' }] },
   ]);
   assert.deepEqual([...ids], [doctorId]);
+});
+
+// 2026-10-13: deleting a Medi thread left its linked consultations behind — they came back in
+// „ყველა საუბარი“ (only links from surviving threads hide them) and kept feeding Medi's context.
+test('deleting a Medi thread deletes its linked consultations in the same transaction', async () => {
+  const userId = 'u1';
+  const doctorId = '0b5d6f3e-3c1a-4c8e-9a51-2f1d1f0c7a11', deepId = '1c6e7a4f-4d2b-4d9f-8b62-3a2e2a1d8b22', sharedId = '2d7f8b5a-5e3c-4ea0-9c73-4b3f3b2e9c33';
+  const rows = [
+    { id: 'thread', userId, mode: 'ASSISTANT', messages: [
+      { role: 'user', content: 'q' },
+      { role: 'assistant', content: 'a', kind: 'answer', linkedSessionId: doctorId },
+      { role: 'assistant', content: 'b', kind: 'deep', linkedSessionId: deepId },
+      { role: 'assistant', content: 'c', kind: 'answer', linkedSessionId: sharedId },
+    ] },
+    { id: 'other', userId, mode: 'ASSISTANT', messages: [{ role: 'assistant', content: 'c', kind: 'answer', linkedSessionId: sharedId }] },
+    { id: doctorId, userId, mode: 'DOCTOR', messages: [] },
+    { id: deepId, userId, mode: 'CONSILIUM', messages: [] },
+    { id: sharedId, userId, mode: 'DOCTOR', messages: [] },
+    { id: 'old', userId, mode: 'DOCTOR', messages: [] },
+    // Another account's session with a colliding id never matches the owner filter.
+    { id: deepId, userId: 'u2', mode: 'CONSILIUM', messages: [] },
+  ];
+  const matches = (row, where) => Object.entries(where).every(([key, cond]) => {
+    if (cond && typeof cond === 'object' && 'in' in cond) return cond.in.includes(row[key]);
+    if (cond && typeof cond === 'object' && 'not' in cond) return row[key] !== cond.not;
+    return row[key] === cond;
+  });
+  let inTransaction = false;
+  const table = {
+    findFirst: async ({ where }) => { assert.ok(inTransaction); return rows.find((row) => matches(row, where)) ?? null; },
+    findMany: async ({ where }) => { assert.ok(inTransaction); return rows.filter((row) => matches(row, where)); },
+    deleteMany: async ({ where }) => {
+      assert.ok(inTransaction, 'every delete runs inside the transaction');
+      const gone = rows.filter((row) => matches(row, where));
+      for (const row of gone) rows.splice(rows.indexOf(row), 1);
+      return { count: gone.length };
+    },
+  };
+  const db = { $transaction: async (fn) => { inTransaction = true; try { return await fn({ chatSession: table }); } finally { inTransaction = false; } } };
+
+  assert.equal(await deleteChatSession(db, userId, 'thread'), 1);
+  assert.deepEqual(rows.filter((row) => row.userId === userId).map((row) => row.id).sort(), ['old', 'other', sharedId].sort(),
+    'the thread and the consultations only it showed are gone; one still shown by another thread stays');
+  assert.ok(rows.some((row) => row.userId === 'u2' && row.id === deepId), 'another account is never touched');
+  assert.equal(await deleteChatSession(db, userId, 'thread'), 0, 'a second delete finds nothing (404)');
+  // Deleting a plain consultation deletes only that one.
+  assert.equal(await deleteChatSession(db, userId, 'old'), 1);
+  assert.deepEqual(rows.filter((row) => row.userId === userId).map((row) => row.id).sort(), ['other', sharedId].sort());
+  assert.deepEqual(consultationsToDelete({ mode: 'ASSISTANT', messages: [{ linkedSessionId: 'x' }] }, [{ mode: 'DOCTOR', messages: [{ linkedSessionId: 'x' }] }]), ['x'],
+    'only a Medi thread counts as still showing a consultation');
 });

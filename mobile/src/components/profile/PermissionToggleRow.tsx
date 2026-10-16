@@ -57,8 +57,9 @@ export function PermissionToggleRow({
         </View>
 
         <View style={{ flex: 1, marginLeft: 12, marginRight: 8 }}>
+          {/* Two lines: Georgian labels and hints were cut at 375–393 pt. */}
           <Text
-            numberOfLines={1}
+            numberOfLines={2}
             style={{
               fontFamily: 'NotoSansGeorgian_600SemiBold',
               fontSize: 15,
@@ -69,7 +70,7 @@ export function PermissionToggleRow({
           </Text>
           {hint ? (
             <Text
-              numberOfLines={1}
+              numberOfLines={2}
               style={{
                 fontFamily: 'NotoSansGeorgian_400Regular',
                 fontSize: 12,

@@ -62,8 +62,6 @@ const kaStrings = {
     forgotPasswordEmailHint: 'შეიყვანე ელ-ფოსტა — გამოგიგზავნით 6-ნიშნა კოდს.',
     forgotPasswordViaEmail: 'ელ-ფოსტით',
     forgotPasswordViaSms: 'SMS-ით',
-    forgotPasswordVia2fa: '2FA-ით',
-    forgotPasswordComingSoon: 'ეს ფუნქცია მალე დაემატება.',
     forgotPasswordSend: 'კოდის გაგზავნა',
     forgotPasswordSentTitle: 'კოდი გამოგზავნილია',
     forgotPasswordSentBody: 'რამდენიმე წუთში მიიღებ ელ-წერილს 6-ნიშნა კოდით. შეიყვანე იგი აპში პაროლის შესაცვლელად.',
@@ -3403,9 +3401,8 @@ const kaStrings = {
     privacyIntro:
       'Medicard.GE-ში თქვენი კონფიდენციალურობა პრიორიტეტია. ეს პოლიტიკა აღწერს, როგორ ვაგროვებთ, ვიყენებთ და ვიცავთ თქვენს მონაცემებს ჯანმრთელობის აპლიკაციის გამოყენებისას.',
     notificationsHint: 'პარამეტრების შეცვლა ნებისმიერ დროს შეგიძლია.',
-    notificationsPreviewTitle: 'არტერიული წნევა გაიზარდა ⚠',
-    notificationsPreviewBody: 'დააჭირე დეტალების სანახავად!',
-    notificationsPreviewAction: 'გაიგე მეტი',
+    // The preview is a real medication reminder (`previewPushCopy('medication')`) with its real button.
+    notificationsPreviewAction: 'მივიღე ✓',
     locationHint: 'პარამეტრების შეცვლა ნებისმიერ დროს შეგიძლია.',
     locationPreviewCity: 'თბილისი',
     locationPreviewCountry: 'საქართველო',
@@ -3547,7 +3544,7 @@ const kaStrings = {
     pushRegisterExpoGo: 'Expo Go-ში დისტანციური შეტყობინებები აღარ მუშაობს. დააყენე Medicard-ის build.',
     pushRegisterToken: 'Expo token ვერ მივიღეთ. სცადე თავიდან iPhone-ზე Expo Go-ში, ან Medicard-ის build.',
     disableNotificationsTitle: 'შეტყობინებების გამორთვა?',
-    disableNotificationsBody: 'Push და დაგეგმილი შეხსენებები გაუქმდება.',
+    disableNotificationsBody: 'Push შეტყობინებები გამოირთვება. შეხსენებებს ცალ-ცალკე გამორთავ „შეტყობინებებში“.',
     openSettingsTitle: 'სისტემური პარამეტრები',
     openSettingsAction: 'გახსნა',
     revokeInSettingsHint: 'ამ ნებართვის გამორთვა მხოლოდ ტელეფონის პარამეტრებიდან შეიძლება.',
@@ -3600,7 +3597,7 @@ const kaStrings = {
     resetRemindersBody: 'მედიკამენტის, ციკლის და ვიზიტის დაგეგმილი შეხსენებები წაიშლება.',
     resetAllTitle: 'ყველაფრის განულება',
     resetAllBody:
-      'გათიშავს ჯანმრთელობის სინქრონიზაციას, push-ს, ლოკაციას, ბიომეტრიას, ციკლის ბლოკს და ყველა შეხსენებას.',
+      'გათიშავს ჯანმრთელობის სინქრონიზაციას, push-ს, ლოკაციას, ბიომეტრიას და ციკლის ბლოკს. შეხსენებებს ცალ-ცალკე გამორთავ „შეტყობინებებში“.',
     resetAllHint: 'სრული გადატვირთვა — თუ გინდა ყველა კავშირი და ნებართვა ერთი ნაბიჯით გამორთო.',
     resetAllConfirm: 'ყველაფრის განულება',
     resetAllRowTitle: 'გადატვირთვა',

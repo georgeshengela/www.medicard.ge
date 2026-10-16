@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { NativeScrollEvent, NativeSyntheticEvent, Platform, ScrollView, Text, View } from 'react-native';
 import { ka } from '@/i18n/ka';
 import { pickerScrollTick, pickerSelectionTick } from '@/components/assessment/pickerHaptics';
+import { useCentredCommit } from '@/components/assessment/useCentredCommit';
 import { useIsDark } from '@/theme/colors';
 import { velvetField, type VelvetPalette } from '@/theme/velvet';
 
@@ -82,11 +83,19 @@ export function DateWheelPicker({ month, day, year, onChange, minYear, maxYear, 
   const safeDay = clampDayForMonthYear(day, month, year);
   const monthLabel = useCallback((m: number) => ka.assessment.months[m - 1] ?? String(m), []);
 
+  // The day the person picked. The wheels commit while they move, so rolling past February clamps the
+  // shown day to 28 — „31“ comes back when the month wheel lands on a long month.
+  const wantedDay = useRef(day);
+  useEffect(() => {
+    if (day !== clampDayForMonthYear(wantedDay.current, month, year)) wantedDay.current = day;
+  }, [day, month, year]);
+
   const emitChange = useCallback(
     (patch: { month?: number; day?: number; year?: number }) => {
       const nextMonth = patch.month ?? month;
       const nextYear = patch.year ?? year;
-      const rawDay = patch.day ?? day;
+      if (patch.day !== undefined) wantedDay.current = patch.day;
+      const rawDay = patch.day ?? wantedDay.current;
       const nextDay = clampDayForMonthYear(rawDay, nextMonth, nextYear);
 
       const result: { month?: number; day?: number; year?: number } = {};
@@ -183,11 +192,7 @@ export function ColumnWheel({
   const settling = useRef(false);
   const lastHapticIndex = useRef(-1);
   const pendingSyncIndex = useRef<number | null>(null);
-  const selectedRef = useRef(selected);
-  const onSelectRef = useRef(onSelect);
-
-  selectedRef.current = selected;
-  onSelectRef.current = onSelect;
+  const { commitMoving, flush } = useCentredCommit(values, selected, onSelect);
 
   const selectedIndex = clampIndex(Math.max(0, values.indexOf(selected)), values.length);
   const [centerIndex, setCenterIndex] = useState(selectedIndex);
@@ -243,14 +248,11 @@ export function ColumnWheel({
         pickerSelectionTick();
       }
 
-      const value = values[index];
-      if (value !== undefined && value !== selectedRef.current) {
-        onSelectRef.current(value);
-      }
+      flush(index);
 
       setTimeout(finishSettling, SETTLE_MS);
     },
-    [finishSettling, scrollToIndex, values],
+    [finishSettling, flush, scrollToIndex, values.length],
   );
 
   return (
@@ -273,6 +275,8 @@ export function ColumnWheel({
         onScroll={(e: NativeSyntheticEvent<NativeScrollEvent>) => {
           const index = clampIndex(Math.round(e.nativeEvent.contentOffset.y / ITEM_HEIGHT), values.length);
           if (index !== centerIndex) setCenterIndex(index);
+          // Dragging stays true through the momentum, until the settle.
+          if (dragging.current) commitMoving(index);
           if (dragging.current && index !== lastHapticIndex.current) {
             lastHapticIndex.current = index;
             pickerScrollTick();

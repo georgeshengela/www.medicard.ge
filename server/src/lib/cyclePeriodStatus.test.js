@@ -2,7 +2,13 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { addDays, buildPredictions, inferCycleStats } from './cycle.js';
 import { applyEndPeriodToLogs, planEndPeriod } from './cyclePeriod.js';
-import { derivePeriodStatus, trimEndedPeriodProjection, typicalPeriodLength } from './cyclePeriodStatus.js';
+import {
+  derivePeriodStatus,
+  endedPeriodTodayPhase,
+  restampEndedPeriodPhases,
+  trimEndedPeriodProjection,
+  typicalPeriodLength,
+} from './cyclePeriodStatus.js';
 
 const START = '2026-09-01';
 
@@ -184,3 +190,68 @@ describe('ended period — projection trim', () => {
     }
   });
 });
+
+describe('ended period — phase words after „დასრულდა“', () => {
+  // Bleeding on days 1–2, „დასრულდა“ on day 3 (stores „none“), today = day 3.
+  const rows = [...bleedDays([0, 1]), ...logs([[addDays(START, 2), 'none']])];
+  const today = addDays(START, 2);
+  const opts = { lastPeriodStart: START, periodLength: 5 };
+
+  it('restamps the rest of the period (today included) as follicular, never the logged days', () => {
+    const predictions = buildPredictions({ lastPeriodStart: START, avgCycleLength: 28, avgPeriodLength: 5, logs: rows, today });
+    assert.equal(predictions.calendar[today].phase, 'period');
+    const s = status(rows, 2);
+    assert.equal(s.state, 'ended');
+    const stamped = restampEndedPeriodPhases(predictions.calendar, s, { ...opts, lang: 'ka' });
+    for (const offset of [2, 3, 4]) {
+      assert.equal(stamped[addDays(START, offset)].phase, 'follicular', `day ${offset + 1}`);
+      assert.equal(stamped[addDays(START, offset)].phaseKa, 'ფოლიკულური ფაზა');
+    }
+    assert.equal(stamped[START].phase, 'period');
+    assert.equal(stamped[addDays(START, 1)].phase, 'period');
+    // The next cycle's period is untouched.
+    assert.equal(stamped[addDays(START, 28)].phase, predictions.calendar[addDays(START, 28)].phase);
+    assert.equal(restampEndedPeriodPhases(predictions.calendar, s, { ...opts, lang: 'en' })[today].phaseKa, 'Follicular phase');
+  });
+
+  it('today’s phase follows: „period“ becomes follicular once ended, stays while active', () => {
+    const period = { day: 3, phase: 'period', phaseKa: 'მენსტრუაცია' };
+    const ended = status(rows, 2);
+    const next = endedPeriodTodayPhase(period, ended, { ...opts, today, calendar: {}, lang: 'ka' });
+    assert.deepEqual(next, { day: 3, phase: 'follicular', phaseKa: 'ფოლიკულური ფაზა' });
+    // A fertile mark on that day (short cycles) picks the fertile word.
+    assert.equal(endedPeriodTodayPhase(period, ended, { ...opts, today, calendar: { [today]: { fertile: true } } }).phase, 'fertile');
+    // Still bleeding (active) or another run: unchanged.
+    const active = status(bleedDays([0, 1, 2]), 2);
+    assert.equal(active.state, 'active');
+    assert.equal(endedPeriodTodayPhase(period, active, { ...opts, today, calendar: {} }), period);
+    assert.equal(endedPeriodTodayPhase(period, ended, { ...opts, lastPeriodStart: addDays(START, -28), today, calendar: {} }), period);
+    // Past the projected period length nothing is „period“ any more anyway.
+    const luteal = { day: 20, phase: 'luteal', phaseKa: 'ლუთეალური ფაზა' };
+    assert.equal(endedPeriodTodayPhase(luteal, ended, { ...opts, today, calendar: {} }), luteal);
+  });
+
+  it('a setup start two days before the first logged day opens the run (day count, end, trim agree)', () => {
+    // She said it began on day 1 and logged bleeding from day 3 to day 4.
+    const rows = bleedDays([2, 3]);
+    const ranges = inferCycleStats(rows).periodRanges;
+    const s = derivePeriodStatus({ ranges, logs: rows, today: addDays(START, 3), typicalLength: 5, mode: 'TRACK_PERIOD', lastPeriodStart: START });
+    assert.equal(s.start, START);
+    assert.equal(s.day, 4);
+    // Usual length counts from her start: day 6 asks, day 7 ends.
+    const ask = derivePeriodStatus({ ranges, logs: rows, today: addDays(START, 5), typicalLength: 5, lastPeriodStart: START });
+    assert.equal(ask.state, 'askStill');
+    const ended = derivePeriodStatus({ ranges, logs: rows, today: addDays(START, 6), typicalLength: 5, lastPeriodStart: START });
+    assert.equal(ended.state, 'ended');
+    assert.equal(endedTailKeysFor(ended), true);
+    // A start far before the run (a different period) is ignored.
+    assert.equal(derivePeriodStatus({ ranges, logs: rows, today: addDays(START, 3), typicalLength: 5, lastPeriodStart: addDays(START, -20) }).start, addDays(START, 2));
+  });
+});
+
+/** The ended run is anchored on the same start the forecast uses, so the trim / restamp apply. */
+function endedTailKeysFor(status) {
+  const predictions = buildPredictions({ lastPeriodStart: START, avgCycleLength: 28, avgPeriodLength: 5, logs: bleedDays([2, 3]), today: addDays(START, 6) });
+  const stamped = restampEndedPeriodPhases(predictions.calendar, status, { lastPeriodStart: START, periodLength: 5 });
+  return stamped !== predictions.calendar || trimEndedPeriodProjection(predictions.calendar, status, { lastPeriodStart: START, periodLength: 5 }) !== predictions.calendar;
+}

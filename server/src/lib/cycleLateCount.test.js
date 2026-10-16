@@ -64,6 +64,31 @@ describe('last period start: manual vs logged (2026-09-29 audit)', () => {
   it('an untouched onboarding start with no logs is kept', () => {
     assert.equal(pickLastPeriodStart('2026-09-20', [], undefined, undefined, ['2026-09-25']), '2026-09-20');
   });
+
+  it('the setup start survives logging that begins a few days later (setup 10 Oct, logs from 12 Oct)', () => {
+    const run = [bleed('2026-10-12'), bleed('2026-10-13')];
+    assert.equal(pickLastPeriodStart('2026-10-10', run), '2026-10-10');
+    // Spotting (or nothing) in between does not end it.
+    assert.equal(pickLastPeriodStart('2026-10-10', [{ date: '2026-10-11', flow: 'spotting' }, ...run]), '2026-10-10');
+    // With an older logged period before it, as long as the start is after that period ended.
+    const older = [bleed('2026-09-10'), bleed('2026-09-11'), bleed('2026-09-12')];
+    assert.equal(pickLastPeriodStart('2026-10-10', [...older, ...run]), '2026-10-10');
+  });
+
+  it('the logged run wins when the stored date cannot be its start', () => {
+    const run = [bleed('2026-10-12'), bleed('2026-10-13')];
+    // „none“ logged between (or on) the stored date and the run: that period had ended.
+    assert.equal(pickLastPeriodStart('2026-10-10', [{ date: '2026-10-11', flow: 'none' }, ...run]), '2026-10-12');
+    assert.equal(pickLastPeriodStart('2026-10-10', [{ date: '2026-10-10', flow: 'none' }, ...run]), '2026-10-12');
+    // Too far before the run to be the same period (a 10-day span at most).
+    assert.equal(pickLastPeriodStart('2026-10-02', run), '2026-10-12');
+    // Inside (or before the end of) the previous logged run: that was the previous period.
+    const previous = [bleed('2026-10-03'), bleed('2026-10-04'), bleed('2026-10-05')];
+    assert.equal(pickLastPeriodStart('2026-10-04', [...previous, ...run]), '2026-10-12');
+    // Without context the stored date before the run is still kept only within the span.
+    assert.equal(resolveLastPeriodStart('2026-10-10', '2026-10-12', '2026-10-13'), '2026-10-10');
+    assert.equal(resolveLastPeriodStart('2026-10-01', '2026-10-12', '2026-10-13'), '2026-10-12');
+  });
 });
 
 describe('short cycles (2026-09-29 audit)', () => {

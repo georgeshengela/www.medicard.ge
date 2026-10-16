@@ -47,7 +47,7 @@ export function QuestHubView(p: QuestHubViewProps) {
   const features = useFeatureState();
   const can = (href: string) => isHrefAvailable(href, features);
   const card = (quest: QuestItem, weeklyCard = false) => <View key={quest.id} style={{ gap: 8 }}>
-    <QuestCard quest={quest} weekly={weeklyCard} offline={p.offline || p.stale} claiming={p.claimingId === quest.id} claimDisabled={Boolean(p.claimingId)} onClaim={() => p.onClaim(quest.id)} onOpenMedi={can('/assistant') ? () => open('/assistant?mode=doctor') : undefined}
+    <QuestCard quest={quest} weekly={weeklyCard} offline={p.offline} claiming={p.claimingId === quest.id} claimDisabled={Boolean(p.claimingId)} onClaim={() => p.onClaim(quest.id)} onOpenMedi={can('/assistant') ? () => open('/assistant?mode=doctor') : undefined}
       contextHint={p.contextFor?.(quest)} whyTargetLabel={p.whyLabel?.(quest)} onWhyTarget={() => p.onWhy?.(quest)}
       action={quest.status === 'ACTIVE' && quest.progressType === 'STEPS' && can('/health-metrics/steps') ? { label: tx('ნაბიჯების ნახვა', 'View steps'), onPress: () => open('/health-metrics/steps') } : quest.status === 'ACTIVE' && quest.progressType === 'HYDRATION_GOAL_PERCENT' && can('/health-metrics/hydration') ? { label: tx('წყლის ჩაწერა', 'Log water'), onPress: () => open('/health-metrics/hydration') } : undefined} />
     {p.claimError?.id === quest.id ? <QNotice text={p.claimError.message} danger /> : null}

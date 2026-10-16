@@ -19,7 +19,6 @@ import { isCyclePrivacyLockEnabled, setCyclePrivacyLockEnabled } from '@/lib/cyc
 import { isBiometricEnabled, setBiometricEnabled } from '@/lib/profileSetupFlow';
 import { ka } from '@/i18n/ka';
 import {
-  cancelAllReminders,
   cancelCycleReminders,
   cancelPregnancyCareReminders,
   getPushOptedInStored,
@@ -281,15 +280,15 @@ export async function disableCyclePrivacyLock(): Promise<void> {
   await setCyclePrivacyLockEnabled(false);
 }
 
-export async function resetLocalReminders(): Promise<void> {
-  await cancelAllReminders();
-}
-
 export async function resetCycleRemindersOnly(): Promise<void> {
   await cancelCycleReminders();
   await cancelPregnancyCareReminders();
 }
 
+/**
+ * Local reminders are not touched: each family has its own switch in Profile → „შეტყობინებები“. Wiping
+ * them here silenced medicine reminders until the next sync quietly brought them back.
+ */
 export async function resetAllConnectionsAndPermissions(): Promise<void> {
   await Promise.all([
     disconnectHealthApp(),
@@ -297,7 +296,6 @@ export async function resetAllConnectionsAndPermissions(): Promise<void> {
     unregisterPushFromServer(),
     setBiometricEnabled(false),
     setCyclePrivacyLockEnabled(false),
-    cancelAllReminders(),
     revokeUserLocation(),
   ]);
 }

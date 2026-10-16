@@ -4,7 +4,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ChevronRight, Flag, LayoutList, Sparkles } from 'lucide-react-native';
 import { GoalTrendUp } from '@/components/health/steps-goal/StepsGoalIcons';
-import { HydrationAppBar, HydrationPeriodTabs } from '@/components/hydration/HydrationChrome';
+import { HYDRATION_PERIODS, HydrationAppBar, HydrationPeriodTabs } from '@/components/hydration/HydrationChrome';
 import {
   HydrationContainerIcon,
   HydrationDrop,
@@ -18,6 +18,7 @@ import { useFigmaHydration } from '@/constants/figmaHydrationLayout';
 import { useHydration } from '@/hooks/useHydration';
 import { HydrationHubSkeleton } from '@/components/ui/Skeleton';
 import { ka } from '@/i18n/ka';
+import { formatTimeHm } from '@/lib/format';
 import { formatLiters, formatMl, formatMlTight, monthGrid, todayYmd } from '@/lib/hydration';
 import type { StepChartPeriod } from '@/types/stepsMetrics';
 
@@ -30,7 +31,9 @@ export default function HydrationHomeScreen({ initialPeriod }: Props) {
   const router = useRouter();
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{ period?: string }>();
-  const start = (initialPeriod ?? (params.period as StepChartPeriod) ?? '1d') as StepChartPeriod;
+  const asked = (initialPeriod ?? params.period) as StepChartPeriod | undefined;
+  // An old link to a removed tab (1y / all) opens the day view.
+  const start: StepChartPeriod = asked && HYDRATION_PERIODS.includes(asked) ? asked : '1d';
   const h = useHydration();
   const [period, setPeriod] = useState<StepChartPeriod>(start);
   const cells = useMemo(() => {
@@ -58,7 +61,7 @@ export default function HydrationHomeScreen({ initialPeriod }: Props) {
       ) : (
         <ScrollView style={{ flex: 1 }} contentContainerStyle={{ paddingBottom: 16 }} showsVerticalScrollIndicator={false}>
           <HydrationHero h={h} T={T} />
-          {period === '1w' ? (
+          {period === '1m' ? (
             <View style={{ gap: 16 }}>
               <HydrationMonthCalendar cells={cells} today={today} logs={h.logs} goalMl={h.goalMl} />
               <View style={{ paddingHorizontal: 16, gap: 16 }}>
@@ -67,7 +70,7 @@ export default function HydrationHomeScreen({ initialPeriod }: Props) {
             </View>
           ) : (
             <View style={{ paddingHorizontal: 16, gap: 16 }}>
-              <HydrationWeekChart values={h.weekTotals} />
+              <HydrationWeekChart values={h.weekTotals} goalMl={h.goalMl} todayIndex={h.week.indexOf(today)} />
               <HubCards h={h} T={T} weekSpark={weekSpark} />
             </View>
           )}
@@ -198,7 +201,7 @@ function HubCards({
         <View style={{ flexDirection: 'row', alignItems: 'center', paddingVertical: 8 }}>
           <View style={{ flex: 1 }}>
             <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 20, color: T.textPrimary }}>
-              {formatLiters(h.weekTotals.reduce((a, b) => a + b, 0))}
+              {formatLiters(h.weekAvgMl)}
             </Text>
             <Text style={{ fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 13, color: T.textSecondary }}>{ka.hydration.weeklyAvg}</Text>
           </View>
@@ -221,7 +224,7 @@ function HubCards({
               </Text>
             </View>
             <Text style={{ fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 13, color: T.textTertiary }}>
-              {new Date(log.at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
+              {formatTimeHm(log.at)}
             </Text>
             <ChevronRight size={18} color={T.textTertiary} />
           </Pressable>

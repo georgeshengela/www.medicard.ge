@@ -600,7 +600,12 @@ export async function assignDailyQuests(userId, date, options = {}) {
 
   return db.$transaction(async (tx) => {
     const profile = await ensureProfile(tx, userId, clock.timezone);
-    if (!canAssignNewDailyPeriod(profile, periodKey, clock.now, clock.timezone)) {
+    const last = profile.lastDailyAssignPeriodKey;
+    const lastRow = last && last !== periodKey
+      ? await tx.userQuest.findFirst({ where: { userId, periodKey: last } })
+      : null;
+    const lastZone = lastRow?.metadata?.assignedTimezone || null;
+    if (!canAssignNewDailyPeriod(profile, periodKey, clock.now, clock.timezone, lastZone)) {
       const existing = await tx.userQuest.findMany({
         where: { userId, periodKey: profile.lastDailyAssignPeriodKey || periodKey },
         include: { template: true },
@@ -1130,7 +1135,12 @@ async function publicProfile(userId, options = {}) {
     totalXp: balance.xp,
     cachedCoinBalance: profile.cachedCoinBalance,
     coinBalance: balance.coins,
-    currentStreak: profile.currentStreak || 0,
+    // The stored streak is only reset at the next completion; a missed day already ends it (as the guide
+    // says and the admin page counts), so the hub no longer shows „5 days“ after a week away.
+    currentStreak:
+      profile.lastActiveQuestDate && profile.lastActiveQuestDate >= addDaysYmd(clock.today, -1)
+        ? profile.currentStreak || 0
+        : 0,
     longestStreak: profile.longestStreak || 0,
     lastActiveQuestDate: profile.lastActiveQuestDate,
     level,
@@ -1184,7 +1194,7 @@ export async function getUserQuestDashboard(userId, options = {}) {
     return emptyQuestDashboard(clock, profile);
   }
 
-  const quests = await db.userQuest.findMany({
+  const current = await db.userQuest.findMany({
     where: {
       userId,
       periodKey: { in: [clock.today, clock.week] },
@@ -1192,6 +1202,23 @@ export async function getUserQuestDashboard(userId, options = {}) {
     include: { template: true },
     orderBy: [{ assignedAt: 'asc' }],
   });
+  // A mission finished but not collected before its day or week ended stays collectable, as the guide
+  // promises. It used to drop off the dashboard and sit in COMPLETED for good (2026-10-13: 75 people had
+  // finished a mission, 20 had collected a reward). Leftovers of the last 30 days join the lists, where
+  // claimable cards come first, but not the counts of the current day/week (`questSummary`).
+  const leftovers = await db.userQuest.findMany({
+    where: {
+      userId,
+      status: COMPLETED,
+      periodKey: { notIn: [clock.today, clock.week] },
+      completedAt: { gte: new Date(clock.now.getTime() - LEFTOVER_CLAIM_DAYS * 86_400_000) },
+    },
+    include: { template: true },
+    orderBy: [{ completedAt: 'asc' }],
+    take: 20,
+  });
+  // A mission switched off in admin (a retired template) does not come back this way.
+  const quests = [...leftovers.filter((row) => row.template?.isActive !== false), ...current];
 
   // CANCELLED quests (capability lost / hydration goal removed) leave the
   // dashboard entirely — the segmented-bar denominator reconciles with the
@@ -1225,16 +1252,25 @@ export async function getUserQuestDashboard(userId, options = {}) {
       periodKey: clock.week,
       quests: weekly,
     },
-    summary: questSummary(daily, weekly),
+    summary: questSummary(daily, weekly, { today: clock.today, week: clock.week }),
   };
 }
 
-function questSummary(daily, weekly) {
+/** How long a finished, uncollected mission stays on the dashboard after its day or week ended. */
+const LEFTOVER_CLAIM_DAYS = 30;
+
+/**
+ * Counts for the current day and week. Leftovers from an earlier period (finished, not collected) count
+ * only as rewards waiting, never towards today's „2 / 3“.
+ */
+function questSummary(daily, weekly, periods = {}) {
+  const day = periods.today ? daily.filter((quest) => quest.periodKey === periods.today) : daily;
+  const week = periods.week ? weekly.filter((quest) => quest.periodKey === periods.week) : weekly;
   return {
-    dailyCompleted: daily.filter((quest) => quest.status === COMPLETED || quest.status === CLAIMED).length,
-    dailyTotal: daily.length,
-    dailyClaimable: daily.filter((quest) => quest.claimable).length,
-    weeklyCompleted: weekly.filter((quest) => quest.status === COMPLETED || quest.status === CLAIMED).length,
+    dailyCompleted: day.filter((quest) => quest.status === COMPLETED || quest.status === CLAIMED).length,
+    dailyTotal: day.length,
+    dailyClaimable: day.filter((quest) => quest.claimable).length,
+    weeklyCompleted: week.filter((quest) => quest.status === COMPLETED || quest.status === CLAIMED).length,
     unclaimedRewards: [...daily, ...weekly].filter((quest) => quest.claimable).length,
   };
 }
@@ -1270,7 +1306,8 @@ export function questDashboardForClient(dashboard, appVersion, caps) {
   const weeklyQuests = dashboard.weekly?.quests || [];
   if (!weeklyQuests.some(isWeeklyMedi)) return dashboard;
   const weekly = { ...dashboard.weekly, quests: weeklyQuests.filter((quest) => !isWeeklyMedi(quest)) };
-  return { ...dashboard, weekly, summary: questSummary(dashboard.daily?.quests || [], weekly.quests) };
+  const periods = { today: dashboard.daily?.periodKey, week: dashboard.weekly?.periodKey };
+  return { ...dashboard, weekly, summary: questSummary(dashboard.daily?.quests || [], weekly.quests, periods) };
 }
 
 /** Quest history as this client can show it (same rule as the dashboard). */

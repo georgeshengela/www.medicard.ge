@@ -48,7 +48,7 @@ export function MediHistorySheet({ visible, currentId, onClose, onOpen, onNew }:
   });
   const chats = useMemo(() => (query.data ?? EMPTY).filter((chat) => chat.id !== held), [query.data, held]);
   const groups = useMemo(() => groupByPeriod(chats, (chat) => chat.updatedAt), [chats]);
-  const loading = query.isPending && query.fetchStatus !== 'idle';
+  const loading = (query.isPending && query.fetchStatus !== 'idle') || (query.isError && query.isFetching);
   const ink = hubInk('teal', dark);
 
   return (
@@ -80,6 +80,16 @@ export function MediHistorySheet({ visible, currentId, onClose, onOpen, onNew }:
 
                 {loading && !chats.length ? (
                   <Text style={[hubText.body, s.calm, { color: c.text300 }]}>{ka.common.loading}</Text>
+                ) : query.isError && !chats.length ? (
+                  // A failed load is not „no conversations“: say so and offer the retry.
+                  <View style={s.calm}>
+                    <Text style={[hubText.body, { color: c.text200 }]}>
+                      {tx('საუბრები ვერ ჩაიტვირთა. შეამოწმე კავშირი.', "Couldn't load your conversations. Check your connection.")}
+                    </Text>
+                    <Pressable accessibilityRole="button" onPress={() => void refetch()} style={[s.retry, { backgroundColor: c.surface, borderColor: c.bg300 }]}>
+                      <Text style={[hubText.cardTitle, { color: c.text100 }]}>{tx('ხელახლა ცდა', 'Try again')}</Text>
+                    </Pressable>
+                  </View>
                 ) : !chats.length ? (
                   <Text style={[hubText.body, s.calm, { color: c.text200 }]}>
                     {tx('აქ შეინახება ყველა საუბარი Medi-სთან — დაუბრუნდები ნებისმიერ დროს.', 'Every conversation with Medi is kept here — come back to any of them.')}
@@ -91,6 +101,11 @@ export function MediHistorySheet({ visible, currentId, onClose, onOpen, onNew }:
                       <View style={[s.card, { backgroundColor: c.surface }]}>
                         {group.items.map((chat, index) => {
                           const mode = mediModeForSession(chat.mode);
+                          // The open conversation is not deleted from here (Medi would go on writing to a
+                          // thread that is gone): „ახალი საუბარი“ first, then it deletes like any other.
+                          if (chat.id === currentId) {
+                            return <ChatRow key={chat.id} first={index === 0} chat={chat} mode={mode} current onOpen={onClose} />;
+                          }
                           return (
                             <SwipeDeleteRow key={chat.id} onDelete={() => hold(chat.id)}>
                               {(open, a11y) => (
@@ -98,8 +113,8 @@ export function MediHistorySheet({ visible, currentId, onClose, onOpen, onNew }:
                                   first={index === 0}
                                   chat={chat}
                                   mode={mode}
-                                  current={chat.id === currentId}
-                                  onOpen={() => { onClose(); if (chat.id !== currentId) onOpen(mode, chat.id); }}
+                                  current={false}
+                                  onOpen={() => { onClose(); onOpen(mode, chat.id); }}
                                   onLongPress={open}
                                   a11y={a11y}
                                 />
@@ -111,7 +126,7 @@ export function MediHistorySheet({ visible, currentId, onClose, onOpen, onNew }:
                     </View>
                   ))
                 )}
-                {chats.length ? <Text style={[s.hint, { color: c.text300 }]}>{tx('წასაშლელად გადაწიე მარცხნივ', 'Swipe left to delete')}</Text> : null}
+                {chats.some((chat) => chat.id !== currentId) ? <Text style={[s.hint, { color: c.text300 }]}>{tx('წასაშლელად გადაწიე მარცხნივ', 'Swipe left to delete')}</Text> : null}
               </ScrollView>
             </SwipeGroup>
           </View>
@@ -124,7 +139,9 @@ export function MediHistorySheet({ visible, currentId, onClose, onOpen, onNew }:
 
 /** One conversation, Mail-style: icon tile · title with the date · the mode tag · a one-line preview. */
 function ChatRow({ first, chat, mode, current, onOpen, onLongPress, a11y }: {
-  first: boolean; chat: ChatSummary; mode: MediMode; current: boolean; onOpen: () => void; onLongPress: () => void; a11y: RowA11y;
+  first: boolean; chat: ChatSummary; mode: MediMode; current: boolean; onOpen: () => void;
+  /** Absent on the open conversation: it has no delete. */
+  onLongPress?: () => void; a11y?: RowA11y;
 }) {
   const c = useThemeColors();
   const dark = useIsDark();
@@ -135,7 +152,7 @@ function ChatRow({ first, chat, mode, current, onOpen, onLongPress, a11y }: {
       accessibilityRole="button"
       accessibilityState={{ selected: current }}
       accessibilityLabel={[chat.title, tag, listDate(chat.updatedAt), chat.preview].filter(Boolean).join('. ')}
-      accessibilityHint={tx('წასაშლელად გადაწიე მარცხნივ', 'Swipe left to delete')}
+      accessibilityHint={onLongPress ? tx('წასაშლელად გადაწიე მარცხნივ', 'Swipe left to delete') : undefined}
       {...a11y}
       onPress={onOpen}
       onLongPress={onLongPress}
@@ -163,6 +180,7 @@ const s = StyleSheet.create({
   head: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: HUB.gutter + 4, marginBottom: 12 },
   newRow: { flexDirection: 'row', alignItems: 'center', gap: 12, minHeight: 56, paddingHorizontal: 14, borderRadius: HUB.cardRadius },
   calm: { marginTop: 16, marginHorizontal: 4 },
+  retry: { alignSelf: 'flex-start', minHeight: 40, marginTop: 12, paddingHorizontal: 14, borderRadius: 20, borderWidth: 1, justifyContent: 'center' },
   groupLabel: { fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 13, lineHeight: 18, marginBottom: 8, marginLeft: 4 },
   card: { borderRadius: HUB.cardRadius, overflow: 'hidden' },
   row: { flexDirection: 'row', alignItems: 'flex-start', gap: 12, paddingLeft: 14 },

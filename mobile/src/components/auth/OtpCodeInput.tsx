@@ -1,5 +1,5 @@
 import React, { useRef, useState } from 'react';
-import { Keyboard, Platform, Text, TextInput, View } from 'react-native';
+import { Keyboard, Platform, Text, TextInput, View, useWindowDimensions } from 'react-native';
 import { KEYBOARD_DONE_ACCESSORY_ID } from '@/components/ui/KeyboardDoneAccessory';
 import { useFigmaProfileSetup, FIGMA_PROFILE_SETUP_SHADOW } from '@/constants/figmaProfileSetupLayout';
 import { useThemeColors } from '@/theme/colors';
@@ -37,14 +37,21 @@ export function OtpCodeInput({
   const inputRef = useRef<TextInput>(null);
   const [focused, setFocused] = useState(autoFocus);
   const velvet = palette != null;
-  const box = velvet ? (length === 6 ? 46 : 66) : variant === 'hero' ? FIGMA_PROFILE_SETUP.otpBoxSize : 48;
-  const gap = velvet ? (length === 6 ? 9 : 14) : variant === 'hero' ? FIGMA_PROFILE_SETUP.otpGap : 8;
-  const fontSize = velvet ? (length === 6 ? 24 : 30) : variant === 'hero' ? 32 : 22;
-  const borderRadius = velvet ? (length === 6 ? 15 : 20) : variant === 'hero' ? FIGMA_PROFILE_SETUP.otpBoxRadius : 14;
+  const { width: windowWidth } = useWindowDimensions();
+  const [room, setRoom] = useState<number | null>(null);
+  const baseBox = velvet ? (length === 6 ? 46 : 66) : variant === 'hero' ? FIGMA_PROFILE_SETUP.otpBoxSize : 48;
+  const baseGap = velvet ? (length === 6 ? 9 : 14) : variant === 'hero' ? FIGMA_PROFILE_SETUP.otpGap : 8;
+  // The wells shrink to the width they get (a 320 pt iPhone SE has ~272 pt inside the gutters); until
+  // measured, the window minus the auth gutters is the guess.
+  const scale = Math.min(1, (room ?? windowWidth - 48) / (length * baseBox + (length - 1) * baseGap));
+  const box = Math.floor(baseBox * scale);
+  const gap = Math.floor(baseGap * scale);
+  const fontSize = Math.round((velvet ? (length === 6 ? 24 : 30) : variant === 'hero' ? 32 : 22) * Math.max(0.8, scale));
+  const borderRadius = Math.round((velvet ? (length === 6 ? 15 : 20) : variant === 'hero' ? FIGMA_PROFILE_SETUP.otpBoxRadius : 14) * scale);
   const digits = value.padEnd(length, ' ').slice(0, length).split('');
 
   return (
-    <View>
+    <View style={{ alignSelf: 'stretch' }} onLayout={(e) => setRoom(e.nativeEvent.layout.width)}>
       <View style={{ position: 'relative' }}>
         <View style={{ flexDirection: 'row', justifyContent: 'center', gap }} pointerEvents="none">
           {digits.map((digit, index) => {

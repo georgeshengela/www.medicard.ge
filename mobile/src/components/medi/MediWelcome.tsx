@@ -24,7 +24,11 @@ const DEEP_STARTERS = (): Starter[] => [
 ];
 
 /** The empty conversation: Medi waving hello is the one bold element (consilium: its three spheres), then plain starters to tap. */
-export function MediWelcome({ name, consilium, onStarter, notice }: { name?: string; consilium: boolean; onStarter: (text: string) => void; notice?: string | null }) {
+export function MediWelcome({ name, consilium, onStarter, notice, retry }: {
+  name?: string; consilium: boolean; onStarter: (text: string) => void; notice?: string | null;
+  /** Her first message did not go through: the same retry the conversation shows under a failed turn. */
+  retry?: { label: string; onPress: () => void } | null;
+}) {
   const c = useThemeColors();
   const dark = useIsDark();
   const starters = consilium ? DEEP_STARTERS() : STARTERS();
@@ -44,6 +48,12 @@ export function MediWelcome({ name, consilium, onStarter, notice }: { name?: str
         </View>
       </View>
       {notice ? <Text accessibilityRole="alert" style={{ color: c.text200, fontSize: 13, lineHeight: 21, textAlign: 'center', fontFamily: 'NotoSansGeorgian_400Regular', paddingHorizontal: 8 }}>{notice}</Text> : null}
+      {retry ? (
+        <Pressable accessibilityRole="button" onPress={retry.onPress}
+          style={{ alignSelf: 'center', minHeight: 40, paddingHorizontal: 14, borderRadius: 20, justifyContent: 'center', backgroundColor: c.surface, borderWidth: 1, borderColor: c.bg300, marginTop: -16 }}>
+          <Text style={{ color: c.text100, fontSize: 13, fontFamily: 'NotoSansGeorgian_600SemiBold' }}>{retry.label}</Text>
+        </Pressable>
+      ) : null}
       <View style={{ gap: 8 }}>
         {starters.map(starter => {
           const ink = hubInk(starter.ink, dark);

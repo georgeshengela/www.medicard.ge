@@ -194,12 +194,14 @@ export function resolveQuestClock(now = new Date(), timeZone = QUEST_TIMEZONE_FA
  *
  * - same periodKey → always allowed (idempotent refresh)
  * - earlier periodKey within 20h → denied (westbound hop)
- * - exact last+1, local day has started, ≥12h since last assign → allowed
+ * - exact last+1, local day has started, and either that day has also started in the zone the last day
+ *   was assigned in (`lastZone`: the plain next morning) or ≥12h since last assign → allowed
  * - any other jump → allowed only after 20h and once that local day has started
  *
- * Existing completed periodKeys are never rewritten.
+ * Existing completed periodKeys are never rewritten. Without `lastZone` the next day waited 12 h from the
+ * previous day's first assignment: first opened at 21:00, the next morning had no missions until 09:00.
  */
-export function canAssignNewDailyPeriod(profile, periodKey, now, timeZone) {
+export function canAssignNewDailyPeriod(profile, periodKey, now, timeZone, lastZone = null) {
   const last = profile?.lastDailyAssignPeriodKey;
   if (!last || last === periodKey) return true;
   const lastAt = profile.lastDailyAssignAt ? new Date(profile.lastDailyAssignAt) : null;
@@ -208,6 +210,7 @@ export function canAssignNewDailyPeriod(profile, periodKey, now, timeZone) {
   if (!dayHasStarted) return false;
   if (periodKey < last && elapsed < QUEST_ECONOMY.dailyHopGuardMs) return false;
   if (periodKey === addDaysYmd(last, 1)) {
+    if (lastZone && now.getTime() >= startOfLocalDay(periodKey, lastZone).getTime()) return true;
     return elapsed >= QUEST_ECONOMY.dailySuccessorGuardMs;
   }
   return elapsed >= QUEST_ECONOMY.dailyHopGuardMs;

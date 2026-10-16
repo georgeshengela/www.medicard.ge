@@ -89,7 +89,9 @@ export async function cacheLocalHealthSync(payload: HealthMetricsSyncPayload): P
 }
 
 let pullGeneration = 0;
-let pullInflight: { key: string; promise: Promise<StoredHealthBundle>; generation: number } | null = null;
+/** Bumped by `forgetHealthPull` (our own write changed the stored copy): older reads are not reused. */
+let pullEpoch = 0;
+let pullInflight: { key: string; promise: Promise<StoredHealthBundle>; generation: number; epoch: number } | null = null;
 let pullCache: { key: string; at: number; data: StoredHealthBundle } | null = null;
 let lastHealthPullMeta: { kind: 'none' | 'memory' | 'api' | 'cache' | 'empty'; at: number } = {
   kind: 'none',
@@ -162,6 +164,16 @@ export function markOwnHealthPush(now = Date.now()): void {
   lastLocalPushAt = now;
 }
 
+/**
+ * Our own write (a glass of water) changed the stored totals: the 12 s memory copy and a read already on
+ * its way may predate it, so the next read asks the server again (no broadcast, no extra request now).
+ * Without this, opening the water screen right after a tap showed the server's old day total.
+ */
+export function forgetHealthPull(): void {
+  pullEpoch += 1;
+  pullCache = null;
+}
+
 export async function pullStoredHealth(
   from?: string,
   to?: string,
@@ -184,8 +196,10 @@ export async function pullStoredHealth(
   }
 
   const key = makeHealthPullKey(identity, fromKey, toKey);
-  if (shouldJoinHealthPull(pullInflight, key, fromKey, toKey, startedGeneration)) {
-    return pullInflight!.promise;
+  // Taken right before the read is joined or sent: a write marked after this is not in its answer.
+  const startedEpoch = pullEpoch;
+  if (pullInflight?.epoch === startedEpoch && shouldJoinHealthPull(pullInflight, key, fromKey, toKey, startedGeneration)) {
+    return pullInflight.promise;
   }
 
   const now = Date.now();
@@ -207,7 +221,8 @@ export async function pullStoredHealth(
         throw cancelledHealthPull();
       }
       await saveHealthCache(data);
-      pullCache = { key, at: Date.now(), data };
+      // A read that started before our own write is returned to its caller but never reused.
+      if (startedEpoch === pullEpoch) pullCache = { key, at: Date.now(), data };
       setHealthPullMeta('api');
       return data;
     } catch (err) {
@@ -226,12 +241,12 @@ export async function pullStoredHealth(
       setHealthPullMeta(cached ? 'cache' : 'empty');
       return cached ?? { daily: [], stepLogs: [] };
     } finally {
-      if (pullInflight?.generation === startedGeneration && pullInflight?.key === key) {
+      if (pullInflight?.generation === startedGeneration && pullInflight?.key === key && pullInflight?.epoch === startedEpoch) {
         pullInflight = null;
       }
     }
   })();
-  pullInflight = { key, promise, generation: startedGeneration };
+  pullInflight = { key, promise, generation: startedGeneration, epoch: startedEpoch };
   return promise;
 }
 

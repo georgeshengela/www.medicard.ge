@@ -159,9 +159,17 @@ export default function NotificationSettingsScreen() {
   };
 
   const persist = async (next: MediEngagePrefs) => {
+    const discreetChanged = next.discreet !== prefs.discreet;
     setPrefs(next);
     await saveEngagePrefs(next);
     void runMediNotificationBrain(user, healthProfile, { force: true });
+    // „ფარული შეტყობინებები“ also masks cycle reminders: re-plan the ones already scheduled with real text.
+    if (discreetChanged && user?.id) {
+      const owner = user.id;
+      void import('@/lib/cycleReminders')
+        .then(({ reconcileCycleReminders }) => reconcileCycleReminders(owner, { force: true }))
+        .catch(() => undefined);
+    }
   };
 
   const setTopic = (topic: EngageTopic, value: boolean) => {

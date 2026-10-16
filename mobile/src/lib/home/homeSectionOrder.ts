@@ -38,6 +38,7 @@
  * `remote` = the admin's choice for this layout (admin #/home, /api/app/status `home`): its own order and hidden
  * sections. The greeting stays first and the disclaimer last; ids this build does not know are ignored, and ids
  * the admin's order lacks go back after their default predecessor (server/src/lib/homeSections.js does the same).
+ * An admin order is final: the onboarding-goal move (and news travelling with it) applies to the default order only.
  */
 import type { HomeLayoutId } from './homeLayout.ts';
 
@@ -264,7 +265,7 @@ export function buildHomeSectionOrder({
   let order = mergeHomeOrder(HOME_LAYOUT_ORDER[layout], remote?.order).filter(
     (id) => (includeCycle || !FEMALE_ONLY.has(id)) && !hidden?.has(id) && !(adminHidden.has(id) && !HOME_LOCKED.has(id)),
   );
-  if (layout === 'standard') {
+  if (layout === 'standard' && !remote?.order?.length) {
     const lead = primaryGoal ? GOAL_SECTION[primaryGoal] : undefined;
     if (lead && order.includes(lead)) {
       const block: HomeSectionId[] = lead === 'nutrition' && order.includes('news') ? ['news', 'nutrition'] : [lead];

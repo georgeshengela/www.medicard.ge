@@ -16,7 +16,8 @@
  *
  * Pregnancy and postpartum bleeding is not a period: no status in those modes.
  */
-import { addDays, daysBetween, isPeriodFlow, DEFAULT_PERIOD_LENGTH } from './cycle.js';
+import { addDays, daysBetween, isPeriodFlow, DEFAULT_PERIOD_LENGTH, PERIOD_MERGE_MAX_SPAN_DAYS } from './cycle.js';
+import { phaseLabel } from './cycleForecastHonesty.js';
 
 export const PERIOD_STATUS_STATES = Object.freeze(['active', 'ended', 'askStill']);
 /** Same threshold as the app's heavy-bleeding card (bleeding > 7 days → talk to a doctor). */
@@ -43,12 +44,13 @@ function isExplicitEndFlow(flow) {
  * @param {string} input.today  civil today (YYYY-MM-DD)
  * @param {number} [input.typicalLength]  `averages.usedPeriodLength`
  * @param {string} [input.mode]  cycle profile mode
+ * @param {string|null} [input.lastPeriodStart]  the resolved last period start (`resolveLastPeriodStart`)
  * @returns {null | {
  *   state: 'active'|'ended'|'askStill', day: number|null, typicalLength: number, autoEnded: boolean,
  *   start: string, lastBleed: string, longRun: boolean
  * }}
  */
-export function derivePeriodStatus({ ranges = [], logs = [], today, typicalLength, mode = null } = {}) {
+export function derivePeriodStatus({ ranges = [], logs = [], today, typicalLength, mode = null, lastPeriodStart = null } = {}) {
   if (!today || NO_STATUS_MODES.has(mode)) return null;
   const run = [...(ranges || [])]
     .filter((r) => r?.start && r?.end && r.start <= today)
@@ -56,18 +58,24 @@ export function derivePeriodStatus({ ranges = [], logs = [], today, typicalLengt
     .pop();
   if (!run) return null;
 
+  // The start she gave (setup: „10-ში დაიწყო“) a few days before her first logged day opens this run
+  // (`resolveLastPeriodStart`): the day count, the usual length and the end trim count from it.
+  const start =
+    lastPeriodStart && lastPeriodStart < run.start && daysBetween(lastPeriodStart, run.start) + 1 <= PERIOD_MERGE_MAX_SPAN_DAYS
+      ? lastPeriodStart
+      : run.start;
   const typical = typicalPeriodLength(typicalLength);
   const lastBleed = run.end > today ? today : run.end;
-  const runDay = daysBetween(run.start, today) + 1;
+  const runDay = daysBetween(start, today) + 1;
   const flowOn = new Map();
   for (const log of logs || []) {
     if (log?.date) flowOn.set(String(log.date).slice(0, 10), log.flow ?? null);
   }
   const base = {
     typicalLength: typical,
-    start: run.start,
+    start,
     lastBleed,
-    longRun: daysBetween(run.start, lastBleed) + 1 > PERIOD_LONG_RUN_DAYS,
+    longRun: daysBetween(start, lastBleed) + 1 > PERIOD_LONG_RUN_DAYS,
   };
 
   if (isPeriodFlow(flowOn.get(today))) {
@@ -83,7 +91,7 @@ export function derivePeriodStatus({ ranges = [], logs = [], today, typicalLengt
 
   // (b) Typical length: open through the usual length (or the last logged bleeding day, if later),
   // one question the day after, ended after that.
-  const usualEnd = addDays(run.start, typical - 1);
+  const usualEnd = addDays(start, typical - 1);
   const horizon = lastBleed > usualEnd ? lastBleed : usualEnd;
   if (today <= horizon) return { state: 'active', day: runDay, autoEnded: false, ...base };
   if (today === addDays(horizon, 1)) return { state: 'askStill', day: runDay, autoEnded: false, ...base };
@@ -115,4 +123,51 @@ export function trimEndedPeriodProjection(calendar, status, { lastPeriodStart, p
     else delete next[key];
   }
   return next;
+}
+
+/** The phase a day after the ended period's last bleeding day reads: its fertile marks, else follicular. */
+function afterPeriodPhase(mark, lang) {
+  const phase = mark?.ovulation ? 'ovulation' : mark?.fertile ? 'fertile' : 'follicular';
+  return { phase, phaseKa: phaseLabel(phase, lang) };
+}
+
+/** Day keys after the ended run's last bleeding day that the forecast still counts as its period. */
+function endedTailKeys(status, { lastPeriodStart, periodLength } = {}) {
+  if (!status || status.state !== 'ended' || !lastPeriodStart || status.start !== lastPeriodStart) return [];
+  const length = typicalPeriodLength(periodLength);
+  const keys = [];
+  for (let i = 0; i < length; i += 1) {
+    const key = addDays(lastPeriodStart, i);
+    if (key > status.lastBleed) keys.push(key);
+  }
+  return keys;
+}
+
+/**
+ * After „დასრულდა“ (or the auto-end) the days the forecast still stamps as „period“ after the last
+ * bleeding day read as the next phase instead (follicular, or fertile / ovulation where the calendar
+ * marks them). Run on the engine calendar before presentation, so contraception and the fertility gate
+ * still decide what is shown. Logged bleeding is never touched. Returns a new calendar object.
+ */
+export function restampEndedPeriodPhases(calendar, status, { lastPeriodStart, periodLength, lang = 'ka' } = {}) {
+  const keys = endedTailKeys(status, { lastPeriodStart, periodLength });
+  if (!calendar || !keys.length) return calendar;
+  let next = calendar;
+  for (const key of keys) {
+    const mark = next[key];
+    if (!mark || mark.phase !== 'period' || (mark.period && mark.predicted === false)) continue;
+    if (next === calendar) next = { ...calendar };
+    next[key] = { ...mark, ...afterPeriodPhase(mark, lang) };
+  }
+  return next;
+}
+
+/**
+ * Today's phase after the period ended: no longer „period“ (the hero, Home and Medi read it). `calendar`
+ * is the restamped engine calendar (its fertile marks pick the word). Other days and states pass through.
+ */
+export function endedPeriodTodayPhase(todayPhase, status, { today, lastPeriodStart, periodLength, calendar, lang = 'ka' } = {}) {
+  if (!todayPhase || todayPhase.phase !== 'period' || !today) return todayPhase;
+  if (!endedTailKeys(status, { lastPeriodStart, periodLength }).includes(today)) return todayPhase;
+  return { ...todayPhase, ...afterPeriodPhase(calendar?.[today], lang) };
 }

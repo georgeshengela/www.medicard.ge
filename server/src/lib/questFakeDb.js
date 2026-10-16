@@ -32,6 +32,7 @@ function matchWhere(row, where = {}) {
         if (actual === expected.not) return false;
         continue;
       }
+      if ('notIn' in expected && expected.notIn.includes(actual)) return false;
       if ('gte' in expected && actual < expected.gte) return false;
       if ('gt' in expected && actual <= expected.gt) return false;
       if ('lte' in expected && actual > expected.lte) return false;

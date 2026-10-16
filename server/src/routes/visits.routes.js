@@ -26,13 +26,12 @@ const doctorType = z.enum([
 const visitDate = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'არასწორი თარიღი');
 const visitTime = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'დრო უნდა იყოს HH:mm');
 
-const reminderConfigSchema = z
-  .object({
-    enabled: z.boolean().default(true),
-    offsetsMinutes: z.array(z.number().int().min(5).max(60 * 24 * 14)).max(6).default([1440, 60]),
-    repeatCount: z.number().int().min(1).max(3).default(1),
-  })
-  .default({ enabled: true, offsetsMinutes: [1440, 60], repeatCount: 1 });
+const reminderConfigObject = z.object({
+  enabled: z.boolean().default(true),
+  offsetsMinutes: z.array(z.number().int().min(5).max(60 * 24 * 14)).max(6).default([1440, 60]),
+  repeatCount: z.number().int().min(1).max(3).default(1),
+});
+const reminderConfigSchema = reminderConfigObject.default({ enabled: true, offsetsMinutes: [1440, 60], repeatCount: 1 });
 
 const createSchema = z.object({
   doctorType: doctorType,
@@ -49,7 +48,12 @@ const createSchema = z.object({
   active: z.boolean().default(true),
 });
 
-const updateSchema = createSchema.partial();
+// zod 4 fills `.default()` values in even under `.partial()`: an edit would switch `active` back on and reset
+// the reminder settings, so the update schema carries no outer defaults.
+const updateSchema = createSchema
+  .omit({ active: true, reminderConfig: true })
+  .partial()
+  .extend({ active: z.boolean().optional(), reminderConfig: reminderConfigObject.optional() });
 const idParam = z.object({ id: z.string().uuid('არასწორი იდენტიფიკატორი') });
 
 visitsRouter.get(

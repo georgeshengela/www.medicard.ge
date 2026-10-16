@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Check, ChevronRight, Plus } from 'lucide-react-native';
@@ -7,6 +7,7 @@ import { MedsRing } from '@/components/medications/MedsHubUI';
 import { ka } from '@/i18n/ka';
 import { tx } from '@/i18n/locale';
 import type { Medication, ScheduledDose } from '@/lib/api';
+import { onReturnToForeground } from '@/lib/appForeground';
 import { computeTodayDoses } from '@/lib/home/todayDoses';
 import { DAY_LETTERS, formatTime24h, parseMedicationConfig } from '@/lib/medications.shared';
 import { HUB } from '@/theme/hub';
@@ -44,8 +45,22 @@ export function MedipillHero({
   onAdd: () => void;
 }) {
   const hasActive = medications.some((med) => med.active);
-  const today = useMemo(() => startOfDay(new Date()), []);
-  const todayKey = ymd(today);
+  // The card follows the clock: left open overnight it moves to the new day (a minute tick, like Home's
+  // next-dose row) instead of keeping yesterday's ring, next dose and organiser.
+  const [todayKey, setTodayKey] = useState(() => ymd(new Date()));
+  useEffect(() => {
+    const sync = () => setTodayKey(ymd(new Date()));
+    const id = setInterval(sync, 60000);
+    const off = onReturnToForeground(sync);
+    return () => {
+      clearInterval(id);
+      off();
+    };
+  }, []);
+  const today = useMemo(() => {
+    const [y, m, d] = todayKey.split('-').map(Number);
+    return new Date(y, m - 1, d);
+  }, [todayKey]);
   const todayView = useMemo(
     () => computeTodayDoses(medications, schedule, doseLogs, todayKey, today),
     [medications, schedule, doseLogs, todayKey, today],
@@ -224,9 +239,6 @@ function weekBoxes(medications: Medication[], schedule: ScheduledDose[], doseLog
   });
 }
 
-function startOfDay(date: Date) {
-  return new Date(date.getFullYear(), date.getMonth(), date.getDate());
-}
 
 function ymd(date: Date) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;

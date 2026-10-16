@@ -191,6 +191,19 @@ test('admin control (#/home): the admin order wins, missing ids go back in place
   assert.deepEqual(mergeHomeOrder(['dashboard', 'ask', 'sleep', 'news', 'disclaimer'], ['news', 'ask']), ['dashboard', 'news', 'ask', 'sleep', 'disclaimer']);
 });
 
+test('admin control (#/home): an admin order is not reshuffled by the onboarding goal', () => {
+  // The admin put news first and MEDIFOOD last; a nutrition goal used to pull both up under „ask Medi“.
+  const rest = HOME_LAYOUT_ORDER.standard.filter((id) => id !== 'news' && id !== 'nutrition');
+  const custom = [rest[0], 'news', ...rest.slice(1, -1), 'nutrition', rest[rest.length - 1]];
+  for (const primaryGoal of ['nutrition', 'cycle', 'medications'] as const) {
+    const order = buildHomeSectionOrder({ layout: 'standard', includeCycle: true, primaryGoal, remote: { order: custom } });
+    assert.deepEqual(order, [...custom], primaryGoal);
+  }
+  // Hidden-only admin settings keep the goal move.
+  const hiddenOnly = buildHomeSectionOrder({ includeCycle: true, primaryGoal: 'cycle', remote: { hidden: ['horoscope'] } });
+  assert.equal(hiddenOnly[hiddenOnly.indexOf('ask') + 1], 'cycle');
+});
+
 test('admin control (#/home): sanitize keeps what this build knows', () => {
   const cfg = sanitizeHomeRemote({ v: 4, layouts: { women: { hidden: ['doors', 'horoscope', 'unknownNew', 'dashboard'] }, bogus: { hidden: ['news'] } } });
   assert.deepEqual(cfg, { v: 4, layouts: { women: { hidden: ['doors'] } } });

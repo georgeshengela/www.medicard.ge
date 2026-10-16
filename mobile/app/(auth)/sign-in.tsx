@@ -11,6 +11,7 @@ import { VelvetButton } from '@/components/velvet/VelvetButton';
 import { VelvetInput } from '@/components/velvet/VelvetInput';
 import { VelvetNotice } from '@/components/velvet/VelvetNotice';
 import { VelvetSegment } from '@/components/velvet/VelvetSegment';
+import { useResendCountdown } from '@/hooks/useResendCountdown';
 import { ka } from '@/i18n/ka';
 import { appLang, tx } from '@/i18n/locale';
 import { api } from '@/lib/api';
@@ -58,7 +59,7 @@ export default function SignIn() {
   const [sentTo, setSentTo] = useState<string | null>(null);
   const [code, setCode] = useState('');
   const [devCode, setDevCode] = useState<string | null>(null);
-  const [cooldown, setCooldown] = useState(0);
+  const [cooldown, startCooldown] = useResendCountdown();
   const [codeKey, setCodeKey] = useState(0);
   const touched = useRef(false);
 
@@ -68,12 +69,6 @@ export default function SignIn() {
       if (last && !touched.current) setMethod(last);
     });
   }, [asked]);
-
-  useEffect(() => {
-    if (cooldown <= 0) return;
-    const timer = setTimeout(() => setCooldown((value) => value - 1), 1000);
-    return () => clearTimeout(timer);
-  }, [cooldown]);
 
   const pick = (next: SignInMethod) => {
     touched.current = true;
@@ -125,7 +120,7 @@ export default function SignIn() {
     await guard(async () => {
       const response = await api.auth.phoneStart(to);
       setDevCode(response.devCode ?? null);
-      setCooldown(Number(response.cooldownSec) || 60);
+      startCooldown(Number(response.cooldownSec) || 60);
       setSentTo(to);
       setCode('');
       setCodeKey((value) => value + 1);
@@ -250,6 +245,8 @@ export default function SignIn() {
                     setLocal(next);
                     setErrors({});
                   }}
+                  // All 9 digits typed but not a mobile number (5XX…): say why „კოდის მიღება“ stays off.
+                  error={local.length === 9 && !phoneFromDigits(local) ? ka.auth.invalidPhone : null}
                 />
                 <Text style={{ marginHorizontal: 4, fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 12.5, lineHeight: 19, color: p.inkOff }}>
                   {tx(

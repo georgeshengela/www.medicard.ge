@@ -52,7 +52,7 @@ type Props = {
   onClassifyEpisode?: (date: string, classified: boolean) => void;
 };
 
-type Pending = { kind: 'move'; date: string } | { kind: 'close' } | { kind: 'full' } | null;
+type Pending = { kind: 'move'; date: string } | { kind: 'close' } | { kind: 'full' } | { kind: 'classify'; classified: boolean } | null;
 
 /**
  * One sheet for a calendar day (brief §8.4, §9 item 9): ◀ date ▶, the phase in words (always
@@ -150,6 +150,8 @@ export function CycleDaySheet({
     setSignalOpen(false);
     if (next.kind === 'move') onDateChange(next.date);
     else if (next.kind === 'full') onFullLog(date);
+    // The screen closes this sheet and opens the classify sheet after the Modal hand-off.
+    else if (next.kind === 'classify') onClassifyEpisode?.(date, next.classified);
     else onClose();
   };
   const guard = (next: Exclude<Pending, null>) => {
@@ -345,7 +347,7 @@ export function CycleDaySheet({
                     </Text>
                   ) : null}
                   <Pressable
-                    onPress={() => onClassifyEpisode?.(date, classifiedBleed)}
+                    onPress={() => guard({ kind: 'classify', classified: classifiedBleed })}
                     accessibilityRole="button"
                     accessibilityLabel={classifiedBleed ? ka.cycle.postpartumUnclassify : ka.cycle.postpartumClassifyPeriod}
                     style={[s.tonal, { backgroundColor: c.cardSoft }]}

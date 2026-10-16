@@ -961,3 +961,54 @@ describe('schema privacy comments', () => {
     assert.match(schema, /Never health notes/);
   });
 });
+
+describe('polish 2026-10-13', () => {
+  it('a mission finished but not collected yesterday is still collectable today, outside today’s counts', async () => {
+    const { db, options } = await setup({ weekly: false });
+    const steps = questByKey(await db.userQuest.findMany({ include: { template: true } }), 'daily_steps');
+    await db.userQuest.update({ where: { id: steps.id }, data: { progress: 8000 } });
+    await completeQuest(USER, steps.id, options);
+
+    const nextDay = { ...options, now: new Date(NOW.getTime() + 24 * 60 * 60 * 1000) };
+    const dash = await getUserQuestDashboard(USER, nextDay);
+    const leftover = dash.daily.quests.find((quest) => quest.id === steps.id);
+    assert.ok(leftover, 'yesterday’s finished mission is on the dashboard');
+    assert.equal(leftover.claimable, true);
+    assert.equal(dash.summary.unclaimedRewards >= 1, true);
+    const today = dash.daily.quests.filter((quest) => quest.periodKey === dash.daily.periodKey);
+    assert.equal(dash.summary.dailyTotal, today.length);
+
+    await claimQuest(USER, steps.id, nextDay);
+    const after = await getUserQuestDashboard(USER, nextDay);
+    assert.equal(after.daily.quests.some((quest) => quest.id === steps.id), false);
+  });
+
+  it('the next morning gets its missions although yesterday’s were first assigned in the evening', async () => {
+    const db = createQuestFakeDb();
+    await seedHydrationGoal(db);
+    const monday = new Date('2026-09-07T21:00:00+04:00');
+    await assignDailyQuests(USER, '2026-09-07', { db, now: monday, timezone: 'Asia/Tbilisi' });
+    const tuesday = new Date('2026-09-08T07:30:00+04:00');
+    const next = await assignDailyQuests(USER, '2026-09-08', { db, now: tuesday, timezone: 'Asia/Tbilisi' });
+    assert.ok(next.some((row) => row.periodKey === '2026-09-08' && row.created));
+  });
+
+  it('a hop east right after an evening assignment still waits', () => {
+    const now = new Date('2026-09-06T18:00:00Z');
+    const profile = { lastDailyAssignPeriodKey: '2026-09-06', lastDailyAssignAt: now };
+    assert.equal(
+      canAssignNewDailyPeriod(profile, '2026-09-07', new Date(now.getTime() + 60_000), 'Asia/Tokyo', 'Asia/Tbilisi'),
+      false,
+    );
+  });
+
+  it('a streak with a missed day reads 0 before the next completion', async () => {
+    const { db, options } = await setup({ weekly: false });
+    await db.userQuestProfile.update({ where: { userId: USER }, data: { currentStreak: 5, longestStreak: 5, lastActiveQuestDate: addDaysYmd(TODAY, -3) } });
+    const dash = await getUserQuestDashboard(USER, options);
+    assert.equal(dash.profile.currentStreak, 0);
+    assert.equal(dash.profile.longestStreak, 5);
+    await db.userQuestProfile.update({ where: { userId: USER }, data: { lastActiveQuestDate: addDaysYmd(TODAY, -1) } });
+    assert.equal((await getUserQuestDashboard(USER, options)).profile.currentStreak, 5);
+  });
+});

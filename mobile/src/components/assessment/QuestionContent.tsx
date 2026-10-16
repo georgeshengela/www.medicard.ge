@@ -1,5 +1,5 @@
 import React from 'react';
-import { Dimensions, Image, Pressable, Text, View } from 'react-native';
+import { Dimensions, Image, Pressable, Text, View, useWindowDimensions } from 'react-native';
 import * as Haptics from 'expo-haptics';
 import { Check } from 'lucide-react-native';
 import { AllergyPicker } from '@/components/assessment/AllergyPicker';
@@ -177,6 +177,11 @@ function tick() {
  */
 function GenderTiles({ palette: p, value, onPick }: { palette: VelvetPalette; value: Gender | null; onPick: (g: Gender) => void }) {
   const otherOn = value === 'OTHER';
+  // Two cards share the page (20 pt gutters, 14 pt gap); the well keeps 8 pt of card on each side, so a
+  // 320 pt iPhone SE (133 pt cards) gets a smaller portrait instead of one wider than its card.
+  const { width } = useWindowDimensions();
+  const well = Math.min(PORTRAIT + 12, Math.floor((width - 40 - 14) / 2 - 16));
+  const portrait = well - 12;
   return (
     <View accessibilityRole="radiogroup" style={{ gap: 14 }}>
       <View style={{ flexDirection: 'row', gap: 14 }}>
@@ -206,9 +211,9 @@ function GenderTiles({ palette: p, value, onPick }: { palette: VelvetPalette; va
             >
               <View
                 style={{
-                  width: PORTRAIT + 12,
-                  height: PORTRAIT + 12,
-                  borderRadius: (PORTRAIT + 12) / 2,
+                  width: well,
+                  height: well,
+                  borderRadius: well / 2,
                   alignItems: 'center',
                   justifyContent: 'center',
                   backgroundColor: p.surface,
@@ -218,7 +223,7 @@ function GenderTiles({ palette: p, value, onPick }: { palette: VelvetPalette; va
                 <Image
                   source={g.image}
                   accessibilityIgnoresInvertColors
-                  style={{ width: PORTRAIT, height: PORTRAIT, borderRadius: PORTRAIT / 2, opacity: faded ? 0.45 : 1 }}
+                  style={{ width: portrait, height: portrait, borderRadius: portrait / 2, opacity: faded ? 0.45 : 1 }}
                 />
                 {on ? (
                   <View

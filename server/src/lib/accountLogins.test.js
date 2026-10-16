@@ -235,3 +235,39 @@ test('discard-new: a just-created account is removed only before onboarding and 
   broken.$queryRaw = async () => { throw new Error('connection reset'); };
   assert.equal(await discardNewBlocker(fresh, broken, now), 'content');
 });
+
+// Profile audit 2026-10-13: „შესვლის გზები“ showed „ელ-ფოსტა და პაროლი“ as working for Google / Apple
+// sign-ups, whose stored hash is a random one nobody knows (unusablePasswordHash).
+test('password: an Apple / Google sign-up has none until a reset; email sign-ups and later links do', () => {
+  const created = new Date('2026-10-10T09:00:00Z');
+  const signup = { email: 'Nino@Gmail.com', createdAt: created };
+  const sameTime = [{ provider: 'google', email: 'nino@gmail.com', createdAt: new Date(created.getTime() + 300) }];
+  assert.equal(accountLogins.hasUsablePassword(signup, sameTime), false, 'Google sign-up');
+  assert.equal(accountLogins.hasUsablePassword(signup, sameTime, new Date('2026-10-11T00:00:00Z')), true, 'after „forgot password“');
+  // An email + password account that linked Google later keeps its password.
+  const linkedLater = [{ provider: 'google', email: 'nino@gmail.com', createdAt: new Date(created.getTime() + 3 * 86_400_000) }];
+  assert.equal(accountLogins.hasUsablePassword(signup, linkedLater), true);
+  assert.equal(accountLogins.hasUsablePassword(signup, []), true, 'email sign-up');
+  // A hidden-Apple account that added its own address with add-email chose a password then.
+  const appleHidden = [{ provider: 'apple', email: null, createdAt: created }];
+  assert.equal(accountLogins.hasUsablePassword({ email: 'nino@mail.ge', createdAt: created }, appleHidden), true);
+  // Synthetic addresses never sign in with a password.
+  assert.equal(accountLogins.hasUsablePassword({ email: 'apple.abc@apple.medicard.ge', createdAt: created }, appleHidden), false);
+  assert.equal(accountLogins.hasUsablePassword({ email: '995555123456@phone.medicard.ge', createdAt: created }, [], created), false);
+});
+
+test('password: loginMethods reports it with the other methods', async () => {
+  const created = new Date('2026-10-10T09:00:00Z');
+  const db = {
+    user: { findUnique: async () => ({ email: 'nino@gmail.com', phone: null, createdAt: created }) },
+    async $queryRaw(strings) {
+      const sql = strings.join('?');
+      if (sql.includes('AuthIdentity')) return [{ provider: 'google', subject: 'g-1', email: 'nino@gmail.com', createdAt: created }];
+      if (sql.includes('passwordChangedAt')) return [{ passwordChangedAt: null }];
+      throw new Error(`unexpected query: ${sql}`);
+    },
+  };
+  assert.deepEqual(await accountLogins.loginMethods('u1', db), {
+    phone: null, email: 'nino@gmail.com', apple: false, google: true, password: false,
+  });
+});

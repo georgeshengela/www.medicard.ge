@@ -187,34 +187,33 @@ export async function ensureRewardDefinitions(db = prisma) {
             existing.status === REWARD_STATUSES.ARCHIVED
           ? existing.status
           : status;
-    const updated = await db.rewardDefinition.update({
-      where: { id: existing.id },
-      data: {
-        type: row.type,
-        status: nextStatus,
-        titleKey: row.titleKey,
-        descriptionKey: row.descriptionKey,
-        termsKey: row.termsKey ?? null,
-        imageKey: row.imageKey ?? null,
-        coinCost: row.coinCost,
-        inventoryMode: row.inventoryMode,
-        // FINITE stock belongs to redemptions and admin adjustments once the row exists — never refill it here.
-        inventoryQuantity:
-          row.inventoryMode === INVENTORY_MODES.FINITE && existing.inventoryMode === INVENTORY_MODES.FINITE
-            ? existing.inventoryQuantity
-            : row.inventoryQuantity ?? null,
-        perUserLimit: row.perUserLimit ?? null,
-        periodLimitType: row.periodLimitType ?? null,
-        periodLimitCount: row.periodLimitCount ?? null,
-        periodWindowDays: row.periodWindowDays ?? null,
-        redemptionExpiryDays: row.redemptionExpiryDays ?? null,
-        entitlementKey: row.entitlementKey ?? null,
-        entitlementDurationDays: row.entitlementDurationDays ?? null,
-        sortOrder: row.sortOrder,
-        featured: Boolean(row.featured),
-        metadata: row.metadata ?? undefined,
-      },
-    });
+    const data = {
+      type: row.type,
+      status: nextStatus,
+      titleKey: row.titleKey,
+      descriptionKey: row.descriptionKey,
+      termsKey: row.termsKey ?? null,
+      imageKey: row.imageKey ?? null,
+      coinCost: row.coinCost,
+      inventoryMode: row.inventoryMode,
+      perUserLimit: row.perUserLimit ?? null,
+      periodLimitType: row.periodLimitType ?? null,
+      periodLimitCount: row.periodLimitCount ?? null,
+      periodWindowDays: row.periodWindowDays ?? null,
+      redemptionExpiryDays: row.redemptionExpiryDays ?? null,
+      entitlementKey: row.entitlementKey ?? null,
+      entitlementDurationDays: row.entitlementDurationDays ?? null,
+      sortOrder: row.sortOrder,
+      featured: Boolean(row.featured),
+      metadata: row.metadata ?? undefined,
+    };
+    // FINITE stock belongs to redemptions and admin adjustments once the row exists, so it is not written
+    // here at all. Writing back the value read above raced a redemption in between (1 → 0 → 1: a second
+    // Apple Watch could be redeemed) and could undo a refund.
+    if (!(row.inventoryMode === INVENTORY_MODES.FINITE && existing.inventoryMode === INVENTORY_MODES.FINITE)) {
+      data.inventoryQuantity = row.inventoryQuantity ?? null;
+    }
+    const updated = await db.rewardDefinition.update({ where: { id: existing.id }, data });
     out.push(updated);
   }
   return out;
