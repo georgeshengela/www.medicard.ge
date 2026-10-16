@@ -34,7 +34,7 @@
   <link rel="preload" href="/fonts/firago/FiraGO-Bold.woff2" as="font" type="font/woff2" crossorigin />
   <link rel="preload" href="/fonts/noto-serif-georgian/NotoSerifGeorgian-Light-georgian.woff2" as="font" type="font/woff2" crossorigin />
   <link rel="stylesheet" href="/site-nav.css?v=11" />
-  <link rel="stylesheet" href="/home.css?v=21" />
+  <link rel="stylesheet" href="/home.css?v=23" />
 </head>
 <body>
   <a class="skip" href="#main" data-en="Skip to content">გადადი შინაარსზე</a>
@@ -99,135 +99,132 @@
       </ul>
     </section>
 
-    <!-- MEDIRUN campaign „გაანათე თბილისი“ (5 Oct – 31 Dec 2026); details and rules at /medirun -->
-    <section class="glow" id="medirun" data-tone="dark" aria-labelledby="glow-title">
-      <div class="glow-art" aria-hidden="true">
-        <picture>
-          <source media="(max-width: 860px)" srcset="/medirun/img/city-sm.webp" />
-          <img src="/medirun/img/city.webp" alt="" width="1920" height="1072" loading="lazy" decoding="async" />
-        </picture>
-      </div>
-      <div class="wrap glow-grid">
-        <div class="glow-copy">
-          <div class="glow-top">
-            <span class="glow-brand">MEDI<b>RUN</b></span>
-            <span class="glow-chip" data-en="5 Oct – 31 Dec · Tbilisi">5 ოქტ – 31 დეკ · თბილისი</span>
-          </div>
-          <h2 class="display" id="glow-title" data-en="Light up Tbilisi.">გაანათე თბილისი.</h2>
-          <p class="glow-lead" data-en="Gifts hide in the city’s parks every day. Turn on MEDIRUN, go for a walk — your phone beats like a heart when a box is near.">ქალაქის პარკებში ყოველდღე საჩუქრები იმალება. ჩართე MEDIRUN, გაისეირნე — ყუთთან ტელეფონი გულისცემასავით აჩქარდება.</p>
-          <ul class="glow-facts">
-            <li><b data-en="Every day">ყოველდღე</b><span data-en="Boxes with Medi Coins in the parks">ყუთები Medi Coins-ით პარკებში</span></li>
-            <li class="is-gold"><b data-en="Saturdays, 16:00">შაბათს, 16:00</b><span data-en="A gift rain in one park">საჩუქრების წვიმა ერთ პარკში</span></li>
-            <li class="is-red"><b data-en="31 December">31 დეკემბერი</b><span data-en="A red iPhone 18 Pro Max for those who light up 1% of Tbilisi">წითელი iPhone 18 Pro Max მათთვის, ვინც თბილისის 1%-ს გაანათებს</span></li>
-          </ul>
-          <div class="glow-actions">
-            <a class="glow-btn" href="/medirun"><span data-en="See how it works">დეტალურად</span><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg></a>
-            <a class="glow-link" href="/medirun#rules" data-en="Rules">წესები</a>
-          </div>
-        </div>
-        <div class="glow-visual" aria-hidden="true">
-          <span class="glow-ring r3"></span><span class="glow-ring r2"></span><span class="glow-ring r1"></span>
-          <img src="/medirun/img/gift.webp" alt="" width="489" height="520" loading="lazy" decoding="async" />
-        </div>
-      </div>
-    </section>
-
-    <!-- Medi -->
-    <section class="medi" id="medi" data-tone="dark">
-      <div class="wrap medi-grid">
-        <div class="medi-copy">
-          <h2 class="display" data-en="Medi answers with your own records.">Medi გპასუხობს შენი ჩანაწერებით.</h2>
-          <p class="medi-lead" data-en="Medi sees your profile, the last two weeks of metrics, your medications and your cycle — if you allow it. It talks with you — by voice too.">Medi ხედავს შენს პროფილს, ბოლო ორი კვირის მაჩვენებლებს, მედიკამენტებს და ციკლს — თუ ამის ნებას მისცემ. ლაპარაკობს ქართულად, ხმითაც.</p>
-          <div class="modes" role="tablist" aria-label="Medi-ს რეჟიმები" data-en-aria-label="Medi modes">
-            <button type="button" role="tab" id="tab-medi" aria-selected="true" aria-controls="chat" data-mode="medi" data-en-html="
-              <b>Medi</b><span>Reminders, logs, actions</span>
-            ">
-              <b>Medi</b><span>შეხსენება, ჩანაწერი, მოქმედება</span>
-            </button>
-            <button type="button" role="tab" id="tab-doctor" aria-selected="false" aria-controls="chat" data-mode="doctor" tabindex="-1" data-en-html="
-              <b>Consultation</b><span>Health questions</span>
-            ">
-              <b>კონსულტაცია</b><span>კითხვა ჯანმრთელობაზე</span>
-            </button>
-            <button type="button" role="tab" id="tab-deep" aria-selected="false" aria-controls="chat" data-mode="deep" tabindex="-1" data-en-html="
-              <b>Deep analysis</b><span>Lab results and documents</span>
-            ">
-              <b>ღრმა ანალიზი</b><span>ანალიზები და დოკუმენტები</span>
-            </button>
-          </div>
-          <p class="medi-note" data-en="Medi gives you information — not a diagnosis and not a prescription. In an emergency, call 112.">Medi ინფორმაციას გაძლევს — არა დიაგნოზს და არა რეცეპტს. სასწრაფო შემთხვევაში დარეკე 112-ზე.</p>
-        </div>
-
-        <div class="chat-shell">
-          <div class="chat" id="chat" role="tabpanel" aria-labelledby="tab-medi" aria-live="polite">
-            <div class="chat-head">
-              <span class="chat-avatar" aria-hidden="true"></span>
-              <div><b>Medi</b><small id="chat-mode">Medi</small></div>
-            </div>
-            <div class="chat-body" id="chat-body"></div>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- Spaces -->
-    <section class="spaces" id="spaces" data-tone="light">
+    <!-- About + MEDICARD in numbers (facts from /about; countries are live from /api/site/presence) -->
+    <section class="about-band" id="about" data-tone="light" aria-labelledby="about-title">
       <div class="wrap">
-        <h2 class="display spaces-title" data-en-html="Six spaces.<br />One app.">ექვსი სივრცე.<br />ერთი აპი.</h2>
-        <div class="spaces-grid">
-          <ul class="space-list" id="space-list">
-            <li><button type="button" class="space is-on" data-screen="home" aria-pressed="true">
-              <span class="space-name" data-en="Every day">ყოველდღე</span>
-              <span class="space-desc" data-en="Food diary, medications, visits, steps, water, weight.">კვების დღიური, მედიკამენტები, ვიზიტები, ნაბიჯები, წყალი, წონა.</span>
-            </button></li>
-            <li><button type="button" class="space" data-screen="cycle" aria-pressed="false">
-              <span class="space-name" data-en="Women’s space">ქალების სივრცე</span>
-              <span class="space-desc" data-en="Cycle, pregnancy and a private journal that belongs to you.">ციკლი, ორსულობა და პირადი დღიური, რომელიც შენ გეკუთვნის.</span>
-            </button></li>
-            <li><button type="button" class="space" data-screen="medi" aria-pressed="false">
-              <span class="space-name">Medi</span>
-              <span class="space-desc" data-en="Symptoms, lab results, X-rays and skin — in three modes.">სიმპტომები, ანალიზები, რენტგენი და კანი — სამ რეჟიმში.</span>
-            </button></li>
-            <li><button type="button" class="space" data-screen="lab" aria-pressed="false">
-              <span class="space-name" data-en="My card">ჩემი ბარათი</span>
-              <span class="space-desc" data-en="Documents, conversations with Medi, pharmacy prices and your profile.">დოკუმენტები, საუბრები Medi-სთან, აფთიაქის ფასები და პროფილი.</span>
-            </button></li>
-            <li><button type="button" class="space" data-screen="quest" aria-pressed="false">
-              <span class="space-name" data-en="Movement">მოძრაობა</span>
-              <span class="space-desc" data-en="MEDIRUN, MEDIQUEST missions and a daily streak.">MEDIRUN, MEDIQUEST-ის მისიები და ყოველდღიური სერია.</span>
-            </button></li>
-            <li><button type="button" class="space" data-screen="pets" aria-pressed="false">
-              <span class="space-name" data-en="Pets">ცხოველები</span>
-              <span class="space-desc" data-en="Weight, care reminders and MEDIVET — kept separate from your own Medi.">წონა, მოვლის შეხსენებები და MEDIVET — ადამიანის Medi-სგან ცალკე.</span>
-            </button></li>
-          </ul>
-          <div class="space-preview" aria-hidden="true">
-            <div class="mini-phone" id="mini-phone">
-              <img src="/screens/v3/home.webp?v=1" alt="" width="880" height="1912" loading="lazy" id="mini-screen" />
-            </div>
+        <div class="about-grid">
+          <p class="eyebrow" data-en="About us">ჩვენ შესახებ</p>
+          <h2 class="serif-title" id="about-title" data-en="Health you can actually understand.">ჯანმრთელობა, რომელიც ქართულად გესმის.</h2>
+          <div class="about-text">
+            <p data-en="Lab results sat in a drawer, medication reminders lived in one app, the cycle in another, the food diary in a third — almost all of them only in English.">ანალიზის ფურცელი უჯრაში ინახებოდა, წამლის შეხსენება ერთ აპში იყო, ციკლი — მეორეში, კვების დღიური — მესამეში. თითქმის ყველა ინგლისურად.</p>
+            <p data-en="MEDICARD is a health app made in Georgia. It brings everyday care into one place, in plain language. Medi — the app’s assistant — sees your records only when you allow it, and helps you understand what the numbers mean and what to ask your doctor.">MEDICARD ქართული ჯანმრთელობის აპია. ყოველდღიურ ზრუნვას ერთ ადგილას, გასაგებ ენაზე აერთიანებს. Medi — აპის ასისტენტი — შენს ჩანაწერებს მხოლოდ მაშინ ხედავს, როცა ამის ნებას მისცემ, და გეხმარება გაიგო, რას ნიშნავს ციფრები და რა ჰკითხო ექიმს.</p>
+            <a class="text-link" href="/about"><span data-en="More about us">მეტი ჩვენ შესახებ</span><svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14"/><path d="m13 6 6 6-6 6"/></svg></a>
           </div>
+        </div>
+        <div class="numbers" aria-labelledby="numbers-title">
+          <p class="numbers-title" id="numbers-title" data-en="MEDICARD in numbers">MEDICARD ციფრებში</p>
+          <dl class="numbers-row">
+            <div><dt>0<span class="unit">₾</span></dt><dd data-en="Price of every module">ფასი ყველა მოდულზე</dd></div>
+            <div><dt>8</dt><dd data-en="Modules on one account">მოდული ერთ ანგარიშზე</dd></div>
+            <div><dt id="countries-count">10</dt><dd data-en="Countries where people use MEDICARD">ქვეყანა, სადაც MEDICARD-ს იყენებენ</dd></div>
+            <div><dt>2</dt><dd data-en="Languages: Georgian and English">ენა — ქართული და ინგლისური</dd></div>
+            <div><dt>10</dt><dd data-en="Free calculators on this site">უფასო კალკულატორი საიტზე</dd></div>
+          </dl>
         </div>
       </div>
     </section>
 
-    <!-- Promise -->
-    <section class="promise" id="free" data-tone="dark">
+    <!-- The modules: each in its own signature colour (mobile/src/theme/moduleBrand.ts), with a real app screen -->
+    <section class="mods" id="modules" data-tone="light" aria-labelledby="mods-title">
       <div class="wrap">
-        <p class="promise-line display" data-en-html="Every feature is free.<br />There is no subscription.">ყველა ფუნქცია უფასოა.<br />გამოწერა არ არსებობს.</p>
-        <div class="promise-facts">
-          <div>
-            <h3 data-en="Your data stays yours">შენი მონაცემები შენთანაა</h3>
-            <p data-en="Your records are stored in your account. A trainer, partner or AI receives only what you consent to, and withdrawing consent takes one tap.">ჩანაწერები შენს ანგარიშზე ინახება. ტრენერს, პარტნიორს ან AI-ს მხოლოდ ის ეგზავნება, რაზეც თანხმობას მისცემ, და თანხმობის გაუქმება ერთ შეხებაშია.</p>
-          </div>
-          <div>
+        <div class="mods-head">
+          <p class="eyebrow" data-en="Modules">მოდულები</p>
+          <h2 class="serif-title" id="mods-title" data-en="Everything your day needs, on one account.">ყველაფერი, რაც შენს დღეს სჭირდება — ერთ ანგარიშზე.</h2>
+          <p class="mods-lead" data-en="Each module has its own colour. All of them share your account and Medi.">თითოეულ მოდულს თავისი ფერი აქვს. ყველა ერთ ანგარიშსა და ერთ Medi-ს იყენებს.</p>
+        </div>
+        <ul class="mods-grid">
+          <li class="mod is-wide is-night" style="--mod:#2DD4BF">
+            <div class="mod-copy">
+              <h3 class="mod-name">MEDI<b>RUN</b></h3>
+              <p data-en="Walk or run, and your route lights up the city. Boxes with Medi Coins wait in Tbilisi’s parks.">გაისეირნე ან ირბინე — შენი გზა ქალაქს ანათებს. თბილისის პარკებში Medi Coins-ის ყუთები გელოდება.</p>
+              <a class="mod-link" href="/medirun" data-en="How it works">როგორ მუშაობს</a>
+            </div>
+            <picture class="mod-art">
+              <source media="(max-width: 860px)" srcset="/medirun/img/city-sm.webp" />
+              <img src="/medirun/img/city.webp" alt="" width="1920" height="1072" loading="lazy" decoding="async" />
+            </picture>
+            <div class="mod-screen"><img src="/screens/v4/run.webp?v=1" alt="" width="880" height="1904" loading="lazy" decoding="async" /></div>
+          </li>
+          <li class="mod" id="medi" style="--mod:#0D9488">
+            <div class="mod-copy">
+              <h3 class="mod-name">Medi</h3>
+              <p data-en="The app’s assistant answers with your own records — by voice too. MEDISCAN looks at symptoms, medical images and skin photos.">აპის ასისტენტი, რომელიც შენი ჩანაწერებით გპასუხობს — ხმითაც. MEDISCAN-ით სიმპტომს, გამოსახულებას და კანის ფოტოს უყურებს.</p>
+            </div>
+            <div class="mod-screen"><img src="/screens/v4/medi.webp?v=1" alt="" width="880" height="1904" loading="lazy" decoding="async" /></div>
+          </li>
+          <li class="mod" style="--mod:#C92A55">
+            <div class="mod-copy">
+              <h3 class="mod-name">MEDI<b>CYCLE</b></h3>
+              <p data-en="Cycle calendar, forecasts, pregnancy mode and a private journal that belongs to you.">ციკლის კალენდარი, პროგნოზი, ორსულობის რეჟიმი და პირადი დღიური, რომელიც შენ გეკუთვნის.</p>
+              <a class="mod-link" href="/cycle" data-en="Learn more">დეტალურად</a>
+            </div>
+            <div class="mod-screen"><img src="/screens/v4/cycle.webp?v=1" alt="" width="880" height="1904" loading="lazy" decoding="async" /></div>
+          </li>
+          <li class="mod" style="--mod:#047857">
+            <div class="mod-copy">
+              <h3 class="mod-name">MEDI<b>FOOD</b></h3>
+              <p data-en="A photo, a barcode or a few words — calories and macros per portion, which you check and save.">ფოტო, ბარკოდი ან რამდენიმე სიტყვა — კალორია და მაკროები პორციით, რომელსაც შენ ამოწმებ და ინახავ.</p>
+            </div>
+            <div class="mod-screen"><img src="/screens/v4/food.webp?v=1" alt="" width="880" height="1904" loading="lazy" decoding="async" /></div>
+          </li>
+          <li class="mod" style="--mod:#1D4ED8">
+            <div class="mod-copy">
+              <h3 class="mod-name">MEDI<b>PILL</b></h3>
+              <p data-en="Your medications, dose reminders and price comparison across Georgian pharmacies.">მედიკამენტები, დოზების შეხსენება და ფასების შედარება ქართულ აფთიაქებში.</p>
+            </div>
+            <div class="mod-screen"><img src="/screens/v4/pill.webp?v=1" alt="" width="880" height="1904" loading="lazy" decoding="async" /></div>
+          </li>
+          <li class="mod" style="--mod:#4F46E5">
+            <div class="mod-copy">
+              <h3 class="mod-name">MEDI<b>LAB</b></h3>
+              <p data-en="Upload a photo or PDF of your results — Medi reads the values and explains them in plain words.">ატვირთე ანალიზის ფოტო ან PDF — Medi მაჩვენებლებს ამოიკითხავს და გასაგებად აგიხსნის.</p>
+            </div>
+            <div class="mod-screen"><img src="/screens/v4/lab.webp?v=1" alt="" width="880" height="1904" loading="lazy" decoding="async" /></div>
+          </li>
+          <li class="mod" style="--mod:#6D28D9">
+            <div class="mod-copy">
+              <h3 class="mod-name">MEDI<b>QUEST</b></h3>
+              <p data-en="Daily missions, levels and Medi Coins you can spend in the rewards store.">ყოველდღიური მისიები, დონეები და Medi Coins, რომელსაც ჯილდოების მაღაზიაში ხარჯავ.</p>
+            </div>
+            <div class="mod-screen"><img src="/screens/v4/quest.webp?v=1" alt="" width="880" height="1904" loading="lazy" decoding="async" /></div>
+          </li>
+          <li class="mod" style="--mod:#0369A1">
+            <div class="mod-copy">
+              <h3 class="mod-name">MEDI<b>VET</b></h3>
+              <p data-en="Your pet’s weight, vaccines and care reminders, with an assistant kept apart from your own Medi.">შინაური ცხოველის წონა, აცრები და მოვლის შეხსენებები — ასისტენტით, რომელიც შენი Medi-სგან ცალკეა.</p>
+            </div>
+            <div class="mod-screen"><img src="/screens/v4/vet.webp?v=1" alt="" width="880" height="1904" loading="lazy" decoding="async" /></div>
+          </li>
+        </ul>
+      </div>
+    </section>
+
+    <!-- How we look after you: the rules the product keeps (consent, doctor, Georgia, web) -->
+    <section class="care" id="care" data-tone="dark" aria-labelledby="care-title">
+      <div class="wrap care-grid">
+        <div class="care-head">
+          <p class="eyebrow" data-en="Good to know">კარგია იცოდე</p>
+          <h2 class="serif-title" id="care-title" data-en="How we look after you.">როგორ ვზრუნავთ შენზე.</h2>
+          <p class="care-sos" data-en-html="In an emergency, don’t write — call <b>112</b>.">სასწრაფო შემთხვევაში არ მოგვწერო — დარეკე <b>112</b>-ზე.</p>
+        </div>
+        <ol class="care-list">
+          <li>
+            <h3 data-en="Only with your consent">მხოლოდ შენი თანხმობით</h3>
+            <p data-en="Your records are stored in your account. AI, a trainer or a partner receives only what you consent to — and withdrawing consent takes one tap.">ჩანაწერები შენს ანგარიშზე ინახება. AI-ს, ტრენერს ან პარტნიორს მხოლოდ ის ეგზავნება, რაზეც თანხმობას მისცემ, და თანხმობის გაუქმება ერთ შეხებაშია.</p>
+          </li>
+          <li>
+            <h3 data-en="Alongside your doctor, not instead">ექიმის გვერდით, არა მის ნაცვლად</h3>
+            <p data-en="Medi helps you understand. It doesn’t give diagnoses, treatments or doses — that’s your doctor’s job.">Medi გაგებაში გეხმარება. დიაგნოზს, დანიშნულებას და დოზას არ გაძლევს — ამას ექიმი აკეთებს.</p>
+          </li>
+          <li>
             <h3 data-en="Built for Georgia">ქართულად, საქართველოსთვის</h3>
-            <p data-en="The interface, Medi and lab explanations are in Georgian and English. Dark and light themes. Available on iPhone now, Android coming soon.">ინტერფეისი, Medi და ანალიზის განმარტებები ქართულად და ინგლისურადაა. მუქი და ღია თემა. iPhone-ზე უკვე ხელმისაწვდომია, Android-ზე — მალე.</p>
-          </div>
-          <div>
-            <h3 data-en="It doesn’t replace your doctor">ექიმს არ ცვლის</h3>
-            <p data-en="MEDICARD helps you understand. Diagnosis, treatment and emergency care come from your doctor and 112.">MEDICARD გაგებაში გეხმარება. დიაგნოზს, დანიშნულებას და სასწრაფო დახმარებას ექიმი და 112 გაძლევს.</p>
-          </div>
-        </div>
+            <p data-en="The interface, Medi and lab explanations are in Georgian and English. Accounts are for people 18 and over, and data is processed under Georgia’s Law on Personal Data Protection.">ინტერფეისი, Medi და ანალიზის განმარტებები ქართულად და ინგლისურადაა. ანგარიში 18 წლიდან იხსნება, მონაცემები კი პერსონალურ მონაცემთა დაცვის კანონის მიხედვით მუშავდება.</p>
+          </li>
+          <li>
+            <h3 data-en="On the website too">საიტიდანაც</h3>
+            <p data-en-html="Sign in at <a href='/app'>medicard.ge/app</a> with the same account. The app is on iPhone now; Android is coming soon.">შედი <a href="/app">medicard.ge/app</a>-ზე იმავე ანგარიშით. აპი iPhone-ზე უკვე ხელმისაწვდომია, Android-ზე — მალე.</p>
+          </li>
+        </ol>
       </div>
     </section>
 
@@ -313,6 +310,6 @@
     </div>
   </footer>
 
-  <script src="/home.js?v=9" defer></script>
+  <script src="/home.js?v=10" defer></script>
 </body>
 </html>
