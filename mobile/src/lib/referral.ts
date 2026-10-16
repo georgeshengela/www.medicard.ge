@@ -38,6 +38,8 @@ export type ReferralSummary = {
   coinsPerSide: number;
   monthlyCap: number;
   claimWindowDays?: number;
+  /** Days after sign-up an influencer code can still be entered (admin setting, server 2026-10-17+). */
+  influencerWindowDays?: number | null;
   invited: number;
   invitedThisMonth?: number;
   pending: number;

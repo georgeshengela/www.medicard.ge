@@ -348,12 +348,15 @@ export async function referralSummary(userId, { db = prisma, now = new Date(), w
   const monthStart = tbilisiMonthStart(now);
   const invitedThisMonth = invitees.filter((r) => new Date(r.createdAt) >= monthStart).length;
   const monthRemaining = Math.max(0, MONTHLY_INVITES - invitedThisMonth);
+  // Influencer codes have their own (shorter, admin-set) window; the app says „you can still enter it later, within N days“.
+  const influencerWindowDays = await loadInfluencerConfig({ db }).then((c) => c.entryWindowDays).catch(() => null);
   return {
     code,
     link: code ? inviteLink(code) : null,
     phoneRequired: !withCode,
     coinsPerSide: REFERRAL_COINS,
     claimWindowDays: CLAIM_WINDOW_DAYS,
+    influencerWindowDays,
     invited,
     pending: invited - rewarded,
     rewarded,
