@@ -78,35 +78,49 @@
     };
   }
 
+  /** One claim, with room to breathe: the place on the left, the applicant on the right, the note under, actions in the footer. */
   function claimCard(c) {
     const proof = c.proof || {};
-    const lines = [
-      `<span>${esc(KIND[c.kind] || c.kind)}</span>`,
-      proof.position ? `<span>როლი: ${esc(POSITION[proof.position] || proof.position)}</span>` : '',
-      proof.phone ? `<span>ტელ.: ${esc(proof.phone)}</span>` : '',
-      proof.website ? `<span>${esc(proof.website)}</span>` : '',
-      proof.externalRef ? '<span class="s-badge is-plain">რუკიდან</span>' : '',
-    ].filter(Boolean).join('');
+    const b = c.business;
+    const u = c.user;
+    const dash = '<span class="s-muted">—</span>';
+    const facts = (rows) => `<dl class="p3-facts s-claim-facts">${rows.map(([dt, dd]) => `<div><dt>${esc(dt)}</dt><dd>${dd}</dd></div>`).join('')}</dl>`;
+    const site = b.website ? `<a href="${esc(/^https?:/i.test(b.website) ? b.website : `https://${b.website}`)}" target="_blank" rel="noopener">${esc(String(b.website).replace(/^https?:\/\//i, ''))}</a>` : dash;
+    const place = facts([
+      ['კატეგორია', `${catDot(b.category)}${esc(catLabel(b.category))}`],
+      ['მისამართი', b.address ? esc(b.address) : dash],
+      ['ქალაქი', b.city ? esc(b.city) : dash],
+      ['ბიზნესის ტელეფონი', b.phone ? esc(b.phone) : dash],
+      ['ვებსაიტი', site],
+      ['სტატუსი აპში', badge(STATUS, b.status)],
+    ]);
+    const person = facts([
+      ['ვინ', `<a href="#/users/${esc(u.id)}">${esc(u.name || '—')}</a>`],
+      ['ტელეფონი', u.phone ? esc(u.phone) : '<span class="s-badge is-warn">არ აქვს</span>'],
+      ['ელფოსტა', u.email ? esc(u.email) : dash],
+      ['ანგარიში', `${when(u.since, 'date')}-დან`],
+      ['როლი ბიზნესში', proof.position ? esc(POSITION[proof.position] || proof.position) : dash],
+      ['განაცხადში მიუთითა', [proof.phone, proof.website].filter(Boolean).length ? esc([proof.phone, proof.website].filter(Boolean).join(' · ')) : dash],
+    ]);
+    const match = u.phone && b.phone && u.phone.replace(/\D/g, '').slice(-9) === b.phone.replace(/\D/g, '').slice(-9);
+    const hint = c.status !== 'PENDING' ? '' : match
+      ? `<span class="s-claim-hint is-ok">${ico('check')} განმცხადებლის ტელეფონი ბიზნესის ნომერს ემთხვევა</span>`
+      : `<span class="s-claim-hint">${ico('info')} ტელეფონები არ ემთხვევა — ეჭვისას დაურეკე ბიზნესის ნომერზე</span>`;
     const actions = c.status === 'PENDING'
-      ? `<button type="button" class="btn compact" data-act="approve">${ico('check')} დადასტურება</button><button type="button" class="btn ghost compact" data-act="reject">უარყოფა</button>`
-      : `<small class="s-muted">${esc(c.reviewedBy || '')} · ${when(c.reviewedAt)}</small>`;
-    return `<article class="s-card" data-claim="${esc(c.id)}">
+      ? `${hint}<span class="spacer"></span><button type="button" class="btn ghost" data-act="reject">უარყოფა</button><button type="button" class="btn primary" data-act="approve">${ico('check')} დადასტურება</button>`
+      : `<span class="s-claim-hint">${esc(CLAIM[c.status]?.[0] || c.status)}${c.reviewedBy ? ` · ${esc(c.reviewedBy)}` : ''}${c.reviewedAt ? ` · ${when(c.reviewedAt)}` : ''}</span>`;
+    return `<article class="s-card s-claim" data-claim="${esc(c.id)}">
       <header class="s-card-head"><div>
-        <h3 style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">${esc(c.business.name)} ${badge(CLAIM, c.status)} ${badge(STATUS, c.business.status)}</h3>
-        <p>${catDot(c.business.category)}${esc(catLabel(c.business.category))}${c.business.address ? ` · ${esc(c.business.address)}` : ''}${c.business.city ? `, ${esc(c.business.city)}` : ''}${c.business.phone ? ` · ${esc(c.business.phone)}` : ''}${c.business.website ? ` · ${esc(c.business.website)}` : ''}</p>
-      </div><div class="s-card-actions">${actions}</div></header>
-      <div class="s-card-body">
-        <div class="s-meta-row" style="display:flex;gap:14px;flex-wrap:wrap;font-size:13px;color:var(--s-text-2)">${lines}</div>
-        <div class="s-meta-row" style="display:flex;gap:14px;flex-wrap:wrap;font-size:13px;margin-top:8px">
-          <span>განმცხადებელი: <a href="#/users/${esc(c.user.id)}"><b>${esc(c.user.name || '—')}</b></a></span>
-          ${c.user.phone ? `<span>${esc(c.user.phone)}</span>` : '<span class="s-badge is-warn">ტელეფონი არ აქვს</span>'}
-          ${c.user.email ? `<span>${esc(c.user.email)}</span>` : ''}
-          <span class="s-muted">ანგარიში ${when(c.user.since, 'date')}-დან</span>
-          <span class="s-muted">განაცხადი ${when(c.createdAt)}</span>
-        </div>
-        ${c.note ? `<p style="margin-top:10px">${ico('message')} ${esc(c.note)}</p>` : ''}
-        ${c.reviewNote ? `<p class="s-muted" style="margin-top:6px">პასუხი: ${esc(c.reviewNote)}</p>` : ''}
+        <h3>${esc(b.name)}</h3>
+        <p>${esc(KIND[c.kind] || c.kind)} · ${when(c.createdAt)}${proof.externalRef ? ' · რუკის ჩანაწერიდან' : ''}</p>
+      </div><div class="s-card-actions">${badge(CLAIM, c.status)}</div></header>
+      <div class="s-card-body s-claim-body">
+        <section class="s-claim-col"><h4>ბიზნესი</h4>${place}</section>
+        <section class="s-claim-col"><h4>განმცხადებელი</h4>${person}</section>
+        ${c.note ? `<blockquote class="s-claim-note">${ico('message')}<span>${esc(c.note)}</span></blockquote>` : ''}
+        ${c.reviewNote ? `<p class="s-claim-review"><b>პასუხი მფლობელს:</b> ${esc(c.reviewNote)}</p>` : ''}
       </div>
+      <footer class="s-claim-foot">${actions}</footer>
     </article>`;
   }
 
@@ -115,9 +129,11 @@
     const [{ claims }, all] = await Promise.all([api(`/claims?status=${claimStatus}`), api('/claims?status=ALL')]);
     const counts = {};
     for (const c of all.claims) counts[c.status] = (counts[c.status] || 0) + 1;
-    host.innerHTML = `<div class="s-toolbar">${segment('სტატუსი', [['PENDING', 'განსახილველი', counts.PENDING], ['APPROVED', 'დადასტურებული', counts.APPROVED], ['REJECTED', 'უარყოფილი', counts.REJECTED], ['ALL', 'ყველა']], claimStatus, 'data-claim-status')}<span class="spacer"></span><button type="button" class="btn ghost compact" data-refresh>${ico('refresh')} განახლება</button></div>
-      <p class="s-flags-note">${ico('info')}<span>დადასტურებამდე შეამოწმე: ემთხვევა თუ არა განმცხადებლის ტელეფონი ბიზნესის ნომერს, არის თუ არა ანგარიში ახალი, აქვს თუ არა ბიზნესს ვებსაიტი/Instagram იმავე კონტაქტით. ეჭვის შემთხვევაში დაურეკე ბიზნესის ნომერზე.</span></p>
-      ${claims.length ? `<div class="s-stack">${claims.map(claimCard).join('')}</div>` : emptyCard(claimStatus === 'PENDING' ? 'განსახილველი განაცხადი არ არის' : 'ამ სტატუსით არაფერია', claimStatus === 'PENDING' ? 'ახალი განაცხადი აქ გამოჩნდება; მფლობელი medicard.ge/business-იდან აგზავნის.' : '')}`;
+    host.innerHTML = `<div class="s-stack s-claims">
+      <div class="s-toolbar">${segment('სტატუსი', [['PENDING', 'განსახილველი', counts.PENDING], ['APPROVED', 'დადასტურებული', counts.APPROVED], ['REJECTED', 'უარყოფილი', counts.REJECTED], ['ALL', 'ყველა']], claimStatus, 'data-claim-status')}<span class="spacer"></span><button type="button" class="btn ghost compact" data-refresh>${ico('refresh')} განახლება</button></div>
+      ${claimStatus === 'PENDING' && claims.length ? `<div class="s-callout is-info">${ico('info')}<p><b>დადასტურებამდე შეამოწმე:</b> ემთხვევა თუ არა განმცხადებლის ტელეფონი ბიზნესის ნომერს, არის თუ არა ანგარიში ახალი, აქვს თუ არა ბიზნესს ვებსაიტი ან Instagram იმავე კონტაქტით. ეჭვის შემთხვევაში დაურეკე ბიზნესის ნომერზე. დადასტურებისთანავე მფლობელი პანელს მართავს და ბიზნესი აპში ჩნდება.</p></div>` : ''}
+      ${claims.length ? `<div class="s-stack s-claims-list">${claims.map(claimCard).join('')}</div>` : emptyCard(claimStatus === 'PENDING' ? 'განსახილველი განაცხადი არ არის' : 'ამ სტატუსით არაფერია', claimStatus === 'PENDING' ? 'ახალი განაცხადი აქ გამოჩნდება; მფლობელი medicard.ge/business-იდან აგზავნის.' : '')}
+    </div>`;
     host.querySelectorAll('[data-claim-status]').forEach((b) => { b.onclick = () => { claimStatus = b.dataset.claimStatus; renderClaims(host); }; });
     host.querySelector('[data-refresh]').onclick = () => renderClaims(host);
     host.querySelectorAll('[data-claim]').forEach((card) => {
@@ -229,13 +245,15 @@
   async function renderCatalog(host) {
     host.innerHTML = skel();
     const data = await api(`/businesses?status=${catStatus}&limit=150${catCategory ? `&category=${encodeURIComponent(catCategory)}` : ''}${catQuery ? `&q=${encodeURIComponent(catQuery)}` : ''}`);
-    host.innerHTML = `<div class="s-toolbar s-flags-tools">
-        <label class="sx-search">${ico('search')}<span class="sr-only">ძებნა</span><input type="search" placeholder="სახელი, მისამართი, უბანი…" value="${esc(catQuery)}" data-cat-q autocomplete="off"></label>
-        <select class="s-select" data-cat-category><option value="">ყველა კატეგორია</option>${categories.map((c) => `<option value="${esc(c.id)}" ${c.id === catCategory ? 'selected' : ''}>${esc(c.label)}</option>`).join('')}</select>
-        ${segment('სტატუსი', [['ALL', 'ყველა'], ['CLAIMED', 'დადასტურებული'], ['PENDING', 'განიხილება'], ['LISTED', 'კატალოგში'], ['HIDDEN', 'დამალული']], catStatus, 'data-cat-status')}
-        <span class="spacer"></span>
-        <span class="s-funnel-meta">${fmt(data.total)} ადგილი</span>
-        <button type="button" class="btn compact" data-add>${ico('plus')} დამატება</button>
+    host.innerHTML = `<div class="s-stack s-cat-tools">
+        <div class="s-toolbar">
+          <label class="sx-search">${ico('search')}<span class="sr-only">ძებნა</span><input type="search" placeholder="სახელი, მისამართი, უბანი…" value="${esc(catQuery)}" data-cat-q autocomplete="off"></label>
+          <select class="s-select" data-cat-category><option value="">ყველა კატეგორია</option>${categories.map((c) => `<option value="${esc(c.id)}" ${c.id === catCategory ? 'selected' : ''}>${esc(c.label)}</option>`).join('')}</select>
+          <span class="spacer"></span>
+          <span class="s-funnel-meta">${fmt(data.total)} ადგილი</span>
+          <button type="button" class="btn compact" data-add>${ico('plus')} დამატება</button>
+        </div>
+        <div class="s-toolbar">${segment('სტატუსი', [['ALL', 'ყველა'], ['CLAIMED', 'დადასტურებული'], ['PENDING', 'განიხილება'], ['LISTED', 'კატალოგში'], ['HIDDEN', 'დამალული']], catStatus, 'data-cat-status')}</div>
       </div>
       ${data.businesses.length ? `<div class="s-card"><div class="s-card-body is-flush"><table class="s-table"><thead><tr><th>ბიზნესი</th><th>კატეგორია</th><th>ქალაქი</th><th>სტატუსი</th><th>მფლობელი</th><th class="num">სერვისი</th><th class="num">გუნდი</th><th class="num">ჯავშანი 30 დღე</th><th class="num">ნახვა</th><th>წყარო</th><th></th></tr></thead><tbody>
         ${data.businesses.map((b) => `<tr data-biz="${esc(b.id)}">
