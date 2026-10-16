@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { ActivityIndicator, Text, View } from 'react-native';
 import { Redirect, useRouter } from 'expo-router';
-import { CircleCheck, Gift } from 'lucide-react-native';
+import { CalendarClock, CircleCheck, Gift } from 'lucide-react-native';
 import { AuthShell } from '@/components/AuthShell';
 import { VelvetAuthHeader } from '@/components/auth/VelvetAuthHeader';
 import { VelvetButton } from '@/components/velvet/VelvetButton';
@@ -18,7 +18,7 @@ import { isPhoneRequiredError } from '@/lib/phoneGate';
 import { publishMediCoinBalance } from '@/lib/quest/cache';
 import { clearPendingReferralCode, normalizeReferralCode, readPendingReferralCode, savePendingReferralCode, type ReferralClaimResult } from '@/lib/referral';
 import { useAuth } from '@/store/AuthContext';
-import { useVelvet } from '@/theme/velvet';
+import { useVelvet, velvetField } from '@/theme/velvet';
 
 type Phase = 'checking' | 'ask' | 'skip';
 
@@ -38,6 +38,7 @@ export default function ProfileSetupInvitedByScreen() {
   const invitesOn = isFeatureOn('invites', features);
   const [phase, setPhase] = useState<Phase>('checking');
   const [coins, setCoins] = useState(25);
+  const [windowDays, setWindowDays] = useState(7);
   const [code, setCode] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [savedForLater, setSavedForLater] = useState(false);
@@ -61,6 +62,7 @@ export default function ProfileSetupInvitedByScreen() {
       .then((summary) => {
         if (!live || owner !== localAccountId()) return;
         if (typeof summary.coinsPerSide === 'number' && summary.coinsPerSide > 0) setCoins(summary.coinsPerSide);
+        if (typeof summary.influencerWindowDays === 'number' && summary.influencerWindowDays > 0) setWindowDays(summary.influencerWindowDays);
         setPhase(summary.invitedBy || !summary.canClaim ? 'skip' : 'ask');
       })
       // The summary is only a shortcut; without it the person can still try a code (the claim checks everything).
@@ -200,11 +202,30 @@ export default function ProfileSetupInvitedByScreen() {
             accessibilityLabel={ka.referral.enterTitle}
             style={code ? { letterSpacing: 4, fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 18 } : undefined}
           />
+          {/* Owner 2026-10-17: say plainly that the code can still be entered later. */}
+          <View
+            style={{
+              flexDirection: 'row',
+              alignItems: 'flex-start',
+              gap: 12,
+              marginTop: 4,
+              paddingHorizontal: 16,
+              paddingVertical: 14,
+              borderRadius: 18,
+              backgroundColor: p.surface,
+              boxShadow: velvetField(p),
+            }}
+          >
+            <CalendarClock size={20} color={p.pulse} strokeWidth={2.1} style={{ marginTop: 1 }} />
+            <Text style={{ flex: 1, fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 14, lineHeight: 21, color: p.text }}>
+              {tx(
+                `ახლა არ გაქვს კოდი? მოგვიანებითაც შეგიძლია შეიყვანო — პროფილში, „ვინ მოგიწვია?“-ში, რეგისტრაციიდან ${windowDays} დღის განმავლობაში.`,
+                `No code right now? You can still enter it later — in Profile → “Who invited you?”, within ${windowDays} ${windowDays === 1 ? 'day' : 'days'} of signing up.`,
+              )}
+            </Text>
+          </View>
           <Text style={{ marginHorizontal: 4, fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 13, lineHeight: 19, color: p.inkOff }}>
-            {tx(
-              'კოდი ერთხელ შეიყვანება. თუ ახლა არ გაქვს, მოგვიანებით შეიყვან: პროფილი → „ვინ მოგიწვია?“. Medi მონეტებს ფულადი ღირებულება არ აქვს.',
-              'You can enter a code once. Don’t have one now? Add it later in Profile → “Who invited you?”. Medi Coins have no cash value.',
-            )}
+            {tx('კოდი ერთხელ შეიყვანება. Medi მონეტებს ფულადი ღირებულება არ აქვს.', 'A code can be entered once. Medi Coins have no cash value.')}
           </Text>
         </View>
       )}
