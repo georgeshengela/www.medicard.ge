@@ -38,7 +38,7 @@ bookRouter.get('/categories', (_req, res) => {
 
 bookRouter.get('/image/:id', asyncHandler(async (req, res) => {
   const image = await store.readImage(req.params.id);
-  if (!image) return res.status(404).json({ error: t(req, 'სურათი ვერ მოიძებნა.', 'Image not found.') });
+  if (!image || image.private) return res.status(404).json({ error: t(req, 'სურათი ვერ მოიძებნა.', 'Image not found.') });
   res.set('Content-Type', image.mime);
   res.set('Cache-Control', 'public, max-age=604800, immutable');
   return res.send(Buffer.from(image.bytes));

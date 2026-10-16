@@ -5,6 +5,18 @@ import { get, request } from '/app/js/api.js';
 import { t } from '/app/js/i18n.js';
 import { state, loadState } from '../state.js';
 import { biz, CATEGORIES, hoursEditor, loadMapbox, fail, ok, emptyBox } from '../shared.js';
+
+/** The panel modules a business may switch: label, one line, and the page it opens. */
+const MODULES = [
+  ['products', () => t('პროდუქტები და გაყიდვები', 'Products and sales'), () => t('რასაც დახლთან ყიდი — მარაგი, ჩეკი, დაბრუნება', 'What you sell over the counter — stock, receipts, refunds')],
+  ['supplies', () => t('საწყობი', 'Stock room'), () => t('მასალები, ნორმები, ვიზიტის ავტომატური ჩამოწერა', 'Supplies, norms, automatic write-off per visit')],
+  ['resources', () => t('ოთახები და აპარატურა', 'Rooms and equipment'), () => t('რესურსები, რომლებსაც სერვისი იკავებს', 'Resources a service occupies')],
+  ['loyalty', () => t('ლოიალობა', 'Loyalty'), () => t('ქეშბექი, სასაჩუქრე ბარათები, აბონემენტები', 'Cashback, gift cards, memberships')],
+  ['payroll', () => t('ხელფასები', 'Payroll'), () => t('წესები, დარიცხვა, გადახდები', 'Rules, earnings, payouts')],
+  ['waitlist', () => t('მოლოდინის სია', 'Waiting list'), () => t('ვინც თავისუფალ დროს ელოდება', 'People waiting for a slot')],
+  ['discounts', () => t('ფასდაკლებები', 'Discounts'), () => t('აქციები, happy hours, პრომოკოდები', 'Promotions, happy hours, codes')],
+  ['branches', () => t('ფილიალები', 'Branches'), () => t('ერთი ბრენდი, რამდენიმე მისამართი', 'One brand, several locations')],
+];
 import { qrMatrix } from '/app/js/pages/coachQr.js';
 
 export default async function settingsPage(root, ctx) {
@@ -100,8 +112,10 @@ export default async function settingsPage(root, ctx) {
 
   const notifHost = h('div', { id: 'notify' });
   void paintNotifications(notifHost, b);
+  const modulesHost = h('div', { id: 'modules' });
+  void paintModules(modulesHost, b, ctx);
   // Five sections on one long page: a sticky row of anchors keeps the place.
-  const anchors = [['public', t('საჯარო გვერდი', 'Public page')], ['photos', t('სურათები', 'Pictures')], ['booking', t('ონლაინ ჯავშნა', 'Online booking')], ['notify', t('შეტყობინებები', 'Notifications')], ['status', t('სტატუსი', 'Status')]];
+  const anchors = [['public', t('საჯარო გვერდი', 'Public page')], ['photos', t('სურათები', 'Pictures')], ['booking', t('ონლაინ ჯავშნა', 'Online booking')], ['modules', t('მოდულები', 'Modules')], ['notify', t('შეტყობინებები', 'Notifications')], ['status', t('სტატუსი', 'Status')]];
   const anchorRow = h('div', { class: 'bz-anchors' }, anchors.map(([id, label]) => h('button', { type: 'button', 'data-anchor': id, onClick: () => { document.getElementById(id)?.scrollIntoView({ behavior: 'smooth', block: 'start' }); } }, label)));
   setTimeout(() => {
     anchors.forEach(([id], i) => { const el = document.getElementById(id); if (!el && i < 4) return; });
@@ -144,6 +158,7 @@ export default async function settingsPage(root, ctx) {
               h('div', { class: 'form-row' }, field(t('რამდენი დღით ადრე', 'How far ahead'), horizon), field(t('უფასო გაუქმება', 'Free cancellation'), cancelHours)),
               field(t('შენიშვნა ჯავშნის წინ', 'Note before booking'), bookingNote),
               h('div', { style: { display: 'flex', justifyContent: 'flex-end' } }, saveRules)))),
+        modulesHost,
         notifHost,
         card({ id: 'status' }, h('div', { class: 'card-title', style: { marginBottom: '8px' } }, t('სტატუსი', 'Status')),
           h('dl', { class: 'bz-kv' },
@@ -212,6 +227,39 @@ function downloadSvg(svg, filename) {
  * What the clients get: reminders in the app (hours ahead, on/off), SMS for people without the app (off until the
  * business turns it on; a monthly cap and this month's count), emails to the business. Every switch saves at once.
  */
+/** Which modules this business runs (defaults from its segment) and the ready-made kit for its type. */
+async function paintModules(host, b, ctx) {
+  mount(host, h('div', { class: 'skeleton-card' }, h('div', { class: 'sk' })));
+  let p;
+  try { p = await biz.get('/profile'); } catch (e) { mount(host, card(emptyBox(t('ვერ ჩაიტვირთა', 'Could not load'), e?.message))); return; }
+  const catLabel = CATEGORIES.find(([k]) => k === b.category)?.[1] || b.category;
+  const modules = { ...p.modules };
+  const rows = MODULES.map(([key, label, sub]) => h('div', { class: 'bz-muted-row' },
+    h('div', null, h('b', null, label()), h('div', { class: 'faint' }, sub())),
+    toggle(modules[key] !== false, async (v) => {
+      try { await biz.patch('', { settings: { modules: { [key]: v } } }); modules[key] = v; ok(v ? t('ჩაირთო', 'On') : t('გამოირთო', 'Off')); await loadState(); ctx.refreshShell?.(); } catch (e) { fail(e); paintModules(host, b, ctx); }
+    })));
+  const kitLine = t(`${p.kit.services.length} სერვისი ${p.profile.kit.groups} ჯგუფში · ${p.kit.supplies.length} მასალა · ${p.kit.resources.length} ოთახი/აპარატი`, `${p.kit.services.length} services in ${p.profile.kit.groups} groups · ${p.kit.supplies.length} supplies · ${p.kit.resources.length} rooms/equipment`);
+  const haveLine = t(`ახლა გაქვს: ${p.have.services} სერვისი · ${p.have.supplies} მასალა · ${p.have.resources} რესურსი`, `You have: ${p.have.services} services · ${p.have.supplies} supplies · ${p.have.resources} resources`);
+  const groups = [...new Set(p.kit.services.map((s) => s.group))];
+  const load = button(t('ნაკრების ჩატვირთვა', 'Load the kit'), { icon: 'sparkles', onClick: () => busy(load, async () => {
+    try {
+      const { added } = await biz.post('/starter-kit', {});
+      const total = added.services + added.supplies + added.resources;
+      ok(total ? t(`დაემატა: ${added.services} სერვისი, ${added.supplies} მასალა, ${added.resources} რესურსი, ${added.norms} ნორმა`, `Added: ${added.services} services, ${added.supplies} supplies, ${added.resources} resources, ${added.norms} norms`) : t('ყველაფერი უკვე გაქვს.', 'You already have everything.'));
+      paintModules(host, b, ctx);
+    } catch (e) { fail(e); }
+  }) });
+  mount(host, h('div', { class: 'bz-stack' },
+    card(h('div', { class: 'card-head' }, h('div', null, h('div', { class: 'card-title' }, t('მოდულები', 'Modules')), h('div', { class: 'card-sub' }, t(`ნაგულისხმევი — „${catLabel}“ სეგმენტიდან; ჩართე ან გამორთე, რაც გჭირდება. გამორთული გვერდი მენიუდან ქრება, მონაცემები რჩება.`, `Defaults from the “${catLabel}” segment; switch on what you need. A page switched off leaves the menu, its data stays.`)))),
+      h('div', null, rows)),
+    card({ id: 'kit' }, h('div', { class: 'card-head' }, h('div', null, h('div', { class: 'card-title' }, t('მზა სტარტი', 'Ready-made start')), h('div', { class: 'card-sub' }, t(`${catLabel} — სერვისები ფასით და ხანგრძლივობით, მასალები ნორმებით, ოთახები და აპარატურა. ემატება მხოლოდ ის, რაც ჯერ არ გაქვს; სახელებს და ფასებს მერე შეცვლი.`, `${catLabel} — services with prices and durations, supplies with norms, rooms and equipment. Only what you do not have yet is added; rename and reprice afterwards.`)))),
+      h('div', { class: 'bz-kit' },
+        h('div', { class: 'bz-kit-line' }, h('b', null, kitLine), h('span', { class: 'faint' }, haveLine)),
+        h('div', { class: 'bz-tags' }, groups.map((g) => h('span', { class: 'bz-tag' }, g))),
+        h('div', { class: 'bz-kit-foot' }, load)))));
+}
+
 async function paintNotifications(host, b) {
   mount(host, card(h('div', { class: 'skeleton-card' }, h('div', { class: 'sk' }), h('div', { class: 'sk' }))));
   let data;

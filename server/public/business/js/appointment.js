@@ -31,6 +31,7 @@ export function openAppointment(appt, ctx, { onChange } = {}) {
       h('div', { class: 'bz-inline' }, statusBadge(a.status), a.source === 'APP' ? badge(t('აპიდან', 'From the app'), 'brand') : a.source === 'WEB' ? badge(t('ვებიდან', 'From the web'), 'brand') : badge(t('ხელით', 'Walk-in'), 'neutral')),
       h('div', { style: { display: 'flex', alignItems: 'center', gap: '12px' } }, avatar(a.clientName, '#64748B', 44),
         h('div', null, h('div', { style: { fontWeight: 700, fontSize: '16px' } }, client), a.clientPhone ? h('a', { class: 'bz-sub', href: `tel:${a.clientPhone}` }, a.clientPhone) : h('span', { class: 'bz-sub' }, t('ტელეფონი არ არის', 'No phone')))),
+      a.clientId ? clientSnippet(a.clientId) : null,
       h('dl', { class: 'bz-kv' },
         h('dt', null, t('როდის', 'When')), h('dd', null, h('b', null, when(a.startsAt)), ` – ${clock(a.endsAt)} · ${minutes(a.durationMin)}`),
         h('dt', null, t('ვინ', 'Who')), h('dd', null, h('span', { class: 'bz-inline' }, h('span', { class: 'bz-color-dot', style: { background: a.staffColor || staffColor(ctx, a.staffId) } }), a.staffName || t('ნებისმიერი', 'Anyone'))),
@@ -44,6 +45,23 @@ export function openAppointment(appt, ctx, { onChange } = {}) {
         h('dt', null, t('შეიქმნა', 'Created')), h('dd', { class: 'bz-sub' }, when(a.createdAt))),
       noteEditor(),
       moveEditor());
+  }
+
+  /** What to know before the visit: allergies and contraindications from the card, the pinned note, the rhythm, the bonus. */
+  function clientSnippet(clientId) {
+    const host = h('div', { class: 'bz-client-snip', hidden: true });
+    biz.get(`/clients/${clientId}`).then((p) => {
+      const c = p.client;
+      const s = p.stats;
+      const warn = [c.card?.allergies ? t(`ალერგია: ${c.card.allergies}`, `Allergy: ${c.card.allergies}`) : null, c.card?.contraindications ? t(`უკუჩვენება: ${c.card.contraindications}`, `Contraindication: ${c.card.contraindications}`) : null].filter(Boolean);
+      const facts = [s.visits ? t(`${s.visits} ვიზიტი`, `${s.visits} visits`) : t('პირველი ვიზიტი', 'First visit'), s.cadenceDays ? t(`ყოველ ~${s.cadenceDays} დღეში`, `every ~${s.cadenceDays} days`) : null, s.avgCheck ? t(`საშ. ${gel(s.avgCheck)}`, `avg ${gel(s.avgCheck)}`) : null, s.noShows ? t(`${s.noShows} გაცდენა`, `${s.noShows} no-shows`) : null, s.favouriteStaff && s.favouriteStaff.name !== a.staffName ? t(`ჩვეულებრივ: ${s.favouriteStaff.name}`, `usually with ${s.favouriteStaff.name}`) : null].filter(Boolean);
+      mount(host,
+        warn.length ? h('div', { class: 'warn' }, icon('alert', { size: 14 }), h('span', null, warn.join(' · '))) : null,
+        c.notes ? h('div', { class: 'pin' }, icon('info', { size: 14 }), h('span', null, c.notes)) : null,
+        h('div', { class: 'facts' }, facts.join(' · ')));
+      host.hidden = false;
+    }).catch(() => {});
+    return host;
   }
 
   function noteEditor() {
