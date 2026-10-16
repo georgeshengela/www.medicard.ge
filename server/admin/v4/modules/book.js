@@ -1,8 +1,10 @@
 /**
  * MediCard Admin V4 — #/book MEDIBOOK (/api/admin/book).
- * The claims queue (owners proving a listed place is theirs, new registrations), the catalogue (search,
- * list / hide, edit, add a place) and the numbers: how many places, how many claimed, bookings, favourites,
- * what people do with listings. Only public business facts and counts — never a client's note.
+ * Three panes on the module-usage kit (usageKit.js): „გამოყენება“ — who uses MEDIBOOK and how (insights, numbers,
+ * the ladder from the catalogue to a live business, one card per business with its setup / bookings track, the period
+ * trend, categories and cities, what claimed places still lack); „განაცხადები“ — the claims queue (owners proving a
+ * listed place is theirs, new registrations); „კატალოგი“ — search, list / hide, edit, add a place. Only public
+ * business facts and counts, the owner as the user page shows them — never a client's note or phone.
  */
 (function adminV4Book(global) {
   const doc = document;
@@ -22,8 +24,6 @@
   const POSITION = { owner: 'მფლობელი', director: 'დირექტორი / მენეჯერი', admin: 'ადმინისტრატორი', other: 'სხვა' };
   const SOURCE = { MAPBOX: 'რუკის მონაცემები', OSM: 'OpenStreetMap', OWNER: 'მფლობელმა დაარეგისტრირა', ADMIN: 'ადმინმა დაამატა' };
   const APPT = { PENDING: 'დასადასტურებელი', CONFIRMED: 'დადასტურებული', COMPLETED: 'დასრულებული', CANCELLED: 'გაუქმებული', NO_SHOW: 'არ მოვიდა' };
-  const VIEWS = [['claims', 'განაცხადები'], ['catalog', 'კატალოგი'], ['numbers', 'რიცხვები']];
-  let view = 'claims';
   let claimStatus = 'PENDING';
   let catStatus = 'ALL';
   let catCategory = '';
@@ -69,7 +69,7 @@
         V().setDirty?.(false);
         await dialog.close();
         toast(`${approve ? 'დადასტურდა' : 'უარყოფილია'}: ${c.business.name}`, 'ok');
-        await render();
+        await refreshAll();
       } catch (err) {
         alertEl.textContent = err.message || 'შეცდომა';
         submit.disabled = false;
@@ -168,7 +168,7 @@
         V().setDirty?.(false);
         await dialog.close();
         toast(b ? 'შენახულია' : 'დაემატა', 'ok');
-        await render();
+        await refreshAll();
       } catch (err) {
         alertEl.textContent = err.message || 'შეცდომა';
         submit.disabled = false;
@@ -221,7 +221,7 @@
     try {
       await api(`/businesses/${encodeURIComponent(b.id)}`, { method: 'PATCH', body: { status } });
       toast(`${b.name}: ${STATUS[status][0]}`, 'ok');
-      await render();
+      await refreshAll();
     } catch (err) { toast(err.message || 'შეცდომა', 'error'); }
   }
 
@@ -267,56 +267,205 @@
     });
   }
 
-  async function renderNumbers(host, overview) {
-    const o = overview;
-    const cats = Object.entries(o.byCategory || {}).sort((a, b) => b[1] - a[1]);
-    const max = Math.max(1, ...cats.map(([, n]) => n));
-    host.innerHTML = `<div class="s-card"><header class="s-card-head"><div><h3>კატალოგი</h3><p>რამდენი ადგილია და რამდენი დაადასტურა მფლობელმა.</p></div></header>
-      <div class="s-card-body"><div class="s-metrics">
-        ${metric('კატალოგში', fmt(o.businesses.listed), 'საჯარო წყაროებიდან')}
-        ${metric('დადასტურებული', fmt(o.businesses.claimed), 'მფლობელი მართავს, ონლაინ ჯავშნა')}
-        ${metric('განიხილება', fmt(o.businesses.pending), `${fmt(o.claims.pending)} განსახილველი განაცხადი`)}
-        ${metric('დამალული', fmt(o.businesses.hidden), '')}
-      </div></div></div>
-      <div class="s-card"><header class="s-card-head"><div><h3>ჯავშნები</h3><p>ყველა დადასტურებული ბიზნესის ჯამი.</p></div></header>
-      <div class="s-card-body"><div class="s-metrics">
-        ${metric('სულ', fmt(o.appointments.total), `${fmt(o.appointments.week)} ამ კვირაში`)}
-        ${metric('მომავალი', fmt(o.appointments.upcoming), '')}
-        ${metric('დასრულებული', fmt(o.appointments.completed), `${fmt(o.appointments.noShow)} არ მოვიდა · ${fmt(o.appointments.cancelled)} გაუქმდა`)}
-        ${metric('ადამიანი ჯავშნით', fmt(o.appointments.people), `${fmt(o.favorites.people)} ადამიანს აქვს რჩეული (${fmt(o.favorites.n)})`)}
-      </div></div></div>
-      <div class="s-card"><header class="s-card-head"><div><h3>აპიდან · 7 დღე</h3><p>რას აკეთებენ ადამიანები ბიზნესის გვერდზე.</p></div></header>
-      <div class="s-card-body"><div class="s-metrics">${metric('გვერდი გაიხსნა', fmt(o.week.views), '')}${metric('დარეკვა', fmt(o.week.calls), '')}${metric('მარშრუტი', fmt(o.week.routes), '')}</div></div></div>
-      <div class="s-card"><header class="s-card-head"><div><h3>კატეგორიები</h3><p>კატალოგი + დადასტურებული, კატეგორიებით.</p></div></header>
-      <div class="s-card-body">${cats.length ? cats.map(([id, n]) => `<div class="s-meter"><div class="s-meter-top"><span>${catDot(id)}${esc(catLabel(id))}</span><b>${fmt(n)}</b></div><div class="s-meter-track"><span style="width:${Math.round((n / max) * 100)}%;background:${esc(categories.find((c) => c.id === id)?.color || 'var(--s-accent)')}"></span></div></div>`).join('') : '<p class="s-muted">კატალოგი ცარიელია — გაუშვი server/scripts/medibook-crawl.mjs და დეპლოი.</p>'}</div></div>
-      ${o.recent?.length ? `<div class="s-card"><header class="s-card-head"><div><h3>ბოლო ჯავშნები</h3><p>სერვისი და ადგილი — კლიენტის სახელი აქ არ ჩანს.</p></div></header><div class="s-card-body is-flush"><table class="s-table"><thead><tr><th>როდის</th><th>ბიზნესი</th><th>სერვისი</th><th>სტატუსი</th><th>წყარო</th><th>შეიქმნა</th></tr></thead><tbody>
-        ${o.recent.map((r) => `<tr><td>${when(r.startsAt)}</td><td>${esc(r.businessName)}</td><td>${esc(r.serviceName)}</td><td>${esc(APPT[r.status] || r.status)}</td><td>${r.source === 'APP' ? 'აპი' : r.source === 'WEB' ? 'ვები' : 'ხელით'}</td><td class="s-muted">${when(r.createdAt)}</td></tr>`).join('')}
-      </tbody></table></div></div>` : ''}`;
+  /* ═════════════ გამოყენება — the usage page on the module kit ═════════════ */
+  const K = global.AdminUsage;
+  const { metrics, card, facts, shares, extras, empty, note, h4, warn, pct, share } = K;
+  const LADDER = { catalogue: 'კატალოგშია', claimed: 'მფლობელი ჰყავს', ready: 'სერვისები და გუნდი აქვს', booked: 'ჯავშანი მიუღია', active: 'ჯავშანი ამ პერიოდში' };
+  const PEOPLE = { viewed: 'გვერდი ნახა', booked: 'დაჯავშნა', came: 'მივიდა', returned: 'მეორედ დაჯავშნა' };
+  const TRACK = [['services', 'სერვისები'], ['staff', 'გუნდი'], ['photos', 'ფოტო'], ['bookings', 'ჯავშნები'], ['reviews', 'შეფასებები'], ['modules', 'მოდულები']];
+  const MODULES = { products: 'პროდუქტები', supplies: 'საწყობი', resources: 'ოთახები', memberships: 'აბონემენტები', cashback: 'ქეშბექი', sms: 'SMS' };
+  const BIZ_SOURCE = { MAPBOX: 'რუკიდან', OSM: 'OpenStreetMap', OWNER: 'მფლობელმა დაარეგისტრირა', ADMIN: 'ადმინმა დაამატა', OTHER: 'სხვა' };
+  const APPT_SOURCE = { APP: 'აპიდან', WEB: 'ვებიდან', BUSINESS: 'ბიზნესმა ჩაწერა' };
+  const initials = (name) => String(name || '?').trim().split(/\s+/).slice(0, 2).map((w) => w[0] || '').join('').toUpperCase() || '?';
+
+  function bizCard(b) {
+    const s = b.setup;
+    const p = b.period;
+    const l = b.lifetime;
+    const seg = (n, title, max = 1) => ({ fill: n ? Math.max(18, Math.min(100, Math.round((n / max) * 100))) : 0, title });
+    const modsOn = Object.entries(b.modules).filter(([k, v]) => v && MODULES[k]).map(([k]) => MODULES[k]);
+    const parts = [
+      p.bookings ? `${fmt(p.bookings)} ჯავშანი` : null,
+      p.completed ? `${fmt(p.completed)} დასრულდა` : null,
+      p.noShow ? `${fmt(p.noShow)} არ მოვიდა` : null,
+      p.clients ? `${fmt(p.clients)} კლიენტი` : null,
+      p.views ? `${fmt(p.views)} ნახვა${p.calls ? ` · ${fmt(p.calls)} ზარი` : ''}` : null,
+    ].filter(Boolean);
+    const idleLine = b.status === 'PENDING' ? 'ელოდება დადასტურებას — პანელი უკვე მუშაობს' : b.status === 'CLAIMED' ? (s.services ? 'ამ პერიოდში ჯავშანი არ ყოფილა' : 'სერვისები ჯერ არ დაუმატებია') : 'კატალოგშია — მფლობელი ჯერ არ არის';
+    return K.itemCard({
+      mark: initials(b.name),
+      title: b.name,
+      meta: [catLabel(b.category), b.city].filter(Boolean).join(' · '),
+      badges: `${badge(STATUS, b.status)}${b.team ? '<span class="s-badge is-info">გუნდი</span>' : ''}${l.rating != null ? `<span class="s-badge is-plain">★ ${l.rating.toFixed(1)} · ${fmt(l.reviews)}</span>` : ''}`,
+      track: K.track([
+        seg(s.services, `სერვისი: ${fmt(s.services)}`, 8),
+        seg(s.staff, `გუნდი: ${fmt(s.staff)} · ფოტო: ${fmt(s.photos)}`, 4),
+        seg(s.photos, `ფოტო: ${fmt(s.photos)}`, 6),
+        seg(p.bookings, `ჯავშანი ამ პერიოდში: ${fmt(p.bookings)} · სულ ${fmt(l.bookings)}`, 20),
+        seg(l.reviews, `შეფასება: ${fmt(l.reviews)}${l.rating != null ? ` · ★ ${l.rating.toFixed(1)}` : ''}`, 10),
+        seg(b.modulesOn, modsOn.length ? `მოდულები: ${modsOn.join(', ')}` : 'დამატებითი მოდული არ იყენებს', 6),
+      ]),
+      line: parts.length ? parts.join(' · ') : idleLine,
+      idle: !parts.length,
+      person: b.owner,
+      personText: b.status === 'LISTED' ? `${esc(BIZ_SOURCE[b.source] || 'კატალოგი')}` : 'მფლობელი არ არის',
+      foot: [b.claimedAt ? `დაადასტურა ${when(b.claimedAt, 'date')}` : `კატალოგში ${when(b.createdAt, 'date')}`, l.lastBookingAt ? `ბოლო ჯავშანი ${when(l.lastBookingAt, 'date')}` : 'ჯავშანი ჯერ არ ყოფილა'],
+      dim: b.status === 'HIDDEN',
+    });
   }
 
-  async function render() {
-    const root = $('tab-book');
-    if (!root) return;
-    if (!root.querySelector('[data-book-page]')) root.innerHTML = skel();
-    let overview;
-    try { overview = await api('/overview'); } catch (err) {
-      root.innerHTML = `<div class="s-card"><div class="s-empty" role="alert">${ico('alert')}<strong>მონაცემები ვერ ჩაიტვირთა</strong><span>${esc(err?.status === 403 ? 'შენს ანგარიშს არ აქვს ამ გვერდის ნახვის უფლება (BOOK_VIEW).' : err.message || 'სერვერმა პასუხი ვერ დააბრუნა.')}</span><button type="button" class="btn compact" data-retry>ხელახლა ცდა</button></div></div>`;
-      root.querySelector('[data-retry]').onclick = () => void render();
-      return;
-    }
-    if (overview.installed === false) { root.innerHTML = `<div class="s-card"><div class="s-empty">${ico('info')}<strong>MEDIBOOK-ის ცხრილები ბაზაში ჯერ არ არის</strong><span>სქემა შემდეგი დეპლოისას დაყენდება (install-medibook.mjs).</span></div></div>`; return; }
-    categories = overview.categories || [];
-    root.innerHTML = `<div class="s-stack v3-tab-shell" data-book-page>
-      ${overview.claims.pending ? `<div class="s-callout is-warn">${ico('alert')}<p><b>${fmt(overview.claims.pending)} განაცხადი ელოდება განხილვას.</b> მფლობელი პანელს ხედავს, მაგრამ კატალოგში დადასტურებამდე არ ჩანს.</p></div>` : ''}
-      <div class="s-tabbar">${segment('ხედი', VIEWS.map(([k, l]) => [k, l, k === 'claims' ? overview.claims.pending : 0]), view, 'data-book-view')}</div>
-      <div data-book-host></div>
-    </div>`;
-    root.querySelectorAll('[data-book-view]').forEach((b) => { b.onclick = () => { view = b.dataset.bookView; render(); }; });
-    const host = root.querySelector('[data-book-host]');
-    if (view === 'claims') await renderClaims(host);
-    else if (view === 'catalog') await renderCatalog(host);
-    else await renderNumbers(host, overview);
+  const wall = K.createWall({
+    title: 'ბიზნესები და რას აკეთებენ',
+    sub: 'თითო ბარათი ერთი ბიზნესია. ზოლი აჩვენებს, რა აქვს მოწყობილი და რა ხდება: ანთებული — არის, ჩამქრალი — ჯერ არა. ჯერ დასადასტურებლები, მერე დადასტურებულები, ბოლოს კატალოგიდან ის, ვისაც ყურადღება მიაქცია.',
+    legendLabels: TRACK.map(([, label]) => label),
+    filters: [
+      ['all', 'ყველა', (b) => b.status !== 'HIDDEN'],
+      ['claimed', 'დადასტურებული', (b) => b.status === 'CLAIMED'],
+      ['active', 'ჯავშნით', (b) => b.period.bookings > 0],
+      ['idle', 'ჯავშნის გარეშე', (b) => b.status === 'CLAIMED' && !b.period.bookings],
+      ['pending', 'განიხილება', (b) => b.status === 'PENDING'],
+      ['listed', 'კატალოგი', (b) => b.status === 'LISTED'],
+    ],
+    search: (b) => `${b.name} ${b.city || ''} ${b.owner?.name || ''} ${b.owner?.contact || ''} ${catLabel(b.category)}`,
+    placeholder: 'ბიზნესი, ქალაქი, კატეგორია ან მფლობელი',
+    render: bizCard,
+    emptyText: {
+      all: 'ბიზნესი ჯერ არ არის.', claimed: 'დადასტურებული ბიზნესი ჯერ არ არის.', active: 'ამ პერიოდში ჯავშანი არავის მიუღია.',
+      idle: 'ყველა დადასტურებულს ჰქონდა ჯავშანი — კარგია.', pending: 'განსახილველი ბიზნესი არ არის.', listed: 'კატალოგის ადგილებს ამ პერიოდში ყურადღება არ მიუქცევიათ.',
+    },
+    key: (b) => b.id,
+  });
+
+  function usageInsights(d) {
+    const t = d.totals;
+    const p = d.period;
+    const q = d.quality;
+    const rows = [];
+    if (!t.inCatalogue && !t.pending) rows.push(['info', 'კატალოგი ცარიელია — ბიზნესები crawler-ით ან ხელით ემატება.']);
+    else rows.push(['info', `კატალოგში <b>${fmt(t.inCatalogue)} ადგილია</b>, აქედან <b>${fmt(t.claimed)}</b> მფლობელმა დაადასტურა (${pct(share(t.claimed, t.inCatalogue))})${t.pending ? `, ${fmt(t.pending)} რეგისტრაცია განიხილება` : ''}.`]);
+    if (t.claimsPending) rows.push(['warn', `<b>${fmt(t.claimsPending)} განაცხადი ელოდება</b> — მფლობელი პანელს ხედავს, მაგრამ აპში ბიზნესი ჯერ არ ჩანს. <a href="#/book?pane=claims" data-book-go="claims">განხილვა</a>.`]);
+    if (p.bookings) rows.push(['ok', `ბოლო ${fmt(p.days)} დღეში <b>${fmt(p.bookings)} ჯავშანი</b> ${fmt(p.businesses)} ბიზნესში, ${fmt(p.people)} ადამიანისგან (${fmt(p.newClients)} პირველად). დასრულდა ${pct(share(p.completed, p.bookings))}, არ მოვიდა ${pct(share(p.noShow, p.bookings))}.`]);
+    else rows.push(['warn', `ბოლო ${fmt(p.days)} დღეში ჯავშანი არ ყოფილა.`]);
+    if (p.views) rows.push([p.bookings ? 'info' : 'warn', `აპში ბიზნესის გვერდი <b>${fmt(p.views)}-ჯერ</b> გაიხსნა${p.calls ? `, ${fmt(p.calls)} დარეკვა` : ''}${p.routes ? `, ${fmt(p.routes)} მარშრუტი` : ''}; აპიდან ${fmt(p.sources.APP || 0)} ჯავშანი მოვიდა${p.sources.WEB ? `, ვებიდან ${fmt(p.sources.WEB)}` : ''}.`]);
+    if (t.claimed && t.idle) rows.push([share(t.idle, t.claimed) >= 50 ? 'warn' : 'info', `<b>${fmt(t.idle)} დადასტურებულ ბიზნესს</b> (${pct(share(t.idle, t.claimed))}) ამ პერიოდში ჯავშანი არ ჰქონია${q.noServices ? ` — ${fmt(q.noServices)}-ს სერვისი არც აქვს` : ''}.`]);
+    if (q.claimed && (q.noPhotos || q.noHours)) rows.push(['info', `მოსაწყობია: ${[q.noPhotos ? `${fmt(q.noPhotos)}-ს ფოტო არ აქვს` : null, q.noHours ? `${fmt(q.noHours)}-ს სამუშაო საათები` : null, q.onlineOff ? `${fmt(q.onlineOff)}-ს ონლაინ ჯავშნა გამორთული აქვს` : null].filter(Boolean).join(', ')}.`]);
+    if (!d.includeTeam && d.team.businesses) rows.push(['muted', `გუნდის ${fmt(d.team.accounts)} ანგარიშის ${fmt(d.team.businesses)} ბიზნესი (მათ შორის დემო კლინიკა) აქ არ ითვლება. „გუნდის ჩათვლით“ აჩვენებს.`]);
+    return K.insights(rows);
   }
 
-  global.renderBookAdmin = render;
+  function claimsBlock(d) {
+    if (!d.claimsPending.length) return '';
+    const rows = d.claimsPending.map((c) => `<li><span class="s-badge ${c.kind === 'REGISTER' ? 'is-info' : 'is-plain'}">${esc(KIND[c.kind] || c.kind)}</span><b>${esc(c.businessName)}</b><span class="s-muted">${esc(c.userName || '')}</span><span class="s-muted">${c.waitingDays ? `${fmt(c.waitingDays)} დღე ელოდება` : 'დღეს'}</span></li>`).join('');
+    return card('ელოდება განხილვას', 'მფლობელი ჩანაწერს ხედავს, აპში ბიზნესი დადასტურებამდე არ ჩანს.', `<ul class="s-book-claims">${rows}</ul>
+      <div class="s-book-claims-foot"><button type="button" class="btn compact" data-book-go="claims">${ico('check')} განაცხადების განხილვა</button></div>`);
+  }
+
+  function periodBlock(d, ctx) {
+    const p = d.period;
+    const src = Object.entries(p.sources || {}).map(([k, n]) => [APPT_SOURCE[k] || k, n]);
+    return `${K.periodTitle(p, ctx.days)}
+      ${metrics([
+        metric('ჯავშანი', fmt(p.bookings), `${fmt(p.businesses)} ბიზნესში · ${fmt(p.cancelled)} გაუქმდა`),
+        metric('დასრულდა', fmt(p.completed), p.bookings ? `${pct(share(p.completed, p.bookings))} · არ მოვიდა ${fmt(p.noShow)}` : '—', p.bookings && share(p.noShow, p.bookings) >= 20 ? 'warn' : ''),
+        metric('ადამიანი ჯავშნით', fmt(p.people), `${fmt(p.newClients)} პირველად`),
+        metric('გვერდის ნახვა აპში', fmt(p.views), `${fmt(p.calls)} დარეკვა · ${fmt(p.routes)} მარშრუტი`),
+      ])}
+      ${card('დღიური ტრენდი', 'ჯავშნები შექმნის დღით, დასრულებული ვიზიტები და ბიზნესის გვერდის ნახვები აპში.', K.chart([
+        { label: 'ჯავშანი', tone: 'violet', points: p.trend.bookings },
+        { label: 'დასრულდა', tone: 'teal', points: p.trend.completed },
+        { label: 'ნახვა', tone: 'blue', points: p.trend.views },
+      ], { label: 'MEDIBOOK დღეების მიხედვით', empty: 'ამ პერიოდში ჯავშანი და ნახვა არ ყოფილა.' }) + (src.length ? `${h4('საიდან მოდის ჯავშანი')}${shares(src, p.bookings)}` : ''))}`;
+  }
+
+  function compositionCard(d) {
+    const c = d.composition;
+    const total = d.totals.inCatalogue;
+    if (!total) return card('კატალოგი', '', empty('კატალოგი ცარიელია.'));
+    const cats = c.categories.map((x) => [`${catLabel(x.id)}${x.claimed ? ` · ${fmt(x.claimed)} დადასტურებული` : ''}`, x.count]);
+    return card('კატალოგი', `${fmt(total)} ადგილი კატეგორიებით და ქალაქებით; „დადასტურებული“ — მფლობელი მართავს.`, `
+      ${h4('კატეგორიები')}${shares(cats, total)}
+      ${h4('ქალაქები')}${c.cities.length ? shares(c.cities.map((x) => [`${x.name}${x.claimed ? ` · ${fmt(x.claimed)} დადასტურებული` : ''}`, x.count]), total) : empty('ქალაქი არცერთ ადგილს არ აქვს.')}
+      ${h4('საიდან არის კატალოგში')}${shares(c.sources.map((x) => [BIZ_SOURCE[x.id] || x.id, x.count]), total)}`);
+  }
+
+  function qualityCard(d) {
+    const q = d.quality;
+    const m = q.modules;
+    if (!q.claimed) return card('დადასტურებული ბიზნესების მოწყობა', '', empty('დადასტურებული ბიზნესი ჯერ არ არის.'));
+    const row = (label, n, good) => [label, n ? warn(n) : `<span class="s-ok">0</span>`, good];
+    return card('დადასტურებული ბიზნესების მოწყობა', `${fmt(q.claimed)} ბიზნესი, რომელსაც მფლობელი მართავს — რა აკლია და რომელ მოდულს იყენებს.`, `
+      ${h4('რა აკლია')}
+      ${facts([
+        ['სერვისი არ აქვს', q.noServices ? warn(q.noServices) : '0'],
+        ['გუნდი არ ჰყავს', q.noStaff ? warn(q.noStaff) : '0'],
+        ['ფოტო არ აქვს', q.noPhotos ? warn(q.noPhotos) : '0'],
+        ['სამუშაო საათები არ აქვს', q.noHours ? warn(q.noHours) : '0'],
+        ['ონლაინ ჯავშნა გამორთულია', q.onlineOff ? warn(q.onlineOff) : '0'],
+        ['კატალოგში ქალაქის გარეშე', fmt(q.catalogueNoCity)],
+      ])}
+      ${h4('რომელ მოდულს იყენებს')}
+      ${shares(Object.entries(MODULES).map(([k, label]) => [label, m[k] || 0]), q.claimed) || note('დამატებით მოდულს ჯერ არავინ იყენებს.')}
+      ${note('მოდული „გამოყენებულია“, როცა ბიზნესს შესაბამისი ჩანაწერი აქვს: პროდუქტი, მასალა, ოთახი, აბონემენტი, ჩართული ქეშბექი ან SMS.')}`);
+  }
+
+  function paintUsage(d, ctx) {
+    const t = d.totals;
+    categories = d.categories || categories;
+    wall.set(d.businesses, { total: d.businessesTotal });
+    return `${K.flagCallout(d.flags.book, '<b>MEDIBOOK შეჩერებულია.</b> აპში კატალოგი და ჯავშნა არ ჩანს.')}
+      ${usageInsights(d)}
+      ${metrics([
+        metric('კატალოგში', fmt(t.inCatalogue), `${fmt(t.listed)} საჯარო წყაროდან · ${fmt(t.hidden)} დამალული`),
+        metric('დადასტურებული', fmt(t.claimed), `${fmt(t.owners)} მფლობელი · ${fmt(t.pending)} განიხილება`, t.claimsPending ? 'warn' : ''),
+        metric(`ჯავშანი · ${fmt(d.period.days)} დღე`, fmt(d.period.bookings), `${fmt(d.period.businesses)} ბიზნესში`, true),
+        metric('აქტიური ბიზნესი', fmt(t.active), t.claimed ? `დადასტურებულთა ${pct(share(t.active, t.claimed))} · ${fmt(t.idle)} ჯავშნის გარეშე` : '—'),
+      ])}
+      ${claimsBlock(d)}
+      ${K.split(
+        card('კატალოგიდან ცოცხალ ბიზნესამდე', 'რამდენი ადგილი გადის თითო საფეხურს.', K.ladder(d.ladder, LADDER, { first: 'ყველა ადგილი', unit: 'კატალოგიდან', emptyText: 'კატალოგი ცარიელია.' })),
+        card('ადამიანი: ნახვიდან დაბრუნებამდე', `ბოლო ${fmt(d.period.days)} დღე — ვინც აპში გვერდი ნახა, დაჯავშნა, მივიდა და მეორედაც ჩაეწერა.`, K.ladder(d.peopleLadder, PEOPLE, { first: 'ვინც გვერდი ნახა', unit: 'ნახვიდან', emptyText: 'ამ პერიოდში აპში ბიზნესის გვერდი არავის უნახავს.' })),
+      )}
+      ${wall.html()}
+      ${periodBlock(d, ctx)}
+      ${K.split(compositionCard(d), qualityCard(d))}
+      ${K.definitions([
+        '<b>კატალოგში</b> — საჯარო წყაროებიდან (რუკა, OpenStreetMap) ან ადმინის დამატებული ადგილები, რომლებიც აპში ჩანს. <b>დადასტურებული</b> — მფლობელმა განაცხადით დაადასტურა ან თვითონ დაარეგისტრირა და ადმინმა დაამოწმა; მხოლოდ მათ აქვთ ონლაინ ჯავშნა.',
+        '<b>ჯავშანი</b> ითვლება შექმნის დღით (აპიდან, ვებიდან ან ბიზნესის პანელიდან), გაუქმებულები ცალკე. <b>მივიდა</b> — ვიზიტი დასრულებულად მოინიშნა. <b>მეორედ დაჯავშნა</b> — ამ პერიოდში დაჯავშნა და სულ ორი ჯავშანი მაინც აქვს.',
+        '<b>გვერდი ნახა</b> — აპში ბიზნესის გვერდის გახსნა (ანონიმური ნახვის ჰეში, ანგარიში არ ინახება); დარეკვა და მარშრუტი — იმავე გვერდის ღილაკები.',
+        '<b>გუნდი</b> — ბიზნესები, რომელთა მფლობელი ზუსტად @medicard.ge ანგარიშით შედის (დემო კლინიკა და თანამშრომლები). კლიენტების სახელები, შენიშვნები და ტელეფონები აქ არასდროს ჩანს.',
+      ])}`;
+  }
+
+  function afterUsage(root, d) {
+    wall.bind(root);
+    root.querySelectorAll('[data-book-go]').forEach((b) => b.addEventListener('click', (e) => { e.preventDefault(); void global.renderBookHost?.select(b.dataset.bookGo, { fresh: true }); }));
+    const claimsBtn = document.querySelector('#tab-book [data-uw-pane-btn="claims"]');
+    if (claimsBtn) claimsBtn.innerHTML = `განაცხადები${d.totals.claimsPending ? ` <span class="s-badge is-warn">${fmt(d.totals.claimsPending)}</span>` : ''}`;
+  }
+
+  const renderBookUsage = K.page({ tab: 'book', path: '/book/usage', capability: 'BOOK_VIEW', paint: paintUsage, after: afterUsage });
+
+  /* ═════════════ page tabs ═════════════ */
+  const pane = (key) => document.querySelector(`#tab-book [data-uw-pane="${key}"]`);
+  async function ensureCategories() {
+    if (categories.length) return;
+    try { categories = (await api('/overview')).categories || []; } catch { categories = []; }
+  }
+  async function refreshAll() {
+    const host = global.renderBookHost;
+    if (!host) return;
+    await host.select(host.active?.() || 'claims', { fresh: true });
+    void renderBookUsage({ keepScroll: true });
+  }
+  global.renderBookHost = K.hostTabs({
+    tab: 'book',
+    label: 'MEDIBOOK-ის განყოფილებები',
+    panes: [
+      ['usage', 'გამოყენება', renderBookUsage, 'page'],
+      ['claims', 'განაცხადები', async () => { await ensureCategories(); const h = pane('claims'); if (h) await renderClaims(h); }, 'legacy'],
+      ['catalog', 'კატალოგი', async () => { await ensureCategories(); const h = pane('catalog'); if (h) await renderCatalog(h); }, 'legacy'],
+    ],
+  });
+  global.renderBookAdmin = () => global.renderBookHost();
+  global.renderBookUsage = renderBookUsage;
 })(window);

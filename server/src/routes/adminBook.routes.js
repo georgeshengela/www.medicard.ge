@@ -11,6 +11,7 @@ import { writeAdminAudit } from '../lib/adminAudit.js';
 import { CATEGORIES, bookError } from '../lib/book/catalog.js';
 import * as store from '../lib/book/store.js';
 import { notifyClaimReviewed } from '../lib/book/push.js';
+import { BOOK_ADMIN_PERIODS, loadBookOverview } from '../lib/adminUsageBook.js';
 
 export const adminBookRouter = Router();
 adminBookRouter.use(requireAdmin, (_req, res, next) => {
@@ -22,6 +23,12 @@ const manage = requireAdminCapability('BOOK_MANAGE');
 
 adminBookRouter.get('/overview', view, asyncHandler(async (_req, res) => {
   res.json({ ...(await store.adminOverview()), categories: CATEGORIES.map((c) => ({ id: c.id, label: c.ka, color: c.color })) });
+}));
+
+// Who uses MEDIBOOK and how (the #/book „გამოყენება“ pane): 7 / 30 / 90 days, team businesses out unless team=1.
+adminBookRouter.get('/usage', view, asyncHandler(async (req, res) => {
+  const days = BOOK_ADMIN_PERIODS.includes(Number(req.query.days)) ? Number(req.query.days) : 30;
+  res.json(await loadBookOverview({ days, includeTeam: req.query.team === '1' }));
 }));
 
 adminBookRouter.get('/claims', view, asyncHandler(async (req, res) => {

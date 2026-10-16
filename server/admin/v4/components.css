@@ -2523,6 +2523,16 @@ html[data-theme="dark"] .s-users-ava.is-f { color: #FDA4AF; }
 /* Module usage pages (v4/modules/usageKit.js): #/pets MEDIVET first (owner 2026-10-11), then every MEDI module.
    The wall is the page's one bold element, in the module's own colour: each tab sets --mod (app moduleBrand ink). */
 #tab-pets { --mod: #0369A1; }
+#tab-book { --mod: #6A4BB8; }
+html[data-theme="dark"] #tab-book { --mod: #CDBCF7; }
+/* #/book: the pending-claims list on the usage pane */
+.s-book-claims { list-style: none; margin: 0; padding: 0; display: grid; }
+.s-book-claims li { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; gap: 12px; align-items: center; padding: 9px 0; border-top: 1px solid var(--s-line); font-size: 13.5px; }
+.s-book-claims li:first-child { border-top: 0; }
+.s-book-claims li b { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.s-book-claims-foot { display: flex; justify-content: flex-end; margin-top: 10px; }
+.s-ok { color: var(--s-ok, #15803d); font-weight: 600; }
+@media (max-width: 720px) { .s-book-claims li { grid-template-columns: auto minmax(0, 1fr); } .s-book-claims li .s-muted:last-child { grid-column: 2; } }
 html[data-theme="dark"] #tab-pets { --mod: #7DD3FC; }
 #tab-cycle { --mod: #C92A55; }
 html[data-theme="dark"] #tab-cycle { --mod: #FF8FA8; }
