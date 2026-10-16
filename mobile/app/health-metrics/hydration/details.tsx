@@ -2,12 +2,13 @@ import React, { useMemo } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Calendar, Check, Clock, Droplets, Flag, MessageCircle, Share2, TrendingUp } from 'lucide-react-native';
+import { Calendar, Check, Clock, Droplets, Flag, MessageCircle, TrendingUp } from 'lucide-react-native';
 import { HydrationAppBar } from '@/components/hydration/HydrationChrome';
 import { HydrationContainerIcon } from '@/components/hydration/HydrationIcons';
 import { useFigmaHydration } from '@/constants/figmaHydrationLayout';
 import { useHydration } from '@/hooks/useHydration';
 import { ka } from '@/i18n/ka';
+import { formatTimeHm, formatYmd } from '@/lib/format';
 import { formatMl, hydrationLevel, peakHourLabel } from '@/lib/hydration';
 
 export default function HydrationDetailsScreen() {
@@ -20,10 +21,8 @@ export default function HydrationDetailsScreen() {
   const level = hydrationLevel(h.todayMl, h.goalMl);
   const peak = peakHourLabel(h.logs);
 
-  const dateLabel = useMemo(
-    () => (log ? new Date(log.at).toLocaleDateString('en-US', { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric' }) : ''),
-    [log],
-  );
+  // The day the glass counts for (a back-dated entry keeps its own day), in the app language.
+  const dateLabel = useMemo(() => (log ? formatYmd(log.date, true) : ''), [log]);
 
   return (
     <View style={{ flex: 1, backgroundColor: T.pageBg, paddingTop: insets.top }}>
@@ -46,7 +45,7 @@ export default function HydrationDetailsScreen() {
               <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                 <Clock size={16} color={T.textSecondary} />
                 <Text style={{ color: T.textSecondary, fontSize: 13 }}>
-                  {new Date(log.at).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}
+                  {formatTimeHm(log.at)}
                 </Text>
               </View>
             ) : null}
@@ -73,7 +72,7 @@ export default function HydrationDetailsScreen() {
         <Card title={ka.hydration.keyStats} T={T}>
           <Stat icon={<Flag size={18} color={T.brand} />} value={`${Math.round(h.progress * 100)}%`} sub={ka.hydration.dailyGoal} T={T} />
           <Stat icon={<Droplets size={18} color={T.brand} />} value={String(Math.round(h.allMl / Math.max(1, new Set(h.logs.map((l) => l.date)).size)))} sub={ka.hydration.dailyAverage} T={T} />
-          <Stat icon={<TrendingUp size={18} color={T.brand} />} value={h.weekTrend != null ? `${h.weekTrend}%` : '—'} sub={ka.hydration.vsLastMonth} T={T} />
+          <Stat icon={<TrendingUp size={18} color={T.brand} />} value={h.weekTrend != null ? `${h.weekTrend > 0 ? '+' : ''}${h.weekTrend}%` : '—'} sub={ka.hydration.weekMore} T={T} />
           <Pressable onPress={() => router.push('/health-metrics/hydration/level' as never)}>
             <Stat icon={<Droplets size={18} color={T.brand} />} value={String(level)} sub={ka.hydration.levels[level].title} T={T} />
           </Pressable>
@@ -93,10 +92,6 @@ export default function HydrationDetailsScreen() {
           <MessageCircle size={18} color={T.brand} />
           <Text style={{ fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 16, color: T.brand }}>{ka.hydration.consultMedi}</Text>
         </Pressable>
-        <View style={{ alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 8 }}>
-          <Share2 size={16} color={T.brand} />
-          <Text style={{ fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 14, color: T.brand }}>{ka.common.share}</Text>
-        </View>
       </ScrollView>
     </View>
   );

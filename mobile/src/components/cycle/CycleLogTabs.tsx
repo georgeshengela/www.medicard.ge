@@ -99,6 +99,8 @@ export type CycleLogForm = {
 
 type Props = {
   date: string;
+  /** False for a past day: the eyebrow never says „Today’s log“ then. */
+  isToday?: boolean;
   mode: string;
   form: CycleLogForm;
   onChange: (patch: Partial<CycleLogForm>) => void;
@@ -138,6 +140,7 @@ function toggle(list: string[], id: string) {
  */
 export function CycleLogTabs({
   date,
+  isToday = true,
   mode,
   form,
   onChange,
@@ -451,7 +454,7 @@ export function CycleLogTabs({
   return (
     <View style={{ flex: 1 }}>
       <View style={s.header}>
-        <Text style={[s.eyebrow, { color: c.muted }]}>{ka.cycle.logHeroEyebrow}</Text>
+        <Text style={[s.eyebrow, { color: c.muted }]}>{isToday ? ka.cycle.logHeroEyebrow : tx('დღის ჩანაწერი', 'Day log')}</Text>
         <Text style={[s.date, { color: c.ink }]}>{formatCycleDateKa(date)}</Text>
 
         <View style={[s.tabBar, { backgroundColor: c.cardSoft }]} accessibilityRole="tablist">

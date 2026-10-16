@@ -22,7 +22,13 @@ export function scorePassword(password: string): PasswordStrength {
   return { level: 'strong', score, labelKey: 'strong' };
 }
 
+/** The server's own rule (`auth.routes.js`: 8–128 characters). */
+export const PASSWORD_MIN_LENGTH = 8;
+
+/**
+ * The gate for sign-up and reset is length only, like the server: „nino1990“ is accepted.
+ * The meter above is advice — it never blocks a password the server would take.
+ */
 export function isPasswordStrongEnough(password: string): boolean {
-  const { level } = scorePassword(password);
-  return level === 'fair' || level === 'strong';
+  return password.length >= PASSWORD_MIN_LENGTH;
 }

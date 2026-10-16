@@ -106,6 +106,7 @@ export default function ProfileSetupHomeLayoutScreen() {
           gender={gender}
           features={features}
           recommended={recommended}
+          onSurface={false}
         />
       </View>
     </ProfileSetupShell>

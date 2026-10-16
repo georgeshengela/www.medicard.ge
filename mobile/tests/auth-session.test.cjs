@@ -8,7 +8,7 @@ const sessionToken=sub=>`eyJhbGciOiJIUzI1NiJ9.${Buffer.from(JSON.stringify({sub,
 // Run the actual provider callbacks with deterministic React state/native boundaries.
 // These tests cover ordering and network recovery; they do not emulate native rendering.
 function harness(initialToken=null) {
- const slots=[],effects=[];let cursor=0,token=initialToken,postLoginCount=0,loginCount=0,meCount=0,profileCount=0,accountId=null,snapshot=null,pushForgets=0,cancelGate=null;const delivery=[],petLogouts=[],forgotten=[],accountLog=[];
+ const slots=[],effects=[];let cursor=0,token=initialToken,postLoginCount=0,loginCount=0,meCount=0,profileCount=0,accountId=null,snapshot=null,pushForgets=0,cancelGate=null,brainResets=0,brainResetsAtCancel=null,unregisterToken;const delivery=[],petLogouts=[],forgotten=[],accountLog=[];
  const user={id:'synthetic-user',email:'qa@medicard.test'},profile={completedAt:'2026-09-20T00:00:00Z'};
  const full={user,usage:{remaining:10},stats:{records:5},healthProfile:profile};
  let me=async()=>full,readProfile=async()=>({profile:{...profile}}),deleteAccount=async()=>{delivery.push('server-delete');return {ok:true};};
@@ -30,7 +30,8 @@ function harness(initialToken=null) {
   '@/lib/safeStartup':{runPostLoginSideEffects:()=>{postLoginCount++;}},'@/lib/appForeground':{onReturnToForeground:()=>noop},'@/lib/authErrorMessage':{authErrorMessage:error=>error.message},
   '@/lib/quest/devFixture':{isQuestDevEnabled:()=>false,isQuestVisualSession:()=>false,setQuestVisualSession:noop},
   '@/lib/healthDataSync':{resetHealthPullCache:noop},'@/lib/quest/socket':{disconnectQuestSocket:noop},'@/lib/accountSync':{resetAccountSync:noop},
-  '@/lib/notifications':{unregisterPushFromServer:async()=>{delivery.push('push-unregister');},forgetPushRegistration:()=>{pushForgets++;},cancelAllReminders:async()=>{if(cancelGate)await cancelGate;delivery.push('reminders-cancel');}},'@/lib/petCareReminders':{onPetCareLogout:async id=>{petLogouts.push(id);}},
+  '@/lib/notifications':{unregisterPushFromServer:async()=>{delivery.push('push-unregister-awaited');},unregisterPushInBackground:async()=>{unregisterToken=token;delivery.push('push-unregister');},forgetPushRegistration:()=>{pushForgets++;},cancelAllReminders:async()=>{if(cancelGate)await cancelGate;brainResetsAtCancel=brainResets;delivery.push('reminders-cancel');}},'@/lib/petCareReminders':{onPetCareLogout:async id=>{petLogouts.push(id);}},
+  '@/lib/mediNotificationBrain':{resetMediNotificationBrain:()=>{brainResets++;}},
   '@/lib/pregnancyCareCalendar':{wipePregnancyCareCalendarOwnership:async id=>{forgotten.push('pregnancy:'+id);}},'@/lib/cycleOffline':{destroyCycleOfflineAccount:async id=>{forgotten.push('cycle:'+id);}},
  };
  const file=path.resolve(__dirname,'../src/store/AuthContext.tsx');
@@ -38,7 +39,7 @@ function harness(initialToken=null) {
  const exports={};vm.runInNewContext(source,{exports,require:name=>{if(!(name in modules))throw Error('Unmocked: '+name);return modules[name];},console,setTimeout,clearTimeout},{filename:file});
  const render=()=>{cursor=0;return exports.AuthProvider({children:null}).props.value;};
  render();const startup=effects[0];
- return {render,startup,full,ApiError,setMe:fn=>{me=fn;},setProfile:fn=>{readProfile=fn;},setDelete:fn=>{deleteAccount=fn;},delivery,accountLog,petLogouts,forgotten,token:()=>token,setToken:value=>{token=value;},setSnapshot:value=>{snapshot=value;},setAccountId:id=>{accountId=id;},holdCancel:gate=>{cancelGate=gate;},pushForgets:()=>pushForgets,counters:()=>({postLoginCount,loginCount,meCount,profileCount})};
+ return {render,startup,full,ApiError,setMe:fn=>{me=fn;},setProfile:fn=>{readProfile=fn;},setDelete:fn=>{deleteAccount=fn;},delivery,accountLog,petLogouts,forgotten,token:()=>token,setToken:value=>{token=value;},setSnapshot:value=>{snapshot=value;},setAccountId:id=>{accountId=id;},holdCancel:gate=>{cancelGate=gate;},pushForgets:()=>pushForgets,brain:()=>({resets:brainResets,atCancel:brainResetsAtCancel}),unregisterToken:()=>unregisterToken,counters:()=>({postLoginCount,loginCount,meCount,profileCount})};
 }
 function deferred(){let resolve;const promise=new Promise(r=>resolve=r);return {promise,resolve};}
 const tick=()=>new Promise(r=>setImmediate(r));
@@ -300,4 +301,28 @@ test('a switch that deleted the current account sends no push unregister; one th
  await kept.render().switchToAccount(other,false);
  assert.deepEqual(kept.delivery,['push-unregister','reminders-cancel']);assert.deepEqual(kept.forgotten,[]);
  assert.equal(kept.token(),'other-token');
+});
+
+// Profile audit 2026-10-13: sign-out waited on the push unregister (token mint up to 45 s + DELETE with
+// the 180 s default) before anything local happened, and Medi's planner kept the previous person in
+// memory, so a trailing or foreground run scheduled her `engage:` notifications on a signed-out phone.
+test('sign-out stops Medi’s planner before the cancel and sends the push unregister in the background',async()=>{
+ const h=harness('saved-token');await h.render().refresh();
+ await h.render().signOut();
+ assert.deepEqual(h.delivery,['push-unregister','reminders-cancel'],'never the awaited unregister');
+ assert.equal(h.unregisterToken(),'saved-token','the leaving session’s token is read before it is cleared');
+ assert.ok(h.brain().atCancel>=1,'the planner forgets her before the reminders are cancelled');
+ assert.equal(h.token(),null);assert.equal(h.render().user,null);
+});
+test('every session end resets Medi’s planner; it runs on return to the app only with a user',async()=>{
+ const ended=harness('locked-out-token');ended.setMe(async()=>{throw new ended.ApiError('Password changed',401,{code:'TOKEN_EXPIRED'});});
+ await ended.render().refresh();assert.ok(ended.brain().atCancel>=1);
+ const deleted=harness('saved-token');await deleted.render().refresh();await deleted.render().deleteAccount();assert.ok(deleted.brain().atCancel>=1);
+ const source=fs.readFileSync(path.resolve(__dirname,'../src/store/AuthContext.tsx'),'utf8');
+ const foreground=source.slice(source.indexOf('return onReturnToForeground('),source.indexOf('const adopt = useCallback('));
+ assert.match(foreground,/if \(user\) \{[\s\S]*runMediNotificationBrain\(user, healthProfile\)/);
+ assert.doesNotMatch(foreground.slice(0,foreground.indexOf('if (user) {')),/runMediNotificationBrain/);
+ const brain=fs.readFileSync(path.resolve(__dirname,'../src/lib/mediNotificationBrain.ts'),'utf8');
+ assert.match(brain,/const account = localAccountId\(\);\s*if \(!account\) return 0;/,'no run without a signed-in account');
+ assert.match(brain,/export function resetMediNotificationBrain\(\): void \{[\s\S]{0,400}lastActor = \{\};[\s\S]{0,400}clearTimeout\(brainTrailing\)/);
 });

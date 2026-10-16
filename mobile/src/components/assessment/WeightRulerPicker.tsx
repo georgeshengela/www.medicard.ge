@@ -11,6 +11,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path } from 'react-native-svg';
 import { pickerScrollTick, pickerSelectionTick } from '@/components/assessment/pickerHaptics';
+import { useCentredCommit } from '@/components/assessment/useCentredCommit';
 import { ASSESSMENT, useAssessment } from '@/constants/assessmentLayout';
 
 const SCREEN_W = Dimensions.get('window').width;
@@ -97,6 +98,7 @@ export function WeightRulerPicker({
 
   const selectedIndex = nearestIndex(values, selected);
   const [centerIndex, setCenterIndex] = useState(selectedIndex);
+  const { commitMoving, flush } = useCentredCommit(values, selected, onSelect);
 
   const snapOffsets = useMemo(
     () => values.map((_, index) => index * tickWidth),
@@ -133,21 +135,23 @@ export function WeightRulerPicker({
       scrollToIndex(index, true);
       setCenterIndex(index);
       fireHaptic(index);
-
-      const value = values[index];
-      if (value !== undefined && value !== selected) onSelect(value);
+      flush(index);
 
       setTimeout(() => {
         settling.current = false;
       }, 280);
     },
-    [fireHaptic, onSelect, scrollToIndex, selected, tickWidth, values],
+    [fireHaptic, flush, scrollToIndex, tickWidth, values.length],
   );
 
   const onScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
     const index = clampIndex(Math.round(e.nativeEvent.contentOffset.x / tickWidth), values.length);
     if (index !== centerIndex) setCenterIndex(index);
-    if (dragging.current) fireHaptic(index);
+    // Dragging stays true through the momentum, until the settle: the big number follows the needle.
+    if (dragging.current) {
+      fireHaptic(index);
+      commitMoving(index);
+    }
   };
 
   return (

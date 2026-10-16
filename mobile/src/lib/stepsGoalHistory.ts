@@ -1,4 +1,3 @@
-import { getPreference, setPreference } from '@/lib/storage';
 import { getScopedPreference, setScopedPreference } from '@/lib/localAccount';
 import type { StepsGoalRecord } from '@/types/stepsGoal';
 
@@ -16,16 +15,14 @@ function parseReachedGoals(raw: string | null): StepsGoalRecord[] {
   }
 }
 
+/** The signed-in account's reached goals only — never the device-wide copy older builds wrote (another person's). */
 export async function loadReachedStepsGoals(): Promise<StepsGoalRecord[]> {
-  const raw = (await getScopedPreference(HISTORY_KEY)) ?? (await getPreference(HISTORY_KEY));
-  return parseReachedGoals(raw);
+  return parseReachedGoals(await getScopedPreference(HISTORY_KEY));
 }
 
 export async function archiveReachedStepsGoal(record: StepsGoalRecord): Promise<void> {
   const list = await loadReachedStepsGoals();
   const next = [record, ...list.filter((row) => row.id !== record.id)].slice(0, HISTORY_MAX);
-  const payload = JSON.stringify(next);
-  await setScopedPreference(HISTORY_KEY, payload);
-  await setPreference(HISTORY_KEY, payload);
+  await setScopedPreference(HISTORY_KEY, JSON.stringify(next));
   void import('@/lib/accountSync').then(({ scheduleAccountSyncPush }) => scheduleAccountSyncPush());
 }

@@ -38,14 +38,21 @@ async function applyFamily(key: RowKey, on: boolean, userId: string | undefined)
   switch (key) {
     case 'meds': {
       await setReminderFamily('meds', on);
+      // Off works offline too: the reminders go now, before the list is fetched to re-plan them.
+      if (!on) {
+        await notifications.cancelNotificationsByPrefix(notifications.NOTIF_PREFIX.med);
+        await notifications.cancelMedicationSnoozes(() => true);
+      }
       const res = await api.medications.list();
       await notifications.syncMedicationReminders(res.schedule, res.medications);
       return;
     }
     case 'visits': {
       await setReminderFamily('visits', on);
-      const { syncVisitReminders } = await import('@/lib/visitNotifications');
-      await syncVisitReminders((await api.visits.list()).visits);
+      const { cancelVisitReminders, syncVisitReminders } = await import('@/lib/visitNotifications');
+      // Off: visit reminders go at once, before any request — a failed fetch must not leave them ringing.
+      if (!on) await cancelVisitReminders();
+      else await syncVisitReminders((await api.visits.list()).visits).catch(() => undefined);
       return;
     }
     case 'pets': {
@@ -56,6 +63,11 @@ async function applyFamily(key: RowKey, on: boolean, userId: string | undefined)
     }
     case 'nutrition': {
       await setReminderFamily('nutrition', on);
+      // Off: the meal reminders go at once, before any request (a fast's own goal alert is not this switch).
+      if (!on) {
+        await notifications.cancelNotificationsByPrefix(notifications.NOTIF_PREFIX.nutrition);
+        return;
+      }
       const { preferences } = await api.nutrition.preferences.get();
       await notifications.syncNutritionReminders(preferences.reminders);
       return;

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import Animated, { FadeInDown } from 'react-native-reanimated';
@@ -11,6 +11,7 @@ import { VelvetButton } from '@/components/velvet/VelvetButton';
 import { VelvetInput } from '@/components/velvet/VelvetInput';
 import { VelvetStrength } from '@/components/velvet/VelvetStrength';
 import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
+import { useResendCountdown } from '@/hooks/useResendCountdown';
 import { ka } from '@/i18n/ka';
 import { ApiError, api } from '@/lib/api';
 import { authErrorMessage } from '@/lib/authErrorMessage';
@@ -48,7 +49,7 @@ export default function ForgotPasswordSms() {
   const [codeError, setCodeError] = useState<string | null>(null);
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const [resendIn, setResendIn] = useState(0);
+  const [resendIn, startResend] = useResendCountdown();
   const lock = useRef(false);
 
   const phoneValid = isGeorgianMobile(local);
@@ -56,13 +57,6 @@ export default function ForgotPasswordSms() {
   const strength = useMemo(() => scorePassword(password), [password]);
   const passwordsMatch = confirmPassword.length > 0 && password === confirmPassword;
   const canReset = isPasswordStrongEnough(password) && passwordsMatch;
-
-  // Resend countdown.
-  useEffect(() => {
-    if (resendIn <= 0) return undefined;
-    const t = setTimeout(() => setResendIn((s) => s - 1), 1000);
-    return () => clearTimeout(t);
-  }, [resendIn]);
 
   const guarded = async (work: () => Promise<void>) => {
     if (lock.current) return;
@@ -82,7 +76,7 @@ export default function ForgotPasswordSms() {
       try {
         const result = await api.auth.passwordSmsStart(toE164Georgian(local));
         setDevCode(result.devCode ?? null);
-        setResendIn(result.cooldownSec && result.cooldownSec > 0 ? result.cooldownSec : RESEND_SECONDS);
+        startResend(result.cooldownSec && result.cooldownSec > 0 ? result.cooldownSec : RESEND_SECONDS);
         if (!again) {
           setCode('');
           setCodeError(null);
@@ -172,6 +166,7 @@ export default function ForgotPasswordSms() {
               setLocal(next);
               setProblem(null);
             }}
+            error={!problem && local.length === 9 && !phoneValid ? ka.auth.invalidPhone : null}
             hint={problem ? undefined : tx('მხოლოდ საქართველოს მობილური ნომერი', 'Georgian mobile numbers only')}
             autoFocus
             returnKeyType="send"

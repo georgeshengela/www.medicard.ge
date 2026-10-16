@@ -51,6 +51,9 @@ export function HomeDayPair({ steps, hydration, onAddWater, stepsOn, waterOn, ti
   const total = steps.bundle?.todayTotal ?? 0;
   const goal = steps.bundle?.goal ?? 0;
   const stepsReady = Boolean(steps.bundle);
+  // Nothing connected and nothing counted: offer to connect (as the „დღეს“ dial does). The goal is never
+  // 0 (personal goal ≥ 2 000), so the old `goal > 0` test never reached this branch.
+  const stepsLinked = Boolean(steps.bundle && (steps.bundle.connected || total > 0));
   const stepsProgress = goal > 0 ? total / goal : 0;
 
   return (
@@ -61,9 +64,11 @@ export function HomeDayPair({ steps, hydration, onAddWater, stepsOn, waterOn, ti
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={
-              stepsReady
+              stepsLinked
                 ? tx(`ნაბიჯები: ${groupDigits(total)}, მიზანი ${groupDigits(goal)}`, `Steps: ${groupDigits(total)}, goal ${groupDigits(goal)}`)
-                : tx('ნაბიჯები', 'Steps')
+                : stepsReady
+                  ? tx('ნაბიჯების დაკავშირება', 'Connect steps')
+                  : tx('ნაბიჯები', 'Steps')
             }
             onPress={() => router.push('/health-metrics/steps' as never)}
             style={[s.tile, { backgroundColor: c.surface }]}
@@ -77,13 +82,19 @@ export function HomeDayPair({ steps, hydration, onAddWater, stepsOn, waterOn, ti
             )}
             <View>
               <Text numberOfLines={1} style={[rings ? s.valueBig : s.value, { color: c.text100 }]}>
-                {steps.loading && !stepsReady ? '…' : groupDigits(total)}
+                {steps.loading && !stepsReady ? '…' : stepsLinked ? groupDigits(total) : '—'}
               </Text>
               <Text style={[hubText.caption, { color: c.text200 }]}>{tx('ნაბიჯი', 'steps')}</Text>
             </View>
             {rings ? null : <Bar progress={stepsProgress} color={accent.ink} track={c.bg200} />}
             <Text numberOfLines={1} style={[hubText.small, { color: c.text200 }]}>
-              {goal > 0 ? tx(`მიზანი ${groupDigits(goal)}`, `Goal ${groupDigits(goal)}`) : tx('დააკავშირე მოწყობილობა', 'Connect a device')}
+              {steps.loading && !stepsReady
+                ? ' '
+                : !stepsLinked
+                  ? tx('დააკავშირე მოწყობილობა', 'Connect a device')
+                  : goal > 0
+                    ? tx(`მიზანი ${groupDigits(goal)}`, `Goal ${groupDigits(goal)}`)
+                    : ' '}
             </Text>
           </Pressable>
         ) : null}

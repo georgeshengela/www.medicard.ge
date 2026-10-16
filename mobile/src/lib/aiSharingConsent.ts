@@ -35,6 +35,9 @@ export async function decideAiSharing(allow: boolean) {
     pending = null; current.resolve(allow && saved.accepted); emit();
   } catch (error) {
     if (pending?.promise !== current.promise) return;
+    // A decline that could not be saved is still a decline for this request: nothing is sent either way, so
+    // the full-screen sheet never traps her behind a network error. Acceptance is never assumed.
+    if (!allow && !current.status.accepted) { pending = null; current.resolve(false); emit(); return; }
     const updated = error && typeof error === 'object' && 'consentStatus' in error ? error.consentStatus as AiConsentStatus : null;
     pending = { ...current, status: updated || current.status, busy: false, error: error instanceof Error ? error.message : tx(tx('არჩევანი ვერ შეინახა. სცადე ხელახლა.', "Couldn't save your choice. Please try again."), "Couldn't save your choice. Please try again.") }; emit();
   }

@@ -1,7 +1,7 @@
 import React from 'react';
-import { Alert, View } from 'react-native';
+import { View } from 'react-native';
 import { useRouter } from 'expo-router';
-import { KeyRound, Mail, Smartphone } from 'lucide-react-native';
+import { Mail, Smartphone } from 'lucide-react-native';
 import { AuthShell } from '@/components/AuthShell';
 import { AuthBackHeader } from '@/components/auth/AuthBackHeader';
 import { AuthMethodCard } from '@/components/auth/AuthMethodCard';
@@ -33,15 +33,7 @@ export default function ForgotPasswordIndex() {
           label={ka.auth.forgotPasswordViaSms}
           onPress={() => router.push('/(auth)/forgot-password/sms')}
         />
-        <AuthMethodCard
-          palette={p}
-          icon={KeyRound}
-          iconBg="#FFFBEB"
-          iconColor="#D97706"
-          label={ka.auth.forgotPasswordVia2fa}
-          onPress={() => Alert.alert(ka.auth.forgotPasswordVia2fa, ka.auth.forgotPasswordComingSoon)}
-          disabled
-        />
+        {/* No disabled „2FA-ით“ / coming-soon card: only ways that work today (App Review 2.1). */}
       </View>
     </AuthShell>
   );

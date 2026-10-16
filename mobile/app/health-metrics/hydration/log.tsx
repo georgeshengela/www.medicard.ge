@@ -1,5 +1,5 @@
-import React, { useMemo, useState } from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import React, { useMemo, useRef, useState } from 'react';
+import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Calendar, Minus, Plus } from 'lucide-react-native';
@@ -10,6 +10,7 @@ import { WaterLoggedModal } from '@/components/hydration/WaterLoggedModal';
 import { useFigmaHydration } from '@/constants/figmaHydrationLayout';
 import { useHydration } from '@/hooks/useHydration';
 import { ka } from '@/i18n/ka';
+import { formatYmd } from '@/lib/format';
 import { monthGrid, todayYmd } from '@/lib/hydration';
 import { HYDRATION_COLORS, HYDRATION_CONTAINERS, type HydrationContainer, type HydrationDrink } from '@/types/hydration';
 
@@ -27,11 +28,11 @@ export default function HydrationLogScreen() {
   const [drink, setDrink] = useState<HydrationDrink>('water');
   const [color, setColor] = useState<string>(HYDRATION_COLORS[0]);
   const [logged, setLogged] = useState<number | null>(null);
+  const [saving, setSaving] = useState(false);
+  // A ref, not only state: two taps in the same frame both saw `saving` false and saved twice.
+  const savingRef = useRef(false);
 
-  const dateLabel = useMemo(
-    () => new Date(`${date}T12:00:00`).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-    [date],
-  );
+  const dateLabel = useMemo(() => formatYmd(date), [date]);
 
   const pickContainer = (key: HydrationContainer) => {
     setContainer(key);
@@ -39,8 +40,16 @@ export default function HydrationLogScreen() {
   };
 
   const save = async () => {
-    await addLog({ date, ml, container, drink, color });
-    setLogged(ml);
+    if (savingRef.current || logged != null) return;
+    savingRef.current = true;
+    setSaving(true);
+    try {
+      await addLog({ date, ml, container, drink, color });
+      setLogged(ml);
+    } finally {
+      savingRef.current = false;
+      setSaving(false);
+    }
   };
 
   return (
@@ -164,11 +173,13 @@ export default function HydrationLogScreen() {
       <View style={{ padding: 16, paddingBottom: Math.max(insets.bottom, 16) }}>
         <Pressable
           accessibilityRole="button"
+          accessibilityState={{ busy: saving, disabled: saving }}
+          disabled={saving}
           onPress={() => void save()}
-          style={{ minHeight: 48, borderRadius: 16, backgroundColor: T.brand, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10 }}
+          style={{ minHeight: 48, borderRadius: 16, backgroundColor: T.brand, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, opacity: saving ? 0.7 : 1 }}
         >
           <Text style={{ fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 16, color: '#FFFFFF' }}>{ka.hydration.logCta}</Text>
-          <Plus size={18} color="#FFFFFF" />
+          {saving ? <ActivityIndicator size="small" color="#FFFFFF" /> : <Plus size={18} color="#FFFFFF" />}
         </Pressable>
       </View>
 

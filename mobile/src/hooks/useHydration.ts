@@ -5,13 +5,13 @@ import { useAuth } from '@/store/AuthContext';
 import { api } from '@/lib/api';
 import { pullStoredHealth, subscribeHealthRefresh } from '@/lib/healthDataSync';
 import { defaultSyncFromDate, defaultSyncToDate } from '@/lib/healthMetricsStorage';
-import { mergeDayHydrationMl } from '@/lib/hydrationMerge.js';
+import { mergeDayHydrationMl, serverTotalsAfterOwnWrite, weekSoFarAverageMl, weekSoFarSums } from '@/lib/hydrationMerge.js';
 import {
-  addHydrationLog,
   bestDay,
   dayTotalMl,
   loadHydrationGoalMl,
   loadHydrationLogs,
+  recordHydrationLog,
   removeHydrationLog,
   saveHydrationGoalMl,
   todayYmd,
@@ -21,15 +21,22 @@ import {
 } from '@/lib/hydration';
 import type { HydrationLog } from '@/types/hydration';
 
-type HydrationData = { logs: HydrationLog[]; goalMl: number; serverByDate: Record<string, number> };
+type HydrationData = {
+  logs: HydrationLog[];
+  goalMl: number;
+  serverByDate: Record<string, number>;
+  /** When the server read behind `serverByDate` started (own writes sent before it are not in it). */
+  serverAt: number;
+};
 const HYDRATION_KEY = ['health', 'hydration'] as const;
 
 async function fetchHydration(): Promise<HydrationData> {
-  const [logs, localGoal, stored, remoteGoal] = await Promise.all([
-    loadHydrationLogs(),
+  const serverAt = Date.now();
+  const [localGoal, stored, remoteGoal] = await Promise.all([
     loadHydrationGoalMl(),
     pullStoredHealth(defaultSyncFromDate(), defaultSyncToDate()).catch(() => null),
-    api.healthMetrics.hydrationGoalGet().catch(() => null),
+    // Short: during a server stall the water card must not sit on „…“ for the default 3 minutes.
+    api.healthMetrics.hydrationGoalGet({ timeoutMs: 8_000 }).catch(() => null),
   ]);
   const serverByDate: Record<string, number> = {};
   for (const row of stored?.daily ?? []) {
@@ -41,7 +48,10 @@ async function fetchHydration(): Promise<HydrationData> {
     goalMl = Math.round(Number(remoteGoal.goalMl));
     if (goalMl !== localGoal) await saveHydrationGoalMl(goalMl);
   }
-  return { logs, goalMl, serverByDate };
+  // The phone's list is read last (after any save in progress): a glass tapped while the server
+  // answered is in it, so this answer never lands without it.
+  const logs = await loadHydrationLogs();
+  return { logs, goalMl, serverByDate, serverAt };
 }
 
 const EMPTY_LOGS: HydrationLog[] = [];
@@ -76,7 +86,7 @@ export function useHydration(opts: { enabled?: boolean } = {}) {
 
   const patch = useCallback((next: Partial<HydrationData>) => {
     queryClient.setQueryData<HydrationData>(accountKey(...HYDRATION_KEY), (old) =>
-      old ? { ...old, ...next } : { logs: EMPTY_LOGS, goalMl: 2000, serverByDate: EMPTY_SERVER, ...next },
+      old ? { ...old, ...next } : { logs: EMPTY_LOGS, goalMl: 2000, serverByDate: EMPTY_SERVER, serverAt: 0, ...next },
     );
   }, []);
 
@@ -90,8 +100,8 @@ export function useHydration(opts: { enabled?: boolean } = {}) {
   );
   const prevWeek = weekMonSun(addDaysSafe(week[0], -1));
   const lastWeekTotals = prevWeek.map((date) => mergeDayHydrationMl(dayTotalMl(logs, date), serverByDate[date]));
-  const prevWeekSum = lastWeekTotals.reduce((a, b) => a + b, 0);
-  const thisWeekSum = weekTotals.reduce((a, b) => a + b, 0);
+  const { current: thisWeekSum, previous: prevWeekSum } = weekSoFarSums(weekTotals, lastWeekTotals, week, today);
+  const weekAvgMl = weekSoFarAverageMl(weekTotals, week, today);
 
   const snapshot = useMemo(
     () => ({
@@ -103,24 +113,46 @@ export function useHydration(opts: { enabled?: boolean } = {}) {
       logCount: logs.filter((row) => row.date === today).length,
       week,
       weekTotals,
+      weekAvgMl,
+      /** This week so far against the same days of last week. */
       weekTrend: trendPct(thisWeekSum, prevWeekSum),
       dayTrend: trendPct(todayMl, yesterdayMl),
       allMl: logs.reduce((sum, row) => sum + row.ml, 0),
       best: bestDay(logs),
       logs,
     }),
-    [goalMl, logs, prevWeekSum, thisWeekSum, today, todayMl, week, weekTotals, yesterdayMl],
+    [goalMl, logs, prevWeekSum, thisWeekSum, today, todayMl, week, weekAvgMl, weekTotals, yesterdayMl],
   );
 
+  // A tap shows right after the phone's save; the server copy follows without blocking. Cache updates
+  // add or remove just this row, so answers arriving out of order never drop a glass.
   const addLog = useCallback(async (input: Omit<HydrationLog, 'id' | 'at'> & { at?: string }) => {
-    const next = await addHydrationLog(input);
-    patch({ logs: next });
-    return next[0];
-  }, [patch]);
+    const startedAt = Date.now();
+    const { log, synced } = await recordHydrationLog(input);
+    updateCached((old) => ({ ...old, logs: old.logs.some((row) => row.id === log.id) ? old.logs : [log, ...old.logs] }));
+    void synced.then((ok) => {
+      if (!ok) return;
+      updateCached((old) => ({
+        ...old,
+        serverByDate: serverTotalsAfterOwnWrite(old.serverByDate, old.serverAt, { date: log.date, deltaMl: log.ml, startedAt }),
+      }));
+    });
+    return log;
+  }, []);
 
   const deleteLog = useCallback(async (id: string) => {
-    patch({ logs: await removeHydrationLog(id) });
-  }, [patch]);
+    const startedAt = Date.now();
+    const { log, synced } = await removeHydrationLog(id);
+    updateCached((old) => ({ ...old, logs: old.logs.filter((row) => row.id !== id) }));
+    if (!log) return;
+    void synced.then((ok) => {
+      if (!ok) return;
+      updateCached((old) => ({
+        ...old,
+        serverByDate: serverTotalsAfterOwnWrite(old.serverByDate, old.serverAt, { date: log.date, deltaMl: -log.ml, startedAt }),
+      }));
+    });
+  }, []);
 
   const setGoal = useCallback(async (ml: number) => {
     await saveHydrationGoalMl(ml);
@@ -130,6 +162,19 @@ export function useHydration(opts: { enabled?: boolean } = {}) {
   }, [patch]);
 
   return { ...snapshot, loading, refresh, addLog, deleteLog, setGoal, lastWeekTotals };
+}
+
+/**
+ * Changes the cached water data in place. Nothing cached yet (the first read is still on its way or
+ * failed): that read, or a new one, picks the saved row up from the phone instead.
+ */
+function updateCached(change: (old: HydrationData) => HydrationData) {
+  const key = accountKey(...HYDRATION_KEY);
+  if (!queryClient.getQueryData<HydrationData>(key)) {
+    void queryClient.invalidateQueries({ queryKey: key, exact: true }, { cancelRefetch: false });
+    return;
+  }
+  queryClient.setQueryData<HydrationData>(key, (old) => (old ? change(old) : old));
 }
 
 function addDaysSafe(ymd: string, days: number): string {

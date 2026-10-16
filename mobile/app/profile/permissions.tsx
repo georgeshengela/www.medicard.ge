@@ -49,7 +49,6 @@ import {
   requestCameraAccess,
   requestPhotosAccess,
   resetAllConnectionsAndPermissions,
-  resetLocalReminders,
   type AppPermissionsSnapshot,
 } from '@/lib/appPermissions';
 import type { HealthConnectResult } from '@/lib/healthSync';
@@ -188,8 +187,8 @@ export default function PermissionsScreen() {
         style: 'destructive',
         onPress: () =>
           void withBusy('notifications-off', async () => {
+            // Push only: local reminders keep their own switches in „შეტყობინებები“.
             await disablePushConnection();
-            await resetLocalReminders();
             showToast(ka.permissions.notificationsDisabledToast);
           }),
       },

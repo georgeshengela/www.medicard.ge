@@ -1,6 +1,7 @@
 import { Platform } from 'react-native';
 import * as SecureStore from 'expo-secure-store';
 import { tx } from '../i18n/locale.js';
+import { formatCycleCivilDate } from './cycleCivilDateKa.js';
 import { api, ApiError, type CycleBundle, type CycleLog } from '@/lib/api';
 import {
   deletePreference,
@@ -891,6 +892,7 @@ export function formatCycleCachedAtKa(cachedAt: string | null, todayYmd: string)
   yest.setDate(yest.getDate() - 1);
   const ymd = `${yest.getFullYear()}-${String(yest.getMonth() + 1).padStart(2, '0')}-${String(yest.getDate()).padStart(2, '0')}`;
   if (day === ymd) return tx('გუშინ', 'Yesterday');
-  return day;
+  // Older: the day in words („10 ოქტომბერი 2026“), never the ISO key.
+  return formatCycleCivilDate(day);
 }
 

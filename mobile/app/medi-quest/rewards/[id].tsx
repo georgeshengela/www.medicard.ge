@@ -108,6 +108,9 @@ export default function RewardDetailScreen() {
     setConfirm(false);
     void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     void trackQuestEvent('reward_redeemed', `${reward.key}:${coinCostBucket(reward.coinCost)}`);
+    // The next „Get it“ is a new purchase: a fresh key (the old one replayed this success) and fresh limits.
+    idemRef.current = newIdempotencyKey();
+    void load();
   };
 
   const onRedeem = async () => {

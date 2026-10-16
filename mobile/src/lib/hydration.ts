@@ -31,8 +31,25 @@ function parseLogs(raw: string | null): HydrationLog[] {
   }
 }
 
+/**
+ * Local writes run one after another: two quick taps used to read the list before either had saved,
+ * and the second save dropped the first glass.
+ */
+let logsWrite: Promise<unknown> = Promise.resolve();
+function serialLogsWrite<T>(task: () => Promise<T>): Promise<T> {
+  const run = logsWrite.then(task, task);
+  logsWrite = run.catch(() => undefined);
+  return run;
+}
+
+function readLogs(): Promise<HydrationLog[]> {
+  return getScopedPreference(LOGS_KEY).then(parseLogs);
+}
+
+/** Waits for a save in progress, so a read never returns the list without the glass just tapped. */
 export async function loadHydrationLogs(): Promise<HydrationLog[]> {
-  return parseLogs(await getScopedPreference(LOGS_KEY));
+  await logsWrite;
+  return readLogs();
 }
 
 export async function saveHydrationLogs(logs: HydrationLog[]): Promise<void> {
@@ -114,44 +131,77 @@ export function formatLiters(ml: number): string {
   return `${(ml / 1000).toFixed(1)}L`;
 }
 
-export async function addHydrationLog(input: Omit<HydrationLog, 'id' | 'at'> & { at?: string }): Promise<HydrationLog[]> {
-  const logs = await loadHydrationLogs();
-  const next: HydrationLog = {
-    ...input,
-    id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-    at: input.at ?? new Date().toISOString(),
-  };
-  const updated = [next, ...logs];
-  await saveHydrationLogs(updated);
-  await syncHydrationEvent(next.id, next.date, next.ml);
-  void import('@/lib/mediNotificationBrain').then(({ requestEngageRefresh }) => requestEngageRefresh());
-  void import('@/lib/quest/cache').then(({ requestQuestRefresh }) => requestQuestRefresh());
-  return updated;
+export type HydrationWrite = {
+  /** The row added, or the row removed (null when the delete found nothing). */
+  log: HydrationLog | null;
+  logs: HydrationLog[];
+  /** True once the server has the change; never rejects (the phone's copy stands either way). */
+  synced: Promise<boolean>;
+};
+
+/**
+ * Saves the glass on the phone and returns at once; the server copy follows in `synced`. A tap shows
+ * right after the local save instead of waiting for POST /sync (seconds during a server stall).
+ */
+export async function recordHydrationLog(input: Omit<HydrationLog, 'id' | 'at'> & { at?: string }): Promise<HydrationWrite & { log: HydrationLog }> {
+  const { log, logs } = await serialLogsWrite(async () => {
+    const next: HydrationLog = {
+      ...input,
+      id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+      at: input.at ?? new Date().toISOString(),
+    };
+    const updated = [next, ...(await readLogs())];
+    await saveHydrationLogs(updated);
+    return { log: next, logs: updated };
+  });
+  const synced = syncHydrationEvent(log.id, log.date, log.ml);
+  // After the server has it: MEDIQUEST progress is counted there.
+  void synced.then(() => {
+    void import('@/lib/mediNotificationBrain').then(({ requestEngageRefresh }) => requestEngageRefresh());
+    void import('@/lib/quest/cache').then(({ requestQuestRefresh }) => requestQuestRefresh());
+  });
+  return { log, logs, synced };
 }
 
-export async function removeHydrationLog(id: string): Promise<HydrationLog[]> {
-  const logs = await loadHydrationLogs();
-  const found = logs.find((row) => row.id === id);
-  const updated = logs.filter((row) => row.id !== id);
-  await saveHydrationLogs(updated);
-  if (found) await syncHydrationEvent(`del-${found.id}`, found.date, -found.ml);
-  void import('@/lib/quest/cache').then(({ requestQuestRefresh }) => requestQuestRefresh());
-  return updated;
+/** Background callers (a notification action in a headless task ends when it returns) wait for the server too. */
+export async function addHydrationLog(input: Omit<HydrationLog, 'id' | 'at'> & { at?: string }): Promise<HydrationLog[]> {
+  const write = await recordHydrationLog(input);
+  await write.synced;
+  return write.logs;
+}
+
+export async function removeHydrationLog(id: string): Promise<HydrationWrite> {
+  const { log, logs } = await serialLogsWrite(async () => {
+    const current = await readLogs();
+    const found = current.find((row) => row.id === id) ?? null;
+    const updated = current.filter((row) => row.id !== id);
+    await saveHydrationLogs(updated);
+    return { log: found, logs: updated };
+  });
+  const synced = log ? syncHydrationEvent(`del-${log.id}`, log.date, -log.ml) : Promise.resolve(false);
+  void synced.then(() => import('@/lib/quest/cache').then(({ requestQuestRefresh }) => requestQuestRefresh()));
+  return { log, logs, synced };
 }
 
 /** Unique clientEventId makes retries idempotent. Daily total is recomputed server-side. */
-async function syncHydrationEvent(clientEventId: string, date: string, deltaMl: number): Promise<void> {
-  if (!deltaMl) return;
+async function syncHydrationEvent(clientEventId: string, date: string, deltaMl: number): Promise<boolean> {
+  if (!deltaMl) return false;
+  const health = await import('@/lib/healthDataSync').catch(() => null);
   try {
-    // Our own write: the server's `health:metrics` echo must not re-read every health hook.
-    await import('@/lib/healthDataSync').then(({ markOwnHealthPush }) => markOwnHealthPush()).catch(() => undefined);
+    // Our own write: the server's `health:metrics` echo must not re-read every health hook, and a
+    // read from before it must not be reused as the new day total.
+    health?.markOwnHealthPush();
+    health?.forgetHealthPull();
     await api.healthMetrics.sync({
       daily: [],
       stepLogs: [],
       hydrationEvents: [{ clientEventId, date, deltaMl }],
     });
+    health?.forgetHealthPull();
+    return true;
   } catch {
     /* local log still stands */
+    return false;
   }
 }
 
@@ -179,7 +229,6 @@ export function peakHourLabel(logs: HydrationLog[]): string | null {
     hours[new Date(row.at).getHours()] += row.ml;
   }
   const hour = hours.indexOf(Math.max(...hours));
-  const suffix = hour >= 12 ? 'PM' : 'AM';
-  const h12 = hour % 12 === 0 ? 12 : hour % 12;
-  return `${String(h12).padStart(2, '0')}:00 ${suffix}`;
+  // 24-hour clock like the rest of the app (was „03:00 PM“ in both languages).
+  return `${String(hour).padStart(2, '0')}:00`;
 }

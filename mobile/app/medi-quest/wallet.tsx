@@ -47,6 +47,9 @@ export default function QuestWalletScreen() {
     }
     try {
       setData(await questApi.rewards());
+      // A fresh server balance wins over the hint published earlier in this session (a referral bonus,
+      // MEDIRUN prize or refund credited since then is in it).
+      setLiveCoins(null);
       setFailed(false);
     } catch {
       setFailed(true);

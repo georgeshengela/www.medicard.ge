@@ -176,6 +176,10 @@ export default function CyclePregnancyCarePlanScreen() {
   const copy = ka.cycle.carePlan;
   const [detail, setDetail] = useState<CyclePregnancyCarePlanItem | null>(null);
   const [sourcesItem, setSourcesItem] = useState<CyclePregnancyCarePlanItem | null>(null);
+  // The sources overlay lives inside the detail sheet: closing the sheet closes it too.
+  useEffect(() => {
+    if (!detail) setSourcesItem(null);
+  }, [detail]);
   const [plannedDate, setPlannedDate] = useState('');
   const [plannedTime, setPlannedTime] = useState<string | null>(null);
   const [plannedPlace, setPlannedPlace] = useState<string | null>(null);
@@ -515,7 +519,11 @@ export default function CyclePregnancyCarePlanScreen() {
         ) : null}
       </ScrollView>
 
-      <Modal visible={Boolean(detail)} {...APP_MODAL_PROPS} onRequestClose={() => setDetail(null)}>
+      <Modal
+        visible={Boolean(detail)}
+        {...APP_MODAL_PROPS}
+        onRequestClose={() => (sourcesItem ? setSourcesItem(null) : setDetail(null))}
+      >
         <ChatScreenShell header={null} style={{ backgroundColor: APP_MODAL_OVERLAY }}>
         <View style={{ flex: 1, minHeight: 0, justifyContent: 'flex-end' }}>
           <Pressable style={{ flex: 1 }} onPress={() => setDetail(null)} accessibilityLabel={ka.common.close} />
@@ -986,53 +994,56 @@ export default function CyclePregnancyCarePlanScreen() {
               </ChatFormScroll>
             ) : null}
           </View>
+          {/* Sources: drawn inside the detail sheet's Modal — never a second native Modal on top of it. */}
+          {sourcesItem ? (
+            <View
+              accessibilityViewIsModal
+              style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, justifyContent: 'flex-end', backgroundColor: APP_MODAL_OVERLAY }}
+            >
+              <Pressable style={{ flex: 1 }} onPress={() => setSourcesItem(null)} accessibilityLabel={ka.common.close} />
+              <View
+                style={{
+                  backgroundColor: c.card,
+                  borderTopLeftRadius: 20,
+                  borderTopRightRadius: 20,
+                  padding: 16,
+                  paddingBottom: insets.bottom + 16,
+                }}
+              >
+                <Text style={{ color: c.ink, fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 18, lineHeight: 24 }}>
+                  {copy.sources}
+                </Text>
+                {(sourcesItem.sources || []).map((src) => (
+                  <Pressable
+                    key={src.url}
+                    onPress={() => void Linking.openURL(src.url)}
+                    accessibilityRole="link"
+                    accessibilityLabel={`${src.organization}, ${src.title}`}
+                    style={{ minHeight: 44, marginTop: 12 }}
+                  >
+                    <Text style={{ color: c.ink, fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 14, lineHeight: 20 }}>
+                      {src.organization}
+                    </Text>
+                    <Text style={{ color: c.muted, fontSize: 13, lineHeight: 19, marginTop: 2 }}>{src.title}</Text>
+                    <Text style={{ color: c.mutedSoft, fontSize: 12, lineHeight: 17, marginTop: 2 }}>
+                      {copy.sourcesReviewed(src.reviewedAt)}
+                    </Text>
+                    <Text style={{ color: c.brand, fontSize: 13, marginTop: 4 }}>{copy.openSource}</Text>
+                  </Pressable>
+                ))}
+                <Pressable
+                  onPress={() => setSourcesItem(null)}
+                  accessibilityRole="button"
+                  accessibilityLabel={ka.common.close}
+                  style={{ minHeight: 44, justifyContent: 'center', marginTop: 8 }}
+                >
+                  <Text style={{ color: c.muted }}>{ka.common.close}</Text>
+                </Pressable>
+              </View>
+            </View>
+          ) : null}
         </View>
         </ChatScreenShell>
-      </Modal>
-
-      <Modal visible={Boolean(sourcesItem)} {...APP_MODAL_PROPS} onRequestClose={() => setSourcesItem(null)}>
-        <View style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: APP_MODAL_OVERLAY }}>
-          <Pressable style={{ flex: 1 }} onPress={() => setSourcesItem(null)} accessibilityLabel={ka.common.close} />
-          <View
-            style={{
-              backgroundColor: c.card,
-              borderTopLeftRadius: 20,
-              borderTopRightRadius: 20,
-              padding: 16,
-              paddingBottom: insets.bottom + 16,
-            }}
-          >
-            <Text style={{ color: c.ink, fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 18, lineHeight: 24 }}>
-              {copy.sources}
-            </Text>
-            {(sourcesItem?.sources || []).map((src) => (
-              <Pressable
-                key={src.url}
-                onPress={() => void Linking.openURL(src.url)}
-                accessibilityRole="link"
-                accessibilityLabel={`${src.organization}, ${src.title}`}
-                style={{ minHeight: 44, marginTop: 12 }}
-              >
-                <Text style={{ color: c.ink, fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 14, lineHeight: 20 }}>
-                  {src.organization}
-                </Text>
-                <Text style={{ color: c.muted, fontSize: 13, lineHeight: 19, marginTop: 2 }}>{src.title}</Text>
-                <Text style={{ color: c.mutedSoft, fontSize: 12, lineHeight: 17, marginTop: 2 }}>
-                  {copy.sourcesReviewed(src.reviewedAt)}
-                </Text>
-                <Text style={{ color: c.brand, fontSize: 13, marginTop: 4 }}>{copy.openSource}</Text>
-              </Pressable>
-            ))}
-            <Pressable
-              onPress={() => setSourcesItem(null)}
-              accessibilityRole="button"
-              accessibilityLabel={ka.common.close}
-              style={{ minHeight: 44, justifyContent: 'center', marginTop: 8 }}
-            >
-              <Text style={{ color: c.muted }}>{ka.common.close}</Text>
-            </Pressable>
-          </View>
-        </View>
       </Modal>
     </CycleAtmosphere>
   );

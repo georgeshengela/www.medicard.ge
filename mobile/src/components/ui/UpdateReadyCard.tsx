@@ -6,6 +6,7 @@ import Animated, {
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { ArrowUp, X } from 'lucide-react-native';
+import { useHomeCycleToastEntry } from '@/components/home/sections/useHomeCycleActions';
 import { TAB_BAR_HEIGHT } from '@/components/navigation/FloatingTabBar';
 import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
 import { tx } from '@/i18n/locale';
@@ -47,6 +48,8 @@ function Badge({ colors, ring }: { colors: readonly [string, string]; ring: stri
  * „ახალი ვერსია · მზადაა“ — a quiet card above the tab bar when an over-the-air update is downloaded
  * (owner 2026-10-11). One tap restarts into it; nothing is blocked and the App Store is not involved.
  * Shown automatically (admin switch in #/settings); during a MEDIRUN session the restart waits.
+ * It steps aside while the women's Home cycle toast is up: both sit above the tab bar, and the card
+ * covered the toast's „გაუქმება“ (undo) for its 8 seconds.
  */
 export function UpdateReadyCard({ preview = false }: { preview?: boolean } = {}) {
   const visible = useSyncExternalStore(subscribeOta, otaCardVisible, otaCardVisible);
@@ -56,7 +59,8 @@ export function UpdateReadyCard({ preview = false }: { preview?: boolean } = {})
   const c = useThemeColors();
   const dark = useIsDark();
   const tone = useBrandTone() === 'rose' ? 'rose' : 'teal';
-  if ((!visible || closed) && !preview) return null;
+  const cycleToast = useHomeCycleToastEntry();
+  if ((!visible || closed || cycleToast) && !preview) return null;
   const ink = hubInk('teal', dark);
   // The dark-theme ink is a light tint: its button text is dark, the light theme's is white.
   const onInk = dark ? '#042F2E' : '#FFFFFF';

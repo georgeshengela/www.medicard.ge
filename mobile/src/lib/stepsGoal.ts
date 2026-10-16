@@ -8,7 +8,7 @@ import {
   getNotificationPermissionGranted,
 } from '@/lib/notifications';
 import { expoWeekdayFromMonday } from '@/lib/notificationPlan';
-import { getPreference, setPreference } from '@/lib/storage';
+import { setPreference } from '@/lib/storage';
 import { getScopedPreference, setScopedPreference } from '@/lib/localAccount';
 import { applyPushCopy } from '@/lib/pushCopy';
 import { getCachedTodaySteps } from '@/lib/healthDataSync';
@@ -80,8 +80,13 @@ export function reminderDaysLabel(days: number[]): string {
   return `${selected.slice(0, -1).join(', ')} ${ka.common.and} ${selected[selected.length - 1]}`;
 }
 
+/**
+ * The signed-in account's goal only. The device-wide copy older builds also wrote is never read: it
+ * belonged to whoever used the phone last, and the account sync uploaded it into the next account.
+ * Leftovers are wiped at sign-in (`LEGACY_UNSCOPED` in localAccount.ts).
+ */
 export async function loadStepsGoal(): Promise<StepsGoal | null> {
-  const raw = (await getScopedPreference(STORAGE_KEY)) ?? (await getPreference(STORAGE_KEY));
+  const raw = await getScopedPreference(STORAGE_KEY);
   if (!raw) return null;
   try {
     const parsed = JSON.parse(raw) as StepsGoal;
@@ -93,16 +98,13 @@ export async function loadStepsGoal(): Promise<StepsGoal | null> {
 }
 
 export async function saveStepsGoal(goal: StepsGoal): Promise<void> {
-  const payload = JSON.stringify(goal);
-  await setScopedPreference(STORAGE_KEY, payload);
-  await setPreference(STORAGE_KEY, payload);
+  await setScopedPreference(STORAGE_KEY, JSON.stringify(goal));
   await syncStepsGoalReminders(goal);
   void import('@/lib/accountSync').then(({ scheduleAccountSyncPush }) => scheduleAccountSyncPush());
 }
 
 export async function clearStepsGoal(): Promise<void> {
   await setScopedPreference(STORAGE_KEY, '');
-  await setPreference(STORAGE_KEY, '');
   await cancelNotificationsByPrefix(NOTIF_PREFIX.steps);
   void import('@/lib/accountSync').then(({ scheduleAccountSyncPush }) => scheduleAccountSyncPush());
 }

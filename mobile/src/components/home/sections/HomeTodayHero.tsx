@@ -202,12 +202,6 @@ function Rings({ dials, size, tones, glow }: {
             <Stop offset="0" stopColor={glow} stopOpacity={dark ? 0.22 : 0.12} />
             <Stop offset="1" stopColor={glow} stopOpacity={0} />
           </RadialGradient>
-          {dials.map((dial) => (
-            <SvgGradient key={dial.key} id={`ring-${dial.key}`} x1="0" y1="0" x2="1" y2="1">
-              <Stop offset="0" stopColor={tones[dial.key].from} />
-              <Stop offset="1" stopColor={tones[dial.key].to} />
-            </SvgGradient>
-          ))}
         </Defs>
         <Circle cx={size / 2} cy={size / 2} r={size / 2} fill="url(#todayGlow)" />
       </Svg>
@@ -216,7 +210,9 @@ function Rings({ dials, size, tones, glow }: {
           key={dial.key}
           size={size}
           radius={outer - index * (STROKE + GAP)}
-          gradientId={`ring-${dial.key}`}
+          gradientId={`today-ring-${dial.key}`}
+          from={tones[dial.key].from}
+          to={tones[dial.key].to}
           track={`${tones[dial.key].ink}${dark ? '33' : '1F'}`}
           progress={dial.progress}
           delay={index * 140}
@@ -226,10 +222,12 @@ function Rings({ dials, size, tones, glow }: {
   );
 }
 
-function Ring({ size, radius, gradientId, track, progress, delay }: {
+function Ring({ size, radius, gradientId, from, to, track, progress, delay }: {
   size: number;
   radius: number;
   gradientId: string;
+  from: string;
+  to: string;
   track: string;
   progress: number;
   delay: number;
@@ -245,8 +243,16 @@ function Ring({ size, radius, gradientId, track, progress, delay }: {
   const animatedProps = useAnimatedProps(() => ({
     strokeDashoffset: circumference * (1 - (shown.value > 0 ? Math.max(shown.value, 0.012) : 0)),
   }));
+  // The gradient lives in this ring's own <Svg>: react-native-svg resolves url(#id) only inside the same
+  // Svg, so a gradient defined in the glow's Svg left the arcs undrawn on iOS.
   return (
     <Svg width={size} height={size} style={StyleSheet.absoluteFill}>
+      <Defs>
+        <SvgGradient id={gradientId} x1="0" y1="0" x2="1" y2="1">
+          <Stop offset="0" stopColor={from} />
+          <Stop offset="1" stopColor={to} />
+        </SvgGradient>
+      </Defs>
       <Circle cx={size / 2} cy={size / 2} r={radius} stroke={track} strokeWidth={STROKE} fill="none" />
       <AnimatedCircle
         cx={size / 2}

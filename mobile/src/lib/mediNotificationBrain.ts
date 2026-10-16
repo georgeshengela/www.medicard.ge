@@ -35,6 +35,7 @@ import { visitDateTimeMs } from '@/lib/visitReminders';
 import { cancelNotificationsByPrefix, ENGAGE_CHANNEL_ID, NOTIF_PREFIX, getNotificationPermissionGranted } from '@/lib/notifications';
 import { applyPushCopy } from '@/lib/pushCopy';
 import { displayFirstName } from '@/lib/displayName';
+import { localAccountId } from '@/lib/localAccount';
 
 export {
   ENGAGE_FAMILIES,
@@ -319,6 +320,8 @@ let brainInFlight: Promise<number> | null = null;
 let brainLastAt = 0;
 let brainLastUser: string | null = null;
 let brainTrailing: ReturnType<typeof setTimeout> | null = null;
+/** Bumped by every session reset: a run started before it never schedules after it. */
+let brainGeneration = 0;
 
 export async function runMediNotificationBrain(
   user?: User | null,
@@ -361,6 +364,23 @@ export async function runMediNotificationBrain(
 }
 
 /**
+ * Sign-out (every session reset): forgets the person this runtime planned for and drops the pending
+ * trailing / refresh runs. Before this, a timer or a foreground run after sign-out planned the previous
+ * person's `engage:` notifications — with her name — on a signed-out phone. A run already in flight
+ * sees the new generation and schedules nothing.
+ */
+export function resetMediNotificationBrain(): void {
+  brainGeneration += 1;
+  lastActor = {};
+  if (refreshTimer) clearTimeout(refreshTimer);
+  refreshTimer = null;
+  if (brainTrailing) clearTimeout(brainTrailing);
+  brainTrailing = null;
+  brainLastAt = 0;
+  brainLastUser = null;
+}
+
+/**
  * The previous run's plans that reached their time since: the system showed them while the app was
  * closed (the app only hears about a notification itself when it is open or tapped). They count for
  * the daily budget, cooldowns and the fatigue model, and the server learns they were delivered.
@@ -390,6 +410,12 @@ async function runMediNotificationBrainNow(
 ): Promise<number> {
   try {
   if (Platform.OS === 'web') return 0;
+  // Signed out: nobody to plan for. A sign-out or account switch during the run stops it before it
+  // schedules or reports anything (`stillHers`).
+  const account = localAccountId();
+  if (!account) return 0;
+  const generation = brainGeneration;
+  const stillHers = () => generation === brainGeneration && localAccountId() === account;
   rememberEngageActor(user, health);
   // The open that started this run counts: „დღეს ჯერ არ შემოგივლია“ must not be planned while the person is here.
   if (opts.markOpen !== false) await markEngageAppOpen();
@@ -433,6 +459,7 @@ async function runMediNotificationBrainNow(
     return 0;
   }
   const snap = await buildEngageSnapshot(user ?? lastActor.user, health ?? lastActor.health);
+  if (!stillHers()) return 0;
   const { accepted, trace, index, changed } = stabilizeEngageDecisions(evaluateEngageBrain(snap), priorIndex, snap.now);
   await saveEngageTrace(trace);
   await appendEngageDecisions(trace.decisions);
@@ -461,6 +488,7 @@ async function runMediNotificationBrainNow(
   }
   const scheduledIds = new Set<string>();
   for (const row of accepted) {
+    if (!stillHers()) return 0;
     if (row.fireAt.getTime() <= Date.now() + 45_000) continue;
     const cycleInsight = row.key === 'engage-insight-cycle';
     const discreet = snap.prefs.discreet || (cycleInsight && snap.cyclePrivacyEnabled);
@@ -589,6 +617,8 @@ async function deliverCycleReminder(data: Record<string, unknown>): Promise<{
         mode: bundle.profile.mode,
         privacyEnabled: Boolean(bundle.profile.privacyEnabled),
         nextPeriodStart: bundle.predictions.nextPeriodStart,
+        // Variable cycles plan „მალე“ / „გვიანდება“ from the window: without it they read as stale here.
+        nextPeriodRange: bundle.predictions.nextPeriodRange ?? null,
         ovulationDate: bundle.predictions.ovulationDate,
         fertileWindowStart: bundle.predictions.fertileWindow?.start ?? null,
         showFertilityMarkers: gates.showFertilityMarkers,

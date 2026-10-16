@@ -75,6 +75,9 @@ export default function SignInMethodsScreen() {
 
   if (!user) return null;
 
+  // An Apple / Google sign-up has its address but no password: never shown as a working way in, and
+  // add-email does not apply (the address is already set). Older servers send no `password`.
+  const passwordUnset = Boolean(methods?.email) && methods?.password === false;
   const rows: React.ReactNode[] = [];
   rows.push(
     <MethodRow
@@ -90,7 +93,8 @@ export default function SignInMethodsScreen() {
       icon={<Mail size={19} color={hubInk('blue', dark)} strokeWidth={1.9} />}
       label={tx('ელ-ფოსტა და პაროლი', 'Email and password')}
       value={methods?.email ?? null}
-      onAdd={() => router.push('/profile/add-email' as never)}
+      note={passwordUnset ? tx('პაროლი არ არის დაყენებული', 'No password set') : undefined}
+      onAdd={passwordUnset ? undefined : () => router.push('/profile/add-email' as never)}
       loading={!methods}
     />,
   );
@@ -190,6 +194,7 @@ function MethodRow({
   icon,
   label,
   value,
+  note,
   onAdd,
   loading,
   busy = false,
@@ -197,18 +202,22 @@ function MethodRow({
   icon: React.ReactNode;
   label: string;
   value: string | null;
+  /** Shown under the value; the method is not set up yet (no check mark). */
+  note?: string;
   onAdd?: () => void;
   loading: boolean;
   busy?: boolean;
 }) {
   const colors = useThemeColors();
   const dark = useIsDark();
-  const linked = Boolean(value);
+  const linked = Boolean(value) && !note;
   const tappable = !linked && !loading && Boolean(onAdd);
   return (
     <Pressable
       accessibilityRole={tappable ? 'button' : undefined}
-      accessibilityLabel={linked ? `${label}: ${value}` : `${label}: ${tx('დამატება', 'Add')}`}
+      accessibilityLabel={
+        note ? `${label}: ${value ? `${value}, ` : ''}${note}` : linked ? `${label}: ${value}` : `${label}: ${tx('დამატება', 'Add')}`
+      }
       disabled={!tappable || busy}
       onPress={onAdd}
       style={{ flexDirection: 'row', alignItems: 'center', minHeight: 62, paddingHorizontal: 16, paddingVertical: 10, gap: 12 }}
@@ -218,9 +227,10 @@ function MethodRow({
       </View>
       <View style={{ flex: 1 }}>
         <Text style={[hubText.cardTitle, { fontSize: 14, lineHeight: 20, color: colors.text100 }]}>{label}</Text>
-        {linked ? (
+        {value ? (
           <Text numberOfLines={1} style={[hubText.caption, { color: colors.text200 }]}>{value}</Text>
         ) : null}
+        {note ? <Text style={[hubText.caption, { color: colors.text300 }]}>{note}</Text> : null}
       </View>
       {loading || busy ? (
         <ActivityIndicator color={colors.text300} />

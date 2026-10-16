@@ -31,8 +31,10 @@ export const RUN_WALLET_KEY=['medirun','wallet'] as const;
  */
 export function useRunWallet(){
  const query=useAccountQuery<RunWalletData>({key:[...RUN_WALLET_KEY],fetch:()=>pulseApi<RunWalletData>('/wallet'),staleTime:FRESH.LIVE,retry:(count,error)=>(error as {status?:number}|null)?.status!==404&&count<1});
- const {refetch}=query;
+ const {refetch,dataUpdatedAt}=query;
  const [liveBalance,setLiveBalance]=useState<number|null>(()=>getMediCoinBalanceHint());
  useEffect(()=>subscribeMediCoinBalance(value=>{setLiveBalance(value);void refetch();}),[refetch]);
+ // The server's answer wins over the session hint (coins credited since — prizes, referrals — are in it).
+ useEffect(()=>{if(dataUpdatedAt)setLiveBalance(null);},[dataUpdatedAt]);
  return {...query,liveBalance};
 }

@@ -2401,7 +2401,8 @@ function safeParse(text: string): Record<string, unknown> {
 
 type AuthResponse = { token: string; user: User; usage: Usage };
 
-export type SignInMethods = { phone: string | null; email: string | null; apple: boolean; google: boolean };
+/** `password`: false = the address has no password (Apple / Google sign-up); older servers leave it out. */
+export type SignInMethods = { phone: string | null; email: string | null; apple: boolean; google: boolean; password?: boolean };
 
 /** 409 body extra when a proven phone / email / Apple / Google already belongs to another account. */
 export type AccountConflict = {
@@ -2710,7 +2711,7 @@ export const api = {
       birthDate?: string;
       aiEngine?: AiEngineId;
     }) =>
-      request<{ user: User }>('/api/auth/me', { method: 'PATCH', body }),
+      request<{ user: User }>('/api/auth/me', { method: 'PATCH', body, timeoutMs: 20_000 }),
 
     deleteAccount: () => request<{ ok: boolean }>('/api/auth/me', { method: 'DELETE', timeoutMs: 20_000 }),
   },
@@ -2758,6 +2759,8 @@ export const api = {
       request<{ profile: HealthProfile; user?: User }>('/api/health-profile', {
         method: 'PUT',
         body,
+        // Onboarding „გაგრძელება“ waits on this; never the 180 s default.
+        timeoutMs: 20_000,
       }),
     complete: (body: {
       gender: Gender;
@@ -2768,6 +2771,7 @@ export const api = {
       request<{ profile: HealthProfile; user: User }>('/api/health-profile/complete', {
         method: 'POST',
         body,
+        timeoutMs: 20_000,
       }),
   },
 
@@ -2787,8 +2791,9 @@ export const api = {
         '/api/health-metrics/sync',
         { method: 'POST', body, timeoutMs: 30_000 },
       ),
-    hydrationGoalGet: () =>
-      request<{ goalMl: number | null; updatedAt: string | null }>('/api/health-metrics/hydration/goal'),
+    /** `timeoutMs`: Home's water card passes a short one so a stalled server never holds it on „…“. */
+    hydrationGoalGet: (opts: { timeoutMs?: number } = {}) =>
+      request<{ goalMl: number | null; updatedAt: string | null }>('/api/health-metrics/hydration/goal', { timeoutMs: opts.timeoutMs }),
     hydrationGoalPut: (goalMl: number) =>
       request<{ goalMl: number; updatedAt: string }>('/api/health-metrics/hydration/goal', {
         method: 'PUT',
@@ -2816,8 +2821,14 @@ export const api = {
   push: {
     register: (body: { token: string; platform: 'ios' | 'android' | 'web' }) =>
       request<{ ok: boolean }>('/api/push/register', { method: 'POST', body }),
-    unregister: (token: string) =>
-      request<{ ok: boolean }>('/api/push/register', { method: 'DELETE', body: { token } }),
+    /** `authToken`: the leaving session's token (sign-out sends this after the token was cleared). */
+    unregister: (token: string, opts: { authToken?: string; timeoutMs?: number } = {}) =>
+      request<{ ok: boolean }>('/api/push/register', {
+        method: 'DELETE',
+        body: { token },
+        ...(opts.authToken ? { token: opts.authToken } : {}),
+        ...(opts.timeoutMs ? { timeoutMs: opts.timeoutMs } : {}),
+      }),
     templates: () =>
       request<{
         templates: Array<{

@@ -27,9 +27,11 @@ import {
   saveLanguage,
   setLanguageAndReload,
   setPendingRoute,
+  takePendingRoute,
   type AppLang,
 } from '@/i18n/locale';
 import { setWelcomeCompleted } from '@/lib/onboardingPrefs';
+import { onStoreBundle, restartIntoFreshUpdate } from '@/lib/otaUpdates';
 import { useTheme } from '@/store/ThemeContext';
 import { useVelvet } from '@/theme/velvet';
 
@@ -232,6 +234,15 @@ export function WelcomeScreen({ intro = false }: { intro?: boolean }) {
       setBusy(false);
     }
     saveLanguage(lang);
+    if (onStoreBundle()) {
+      // A fresh install still on the store binary's bundle: restart into the downloaded update and go on
+      // to sign-in there, the same hand-off as the language restart above.
+      setBusy(true);
+      setPendingRoute(SIGN_IN);
+      if (await restartIntoFreshUpdate()) return;
+      takePendingRoute();
+      setBusy(false);
+    }
     leave(() => router.replace(SIGN_IN));
   }, [leaving, lang, leave, router]);
 

@@ -53,9 +53,13 @@ export function formatYmd(ymd: string, withYear = false): string {
 }
 
 export function formatDateTime(iso: string): string {
+  return `${formatDate(iso)} · ${formatTimeHm(iso)}`;
+}
+
+/** Wall-clock time on the phone, 24-hour in both languages: `15:05` (never `3:05 PM`). */
+export function formatTimeHm(iso: string): string {
   const date = new Date(iso);
-  const time = `${pad(date.getHours())}:${pad(date.getMinutes())}`;
-  return `${formatDate(iso)} · ${time}`;
+  return `${pad(date.getHours())}:${pad(date.getMinutes())}`;
 }
 
 export function formatRelative(iso: string): string {
