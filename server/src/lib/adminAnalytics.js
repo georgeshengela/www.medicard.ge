@@ -300,7 +300,7 @@ export async function getOverviewAnalytics(query) {
       where: { createdAt: { gte: new Date(Date.now() - 86_400_000) } },
     }),
     prisma.smsLog.count({
-      where: { createdAt: { gte: new Date(Date.now() - 86_400_000) }, status: 'FAILED' },
+      where: { createdAt: { gte: new Date(Date.now() - 86_400_000) }, status: 'FAILED', purpose: { not: 'TEST' } },
     }),
     prisma.syncRun.findFirst({ orderBy: { startedAt: 'desc' } }),
     prisma.pushCampaign.count({
@@ -1154,7 +1154,7 @@ async function computeSystemHealth() {
     }),
     prisma.aiInteraction.count({ where: { createdAt: { gte: since7d }, status: 'ERROR' } }),
     prisma.smsLog.count({ where: { createdAt: { gte: since24h } } }),
-    prisma.smsLog.count({ where: { createdAt: { gte: since24h }, status: 'FAILED' } }),
+    prisma.smsLog.count({ where: { createdAt: { gte: since24h }, status: 'FAILED', purpose: { not: 'TEST' } } }),
     prisma.pushCampaign.aggregate({
       where: { sentAt: { gte: since24h } },
       _sum: { failedCount: true, sentCount: true },
