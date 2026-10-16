@@ -193,7 +193,8 @@ test('admin control (#/home): the admin order wins, missing ids go back in place
 
 test('admin control (#/home): an admin order is not reshuffled by the onboarding goal', () => {
   // The admin put news first and MEDIFOOD last; a nutrition goal used to pull both up under „ask Medi“.
-  const custom = ['dashboard', 'news', 'hero', 'ask', 'nextDose', 'attention', 'coach', 'cycle', 'week', 'sleep', 'horoscope', 'challenges', 'checkup', 'profileNudge', 'nutrition', 'customize', 'disclaimer'] as const;
+  const rest = HOME_LAYOUT_ORDER.standard.filter((id) => id !== 'news' && id !== 'nutrition');
+  const custom = [rest[0], 'news', ...rest.slice(1, -1), 'nutrition', rest[rest.length - 1]];
   for (const primaryGoal of ['nutrition', 'cycle', 'medications'] as const) {
     const order = buildHomeSectionOrder({ layout: 'standard', includeCycle: true, primaryGoal, remote: { order: custom } });
     assert.deepEqual(order, [...custom], primaryGoal);

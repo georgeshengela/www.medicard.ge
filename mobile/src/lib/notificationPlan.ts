@@ -180,7 +180,7 @@ export function engageDestination(
  * A mistyped route from an admin broadcast falls back instead of opening a "not found" page.
  */
 export const NOTIFICATION_ROUTE_ROOTS = [
-  '(tabs)', 'assistant', 'chat', 'community', 'cycle', 'explore', 'health-metrics', 'horoscope', 'invite', 'lab',
+  '(tabs)', 'assistant', 'chat', 'community', 'cycle', 'explore', 'health-metrics', 'invite', 'lab',
   'medi-companion', 'medi-quest', 'medications', 'medipulsi', 'module', 'news', 'nutrition', 'package', 'pets', 'family',
   'pharmacy', 'profile', 'record', 'run', 'scan', 'share', 'sleep', 'horoscope', 'symptoms', 'visits', 'book', 'weather', 'week', 'trainer', 'coach', 'c', 'u',
 ] as const;
