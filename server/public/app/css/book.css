@@ -225,6 +225,10 @@ a.bk-line:hover { color: var(--text); }
 }
 .bk-slot:hover { border-color: var(--book-2); }
 .bk-slot.on { background: var(--book-btn); border-color: var(--book-btn); color: var(--book-btn-text); }
+/* A class slot: the seats left under the time (amber when three or fewer). */
+.bk-slot small { display: block; font-size: 11px; font-weight: 600; color: var(--text3); margin-top: 2px; }
+.bk-slot small.low { color: var(--warn, #b45309); }
+.bk-slot.on small { color: inherit; opacity: .85; }
 .bk-note-box { display: flex; gap: 8px; align-items: flex-start; padding: 12px 14px; border-radius: 14px; background: var(--surface); font-size: 13px; color: var(--text2); margin-top: 10px; }
 .bk-note-box .ic { color: var(--text3); flex: none; margin-top: 1px; }
 .bk-summary { display: flex; flex-direction: column; gap: 14px; }

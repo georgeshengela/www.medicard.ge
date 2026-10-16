@@ -36,6 +36,7 @@ export function openAppointment(appt, ctx, { onChange } = {}) {
         h('dt', null, t('როდის', 'When')), h('dd', null, h('b', null, when(a.startsAt)), ` – ${clock(a.endsAt)} · ${minutes(a.durationMin)}`),
         h('dt', null, t('ვინ', 'Who')), h('dd', null, h('span', { class: 'bz-inline' }, h('span', { class: 'bz-color-dot', style: { background: a.staffColor || staffColor(ctx, a.staffId) } }), a.staffName || t('ნებისმიერი', 'Anyone'))),
         a.resources && a.resources.length ? [h('dt', null, t('სად', 'Where')), h('dd', null, h('span', { class: 'bz-tags' }, a.resources.map((r) => h('span', { class: 'bz-tag' }, icon(r.kind === 'EQUIPMENT' ? 'zap' : 'door', { size: 12 }), r.name))))] : null,
+        a.classId ? [h('dt', null, t('კლასი', 'Class')), h('dd', null, h('a', { class: 'bz-link', href: '#', onClick: async (e) => { e.preventDefault(); try { const { class: cls } = await biz.get(`/classes/${a.classId}`); const mod = await import('./class.js'); mod.openClass(cls, ctx, { onChange: () => onChange?.(a) }); } catch (e2) { fail(e2); } } }, t(`ჯგუფური კლასი · ${a.classBooked ?? '?'} / ${a.classSeats ?? '?'} ადგილი`, `Group class · ${a.classBooked ?? '?'} / ${a.classSeats ?? '?'} seats`)))] : null,
         a.services && a.services.length > 1 ? [h('dt', null, t('სერვისები', 'Services')), h('dd', null, h('ul', { class: 'bz-svc-list' }, a.services.map((x) => h('li', null, h('span', null, x.name), h('span', { class: 'bz-sub' }, [minutes(x.durationMin), x.price != null ? gel(x.price) : null].filter(Boolean).join(' · '))))))] : null,
         h('dt', null, t('ფასი', 'Price')), h('dd', null, gel(a.price), a.discountAmount ? h('span', { class: 'bz-sub' }, t(` (ფასდაკლება −${gel(a.discountAmount)})`, ` (discount −${gel(a.discountAmount)})`)) : null),
         a.paidParts && (a.paidParts.giftAmount || a.paidParts.bonusAmount || a.paidParts.membershipAmount) ? [h('dt', null, t('როგორ გადაიხადა', 'How it was paid')), h('dd', { class: 'bz-sub' }, [a.paidParts.cashAmount ? t(`${gel(a.paidParts.cashAmount)} ფულით`, `${gel(a.paidParts.cashAmount)} in money`) : null, a.paidParts.membershipAmount ? t(`${gel(a.paidParts.membershipAmount)} აბონემენტით`, `${gel(a.paidParts.membershipAmount)} by membership`) : null, a.paidParts.giftAmount ? t(`${gel(a.paidParts.giftAmount)} ბარათით ${a.paidParts.giftCode || ''}`, `${gel(a.paidParts.giftAmount)} by gift card ${a.paidParts.giftCode || ''}`) : null, a.paidParts.bonusAmount ? t(`${gel(a.paidParts.bonusAmount)} ბონუსით`, `${gel(a.paidParts.bonusAmount)} in bonus`) : null, a.paidParts.bonusEarned ? t(`დაერიცხა +${gel(a.paidParts.bonusEarned)}`, `earned +${gel(a.paidParts.bonusEarned)}`) : null].filter(Boolean).join(' · '))] : null,
@@ -73,6 +74,8 @@ export function openAppointment(appt, ctx, { onChange } = {}) {
 
   function moveEditor() {
     if (a.status === 'CANCELLED' || a.status === 'COMPLETED') return null;
+    // A seat travels with its class: the class moves as a whole (from the class drawer), not one attendee.
+    if (a.classId) return h('p', { class: 'bz-note' }, t('ეს ადგილი ჯგუფურ კლასშია — დრო და მწვრთნელი მთელ კლასს ერთად ეცვლება (გახსენი კლასი ზემოთ). სხვა კლასში გადასაყვანად გააუქმე და ჩაწერე თავიდან.', 'This seat belongs to a group class — time and trainer change for the whole class (open the class above). To move one person, cancel and book them into another class.'));
     const who = select([{ value: '', label: t('ნებისმიერი', 'Anyone') }, ...ctx.staff.map((s) => ({ value: s.id, label: s.name }))], a.staffId || '');
     const svc = select(ctx.services.map((s) => ({ value: s.id, label: `${s.name} · ${minutes(s.durationMin)}` })), a.serviceId || '');
     const time = timeField({ value: clock(a.startsAt) });
@@ -272,49 +275,70 @@ export function newAppointmentDialog(ctx, preset = {}, { onCreated } = {}) {
   const svcList = h('div', { class: 'bz-svc-pick' });
   const svcTotal = h('div', { class: 'bz-svc-total' });
   const svc = { get value() { return chosen[0] || ''; }, get values() { return [...chosen]; }, addEventListener(type, fn) { if (type === 'change') svcList.addEventListener('svc-change', fn); } };
+  const isClass = (s) => Number(s?.seats) > 1;
   function paintServices() {
     const total = chosen.map((id) => ctx.services.find((s) => s.id === id)).filter(Boolean);
     mount(svcList, ctx.services.map((s) => {
       const on = chosen.includes(s.id);
       return h('label', { class: `bz-svc-row${on ? ' on' : ''}` },
-        h('input', { type: 'checkbox', checked: on, onChange: () => { if (chosen.includes(s.id)) { if (chosen.length > 1) chosen.splice(chosen.indexOf(s.id), 1); } else if (chosen.length < 8) chosen.push(s.id); paintServices(); svcList.dispatchEvent(new Event('svc-change')); } }),
-        h('span', { class: 'name' }, s.name),
+        h('input', { type: 'checkbox', checked: on, onChange: () => {
+          // A group class is booked on its own — one seat, no other service in the same visit.
+          if (chosen.includes(s.id)) { if (chosen.length > 1) chosen.splice(chosen.indexOf(s.id), 1); } else if (isClass(s) || total.some(isClass)) chosen.splice(0, chosen.length, s.id); else if (chosen.length < 8) chosen.push(s.id);
+          paintServices(); svcList.dispatchEvent(new Event('svc-change'));
+        } }),
+        h('span', { class: 'name' }, s.name, isClass(s) ? h('span', { class: 'bz-tag bz-tag-app' }, t(`${s.seats} ადგილი`, `${s.seats} seats`)) : null),
         h('span', { class: 'meta' }, [minutes(s.durationMin), s.price != null ? gel(s.price) : null].filter(Boolean).join(' · ')));
     }));
     const mins = total.reduce((sum, s) => sum + Number(s.durationMin), 0);
     const price = total.some((s) => s.price != null) ? total.reduce((sum, s) => sum + Number(s.price ?? 0), 0) : null;
     mount(svcTotal, total.length > 1
       ? [h('b', null, t(`${total.length} სერვისი`, `${total.length} services`)), h('span', null, [minutes(mins), price != null ? gel(price) : null].filter(Boolean).join(' · '))]
-      : total.length ? h('span', { class: 'bz-sub' }, t('მონიშნე კიდევ ერთი, თუ ვიზიტი რამდენიმე სერვისს მოიცავს.', 'Tick another one when the visit holds several services.')) : null);
+      : total.length && isClass(total[0]) ? h('span', { class: 'bz-sub' }, t(`ჯგუფური კლასი — ერთ დროს ${total[0].seats} ადგილი; ეს ჩანაწერი ერთ ადგილს იკავებს.`, `Group class — ${total[0].seats} seats at one time; this booking takes one seat.`))
+        : total.length ? h('span', { class: 'bz-sub' }, t('მონიშნე კიდევ ერთი, თუ ვიზიტი რამდენიმე სერვისს მოიცავს.', 'Tick another one when the visit holds several services.')) : null);
   }
   paintServices();
   const who = select([{ value: '', label: t('ნებისმიერი', 'Anyone') }, ...ctx.staff.map((s) => ({ value: s.id, label: s.name }))], preset.staffId || '');
   const time = timeField({ value: preset.time || '', onChange: () => { chosenIso = null; paintQuick(); } });
   const date = dateField({ value: preset.date || ymd(), onChange: () => loadSlots() });
   const quick = h('div', { class: 'bz-quick' });
+  const classNote = h('div', { class: 'bz-note bz-class-note', hidden: true });
   const note = textarea({ rows: 2, placeholder: t('შიდა შენიშვნა', 'Internal note') });
   const force = h('input', { type: 'checkbox' });
   let chosenIso = preset.date && preset.time ? toIso(preset.date, preset.time) : null;
   let freeSlots = [];
+  let scheduled = false;
 
   // Under the day/time row: how many free times there are and the first few as one-tap chips; the full grid
-  // (free times tinted) opens from the time field itself.
+  // (free times tinted) opens from the time field itself. For a class, every chip says how many seats are left
+  // and the chosen time names its class.
   function paintQuick() {
+    const classy = isClass(ctx.services.find((s) => s.id === svc.value));
+    const at = time.get() ? freeSlots.find((s) => s.time === time.get()) : null;
+    classNote.hidden = !(classy && time.get());
+    if (classy && time.get()) {
+      mount(classNote, at?.classId
+        ? t(`ამ დროს კლასი უკვე არის — ${at.booked} / ${at.seats} ადგილი დაკავებულია, ${at.seatsLeft} თავისუფალი. ეს ჩანაწერი მასში ჩაიწერება.`, `A class already runs at this time — ${at.booked} / ${at.seats} seats taken, ${at.seatsLeft} free. This booking joins it.`)
+        : at ? t('ამ დროს კლასი ჯერ არ არის — ეს ჩანაწერი ახალ კლასს გახსნის, დანარჩენი ადგილები აპიდან შეივსება.', 'No class at this time yet — this booking opens a new one; the other seats fill from the app.')
+          : scheduled ? t('ეს დრო განრიგში არ არის. კლასი მხოლოდ განრიგის დროებზე იწერება — ან მონიშნე „მაინც“ და ახალი კლასი შეიქმნება.', 'This time is not on the timetable. Seats are booked only at timetable times — or tick "anyway" to open a new class.')
+            : t('ამ დროს კლასი სავსეა ან დრო დაკავებულია.', 'The class at this time is full or the time is taken.'));
+    }
     if (!freeSlots.length) return;
     mount(quick,
-      h('span', null, t(`${freeSlots.length} თავისუფალი დრო`, `${freeSlots.length} free ${freeSlots.length === 1 ? 'time' : 'times'}`)),
-      freeSlots.slice(0, 7).map((s) => h('button', { type: 'button', class: time.get() === s.time ? 'on' : '', onClick: () => { time.set(s.time); chosenIso = s.startsAt; paintQuick(); } }, s.time)),
+      h('span', null, classy ? t(`${freeSlots.length} კლასი / დრო`, `${freeSlots.length} ${freeSlots.length === 1 ? 'class / time' : 'classes / times'}`) : t(`${freeSlots.length} თავისუფალი დრო`, `${freeSlots.length} free ${freeSlots.length === 1 ? 'time' : 'times'}`)),
+      freeSlots.slice(0, 7).map((s) => h('button', { type: 'button', class: time.get() === s.time ? 'on' : '', title: s.classId ? t(`კლასი · ${s.seatsLeft} ადგილი დარჩა`, `Class · ${s.seatsLeft} seats left`) : undefined, onClick: () => { time.set(s.time); chosenIso = s.startsAt; paintQuick(); } }, s.time, s.classId ? h('small', null, ` · ${s.seatsLeft}`) : null)),
       freeSlots.length > 7 ? h('button', { type: 'button', class: 'more', onClick: () => time.button.click() }, t('ყველა…', 'All…')) : null);
   }
   async function loadSlots() {
     freeSlots = [];
-    if (!svc.value || !date.get()) { time.configure({ free: null }); mount(quick); return; }
+    scheduled = false;
+    if (!svc.value || !date.get()) { time.configure({ free: null }); mount(quick); classNote.hidden = true; return; }
     mount(quick, h('span', null, t('ვეძებ თავისუფალ დროებს…', 'Looking for free times…')));
     try {
       const r = await biz.get('/availability', { serviceIds: svc.values.join(','), date: date.get(), staffId: who.value || undefined });
       freeSlots = r.slots;
+      scheduled = Boolean(r.scheduled);
       time.configure({ free: new Set(r.slots.map((s) => s.time)) });
-      if (!r.slots.length) { mount(quick, h('span', null, r.reason === 'closed' ? t('ამ დღეს დახურულია — დროის არჩევა მაინც შეიძლება.', 'Closed this day — a time can still be picked.') : t('თავისუფალი დრო არ არის — აირჩიე მაინც და მონიშნე „მაინც“.', 'No free time — pick one anyway and tick "anyway".'))); return; }
+      if (!r.slots.length) { mount(quick, h('span', null, r.reason === 'closed' ? t('ამ დღეს დახურულია — დროის არჩევა მაინც შეიძლება.', 'Closed this day — a time can still be picked.') : scheduled ? t('ამ დღეს განრიგში კლასი არ არის.', 'No class on the timetable this day.') : t('თავისუფალი დრო არ არის — აირჩიე მაინც და მონიშნე „მაინც“.', 'No free time — pick one anyway and tick "anyway".'))); paintQuick(); return; }
       paintQuick();
     } catch (e) { mount(quick, h('span', null, e?.message || '')); }
   }
@@ -344,6 +368,7 @@ export function newAppointmentDialog(ctx, preset = {}, { onCreated } = {}) {
   field(t('თანამშრომელი', 'Person'), who),
   h('div', { class: 'form-row' }, field(t('დღე', 'Day'), date.el), field(t('დრო', 'Time'), time.el)),
   quick,
+  classNote,
   field(t('შენიშვნა', 'Note'), note),
   h('label', { class: 'bz-inline', style: { fontSize: '13px', color: 'var(--text2)' } }, force, t('მაინც ჩაწერე, თუ დრო დაკავებულია (ორმაგი ჩანაწერი)', 'Book anyway even if the time is taken (double-booking)')),
   err, h('button', { type: 'submit', hidden: true }));

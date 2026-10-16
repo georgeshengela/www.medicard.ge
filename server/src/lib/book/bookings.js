@@ -6,7 +6,7 @@
 import { Prisma } from '@prisma/client';
 import { prisma } from '../prisma.js';
 import { bookError, businessCard, discountApplies, discountPublic, discountedPrice, imageUrl, newId, normalizePhone, normalizeSettings } from './catalog.js';
-import { canCancelFree, daysWithSlots, findConflict, isOfferedSlot, resourceConflict, resourceIdsFor, slotsForDay } from './availability.js';
+import { canCancelFree, classAt, classBlocks, daysWithSlots, findConflict, isOfferedSlot, resourceConflict, resourceIdsFor, seatsLeft, seatsOf, slotsForDay } from './availability.js';
 import { addDaysYmd, isYmd, tbilisiInstant, tbilisiYmd } from './time.js';
 import { businessRow, requireBusiness } from './store.js';
 import * as loyalty from './loyalty.js';
@@ -26,17 +26,28 @@ const money = (v) => (v == null || v === '' ? null : Number.isFinite(Number(v)) 
 
 // ——— availability ———
 
+/** Open classes of a business touching a window, with their live attendee count — the engine's `classes`. */
+export async function classRows({ businessId, from, to }, db) {
+  const rows = await db.$queryRaw`SELECT c.id, c."serviceId", c."staffId", c."startsAt", c."endsAt", c.seats, c."resourceIds", c.status,
+      (SELECT COUNT(*)::int FROM "BookAppointment" x WHERE x."classId" = c.id AND x.status <> 'CANCELLED') AS booked
+    FROM "BookClass" c WHERE c."businessId" = ${businessId} AND c.status = 'OPEN' AND c."endsAt" > ${from} AND c."startsAt" < ${to}`;
+  return rows.map((c) => ({ ...c, startsAt: c.startsAt.toISOString(), endsAt: c.endsAt.toISOString(), seats: Number(c.seats) || 1, booked: Number(c.booked) || 0, resourceIds: Array.isArray(c.resourceIds) ? c.resourceIds : [] }));
+}
+
 /**
- * Staff, live appointments (with the rooms / devices they hold), time off, the live resources and the service →
- * resource links of a business in a window — what the availability engine reads.
+ * Staff, live appointments (with the rooms / devices they hold), time off, the live resources, the service →
+ * resource links, the open classes of a business in a window and which services have a timetable at all —
+ * what the availability engine reads.
  */
 export async function context({ businessId, from, to }, db) {
-  const [staff, appointments, timeOff, resources, links] = await Promise.all([
+  const [staff, appointments, timeOff, resources, links, classes, scheduled] = await Promise.all([
     db.$queryRaw`SELECT * FROM "BookStaff" WHERE "businessId" = ${businessId} AND active`,
-    db.$queryRaw`SELECT id, "staffId", status, "startsAt", "endsAt", "resourceIds" FROM "BookAppointment" WHERE "businessId" = ${businessId} AND status <> 'CANCELLED' AND "endsAt" > ${from} AND "startsAt" < ${to}`,
+    db.$queryRaw`SELECT id, "staffId", status, "startsAt", "endsAt", "resourceIds", "classId" FROM "BookAppointment" WHERE "businessId" = ${businessId} AND status <> 'CANCELLED' AND "endsAt" > ${from} AND "startsAt" < ${to}`,
     db.$queryRaw`SELECT "staffId", "startsAt", "endsAt" FROM "BookTimeOff" WHERE "businessId" = ${businessId} AND "endsAt" > ${from} AND "startsAt" < ${to}`,
     db.$queryRaw`SELECT id, name, kind, capacity, active FROM "BookResource" WHERE "businessId" = ${businessId} AND active`,
     db.$queryRaw`SELECT "serviceId", "resourceId" FROM "BookServiceResource" WHERE "businessId" = ${businessId}`,
+    classRows({ businessId, from, to }, db),
+    db.$queryRaw`SELECT DISTINCT "serviceId" FROM "BookClass" WHERE "businessId" = ${businessId} AND status = 'OPEN' AND planned AND "startsAt" > NOW()`,
   ]);
   return {
     staff,
@@ -44,6 +55,9 @@ export async function context({ businessId, from, to }, db) {
     timeOff: timeOff.map((o) => ({ ...o, startsAt: o.startsAt.toISOString(), endsAt: o.endsAt.toISOString() })),
     resources: resources.map((r) => ({ ...r, capacity: Number(r.capacity) || 1 })),
     links,
+    classes,
+    /** Services with at least one *planned* class ahead (by the business, not formed by a booking): their free grid is not offered, only the timetable. */
+    scheduledServiceIds: new Set(scheduled.map((r) => r.serviceId)),
   };
 }
 
@@ -70,16 +84,22 @@ export async function serviceRows(businessId, ids, db = prisma) {
   return out;
 }
 
-/** What the availability engine sees: one service, or the bundle as one block of time, plus every room / device it needs. */
-export function bundleOf(services, links = []) {
+/**
+ * What the availability engine sees: one service, or the bundle as one block of time, plus every room / device it
+ * needs. A single service with `seats` > 1 is a class (a bundle never is); `scheduled` says it has a timetable.
+ */
+export function bundleOf(services, links = [], scheduledServiceIds = new Set()) {
   const first = services[0];
   const ids = services.map((s) => s.id);
+  const single = services.length === 1;
   return {
     id: first.id,
     ids,
     durationMin: services.reduce((sum, s) => sum + Number(s.durationMin), 0),
     bufferMin: Number(services[services.length - 1].bufferMin ?? 0),
     resourceIds: resourceIdsFor(links, ids),
+    seats: single ? seatsOf(first).seats : 1,
+    scheduled: single && seatsOf(first).seats > 1 && scheduledServiceIds.has(first.id),
   };
 }
 
@@ -91,9 +111,9 @@ export async function availability({ businessId, serviceId, serviceIds, date, st
   const from = tbilisiInstant(addDaysYmd(date, -1), 0);
   const to = tbilisiInstant(addDaysYmd(date, 2), 0);
   const ctx = await context({ businessId: business.id, from, to }, db);
-  const service = bundleOf(services, ctx.links);
-  const result = slotsForDay({ business, service, staff: ctx.staff, appointments: ctx.appointments, timeOff: ctx.timeOff, resources: ctx.resources, date, now, staffId, ignoreLead });
-  return { date, serviceId: service.id, serviceIds: service.ids, durationMin: service.durationMin, resourceIds: service.resourceIds, ...result };
+  const service = bundleOf(services, ctx.links, ctx.scheduledServiceIds);
+  const result = slotsForDay({ business, service, staff: ctx.staff, appointments: ctx.appointments, timeOff: ctx.timeOff, resources: ctx.resources, classes: ctx.classes, date, now, staffId, ignoreLead });
+  return { date, serviceId: service.id, serviceIds: service.ids, durationMin: service.durationMin, resourceIds: service.resourceIds, seats: service.seats, scheduled: service.scheduled, ...result };
 }
 
 /** Which of the next `days` days have a free slot (the date strip). */
@@ -103,8 +123,8 @@ export async function dateStrip({ businessId, serviceId, serviceIds, from = null
   const start = from && isYmd(from) ? from : tbilisiYmd(now);
   const n = Math.min(60, Math.max(1, Number(days) || 14));
   const ctx = await context({ businessId: business.id, from: tbilisiInstant(addDaysYmd(start, -1), 0), to: tbilisiInstant(addDaysYmd(start, n + 1), 0) }, db);
-  const service = bundleOf(services, ctx.links);
-  return { from: start, days: daysWithSlots({ business, service, staff: ctx.staff, appointments: ctx.appointments, timeOff: ctx.timeOff, resources: ctx.resources, from: start, now, staffId, days: n }) };
+  const service = bundleOf(services, ctx.links, ctx.scheduledServiceIds);
+  return { from: start, days: daysWithSlots({ business, service, staff: ctx.staff, appointments: ctx.appointments, timeOff: ctx.timeOff, resources: ctx.resources, classes: ctx.classes, from: start, now, staffId, days: n }) };
 }
 
 // ——— appointments ———
@@ -136,6 +156,10 @@ export function appointmentPublic(row, { lang = 'ka', now = new Date() } = {}) {
     staffColor: row.staffColor ?? null,
     resourceIds: Array.isArray(row.resourceIds) ? row.resourceIds : [],
     resources: Array.isArray(row.resources) ? row.resources.map((r) => ({ id: r.id, name: r.name, kind: r.kind })) : [],
+    /** A seat in a group class: the class and its seats taken ÷ seats (null for a plain visit). */
+    classId: row.classId ?? null,
+    classSeats: row.classId && row.classInfo?.seats != null ? Number(row.classInfo.seats) : null,
+    classBooked: row.classId && row.classInfo?.booked != null ? Number(row.classInfo.booked) : null,
     clientId: row.clientId ?? null,
     clientUserId: row.clientUserId ?? null,
     clientName: row.clientName,
@@ -163,7 +187,8 @@ export function appointmentPublic(row, { lang = 'ka', now = new Date() } = {}) {
 
 const ITEMS_JSON = sql`(SELECT COALESCE(json_agg(json_build_object('id', i."serviceId", 'name', i."serviceName", 'durationMin', i."durationMin", 'price', i.price, 'discountAmount', i."discountAmount") ORDER BY i."sortOrder"), '[]'::json) FROM "BookAppointmentItem" i WHERE i."appointmentId" = a.id)`;
 const RESOURCES_JSON = sql`(SELECT COALESCE(json_agg(json_build_object('id', r.id, 'name', r.name, 'kind', r.kind) ORDER BY r."sortOrder", r.name), '[]'::json) FROM "BookResource" r WHERE r."businessId" = a."businessId" AND a."resourceIds" @> to_jsonb(r.id))`;
-export const APPOINTMENT_SELECT = sql`SELECT a.*, s.name AS "staffName", s.color AS "staffColor", ${ITEMS_JSON} AS items, ${RESOURCES_JSON} AS resources,
+const CLASS_JSON = sql`(SELECT json_build_object('seats', c.seats, 'status', c.status, 'booked', (SELECT COUNT(*) FROM "BookAppointment" x WHERE x."classId" = c.id AND x.status <> 'CANCELLED')) FROM "BookClass" c WHERE c.id = a."classId")`;
+export const APPOINTMENT_SELECT = sql`SELECT a.*, s.name AS "staffName", s.color AS "staffColor", ${ITEMS_JSON} AS items, ${RESOURCES_JSON} AS resources, ${CLASS_JSON} AS "classInfo",
   b.name AS "businessName", b."nameKa" AS "businessNameKa", b.slug AS "businessSlug", b.category AS "businessCategory", b.address AS "businessAddress", b."addressKa" AS "businessAddressKa",
   b.phone AS "businessPhone", b.lat AS "businessLat", b.lng AS "businessLng", b."logoImageId" AS "businessLogoImageId", b."coverImageId" AS "businessCoverImageId", b.settings AS "businessSettings"
   FROM "BookAppointment" a JOIN "BookBusiness" b ON b.id = a."businessId" LEFT JOIN "BookStaff" s ON s.id = a."staffId"`;
@@ -228,16 +253,28 @@ export async function createAppointment({ businessId, serviceId, serviceIds, sta
     }
     const services = await serviceRows(business.id, normalizeServiceIds(serviceIds, serviceId), tx);
     if (!byBusiness && services.some((x) => !x.online)) throw bookError(404, 'სერვისი ვერ მოიძებნა.', 'SERVICE_NOT_FOUND', 'Service not found.');
+    // A group class is booked on its own: one service, one seat per booking.
+    const classService = services.length === 1 && seatsOf(services[0]).seats > 1 ? services[0] : null;
+    if (!classService && services.some((x) => seatsOf(x).seats > 1)) throw bookError(400, 'ჯგუფური კლასი ცალკე იჯავშნება — სხვა სერვისებთან ერთად ვერა.', 'CLASS_ALONE', 'A group class is booked on its own, not together with other services.');
     const date = tbilisiYmd(at);
     const ctx = await context({ businessId: business.id, from: tbilisiInstant(addDaysYmd(date, -1), 0), to: tbilisiInstant(addDaysYmd(date, 2), 0) }, tx);
-    const service = bundleOf(services, ctx.links);
-    const offered = slotsForDay({ business, service, staff: ctx.staff, appointments: ctx.appointments, timeOff: ctx.timeOff, resources: ctx.resources, date, now, staffId: staffId || null, ignoreLead: byBusiness });
+    const service = bundleOf(services, ctx.links, ctx.scheduledServiceIds);
+    // Classes block their trainer and hold their rooms once, like bookings.
+    const blockers = [...ctx.appointments, ...classBlocks(ctx.classes)];
+    const offered = slotsForDay({ business, service, staff: ctx.staff, appointments: ctx.appointments, timeOff: ctx.timeOff, resources: ctx.resources, classes: ctx.classes, date, now, staffId: staffId || null, ignoreLead: byBusiness });
     const endsAt = new Date(at.getTime() + Number(service.durationMin) * MIN);
+    // A class already running at this minute (same service, same trainer when one is chosen): take a seat in it.
+    // A full class refuses — only a forced walk-in by the business may overbook it.
+    const joining = classService ? classAt(ctx.classes, { serviceId: classService.id, startsAt: at, staffId: staffId || null }) : null;
+    if (joining && seatsLeft(joining) <= 0 && !(force && byBusiness)) {
+      throw bookError(409, `კლასი შევსებულია — ${seatsOf(joining).seats}-ვე ადგილი დაკავებულია. აირჩიე სხვა დრო.`, 'CLASS_FULL', `The class is full — all ${seatsOf(joining).seats} seats are taken. Pick another time.`);
+    }
     // The room / device the services need must still have a free unit — checked first, so the answer names the
-    // room instead of a generic „taken“ (a forced walk-in may double up on purpose).
-    const full = resourceConflict(ctx.appointments, ctx.resources, { resourceIds: service.resourceIds, startsAt: at, endsAt, bufferMin: Number(service.bufferMin ?? 0) });
+    // room instead of a generic „taken“ (a forced walk-in may double up on purpose). A seat in a class needs no
+    // room of its own: the class holds it.
+    const full = joining ? null : resourceConflict(blockers, ctx.resources, { resourceIds: service.resourceIds, startsAt: at, endsAt, bufferMin: Number(service.bufferMin ?? 0) });
     if (full && !(force && byBusiness)) throw bookError(409, `ამ დროს „${full.resource.name}“ დაკავებულია — აირჩიე სხვა დრო.`, 'RESOURCE_TAKEN', `"${full.resource.name}" is taken at this time — pick another one.`);
-    let person = staffId || null;
+    let person = joining ? joining.staffId : staffId || null;
     if (!force || !byBusiness) {
       if (!isOfferedSlot(offered, at, person)) {
         throw bookError(409, 'ეს დრო უკვე დაკავებულია ან აღარ არის თავისუფალი. აირჩიე სხვა დრო.', 'SLOT_TAKEN', 'This time was just taken or is no longer free. Pick another one.');
@@ -249,10 +286,11 @@ export async function createAppointment({ businessId, serviceId, serviceIds, sta
         person = [...slot.staffIds].sort((x, y) => (load.get(x) ?? 0) - (load.get(y) ?? 0))[0] ?? null;
       }
     }
-    if (person) {
-      const clash = findConflict(ctx.appointments, { staffId: person, startsAt: at, endsAt, bufferMin: Number(service.bufferMin ?? 0) });
+    if (person && !joining) {
+      const clash = findConflict(blockers, { staffId: person, startsAt: at, endsAt, bufferMin: Number(service.bufferMin ?? 0) });
       if (clash && !(force && byBusiness)) throw bookError(409, 'ეს დრო უკვე დაკავებულია.', 'SLOT_TAKEN', 'This time is already taken.');
     }
+    if (classService && !joining && !person) throw bookError(400, 'კლასს მწვრთნელი სჭირდება — აირჩიე თანამშრომელი.', 'CLASS_STAFF_REQUIRED', 'A class needs a trainer — pick a person.');
     const name = cleanText(clientName, 120) ?? cleanText(user?.fullName, 120) ?? 'კლიენტი';
     const phone = normalizePhone(clientPhone) ?? normalizePhone(user?.phone);
     if (!byBusiness && !phone) throw bookError(403, 'ჯავშნისთვის ტელეფონის ნომერი საჭიროა — ბიზნესი ასე დაგიკავშირდება.', 'PHONE_VERIFICATION_REQUIRED', 'A phone number is needed to book — this is how the business reaches you.');
@@ -271,8 +309,16 @@ export async function createAppointment({ businessId, serviceId, serviceIds, sta
     const serviceLabel = items.map((i) => i.serviceName).join(' + ');
     const id = newId();
     const status = byBusiness || settings.autoConfirm ? 'CONFIRMED' : 'PENDING';
-    await tx.$executeRaw`INSERT INTO "BookAppointment" (id, "businessId", "serviceId", "serviceName", "staffId", "clientId", "clientUserId", "clientName", "clientPhone", "startsAt", "endsAt", "durationMin", status, source, price, "discountId", "discountAmount", note, "resourceIds")
-      VALUES (${id}, ${business.id}, ${service.id}, ${serviceLabel}, ${person}, ${clientId}, ${user?.id ?? null}, ${name}, ${phone}, ${at}, ${endsAt}, ${Number(service.durationMin)}, ${status}, ${byBusiness ? 'BUSINESS' : source}, ${price}, ${firstDiscount?.discountId ?? null}, ${firstDiscount ? discountTotal : null}, ${cleanText(note, 500)}, ${JSON.stringify(service.resourceIds)}::jsonb)`;
+    // The first booking of a class forms it: the class row holds the trainer's time and the rooms, once.
+    let classId = joining?.id ?? null;
+    if (classService && !classId) {
+      classId = newId();
+      await tx.$executeRaw`INSERT INTO "BookClass" (id, "businessId", "serviceId", "staffId", "startsAt", "endsAt", seats, "resourceIds")
+        VALUES (${classId}, ${business.id}, ${classService.id}, ${person}, ${at}, ${endsAt}, ${seatsOf(classService).seats}, ${JSON.stringify(service.resourceIds)}::jsonb)`;
+    }
+    const held = classService ? [] : service.resourceIds;
+    await tx.$executeRaw`INSERT INTO "BookAppointment" (id, "businessId", "serviceId", "serviceName", "staffId", "clientId", "clientUserId", "clientName", "clientPhone", "startsAt", "endsAt", "durationMin", status, source, price, "discountId", "discountAmount", note, "resourceIds", "classId")
+      VALUES (${id}, ${business.id}, ${service.id}, ${serviceLabel}, ${person}, ${clientId}, ${user?.id ?? null}, ${name}, ${phone}, ${at}, ${endsAt}, ${Number(service.durationMin)}, ${status}, ${byBusiness ? 'BUSINESS' : source}, ${price}, ${firstDiscount?.discountId ?? null}, ${firstDiscount ? discountTotal : null}, ${cleanText(note, 500)}, ${JSON.stringify(held)}::jsonb, ${classId})`;
     for (const it of items) {
       await tx.$executeRaw`INSERT INTO "BookAppointmentItem" (id, "appointmentId", "serviceId", "serviceName", "durationMin", price, "discountId", "discountAmount", "sortOrder") VALUES (${it.id}, ${id}, ${it.serviceId}, ${it.serviceName}, ${it.durationMin}, ${it.price}, ${it.discountId}, ${it.discountAmount}, ${it.sortOrder})`;
       if (it.discountId) await tx.$executeRaw`UPDATE "BookDiscount" SET "usedCount" = "usedCount" + 1 WHERE id = ${it.discountId}`;
@@ -384,22 +430,31 @@ export async function updateByBusiness({ businessId, id, patch = {}, actorUserId
     }
     const endsAt = new Date(startsAt.getTime() + durationMin * MIN);
     const moved = startsAt.getTime() !== new Date(row.startsAt).getTime() || endsAt.getTime() !== new Date(row.endsAt).getTime() || staffId !== row.staffId;
+    // A seat in a class travels with the class: the whole class moves (classes.updateClass), or the attendee
+    // cancels and books another one. Their own row is never moved or given another service here.
+    if ((moved || serviceChanged) && row.classId) throw bookError(409, 'კლასის მონაწილე ცალკე არ გადადის — გადაიტანე მთელი კლასი, ან გააუქმე ეს ჯავშანი და ჩაწერე სხვა კლასში.', 'CLASS_MEMBER', 'An attendee does not move on their own — move the whole class, or cancel this booking and book another class.');
+    const around = { from: new Date(startsAt.getTime() - 4 * 3600_000), to: new Date(endsAt.getTime() + 4 * 3600_000) };
     if (moved) {
       if (staffId && !patch.force) {
-        const others = await tx.$queryRaw`SELECT id, "staffId", status, "startsAt", "endsAt" FROM "BookAppointment" WHERE "businessId" = ${businessId} AND "staffId" = ${staffId} AND id <> ${id} AND status <> 'CANCELLED' AND "endsAt" > ${new Date(startsAt.getTime() - 4 * 3600_000)} AND "startsAt" < ${new Date(endsAt.getTime() + 4 * 3600_000)}`;
-        const clash = findConflict(others.map((a) => ({ ...a, startsAt: a.startsAt.toISOString(), endsAt: a.endsAt.toISOString() })), { staffId, startsAt, endsAt });
+        const [others, classes] = await Promise.all([
+          tx.$queryRaw`SELECT id, "staffId", status, "startsAt", "endsAt" FROM "BookAppointment" WHERE "businessId" = ${businessId} AND "staffId" = ${staffId} AND id <> ${id} AND status <> 'CANCELLED' AND "endsAt" > ${around.from} AND "startsAt" < ${around.to}`,
+          classRows({ businessId, ...around }, tx),
+        ]);
+        const clash = findConflict([...others.map((a) => ({ ...a, startsAt: a.startsAt.toISOString(), endsAt: a.endsAt.toISOString() })), ...classBlocks(classes)], { staffId, startsAt, endsAt });
         if (clash) throw bookError(409, `ამ დროს ${row.staffName ?? 'თანამშრომელს'} სხვა ჩანაწერი აქვს.`, 'SLOT_TAKEN', 'This person already has another appointment then.');
       }
       sets.push(sql`"startsAt" = ${startsAt}`, sql`"endsAt" = ${endsAt}`);
       if (row.status !== 'CANCELLED') sets.push(sql`"remindedDay" = FALSE`, sql`"remindedSoon" = FALSE`);
     }
-    // A moved booking, or one given another service, must still find a free unit of every room / device it needs.
+    // A moved booking, or one given another service, must still find a free unit of every room / device it needs
+    // (a class holds its rooms once, so its block counts too).
     if ((moved || serviceChanged) && resourceIds.length && !patch.force && row.status !== 'CANCELLED') {
-      const [resources, others] = await Promise.all([
+      const [resources, others, classes] = await Promise.all([
         tx.$queryRaw`SELECT id, name, kind, capacity, active FROM "BookResource" WHERE "businessId" = ${businessId} AND active`,
-        tx.$queryRaw`SELECT id, status, "startsAt", "endsAt", "resourceIds" FROM "BookAppointment" WHERE "businessId" = ${businessId} AND id <> ${id} AND status <> 'CANCELLED' AND "endsAt" > ${new Date(startsAt.getTime() - 4 * 3600_000)} AND "startsAt" < ${new Date(endsAt.getTime() + 4 * 3600_000)}`,
+        tx.$queryRaw`SELECT id, status, "startsAt", "endsAt", "resourceIds" FROM "BookAppointment" WHERE "businessId" = ${businessId} AND id <> ${id} AND status <> 'CANCELLED' AND "endsAt" > ${around.from} AND "startsAt" < ${around.to}`,
+        classRows({ businessId, ...around }, tx),
       ]);
-      const full = resourceConflict(others.map((a) => ({ ...a, startsAt: a.startsAt.toISOString(), endsAt: a.endsAt.toISOString() })), resources, { resourceIds, startsAt, endsAt, ignoreId: id });
+      const full = resourceConflict([...others.map((a) => ({ ...a, startsAt: a.startsAt.toISOString(), endsAt: a.endsAt.toISOString() })), ...classBlocks(classes)], resources, { resourceIds, startsAt, endsAt, ignoreId: id });
       if (full) throw bookError(409, `ამ დროს „${full.resource.name}“ დაკავებულია.`, 'RESOURCE_TAKEN', `"${full.resource.name}" is taken at this time.`);
     }
     if (patch.price !== undefined) sets.push(sql`price = ${money(patch.price)}`);
@@ -413,6 +468,12 @@ export async function updateByBusiness({ businessId, id, patch = {}, actorUserId
     if (patch.status !== undefined && patch.status !== row.status) {
       if (!STATUS_FLOW[row.status]?.includes(patch.status)) throw bookError(409, `სტატუსი „${row.status}“ → „${patch.status}“ არ შეიძლება.`, 'BAD_STATUS', `Cannot change status from ${row.status} to ${patch.status}.`);
       status = patch.status;
+      // Bringing a cancelled seat back needs the class still open with a seat free.
+      if (status === 'CONFIRMED' && row.status === 'CANCELLED' && row.classId && !patch.force) {
+        const [c] = await tx.$queryRaw`SELECT c.seats, c.status, (SELECT COUNT(*)::int FROM "BookAppointment" x WHERE x."classId" = c.id AND x.status <> 'CANCELLED') AS booked FROM "BookClass" c WHERE c.id = ${row.classId}`;
+        if (!c || c.status !== 'OPEN') throw bookError(409, 'ეს კლასი გაუქმებულია.', 'CLASS_CANCELLED', 'This class was cancelled.');
+        if (seatsLeft(c) <= 0) throw bookError(409, 'კლასი შევსებულია — თავისუფალი ადგილი აღარ არის.', 'CLASS_FULL', 'The class is full — no seat is free.');
+      }
       sets.push(sql`status = ${status}`);
       if (status === 'CANCELLED') sets.push(sql`"cancelledBy" = 'BUSINESS'`, sql`"cancelReason" = ${cleanText(patch.cancelReason, 300)}`, sql`"cancelledAt" = CURRENT_TIMESTAMP`);
       if (status === 'COMPLETED') sets.push(sql`"completedAt" = CURRENT_TIMESTAMP`);
@@ -624,8 +685,8 @@ export async function deleteTransaction({ businessId, id }, db = prisma) {
 // ——— raw numbers for analytics (aggregated in analytics.js) ———
 
 export async function analyticsRaw({ businessId, from, to }, db = prisma) {
-  const [appointments, events, transactions, staff, timeOff, clients, reviews, business, resources] = await Promise.all([
-    db.$queryRaw`SELECT a.id, a."staffId", a."serviceId", a."serviceName", ${ITEMS_JSON} AS items, a."clientId", a."clientUserId", a.status, a.source, a.price, a."discountAmount", a."startsAt", a."endsAt", a."durationMin", a."createdAt", a."resourceIds" FROM "BookAppointment" a WHERE a."businessId" = ${businessId} AND a."startsAt" >= ${from} AND a."startsAt" < ${to}`,
+  const [appointments, events, transactions, staff, timeOff, clients, reviews, business, resources, classes] = await Promise.all([
+    db.$queryRaw`SELECT a.id, a."staffId", a."serviceId", a."serviceName", ${ITEMS_JSON} AS items, a."clientId", a."clientUserId", a.status, a.source, a.price, a."discountAmount", a."startsAt", a."endsAt", a."durationMin", a."createdAt", a."resourceIds", a."classId" FROM "BookAppointment" a WHERE a."businessId" = ${businessId} AND a."startsAt" >= ${from} AND a."startsAt" < ${to}`,
     db.$queryRaw`SELECT kind, "viewerHash", at FROM "BookEvent" WHERE "businessId" = ${businessId} AND at >= ${from} AND at < ${to}`,
     db.$queryRaw`SELECT kind, category, amount, method, at, "staffId" FROM "BookTransaction" WHERE "businessId" = ${businessId} AND at >= ${from} AND at < ${to}`,
     db.$queryRaw`SELECT id, name, color, schedule, active, bookable FROM "BookStaff" WHERE "businessId" = ${businessId}`,
@@ -634,8 +695,9 @@ export async function analyticsRaw({ businessId, from, to }, db = prisma) {
     db.$queryRaw`SELECT rating, "createdAt" FROM "BookReview" WHERE "businessId" = ${businessId} AND NOT hidden AND "createdAt" >= ${from} AND "createdAt" < ${to}`,
     businessRow(businessId, db),
     db.$queryRaw`SELECT id, name, kind, capacity, active, "sortOrder" FROM "BookResource" WHERE "businessId" = ${businessId} AND active ORDER BY "sortOrder", name`,
+    db.$queryRaw`SELECT id, "serviceId", "staffId", "startsAt", "endsAt", seats, "resourceIds", status FROM "BookClass" WHERE "businessId" = ${businessId} AND status = 'OPEN' AND "startsAt" >= ${from} AND "startsAt" < ${to}`,
   ]);
-  return { appointments, events, transactions, staff, timeOff, clients, reviews, business, resources };
+  return { appointments, events, transactions, staff, timeOff, clients, reviews, business, resources, classes };
 }
 
 /** The numbers on the owner's overview page: today, this week, what needs attention. */

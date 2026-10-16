@@ -4,6 +4,9 @@
  *   on the business's slot grid, not before now + lead time, not beyond the horizon,
  *   and only while every room / device the service needs still has a free unit (`resources`, capacity-aware).
  * „Any staff“ = the union over every person who performs the service. Tested in availability.test.js.
+ * Group classes (`service.seats` > 1): a `BookClass` row blocks its trainer like a booking and holds its rooms once,
+ * and the same service is offered into it (a „join“ slot with `classId`, `seats`, `seatsLeft`) while a seat is free.
+ * A class service with a timetable (`service.scheduled`) offers only its planned classes, never the free grid.
  */
 import { dayRanges, normalizeSettings } from './catalog.js';
 import { addDaysYmd, daysBetweenYmd, tbilisiInstant, tbilisiYmd, weekdayOfYmd } from './time.js';
@@ -64,6 +67,33 @@ export function resourceIdsFor(links, serviceIds) {
 }
 
 const holdsResource = (a, id) => Array.isArray(a?.resourceIds) && a.resourceIds.includes(id);
+const iso = (v) => (v instanceof Date ? v : new Date(v)).toISOString();
+const clockLabel = (start) => `${String(Math.floor((start / 60) % 24)).padStart(2, '0')}:${String(start % 60).padStart(2, '0')}`;
+
+/** Seats of a class: how many it has and how many are still free (live attendees never push it below zero). */
+export function seatsOf(cls) {
+  const seats = Math.max(1, Math.round(Number(cls?.seats)) || 1);
+  const booked = Math.max(0, Math.round(Number(cls?.booked)) || 0);
+  return { seats, booked, left: Math.max(0, seats - booked) };
+}
+export const seatsLeft = (cls) => seatsOf(cls).left;
+
+/**
+ * A planned or formed class as the engine sees it: one block on the trainer's time (like a booking) that holds
+ * the class's rooms exactly once — the attendees' own rows hold none. Cancelled classes block nothing.
+ */
+export function classBlocks(classes) {
+  return (classes ?? []).filter((c) => c && c.status !== 'CANCELLED').map((c) => ({
+    id: `class:${c.id}`, classId: c.id, staffId: c.staffId ?? null, status: 'CONFIRMED', startsAt: iso(c.startsAt), endsAt: iso(c.endsAt), resourceIds: Array.isArray(c.resourceIds) ? c.resourceIds : [], isClass: true,
+  }));
+}
+
+/** The open class of `serviceId` that starts exactly at `startsAt` (and belongs to `staffId` when given); the one with most seats free wins. */
+export function classAt(classes, { serviceId, startsAt, staffId = null }) {
+  const at = new Date(startsAt).getTime();
+  const same = (classes ?? []).filter((c) => c && c.status !== 'CANCELLED' && c.serviceId === serviceId && new Date(c.startsAt).getTime() === at && (!staffId || c.staffId === staffId));
+  return same.sort((a, b) => seatsLeft(b) - seatsLeft(a))[0] ?? null;
+}
 
 /**
  * Which needed resource has every unit taken in [startsAt, endsAt) (buffer on both sides, like the person check)?
@@ -95,13 +125,14 @@ export function resourceConflict(appointments, resources, { resourceIds = [], st
  * @param {object[]} args.appointments  on that day (and the night before), any status but CANCELLED: [{ staffId, startsAt, endsAt, resourceIds? }]
  * @param {object[]} args.timeOff [{ staffId|null, startsAt, endsAt }]
  * @param {object[]} [args.resources]  the business's live rooms / devices [{ id, capacity, active }] — a start is refused while a needed one is full
+ * @param {object[]} [args.classes]  open classes touching the day [{ id, serviceId, staffId, startsAt, endsAt, seats, booked, resourceIds, status }]
  * @param {string} args.date  YYYY-MM-DD (Tbilisi)
  * @param {Date} [args.now]
  * @param {string|null} [args.staffId]  a chosen person, or null for anyone
  * @param {boolean} [args.ignoreLead]  the business books for a walk-in (no lead time, no horizon)
- * @returns {{ slots: Array<{ time: string, startsAt: string, staffIds: string[] }>, closed: boolean, reason?: string }}
+ * @returns {{ slots: Array<{ time: string, startsAt: string, staffIds: string[], classId?: string, seats?: number, seatsLeft?: number, booked?: number }>, closed: boolean, reason?: string }}
  */
-export function slotsForDay({ business, service, staff, appointments = [], timeOff = [], resources = [], date, now = new Date(), staffId = null, ignoreLead = false }) {
+export function slotsForDay({ business, service, staff, appointments = [], timeOff = [], resources = [], classes = [], date, now = new Date(), staffId = null, ignoreLead = false }) {
   const settings = normalizeSettings(business?.settings);
   const weekday = weekdayOfYmd(date);
   const today = tbilisiYmd(now);
@@ -121,25 +152,36 @@ export function slotsForDay({ business, service, staff, appointments = [], timeO
   if (!people.length) return { slots: [], closed: true, reason: staffId ? 'staff' : 'no-staff' };
 
   const toMin = (iso) => (new Date(iso).getTime() - dayStart) / MIN;
+  // Classes block their trainer and hold their rooms like bookings do; attendee rows add nothing on top.
+  const blockers = [...appointments, ...classBlocks(classes)];
   // A room or device is shared by everyone: whether a start is blocked by one is the same for every person.
   const needed = Array.isArray(service?.resourceIds) ? service.resourceIds.filter(Boolean) : [];
   const resourceFull = new Map();
   const blockedByResource = (start) => {
     if (!needed.length) return false;
-    if (!resourceFull.has(start)) resourceFull.set(start, Boolean(resourceConflict(appointments, resources, { resourceIds: needed, startsAt: dayStart + start * MIN, endsAt: dayStart + (start + duration) * MIN, bufferMin: buffer })));
+    if (!resourceFull.has(start)) resourceFull.set(start, Boolean(resourceConflict(blockers, resources, { resourceIds: needed, startsAt: dayStart + start * MIN, endsAt: dayStart + (start + duration) * MIN, bufferMin: buffer })));
     return resourceFull.get(start);
   };
+  // A class service: its own open classes of the day are offered as „join“ slots while a seat is free (to the
+  // class's trainer, never to anyone else); with a timetable the free grid is not offered at all.
+  const isClass = seatsOf(service).seats > 1 && wanted.length === 1;
+  const joinable = isClass
+    ? (classes ?? []).filter((c) => c && c.status !== 'CANCELLED' && c.serviceId === wanted[0] && c.staffId && (!staffId || c.staffId === staffId)
+      && seatsLeft(c) > 0 && tbilisiYmd(new Date(c.startsAt)) === date && new Date(c.startsAt).getTime() >= earliest)
+    : [];
+  const gridOff = isClass && Boolean(service?.scheduled);
   const byTime = new Map();
   let anyWorking = false;
   for (const person of people) {
     let free = staffWorkingRanges(person, business?.hours, weekday);
     if (!free.length) continue;
     anyWorking = true;
+    if (gridOff) continue;
     for (const off of timeOff) {
       if (off.staffId && off.staffId !== person.id) continue;
       free = subtractRange(free, toMin(off.startsAt), toMin(off.endsAt));
     }
-    for (const a of appointments) {
+    for (const a of blockers) {
       if (a.status === 'CANCELLED') continue;
       if (a.staffId && a.staffId !== person.id) continue;
       // An appointment without a person blocks everyone only when the business has one bookable person.
@@ -154,25 +196,36 @@ export function slotsForDay({ business, service, staff, appointments = [], timeO
         if (at < earliest) continue;
         if (blockedByResource(start)) continue;
         const key = start;
-        const slot = byTime.get(key) ?? { time: `${String(Math.floor((start / 60) % 24)).padStart(2, '0')}:${String(start % 60).padStart(2, '0')}`, startsAt: new Date(at).toISOString(), staffIds: [] };
+        const slot = byTime.get(key) ?? { time: clockLabel(start), startsAt: new Date(at).toISOString(), staffIds: [] };
         slot.staffIds.push(person.id);
         byTime.set(key, slot);
       }
     }
   }
-  if (!anyWorking) return { slots: [], closed: true, reason: 'closed' };
+  for (const c of joinable) {
+    const start = toMin(c.startsAt);
+    const slot = byTime.get(start) ?? { time: clockLabel(start), startsAt: iso(c.startsAt), staffIds: [] };
+    if (!slot.staffIds.includes(c.staffId)) slot.staffIds.push(c.staffId);
+    // Two classes of the same service at one minute (two trainers): the slot names the one with more seats free.
+    const { seats, booked, left } = seatsOf(c);
+    if (!slot.classId || left > slot.seatsLeft) Object.assign(slot, { classId: c.id, seats, seatsLeft: left, booked });
+    byTime.set(start, slot);
+  }
+  if (!anyWorking && !joinable.length) return { slots: [], closed: true, reason: 'closed' };
   const slots = [...byTime.entries()].sort((a, b) => a[0] - b[0]).map(([, s]) => s);
   return { slots, closed: false };
 }
 
 /** Days in the horizon that have at least one slot (for the date strip). Cheap: reuses one appointment list. */
-export function daysWithSlots({ business, service, staff, appointments, timeOff, resources = [], from, now = new Date(), staffId = null, days = 14 }) {
+export function daysWithSlots({ business, service, staff, appointments, timeOff, resources = [], classes = [], from, now = new Date(), staffId = null, days = 14 }) {
   const out = [];
+  const touches = (x, date) => tbilisiYmd(new Date(x.startsAt)) === date || tbilisiYmd(new Date(x.endsAt)) === date;
   for (let i = 0; i < days; i += 1) {
     const date = addDaysYmd(from, i);
-    const dayAppointments = appointments.filter((a) => tbilisiYmd(new Date(a.startsAt)) === date || tbilisiYmd(new Date(a.endsAt)) === date);
+    const dayAppointments = appointments.filter((a) => touches(a, date));
+    const dayClasses = (classes ?? []).filter((c) => touches(c, date));
     const dayOff = timeOff.filter((o) => new Date(o.startsAt).getTime() < tbilisiInstant(date, 24 * 60).getTime() && new Date(o.endsAt).getTime() > tbilisiInstant(date, 0).getTime());
-    const r = slotsForDay({ business, service, staff, appointments: dayAppointments, timeOff: dayOff, resources, date, now, staffId });
+    const r = slotsForDay({ business, service, staff, appointments: dayAppointments, timeOff: dayOff, resources, classes: dayClasses, date, now, staffId });
     out.push({ date, count: r.slots.length, closed: r.closed });
   }
   return out;

@@ -48,6 +48,8 @@ export type BookService = {
   online: boolean;
   active: boolean;
   sortOrder: number;
+  /** 1 = a normal visit; 2+ = a group class — that many people book the same start with the same trainer. */
+  seats?: number;
 };
 
 export type BookStaff = {
@@ -112,8 +114,9 @@ export type BookBusinessDetail = BookBusinessCard & {
 
 export type BookPin = { id: string; slug: string; name: string; category: BookCategoryId; lat: number; lng: number; claimed: boolean; rating: number | null };
 
-export type BookSlot = { time: string; startsAt: string; staffIds: string[] };
-export type BookAvailability = { date: string; serviceId: string; serviceIds?: string[]; durationMin: number; slots: BookSlot[]; closed: boolean; reason?: string };
+/** A free start; for a group class it is a seat in a running class (`classId`) with `seatsLeft` of `seats`. */
+export type BookSlot = { time: string; startsAt: string; staffIds: string[]; classId?: string; seats?: number; seatsLeft?: number; booked?: number };
+export type BookAvailability = { date: string; serviceId: string; serviceIds?: string[]; durationMin: number; seats?: number; scheduled?: boolean; slots: BookSlot[]; closed: boolean; reason?: string };
 export type BookDayStrip = { from: string; days: Array<{ date: string; count: number; closed: boolean }> };
 
 export type BookAppointmentStatus = 'PENDING' | 'CONFIRMED' | 'CANCELLED' | 'COMPLETED' | 'NO_SHOW';
@@ -173,6 +176,10 @@ export type BookAppointment = {
   staffId: string | null;
   staffName: string | null;
   staffColor: string | null;
+  /** A seat in a group class: the class and its seats taken ÷ seats (null for a plain visit). */
+  classId?: string | null;
+  classSeats?: number | null;
+  classBooked?: number | null;
   clientName: string;
   clientPhone: string | null;
   startsAt: string;

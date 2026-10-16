@@ -421,13 +421,15 @@ export async function deactivateStaff(businessId, staffId, db = prisma) {
 export async function listServices(businessId, { all = false } = {}, db = prisma) {
   const rows = await db.$queryRaw`SELECT s.*, (SELECT COALESCE(json_agg(l."resourceId" ORDER BY l."createdAt"), '[]'::json) FROM "BookServiceResource" l JOIN "BookResource" r ON r.id = l."resourceId" AND r.active WHERE l."serviceId" = s.id) AS "resourceIds"
     FROM "BookService" s WHERE s."businessId" = ${businessId} ${all ? empty : sql`AND s.active`} ORDER BY s."group" NULLS LAST, s."sortOrder", s.name`;
-  return rows.map((r) => ({ ...servicePublic(r), resourceIds: Array.isArray(r.resourceIds) ? r.resourceIds : [] }));
+  return rows.map((r) => ({ ...servicePublic(r), resourceIds: Array.isArray(r.resourceIds) ? r.resourceIds : [], classSchedule: r.classSchedule && typeof r.classSchedule === 'object' ? r.classSchedule : null }));
 }
 
 function sanitizeService(input = {}) {
   const out = {};
   const money = (v) => (v === null || v === '' ? null : Number.isFinite(Number(v)) ? Math.max(0, Math.round(Number(v) * 100) / 100) : undefined);
   if (input.group !== undefined) out.group = cleanText(input.group, 60);
+  // 1 = a normal visit; 2+ = a group class with that many seats at one start.
+  if (input.seats !== undefined) out.seats = Math.max(1, Math.min(200, Math.round(Number(input.seats)) || 1));
   if (input.name !== undefined) out.name = cleanText(input.name, 120);
   if (input.nameKa !== undefined) out.nameKa = cleanText(input.nameKa, 120);
   if (input.description !== undefined) out.description = cleanText(input.description, 600);
@@ -446,8 +448,8 @@ export async function createService(businessId, input, db = prisma) {
   const s = sanitizeService(input);
   if (!s.name) throw bookError(400, 'მიუთითე სერვისის სახელი.', 'NAME_REQUIRED', 'Enter the service name.');
   const id = newId();
-  await db.$executeRaw`INSERT INTO "BookService" (id, "businessId", "group", name, "nameKa", description, "durationMin", "bufferMin", price, "priceTo", online, active, "sortOrder")
-    VALUES (${id}, ${businessId}, ${s.group ?? null}, ${s.name}, ${s.nameKa ?? null}, ${s.description ?? null}, ${s.durationMin ?? 30}, ${s.bufferMin ?? 0}, ${s.price ?? null}, ${s.priceTo ?? null}, ${s.online ?? true}, ${s.active ?? true}, ${s.sortOrder ?? 0})`;
+  await db.$executeRaw`INSERT INTO "BookService" (id, "businessId", "group", name, "nameKa", description, "durationMin", "bufferMin", price, "priceTo", online, active, "sortOrder", seats)
+    VALUES (${id}, ${businessId}, ${s.group ?? null}, ${s.name}, ${s.nameKa ?? null}, ${s.description ?? null}, ${s.durationMin ?? 30}, ${s.bufferMin ?? 0}, ${s.price ?? null}, ${s.priceTo ?? null}, ${s.online ?? true}, ${s.active ?? true}, ${s.sortOrder ?? 0}, ${s.seats ?? 1})`;
   const [row] = await db.$queryRaw`SELECT * FROM "BookService" WHERE id = ${id}`;
   return servicePublic(row);
 }

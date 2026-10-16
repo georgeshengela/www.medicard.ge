@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { canCancelFree, daysWithSlots, findConflict, isOfferedSlot, resourceConflict, resourceIdsFor, slotsForDay, staffWorkingRanges, subtractRange } from './availability.js';
+import { canCancelFree, classAt, classBlocks, daysWithSlots, findConflict, isOfferedSlot, resourceConflict, resourceIdsFor, seatsLeft, seatsOf, slotsForDay, staffWorkingRanges, subtractRange } from './availability.js';
 import { tbilisiInstant } from './time.js';
 
 const hours = { 1: [{ from: '10:00', to: '19:00' }], 2: [{ from: '10:00', to: '19:00' }], 3: [], 4: [{ from: '10:00', to: '19:00' }], 5: [{ from: '10:00', to: '19:00' }], 6: [{ from: '11:00', to: '16:00' }], 0: [] };
@@ -143,5 +143,79 @@ describe('MEDIBOOK rooms and equipment in availability', () => {
     assert.equal(resourceConflict(list, [room], { resourceIds: ['ghost'], startsAt: at(12), endsAt: at(13) }), null);
     assert.equal(resourceConflict(list, [room], { resourceIds: ['room1'], startsAt: at(12), endsAt: at(13), ignoreId: 'a1' }), null);
     assert.equal(resourceConflict(list, [room], { resourceIds: [], startsAt: at(12), endsAt: at(13) }), null);
+  });
+
+  // ——— group classes with seats ———
+  const yoga = { id: 'yoga', durationMin: 60, bufferMin: 0, seats: 15 };
+  const cls = (id, staffId, h, booked, extra = {}) => ({ id, serviceId: 'yoga', staffId, startsAt: at(h).toISOString(), endsAt: at(h + 1).toISOString(), seats: 15, booked, resourceIds: [], status: 'OPEN', ...extra });
+
+  it('seat arithmetic: seats − live attendees, never below zero, one seat by default', () => {
+    assert.deepEqual(seatsOf({ seats: 15, booked: 7 }), { seats: 15, booked: 7, left: 8 });
+    assert.equal(seatsLeft({ seats: 15, booked: 15 }), 0);
+    assert.equal(seatsLeft({ seats: 15, booked: 20 }), 0);
+    assert.deepEqual(seatsOf({}), { seats: 1, booked: 0, left: 1 });
+    assert.deepEqual(seatsOf({ seats: '8', booked: '3' }), { seats: 8, booked: 3, left: 5 });
+  });
+
+  it('a class with free seats is offered as a join slot to its trainer; the grid around it stays blocked', () => {
+    const classes = [cls('c1', 'nino', 18, 3)];
+    const r = slotsForDay({ business, service: yoga, staff: [nino, gio], classes, date: monday, now });
+    const join = r.slots.find((s) => s.time === '18:00');
+    assert.ok(join, 'the class start is offered');
+    assert.deepEqual([join.classId, join.seats, join.seatsLeft, join.booked, join.staffIds], ['c1', 15, 12, 3, ['nino']]);
+    assert.ok(!r.slots.some((s) => s.time === '17:30'), 'a new class overlapping the running one is not offered');
+    assert.ok(r.slots.some((s) => s.time === '17:00' && !s.classId), 'the grid before it stays free');
+    // The attendees' own rows (same minutes, no rooms) change nothing.
+    const attendees = [appt('a1', 'nino', 18, 60, [], 'CONFIRMED'), appt('a2', 'nino', 18, 60, [], 'PENDING')];
+    const r2 = slotsForDay({ business, service: yoga, staff: [nino, gio], appointments: attendees, classes, date: monday, now });
+    assert.deepEqual(r2.slots.map((s) => s.time), r.slots.map((s) => s.time));
+  });
+
+  it('a full class disappears from the offer and never blocks the other grid starts', () => {
+    const r = slotsForDay({ business, service: yoga, staff: [nino, gio], classes: [cls('c1', 'nino', 18, 15)], date: monday, now });
+    assert.ok(!r.slots.some((s) => s.time === '18:00'));
+    assert.ok(r.slots.some((s) => s.time === '17:00'));
+    assert.ok(r.slots.some((s) => s.time === '10:00'));
+  });
+
+  it('a class service with a timetable offers only its planned classes, not the free grid', () => {
+    const scheduled = { ...yoga, scheduled: true };
+    const r = slotsForDay({ business, service: scheduled, staff: [nino, gio], classes: [cls('c1', 'nino', 18, 0), cls('c2', 'nino', 10, 15)], date: monday, now });
+    assert.equal(r.closed, false);
+    assert.deepEqual(r.slots.map((s) => [s.time, s.classId, s.seatsLeft]), [['18:00', 'c1', 15]]);
+    const empty = slotsForDay({ business, service: scheduled, staff: [nino, gio], classes: [], date: monday, now });
+    assert.deepEqual(empty, { slots: [], closed: false });
+    // The chosen person must be the class's trainer.
+    assert.equal(slotsForDay({ business, service: scheduled, staff: [nino, gio], classes: [cls('c1', 'nino', 18, 0)], date: monday, now, staffId: 'gio' }).slots.length, 0);
+    // A class before now + lead time is not offered any more.
+    const late = tbilisiInstant(monday, 17 * 60 + 30);
+    assert.equal(slotsForDay({ business, service: scheduled, staff: [nino, gio], classes: [cls('c1', 'nino', 18, 0)], date: monday, now: late }).slots.length, 0);
+  });
+
+  it('a class blocks the trainer for every other service and holds its room once, not once per attendee', () => {
+    const classes = [cls('c1', 'nino', 18, 3, { resourceIds: ['room1'] })];
+    const attendees = [appt('a1', 'nino', 18, 60, []), appt('a2', 'nino', 18, 60, []), appt('a3', 'nino', 18, 60, [])];
+    const other = slotsForDay({ business, service, staff: [nino, gio], appointments: attendees, classes, date: monday, now });
+    const ninoTimes = other.slots.filter((s) => s.staffIds.includes('nino')).map((s) => s.time);
+    assert.ok(!ninoTimes.includes('18:00') && !ninoTimes.includes('17:30') && ninoTimes.includes('17:00'));
+    assert.ok(other.slots.find((s) => s.time === '18:00').staffIds.includes('gio'), 'the other person stays free');
+    // The room: one class = one unit, so two chairs keep one free for Gio at 18:00.
+    const blocks = [...attendees, ...classBlocks(classes)];
+    assert.equal(resourceConflict(blocks, [room], { resourceIds: ['room1'], startsAt: at(18), endsAt: at(19) }).taken, 1);
+    assert.equal(resourceConflict(blocks, [{ ...room, capacity: 2 }], { resourceIds: ['room1'], startsAt: at(18), endsAt: at(19) }), null);
+    const needs = { ...service, resourceIds: ['room1'] };
+    assert.ok(!slotsForDay({ business, service: needs, staff: [nino, gio], appointments: attendees, classes, resources: [room], date: monday, now }).slots.some((s) => s.time === '18:00'));
+    // A cancelled class blocks nothing.
+    assert.deepEqual(classBlocks([cls('c9', 'nino', 12, 0, { status: 'CANCELLED' })]), []);
+  });
+
+  it('classAt finds the class of a minute and prefers the one with more seats free; the strip counts joins', () => {
+    const classes = [cls('c1', 'nino', 18, 14), cls('c2', 'gio', 18, 2), cls('c3', 'nino', 10, 0)];
+    assert.equal(classAt(classes, { serviceId: 'yoga', startsAt: at(18) }).id, 'c2');
+    assert.equal(classAt(classes, { serviceId: 'yoga', startsAt: at(18), staffId: 'nino' }).id, 'c1');
+    assert.equal(classAt(classes, { serviceId: 'yoga', startsAt: at(11) }), null);
+    assert.equal(classAt(classes, { serviceId: 'svc', startsAt: at(18) }), null);
+    const strip = daysWithSlots({ business, service: { ...yoga, scheduled: true }, staff: [nino, gio], appointments: [], timeOff: [], classes, from: monday, now, days: 2 });
+    assert.deepEqual(strip.map((d) => d.count), [2, 0]);
   });
 });

@@ -3,7 +3,7 @@ import { Alert, Image, Linking, Platform, Pressable, ScrollView, StyleSheet, Tex
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
-import { CalendarPlus, ChevronRight, MapPin, Navigation, Phone, Star, X } from 'lucide-react-native';
+import { CalendarPlus, ChevronRight, MapPin, Navigation, Phone, Star, Users, X } from 'lucide-react-native';
 import { ModuleHeader } from '@/components/brand/ModuleHeader';
 import { FlatCard, Stars, StatusPill, imageUri } from '@/components/book/BookUI';
 import { Button } from '@/components/ui/Button';
@@ -149,6 +149,12 @@ export default function AppointmentScreen() {
               <Text style={[hubText.caption, { color: c.text200 }]}>
                 {durationLabel(a.durationMin)}{a.staffName ? tx(` · ${a.staffName}`, ` · with ${a.staffName}`) : ''} · {priceLabel(a.price)}{a.discountAmount ? tx(` (ფასდაკლება −${a.discountAmount} ₾)`, ` (discount −${a.discountAmount} ₾)`) : ''}
               </Text>
+              {a.classId && a.classSeats ? (
+                <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8, alignSelf: 'flex-start', borderWidth: 1, borderColor: ink, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 }}>
+                  <Users size={13} color={ink} strokeWidth={2.2} />
+                  <Text style={[hubText.small, { color: ink, fontFamily: 'NotoSansGeorgian_600SemiBold' }]}>{tx(`ჯგუფური კლასი · ${a.classBooked ?? 0} / ${a.classSeats} ადგილი`, `Group class · ${a.classBooked ?? 0} / ${a.classSeats} seats`)}</Text>
+                </View>
+              ) : null}
               {a.note ? <Text style={[hubText.caption, { color: c.text200 }]}>{tx('შენიშვნა: ', 'Note: ')}{a.note}</Text> : null}
               {a.status === 'CANCELLED' ? (
                 <Text style={[hubText.caption, { color: c.text300 }]}>

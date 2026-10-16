@@ -4,6 +4,7 @@ import { t } from '/app/js/i18n.js';
 import { state, canManage } from '../state.js';
 import { biz, ymd, addDays, weekdayOf, minutesOf, clock, WEEKDAYS_SHORT, WEEKDAYS, MONTHS, MONTHS_SHORT, fail, ok, toIso, emptyBox } from '../shared.js';
 import { loadContext, newAppointmentDialog, openAppointment } from '../appointment.js';
+import { classDialog, classServices, openClass, seatsLabel } from '../class.js';
 import { dateField, timeField, select } from '../fields.js';
 import { chips } from '../lists.js';
 
@@ -46,14 +47,23 @@ export default async function calendarPage(root, ctx) {
       : `${Number(from.slice(8, 10))} ${MONTHS_SHORT[Number(from.slice(5, 7)) - 1]} – ${Number(to.slice(8, 10))} ${MONTHS_SHORT[Number(to.slice(5, 7)) - 1]} ${to.slice(0, 4)}`;
     mount(host, h('div', { class: 'skeleton-card' }, h('div', { class: 'sk' }), h('div', { class: 'sk' })));
     try {
-      const [{ appointments }, { timeOff }] = await Promise.all([biz.get('/appointments', { from, to, staffId: filterStaff || undefined }), biz.get('/time-off', { from, to })]);
+      const [{ appointments: all }, { timeOff }, { classes }] = await Promise.all([
+        biz.get('/appointments', { from, to, staffId: filterStaff || undefined }),
+        biz.get('/time-off', { from, to }),
+        biz.get('/classes', { from, to, staffId: filterStaff || undefined }).catch(() => ({ classes: [] })),
+      ]);
+      // A group class is one block with „7 / 15“; its attendees' rows are inside it, not beside it.
+      const classIds = new Set(classes.map((c) => c.id));
+      const singles = all.filter((a) => !a.classId || !classIds.has(a.classId));
+      const blocks = [...singles.map((a) => ({ kind: 'appt', ref: a, startsAt: a.startsAt, endsAt: a.endsAt, staffId: a.staffId, staffName: a.staffName, staffColor: a.staffColor, status: a.status, durationMin: a.durationMin, resourceIds: a.resourceIds, resources: a.resources })),
+        ...classes.map((c) => ({ kind: 'class', ref: c, startsAt: c.startsAt, endsAt: c.endsAt, staffId: c.staffId, staffName: c.staffName, staffColor: c.staffColor, status: c.status === 'CANCELLED' ? 'CANCELLED' : 'CONFIRMED', durationMin: c.durationMin, resourceIds: c.resourceIds, resources: c.resources }))];
       // One chip per room / device in the day view, with that day's count; a chosen one shows only its bookings.
       const holds = (a, id) => Array.isArray(a.resourceIds) && a.resourceIds.includes(id);
       if (mode === 'day' && resources.length) {
         if (filterResource && !resources.some((r) => r.id === filterResource)) filterResource = '';
-        mount(resHost, chips([['', t('ყველა ოთახი', 'Every room')], ...resources.map((r) => [r.id, r.name, appointments.filter((a) => a.status !== 'CANCELLED' && holds(a, r.id)).length])], filterResource, (v) => { filterResource = v; paint(); }));
+        mount(resHost, chips([['', t('ყველა ოთახი', 'Every room')], ...resources.map((r) => [r.id, r.name, blocks.filter((a) => a.status !== 'CANCELLED' && holds(a, r.id)).length])], filterResource, (v) => { filterResource = v; paint(); }));
       } else mount(resHost);
-      mount(host, grid(mode === 'day' && filterResource ? appointments.filter((a) => holds(a, filterResource)) : appointments, timeOff, from, to));
+      mount(host, grid(mode === 'day' && filterResource ? blocks.filter((a) => holds(a, filterResource)) : blocks, timeOff, from, to));
     } catch (e) { mount(host, emptyBox(t('ვერ ჩაიტვირთა', 'Could not load'), e?.message)); }
   }
 
@@ -75,6 +85,7 @@ export default async function calendarPage(root, ctx) {
     };
     const occupancy = (col) => {
       const working = workingOf(col);
+      // A class counts once for the time (its attendees sit inside it) and once for the count.
       const mine = appointments.filter((a) => ymd(a.startsAt) === col.date && a.status !== 'CANCELLED' && (mode === 'week' || !col.staffId || a.staffId === col.staffId));
       const booked = mine.reduce((acc, a) => acc + Number(a.durationMin || 0), 0);
       const share = working ? Math.min(100, Math.round((booked / working) * 100)) : 0;
@@ -116,17 +127,32 @@ export default async function calendarPage(root, ctx) {
         a._lane = lane;
       }
       const laneCount = Math.max(1, lanes.length);
-      for (const a of sorted) {
-        const top = ((minutesOf(a.startsAt) - start * 60) / 60) * HOUR_H;
-        const height = Math.max(26, ((new Date(a.endsAt) - new Date(a.startsAt)) / 60000 / 60) * HOUR_H - 2);
-        const color = a.staffColor || staffCols.find((s) => s.id === a.staffId)?.color || '#64748B';
+      for (const b of sorted) {
+        const top = ((minutesOf(b.startsAt) - start * 60) / 60) * HOUR_H;
+        const height = Math.max(26, ((new Date(b.endsAt) - new Date(b.startsAt)) / 60000 / 60) * HOUR_H - 2);
+        const color = b.staffColor || staffCols.find((s) => s.id === b.staffId)?.color || '#64748B';
         const width = 100 / laneCount;
+        const place = { top: `${top}px`, height: `${height}px`, left: `calc(${b._lane * width}% + 4px)`, right: `calc(${(laneCount - b._lane - 1) * width}% + 4px)` };
+        const rooms = mode === 'day' && !filterResource && b.resources?.length ? b.resources.map((r) => r.name).join(', ') : null;
+        if (b.kind === 'class') {
+          const c = b.ref;
+          const past = new Date(c.endsAt) < new Date();
+          el.appendChild(vars(h('div', {
+            class: `bz-cal-event is-class${c.status === 'CANCELLED' ? ' is-cancelled' : ''}${past && c.status !== 'CANCELLED' ? ' is-done' : ''}${c.seatsLeft === 0 ? ' is-full' : ''}`,
+            style: place,
+            title: [`${clock(c.startsAt)}–${clock(c.endsAt)} · ${c.serviceName} · ${c.label} ${seatsLabel(c.seats).replace(/^\d+ /, '')}`, c.staffName, rooms].filter(Boolean).join(' · '),
+            onClick: (e) => { e.stopPropagation(); openClass(c, context, { onChange: paint }); },
+          }, h('b', null, `${clock(c.startsAt)} ${c.serviceName}`), h('em', { class: 'seats' }, c.label), h('span', null, [t(`${c.booked} / ${c.seats} ადგილი`, `${c.booked} / ${c.seats} seats`), mode === 'week' && c.staffName ? c.staffName : null, rooms].filter(Boolean).join(' · ')),
+          h('i', { class: 'fill', style: { width: `${c.seats ? Math.min(100, Math.round((c.booked / c.seats) * 100)) : 0}%` } })), { '--c': color }));
+          continue;
+        }
+        const a = b.ref;
         el.appendChild(vars(h('div', {
           class: `bz-cal-event${a.status === 'PENDING' ? ' is-pending' : ''}${a.status === 'CANCELLED' ? ' is-cancelled' : ''}${a.status === 'COMPLETED' || a.status === 'NO_SHOW' ? ' is-done' : ''}`,
-          style: { top: `${top}px`, height: `${height}px`, left: `calc(${a._lane * width}% + 4px)`, right: `calc(${(laneCount - a._lane - 1) * width}% + 4px)` },
+          style: place,
           title: [`${clock(a.startsAt)}–${clock(a.endsAt)} · ${a.clientName} · ${a.serviceName}`, a.resources?.length ? a.resources.map((r) => r.name).join(', ') : null].filter(Boolean).join(' · '),
           onClick: (e) => { e.stopPropagation(); openAppointment(a, context, { onChange: paint }); },
-        }, h('b', null, `${clock(a.startsAt)} ${a.clientName}`), h('span', null, [mode === 'week' && a.staffName ? `${a.serviceName} · ${a.staffName}` : a.serviceName, mode === 'day' && !filterResource && a.resources?.length ? a.resources.map((r) => r.name).join(', ') : null].filter(Boolean).join(' · '))), { '--c': color }));
+        }, h('b', null, `${clock(a.startsAt)} ${a.clientName}`), h('span', null, [mode === 'week' && a.staffName ? `${a.serviceName} · ${a.staffName}` : a.serviceName, rooms].filter(Boolean).join(' · '))), { '--c': color }));
       }
       if (col.date === ymd()) {
         const m = minutesOf(new Date());
@@ -151,6 +177,7 @@ export default async function calendarPage(root, ctx) {
       h('div', { class: 'bz-legend' },
         h('span', null, h('i', { style: { background: 'var(--book)' } }), t('დადასტურებული', 'Confirmed')),
         h('span', null, h('i', { style: { background: 'repeating-linear-gradient(135deg, var(--book) 0 3px, transparent 3px 6px)' } }), t('დასადასტურებელი', 'To confirm')),
+        classServices(context).length ? h('span', null, h('i', { style: { background: 'transparent', boxShadow: 'inset 0 0 0 1.5px var(--book)' } }), t('ჯგუფური კლასი · დაკავებული / ადგილები', 'Group class · taken / seats')) : null,
         h('span', null, h('i', { style: { background: 'var(--bg3)' } }), t('დახურული / დასვენება', 'Closed / time off')),
         h('span', { class: 'spacer' }),
         h('span', { class: 'faint' }, t('დააჭირე თავისუფალ ადგილს — ახალი ჩანაწერი', 'Click an empty spot for a new booking'))));
@@ -196,6 +223,7 @@ export default async function calendarPage(root, ctx) {
   mount(root,
     pageHead(t('კალენდარი', 'Calendar'), t('ონლაინ ჯავშნები თავისით ჩნდება; თავისუფალ ადგილზე დაჭერით ვიზიტორს ამატებ.', 'Online bookings appear by themselves; click an empty spot to add a walk-in.'),
       canManage() ? button(t('დასვენება', 'Time off'), { variant: 'ghost', icon: 'moon', onClick: timeOffDialog }) : null,
+      canManage() && classServices(context).length ? button(t('კლასი', 'Class'), { variant: 'ghost', icon: 'users', title: t('ჯგუფური კლასის დაგეგმვა', 'Plan a group class'), onClick: () => classDialog(context, { date: anchor }, { onCreated: paint }) }) : null,
       button(t('ახალი ჩანაწერი', 'New booking'), { icon: 'plus', onClick: () => newAppointmentDialog(context, { date: anchor }, { onCreated: paint }) })),
     nav, resHost, host);
   await paint();

@@ -63,6 +63,8 @@ export default function BookConfirmStep() {
         offerPhoneVerification(router, tx('ჯავშნისთვის ტელეფონის ნომერი საჭიროა — ბიზნესი ასე დაგიკავშირდება.', 'A phone number is needed to book — this is how the business reaches you.'));
       } else if (error instanceof ApiError && error.code === 'SLOT_TAKEN') {
         Alert.alert(tx('ეს დრო უკვე დაიკავეს', 'This time was just taken'), tx('აირჩიე სხვა დრო.', 'Pick another time.'), [{ text: tx('დროის არჩევა', 'Pick a time'), onPress: () => router.back() }]);
+      } else if (error instanceof ApiError && error.code === 'CLASS_FULL') {
+        Alert.alert(tx('კლასი შეივსო', 'The class is full'), tx('ბოლო ადგილი ახლახან დაიკავეს. აირჩიე სხვა კლასი ან დადექი მოლოდინის სიაში.', 'The last seat was just taken. Pick another class or join the waiting list.'), [{ text: tx('კლასის არჩევა', 'Pick a class'), onPress: () => router.back() }]);
       } else {
         Alert.alert(tx('ვერ ჩაიწერა', 'Could not book'), error instanceof Error ? error.message : tx('სცადე ხელახლა.', 'Please try again.'));
       }
@@ -118,6 +120,8 @@ export default function BookConfirmStep() {
   };
 
   const several = selected.length > 1;
+  // A seat in a group class: the summary says how many seats are left in that class.
+  const classSeats = Number(params.seats ?? 0) > 1 ? { seats: Number(params.seats), left: Number(params.seatsLeft ?? params.seats) } : null;
 
   return (
     <KeyboardFormShell header={header} footer={footer} background={c.bg100} contentStyle={{ paddingHorizontal: HUB.gutter, paddingBottom: 24 }}>
@@ -148,7 +152,7 @@ export default function BookConfirmStep() {
               ) : null}
             </Row>
             <Row icon={User} label={tx('ვინ', 'Who')} value={person ? person.name : tx('ნებისმიერი თანამშრომელი', 'Anyone available')} sub={person?.title ?? (staffId ? null : tx('ვინც ამ დროს თავისუფალია', 'Whoever is free at this time'))} onChange={steps.includes('who') ? () => change('who') : undefined} />
-            <Row icon={CalendarDays} label={tx('როდის', 'When')} value={whenLabel(startsAt)} sub={tx(`დასრულდება ~${durationLabel(bundle.durationMin)}-ში`, `Ends in about ${durationLabel(bundle.durationMin)}`)} onChange={() => change('when')} />
+            <Row icon={CalendarDays} label={tx('როდის', 'When')} value={whenLabel(startsAt)} sub={classSeats ? tx(`ჯგუფური კლასი · ${classSeats.left} ადგილი დარჩა ${classSeats.seats}-დან · ${durationLabel(bundle.durationMin)}`, `Group class · ${classSeats.left} of ${classSeats.seats} seats left · ${durationLabel(bundle.durationMin)}`) : tx(`დასრულდება ~${durationLabel(bundle.durationMin)}-ში`, `Ends in about ${durationLabel(bundle.durationMin)}`)} onChange={() => change('when')} />
             <Row icon={MapPin} label={tx('სად', 'Where')} value={b.name} sub={b.address ?? null} />
           </FlatCard>
           {discounts.length ? (

@@ -5,7 +5,7 @@
  * funnel, busy hours, top services, new vs returning clients, sources, ratings. Tested in analytics.test.js.
  */
 import { dayRanges } from './catalog.js';
-import { staffWorkingRanges, subtractRange } from './availability.js';
+import { classBlocks, staffWorkingRanges, subtractRange } from './availability.js';
 import { addDaysYmd, daysBetweenYmd, tbilisiInstant, tbilisiMinutes, tbilisiWeekday, tbilisiYmd, weekdayOfYmd } from './time.js';
 
 const MIN = 60_000;
@@ -73,7 +73,18 @@ export function resourceUtilisation({ resources = [], appointments = [], busines
   }).sort((a, b) => (b.utilisation ?? -1) - (a.utilisation ?? -1));
 }
 
-export function buildAnalytics({ appointments = [], events = [], transactions = [], staff = [], timeOff = [], clients = [], reviews = [], business = {}, resources = [], from, to, now = new Date() }) {
+/** Attendees of one class share one block of time: for minutes, the class counts once (the first row stands for it). */
+export function uniqueBlocks(list) {
+  const seen = new Set();
+  return list.filter((a) => {
+    if (!a.classId) return true;
+    if (seen.has(a.classId)) return false;
+    seen.add(a.classId);
+    return true;
+  });
+}
+
+export function buildAnalytics({ appointments = [], events = [], transactions = [], staff = [], timeOff = [], clients = [], reviews = [], business = {}, resources = [], classes = [], from, to, now = new Date() }) {
   const live = appointments.filter((a) => a.status !== 'CANCELLED');
   const done = appointments.filter((a) => a.status === 'COMPLETED');
   const noShow = appointments.filter((a) => a.status === 'NO_SHOW');
@@ -104,9 +115,9 @@ export function buildAnalytics({ appointments = [], events = [], transactions = 
   }
   for (const e of events) if (e.kind === 'VIEW') { const row = byDay.get(tbilisiYmd(toDate(e.at))); if (row) row.views += 1; }
 
-  // Utilisation per person.
+  // Utilisation per person. A class with ten attendees is one hour of the trainer's time, not ten.
   const utilisation = staff.filter((s) => s.active !== false).map((s) => {
-    const booked = live.filter((a) => a.staffId === s.id).reduce((sum, a) => sum + overlapMinutes(a.startsAt, a.endsAt, from, now < to ? now : to), 0);
+    const booked = uniqueBlocks(live.filter((a) => a.staffId === s.id)).reduce((sum, a) => sum + overlapMinutes(a.startsAt, a.endsAt, from, now < to ? now : to), 0);
     const working = workingMinutes({ staff: s, businessHours: business.hours, timeOff, from, to, now });
     const mine = live.filter((a) => a.staffId === s.id);
     const myRevenue = income.filter((t) => t.staffId === s.id).reduce((sum, t) => sum + Number(t.amount), 0);
@@ -214,7 +225,8 @@ export function buildAnalytics({ appointments = [], events = [], transactions = 
     },
     series: [...byDay.values()],
     utilisation,
-    resources: resourceUtilisation({ resources, appointments, businessHours: business.hours, timeOff, from, to, now }),
+    // A class holds its room once; its attendees' rows hold none.
+    resources: resourceUtilisation({ resources, appointments: [...appointments, ...classBlocks(classes)], businessHours: business.hours, timeOff, from, to, now }),
     funnel,
     heat,
     peak,

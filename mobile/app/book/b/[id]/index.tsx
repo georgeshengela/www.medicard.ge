@@ -12,6 +12,7 @@ import { useAccountQuery } from '@/hooks/useAccountQuery';
 import { tx } from '@/i18n/locale';
 import { api } from '@/lib/api';
 import { bookCategory } from '@/lib/book/categories';
+import { seatsLine } from '@/components/book/BookFlow';
 import { directionsUrl, distanceLabel, durationLabel, priceLabel, ratingLabel, todayHoursLine, weekHours } from '@/lib/book/bookFormat';
 import type { BookBusinessDetail, BookService } from '@/lib/book/bookTypes';
 import { FRESH, invalidate } from '@/lib/queryClient';
@@ -203,7 +204,7 @@ export default function BusinessScreen() {
                       <Pressable key={svc.id} accessibilityRole="button" onPress={() => (b.bookable && svc.online ? book(svc) : undefined)} style={[s.row, i > 0 ? { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: c.bg200 } : null]}>
                         <View style={{ flex: 1, gap: 2 }}>
                           <Text style={[hubText.cardTitle, { color: c.text100 }]}>{svc.name}</Text>
-                          <Text style={[hubText.caption, { color: c.text200 }]}>{[durationLabel(svc.durationMin), svc.description].filter(Boolean).join(' · ')}</Text>
+                          <Text style={[hubText.caption, { color: c.text200 }]}>{[durationLabel(svc.durationMin), seatsLine(svc), svc.description].filter(Boolean).join(' · ')}</Text>
                         </View>
                         <View style={{ alignItems: 'flex-end', gap: 4 }}>
                           <Text style={[hubText.value, { color: c.text100 }]}>{priceLabel(svc.price, svc.priceTo, svc.currency)}</Text>

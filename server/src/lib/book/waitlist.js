@@ -277,11 +277,12 @@ export async function matchOpenings({ businessId, dates, now = new Date(), minAg
       const ids = jsonList(row.serviceIds).length ? jsonList(row.serviceIds) : [row.serviceId].filter(Boolean);
       const key = ids.join(',');
       if (!bundles.has(key)) {
-        try { bundles.set(key, bundleOf(await serviceRows(businessId, ids, db), ctx.links)); } catch { bundles.set(key, null); }
+        try { bundles.set(key, bundleOf(await serviceRows(businessId, ids, db), ctx.links, ctx.scheduledServiceIds)); } catch { bundles.set(key, null); }
       }
       const bundle = bundles.get(key);
       if (!bundle) continue;
-      const result = slotsForDay({ business, service: bundle, staff: ctx.staff, appointments: ctx.appointments, timeOff: ctx.timeOff, resources: ctx.resources, date, now, staffId: row.staffId || null });
+      // A freed seat in a class is an opening like any other: the join slot carries the class.
+      const result = slotsForDay({ business, service: bundle, staff: ctx.staff, appointments: ctx.appointments, timeOff: ctx.timeOff, resources: ctx.resources, classes: ctx.classes, date, now, staffId: row.staffId || null });
       const parts = jsonList(row.dayParts);
       const slot = result.slots.find((s) => (!parts.length || parts.includes(dayPartOf(clockToMinutes(s.time)))) && !used.has(s.startsAt));
       if (!slot) continue;

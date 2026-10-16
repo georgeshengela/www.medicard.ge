@@ -27,6 +27,7 @@ import * as segments from '../lib/book/segments.js';
 import * as clients from '../lib/book/clients.js';
 import * as resources from '../lib/book/resources.js';
 import * as payroll from '../lib/book/payroll.js';
+import * as classes from '../lib/book/classes.js';
 import { prisma } from '../lib/prisma.js';
 import { addDaysYmd, isYmd, tbilisiInstant, tbilisiYmd } from '../lib/book/time.js';
 
@@ -372,6 +373,60 @@ businessRouter.patch('/:businessId/appointments/:id', member(ALL), asyncHandler(
   }
   res.json({ appointment: bookings.appointmentPublic(result.row), waitlistOffered });
 }));
+
+// group classes: one block per class on the calendar with its attendees; the timetable helper plans weeks ahead.
+// Seats are taken through POST /appointments (the service with seats > 1 joins the class at that start).
+businessRouter.get('/:businessId/classes', member(ALL), asyncHandler(async (req, res) => {
+  const { from, to } = range(req);
+  const staffId = req.member.role === 'STAFF' && req.member.staffId ? req.member.staffId : req.query.staffId ? String(req.query.staffId) : null;
+  res.json({ classes: await classes.listClasses({ businessId: req.params.businessId, from, to, staffId, serviceId: req.query.serviceId ? String(req.query.serviceId) : null }) });
+}));
+businessRouter.get('/:businessId/classes/:id', member(ALL), asyncHandler(async (req, res) => res.json({ class: await classes.classDetail({ businessId: req.params.businessId, id: req.params.id }) })));
+
+const classBody = z.object({
+  serviceId: z.string().min(1),
+  staffId: z.string().min(1),
+  startsAt: z.string().min(10),
+  seats: z.union([z.number().int(), z.string()]).optional(),
+  note: z.string().trim().max(300).optional(),
+  force: z.boolean().optional(),
+});
+businessRouter.post('/:businessId/classes', member(MANAGE), asyncHandler(async (req, res) => {
+  const body = classBody.parse(req.body ?? {});
+  res.status(201).json({ class: await classes.createClass({ businessId: req.params.businessId, ...body, actorUserId: req.user.id }) });
+}));
+
+const scheduleBody = z.object({
+  serviceId: z.string().min(1),
+  staffId: z.string().min(1),
+  weekly: z.array(z.object({ weekday: z.number().int().min(0).max(6), time: z.string().regex(/^\d{1,2}:\d{2}$/) })).min(1).max(21),
+  weeks: z.number().int().min(1).max(12).optional(),
+  seats: z.union([z.number().int(), z.string()]).optional(),
+});
+businessRouter.post('/:businessId/classes/schedule', member(MANAGE), asyncHandler(async (req, res) => {
+  const body = scheduleBody.parse(req.body ?? {});
+  res.status(201).json(await classes.scheduleClasses({ businessId: req.params.businessId, ...body, actorUserId: req.user.id }));
+}));
+
+const classPatch = z.object({
+  startsAt: z.string().optional(),
+  staffId: z.string().min(1).optional(),
+  seats: z.union([z.number().int(), z.string()]).optional(),
+  note: z.string().trim().max(300).nullable().optional(),
+  status: z.enum(['CANCELLED']).optional(),
+  cancelReason: z.string().trim().max(300).optional(),
+  force: z.boolean().optional(),
+});
+businessRouter.patch('/:businessId/classes/:id', member(MANAGE), asyncHandler(async (req, res) => {
+  const patch = classPatch.parse(req.body ?? {});
+  const result = await classes.updateClass({ businessId: req.params.businessId, id: req.params.id, patch, actorUserId: req.user.id });
+  // Every attendee hears about a move or a cancellation (push for app users, SMS for the rest — same as a single booking).
+  if (result.moved || result.cancelled) for (const a of result.attendees) notifyChanged(a, { previousStatus: a.previousStatus, moved: result.moved }).catch(() => undefined);
+  let waitlistOffered = 0;
+  if (result.moved || result.cancelled) waitlistOffered = await offerOpenings({ businessId: req.params.businessId, dates: [tbilisiYmd(new Date(result.previousStartsAt))] });
+  res.json({ class: result.cls, attendees: result.attendees, waitlistOffered });
+}));
+businessRouter.delete('/:businessId/classes/:id', member(MANAGE), asyncHandler(async (req, res) => { await classes.deleteClass({ businessId: req.params.businessId, id: req.params.id }); res.json({ ok: true }); }));
 
 // products and sales
 const productBody = z.object({ name: z.string().trim().max(120).optional(), sku: z.string().trim().max(60).nullable().optional(), category: z.string().trim().max(60).nullable().optional(), price: z.union([z.number(), z.string()]).optional(), cost: z.union([z.number(), z.string(), z.null()]).optional(), stock: z.union([z.number(), z.string(), z.null()]).optional(), unit: z.string().max(12).optional(), lowStock: z.union([z.number(), z.string()]).optional(), active: z.boolean().optional(), sortOrder: z.number().int().optional() });

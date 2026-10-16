@@ -11,6 +11,11 @@ import { t, isEn } from '../i18n.js';
 import { session, featureOn, profileExtra } from '../session.js';
 import { wordmark } from '../brand.js';
 
+/** „ჯგუფური · 15 ადგილი“ for a service with seats > 1 (a group class), nothing for a normal visit. */
+const seatsHint = (svc) => (Number(svc?.seats) > 1 ? t(`ჯგუფური · ${svc.seats} ადგილი`, `Group · ${svc.seats} seats`) : null);
+/** „8 ადგილი დარჩა“ for a class slot, null for a plain one. */
+const seatsLeftText = (sl) => (Number(sl?.seats) > 1 ? t(`${sl.seatsLeft ?? sl.seats} ადგილი დარჩა`, `${sl.seatsLeft ?? sl.seats} ${sl.seatsLeft === 1 ? 'seat' : 'seats'} left`) : null);
+
 const CSS = '/app/css/book.css';
 let cssReady = null;
 /** Adds the module's stylesheet once; resolves when it has loaded (the map measures its box on creation). */
@@ -503,7 +508,7 @@ async function businessView(root, ctx, slug) {
     main.append(section(t('სერვისები', 'Services'), h('div', null, [...groups.entries()].map(([group, list]) => h('div', { class: 'bk-group-wrap' },
       group ? h('div', { class: 'bk-group' }, group) : null,
       h('div', { class: 'bk-list' }, list.map((svc) => h('div', { class: 'bk-svc' },
-        h('div', { class: 'bk-svc-main' }, h('b', null, svc.name), h('span', null, [durationLabel(svc.durationMin), svc.description].filter(Boolean).join(' · '))),
+        h('div', { class: 'bk-svc-main' }, h('b', null, svc.name), h('span', null, [durationLabel(svc.durationMin), seatsHint(svc), svc.description].filter(Boolean).join(' · '))),
         h('div', { class: 'bk-svc-trail' },
           h('span', { class: 'bk-price' }, priceLabel(svc.price, svc.priceTo, svc.currency)),
           b.bookable && svc.online ? h('button', { type: 'button', class: 'bk-pill bk-pill-btn', onClick: () => startBooking(svc) }, t('ჩაწერა', 'Book')) : null)))))))));
@@ -641,7 +646,7 @@ async function flowView(root, ctx, slug) {
       paintServices(); paintStaff(); paintSummary(); loadDays();
     } },
     h('span', { class: 'bk-radio' }, svc.id === st.serviceId ? icon('check', { size: 13, stroke: 3 }) : null),
-    h('div', { class: 'bk-svc-main' }, h('b', null, svc.name), h('span', null, [durationLabel(svc.durationMin), svc.description].filter(Boolean).join(' · '))),
+    h('div', { class: 'bk-svc-main' }, h('b', null, svc.name), h('span', null, [durationLabel(svc.durationMin), seatsHint(svc), svc.description].filter(Boolean).join(' · '))),
     h('span', { class: 'bk-price' }, priceLabel(svc.price, svc.priceTo, svc.currency)))));
   }
   function paintStaff() {
@@ -678,7 +683,7 @@ async function flowView(root, ctx, slug) {
     for (const sl of st.slots.slots) { const hh = Number(sl.time.split(':')[0]); (hh < 12 ? groups[0] : hh < 17 ? groups[1] : groups[2])[1].push(sl); }
     mount(slotsEl, groups.filter((g) => g[1].length).map(([label, list]) => h('div', null,
       h('div', { class: 'bk-part' }, label),
-      h('div', { class: 'bk-slots' }, list.map((sl) => h('button', { type: 'button', class: `bk-slot ${st.slot?.startsAt === sl.startsAt ? 'on' : ''}`, 'aria-pressed': st.slot?.startsAt === sl.startsAt ? 'true' : 'false', onClick: () => { st.slot = sl; paintSlots(); paintSummary(); } }, sl.time))))));
+      h('div', { class: 'bk-slots' }, list.map((sl) => h('button', { type: 'button', class: `bk-slot ${st.slot?.startsAt === sl.startsAt ? 'on' : ''}`, 'aria-pressed': st.slot?.startsAt === sl.startsAt ? 'true' : 'false', 'aria-label': seatsLeftText(sl) ? `${sl.time}, ${seatsLeftText(sl)}` : undefined, onClick: () => { st.slot = sl; paintSlots(); paintSummary(); } }, sl.time, seatsLeftText(sl) ? h('small', { class: (sl.seatsLeft ?? 0) <= 3 ? 'low' : '' }, seatsLeftText(sl)) : null))))));
   }
   function paintSummary() {
     const svc = service();
@@ -688,7 +693,7 @@ async function flowView(root, ctx, slug) {
         h('dt', null, t('სერვისი', 'Service')), h('dd', null, `${svc.name} · ${durationLabel(svc.durationMin)}`),
         h('dt', null, t('ფასი', 'Price')), h('dd', null, priceLabel(svc.price, svc.priceTo, svc.currency)),
         showStaff() ? [h('dt', null, t('ვინ', 'With')), h('dd', null, staffName() || t('ნებისმიერი', 'Anyone'))] : null,
-        h('dt', null, t('როდის', 'When')), h('dd', { class: st.slot ? '' : 'faint' }, st.slot ? whenLabel(st.slot.startsAt) : t('აირჩიე დღე და დრო', 'Pick a day and a time'))),
+        h('dt', null, t('როდის', 'When')), h('dd', { class: st.slot ? '' : 'faint' }, st.slot ? [whenLabel(st.slot.startsAt), seatsLeftText(st.slot) ? t(`ჯგუფური კლასი · ${seatsLeftText(st.slot)}`, `Group class · ${seatsLeftText(st.slot)}`) : null].filter(Boolean).join(' · ') : t('აირჩიე დღე და დრო', 'Pick a day and a time'))),
       confirmBtn,
       h('p', { class: 'faint bk-policy' }, policy));
     confirmBtn.disabled = !st.slot;
@@ -738,8 +743,8 @@ async function flowView(root, ctx, slug) {
         showDone(appointment);
       } catch (e) {
         if (e instanceof ApiError && e.code === 'PHONE_VERIFICATION_REQUIRED') { gated = true; return; }
-        if (e instanceof ApiError && e.code === 'SLOT_TAKEN') {
-          toast(e.message || t('ეს დრო უკვე დაიკავეს — აირჩიე სხვა.', 'This time was just taken — pick another one.'), 'error');
+        if (e instanceof ApiError && (e.code === 'SLOT_TAKEN' || e.code === 'CLASS_FULL')) {
+          toast(e.message || (e.code === 'CLASS_FULL' ? t('კლასი შეივსო — აირჩიე სხვა.', 'The class is full — pick another one.') : t('ეს დრო უკვე დაიკავეს — აირჩიე სხვა.', 'This time was just taken — pick another one.')), 'error');
           loadSlots();
           return;
         }

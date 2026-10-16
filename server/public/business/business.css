@@ -184,6 +184,41 @@ body.biz { font-size: 14.5px; }
 .bz-cal-event.is-pending { border-style: dashed; background: var(--surface); }
 .bz-cal-event.is-cancelled { opacity: .4; text-decoration: line-through; }
 .bz-cal-event.is-done { opacity: .72; }
+/* A group class: an outlined block with „7 / 15“ in the corner and a thin seat bar along the bottom. */
+.bz-cal-event.is-class { background: var(--surface); border-color: color-mix(in srgb, var(--c, var(--book)) 55%, transparent); padding-right: 44px; padding-bottom: 8px; }
+.bz-cal-event.is-class::before { background: repeating-linear-gradient(180deg, var(--c, var(--book)) 0 6px, transparent 6px 9px); }
+.bz-cal-event .seats { position: absolute; top: 4px; right: 6px; font-style: normal; font-size: 11px; font-weight: 700; font-variant-numeric: tabular-nums; color: var(--c, var(--book)); border: 1px solid color-mix(in srgb, var(--c, var(--book)) 45%, transparent); border-radius: 999px; padding: 1px 6px; background: var(--surface); }
+.bz-cal-event .fill { position: absolute; left: 4px; bottom: 0; height: 3px; border-radius: 3px 3px 0 0; background: var(--c, var(--book)); max-width: calc(100% - 8px); }
+.bz-cal-event.is-class.is-full .seats { color: var(--surface); background: var(--text); border-color: var(--text); }
+/* The class drawer: the seats number, the attendee rows with one-tap came / no-show. */
+.bz-class-seats .num { display: flex; align-items: baseline; gap: 4px; font-size: 15px; color: var(--text2); }
+.bz-class-seats .num b { font-size: 30px; font-weight: 800; letter-spacing: -.02em; color: var(--text); font-variant-numeric: tabular-nums; line-height: 1; }
+.bz-class-seats .num small { margin-left: auto; font-size: 12.5px; font-weight: 600; color: var(--book-ink); }
+.bz-class-seats.is-full .num small { color: var(--warn); }
+.bz-class-bar { height: 4px; border-radius: 4px; background: var(--bg3); margin-top: 8px; overflow: hidden; }
+.bz-class-bar i { display: block; height: 100%; border-radius: 4px; transition: width .3s; }
+.bz-class-head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; margin-bottom: 8px; font-size: 14px; }
+.bz-attendees { display: flex; flex-direction: column; border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+.bz-attendee { display: grid; grid-template-columns: 32px 1fr auto; gap: 10px; align-items: center; padding: 9px 10px; border-top: 1px solid var(--line); }
+.bz-attendee:first-child { border-top: 0; }
+.bz-attendee .who { min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.bz-attendee .who b { font-size: 14px; display: flex; align-items: center; gap: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bz-attendee .who .bz-sub { font-size: 12px; }
+.bz-attendee .acts { grid-column: 1 / -1; display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+.bz-attendee.is-completed { background: color-mix(in srgb, var(--ok) 6%, var(--surface)); }
+.bz-attendee.is-no_show { background: color-mix(in srgb, var(--warn) 7%, var(--surface)); }
+.bz-attendee.is-cancelled { opacity: .6; }
+.bz-class-gone summary { cursor: pointer; font-size: 13px; color: var(--text3); margin: 10px 0 6px; }
+.bz-class-note { margin: -4px 0 0; }
+.bz-quick button small { font-weight: 600; color: var(--text3); }
+.bz-quick button.on small { color: inherit; opacity: .8; }
+/* The timetable dialog: weekday + time rows. */
+.bz-sched-rows { display: flex; flex-direction: column; gap: 8px; }
+.bz-sched-row { display: grid; grid-template-columns: 1fr 150px auto; gap: 8px; align-items: center; }
+.bz-sched-result { border: 1px solid var(--line); border-radius: 12px; padding: 10px 12px; font-size: 13.5px; }
+.bz-sched-result .ok { color: var(--ok); font-weight: 600; display: flex; align-items: center; }
+.bz-sched-result .skipped { margin-top: 6px; color: var(--text2); }
+.bz-sched-result ul { margin: 4px 0 0; padding-left: 18px; }
 .bz-cal-now { position: absolute; left: 0; right: 0; height: 2px; background: var(--danger); z-index: 2; pointer-events: none; }
 .bz-cal-now::before { content: ''; position: absolute; left: -4px; top: -3px; width: 8px; height: 8px; border-radius: 50%; background: var(--danger); }
 .bz-legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12.5px; color: var(--text2); padding: 10px 14px 12px; border-top: 1px solid var(--line); }
@@ -369,6 +404,7 @@ body.biz { font-size: 14.5px; }
 .bz-service-row.is-offline .bz-service-main b { color: var(--text2); }
 .bz-service-dur { display: inline-flex; align-items: baseline; justify-content: center; gap: 3px; padding: 6px 8px; border-radius: 999px; border: 1px solid var(--book-line); color: var(--book-ink); font-size: 12.5px; font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
 .bz-service-dur small { font-size: 10.5px; color: var(--text3); font-weight: 600; }
+.bz-service-seats { display: inline-flex; align-items: center; gap: 4px; margin-left: 6px; padding: 2px 8px; border-radius: 999px; border: 1px dashed var(--book-line); color: var(--book-ink); font-size: 11.5px; font-weight: 700; vertical-align: middle; white-space: nowrap; }
 .bz-service-main { min-width: 0; }
 .bz-service-main b { display: block; font-size: 14.5px; }
 .bz-service-main .faint { font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

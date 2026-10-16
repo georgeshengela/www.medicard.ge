@@ -6,6 +6,7 @@ import { t } from '/app/js/i18n.js';
 import { biz, gel, minutes, emptyBox, fail, ok, debounceFn, avatar } from '../shared.js';
 import { canManage } from '../state.js';
 import { chips, filterBar } from '../lists.js';
+import { scheduleDialog } from '../class.js';
 
 export default async function servicesPage(root) {
   const host = h('div');
@@ -59,7 +60,7 @@ export default async function servicesPage(root) {
           return h('div', { class: `bz-service-row${s.online ? '' : ' is-offline'}` },
             h('span', { class: 'bz-service-dur' }, minutes(s.durationMin), s.bufferMin ? h('small', null, `+${s.bufferMin}`) : null),
             h('div', { class: 'bz-service-main' },
-              h('b', null, s.name),
+              h('b', null, s.name, s.seats > 1 ? h('span', { class: 'bz-service-seats', title: t('ჯგუფური კლასი — ერთ დროს ამდენი კლიენტი იწერება', 'Group class — this many clients book one time') }, icon('users', { size: 11 }), t(`${s.seats} ადგილი`, `${s.seats} seats`)) : null),
               h('div', { class: 'faint' }, [s.nameEn && s.nameEn !== s.name ? s.nameEn : null, s.description].filter(Boolean).join(' · ') || (s.bufferMin ? t(`${s.bufferMin} წთ პაუზა შემდეგ`, `${s.bufferMin} min buffer after`) : '')),
               needs.length ? h('div', { class: 'bz-service-res', title: t(`სჭირდება: ${needs.join(', ')}`, `Needs: ${needs.join(', ')}`) }, icon('door', { size: 12 }), needs.join(' · ')) : null),
             h('div', { class: 'bz-service-who', title: everyone ? t('ყველა ასრულებს', 'Everyone performs it') : who.map((p) => p.name).join(', ') },
@@ -68,6 +69,7 @@ export default async function servicesPage(root) {
             h('div', { class: 'bz-service-price' }, s.price == null ? h('span', { class: 'bz-dim' }, t('ფასი ადგილზე', 'Price on site')) : s.priceTo ? `${gel(s.price)} – ${gel(s.priceTo)}` : gel(s.price)),
             h('div', { class: 'bz-service-online' }, manage ? toggle(s.online, async (on) => { try { await biz.patch(`/services/${s.id}`, { online: on }); s.online = on; ok(on ? t('ჩართულია აპში', 'On in the app') : t('გამორთულია აპში', 'Off in the app')); paint(false); } catch (e) { fail(e); paint(); } }) : badge(s.online ? t('ონლაინ', 'Online') : t('ადგილზე', 'On site'), s.online ? 'ok' : 'neutral')),
             manage ? h('div', { class: 'bz-row-actions' },
+              s.seats > 1 ? button(t('განრიგი', 'Timetable'), { variant: 'ghost', size: 'sm', icon: 'repeat', title: t('კვირის განრიგი → მომდევნო კვირების კლასები', 'Weekly timetable → the coming weeks\' classes'), onClick: () => scheduleDialog(s, staff, { onDone: () => paint() }) }) : null,
               button('', { variant: 'ghost', size: 'sm', icon: 'edit', ariaLabel: t('რედაქტირება', 'Edit'), onClick: () => serviceDialog(s, staff, paint, false, resources) }),
               button('', { variant: 'ghost', size: 'sm', icon: 'trash', ariaLabel: t('ამოღება', 'Retire'), onClick: async () => { if (await confirmDialog({ title: t('სერვისის ამოღება?', 'Retire the service?'), body: t(`„${s.name}“ აპიდან გაქრება; ძველი ჩანაწერები რჩება.`, `"${s.name}" leaves the app; past bookings stay.`), confirm: t('ამოღება', 'Retire'), danger: true })) { try { await biz.del(`/services/${s.id}`); ok(t('ამოღებულია', 'Retired')); paint(); } catch (e) { fail(e); } } } })) : null);
         }))))));
@@ -102,6 +104,7 @@ function serviceDialog(service, staff, onSaved, preset = false, resources = []) 
   const group = input({ value: service?.group || '', placeholder: t('მაგ. თერაპია, მანიკური, მასაჟი', 'e.g. Therapy, Manicure, Massage') });
   const duration = input({ type: 'number', min: 5, max: 720, step: 5, value: existing?.durationMin ?? 30 });
   const buffer = input({ type: 'number', min: 0, max: 120, step: 5, value: existing?.bufferMin ?? 0 });
+  const seats = input({ type: 'number', min: 1, max: 200, step: 1, value: existing?.seats ?? 1 });
   const price = input({ type: 'number', min: 0, step: '0.01', value: existing?.price ?? '', placeholder: t('ცარიელი = ფასი ადგილზე', 'Empty = price on site') });
   const priceTo = input({ type: 'number', min: 0, step: '0.01', value: existing?.priceTo ?? '', placeholder: t('დიაპაზონისთვის', 'For a range') });
   const description = textarea({ rows: 2, value: existing?.description || '' });
@@ -114,6 +117,7 @@ function serviceDialog(service, staff, onSaved, preset = false, resources = []) 
       field(t('ჯგუფი', 'Group'), group, t('აპში სერვისები ჯგუფებად ჩანს.', 'The app lists services by group.')),
       h('div', { class: 'form-row' }, field(t('ხანგრძლივობა, წთ', 'Duration, min'), duration), field(t('პაუზა შემდეგ, წთ', 'Buffer after, min'), buffer, t('გაწმენდა, მომზადება — ამ დროს სხვა ვერ ჩაიწერება.', 'Cleaning, preparation — nobody books this time.'))),
       h('div', { class: 'form-row' }, field(t('ფასი, ₾', 'Price, ₾'), price), field(t('ფასი … მდე, ₾', 'Price up to, ₾'), priceTo)),
+      field(t('ადგილები', 'Seats'), seats, t('1 = ჩვეულებრივი ვიზიტი. 2 ან მეტი = ჯგუფური კლასი (იოგა, პილატესი, ზუმბა): ერთ დროს ამდენი კლიენტი იწერება ერთ მწვრთნელთან, დარბაზი ერთხელ იკავება. ფასი ერთ ადგილზეა.', '1 = a normal visit. 2 or more = a group class (yoga, pilates, zumba): this many clients book one time with one trainer, the hall is held once. The price is per seat.')),
       needs,
       field(t('აღწერა', 'Description'), description),
       h('label', { class: 'bz-inline', style: { fontSize: '14px' } }, online, t('ონლაინ ჯავშნა აპიდან', 'Bookable online from the app'))),
@@ -121,7 +125,7 @@ function serviceDialog(service, staff, onSaved, preset = false, resources = []) 
   });
   save.addEventListener('click', () => busy(save, async () => {
     try {
-      const body = { nameKa: nameKa.value.trim(), name: name.value.trim() || nameKa.value.trim(), group: group.value.trim() || null, durationMin: Number(duration.value), bufferMin: Number(buffer.value) || 0, price: price.value === '' ? null : Number(price.value), priceTo: priceTo.value === '' ? null : Number(priceTo.value), description: description.value.trim() || null, online: online.checked };
+      const body = { nameKa: nameKa.value.trim(), name: name.value.trim() || nameKa.value.trim(), group: group.value.trim() || null, durationMin: Number(duration.value), bufferMin: Number(buffer.value) || 0, seats: Math.max(1, Number(seats.value) || 1), price: price.value === '' ? null : Number(price.value), priceTo: priceTo.value === '' ? null : Number(priceTo.value), description: description.value.trim() || null, online: online.checked };
       if (resources.length) body.resourceIds = needChecks.map((l) => l.querySelector('input')).filter((i) => i.checked).map((i) => i.value);
       if (existing) await biz.patch(`/services/${existing.id}`, body); else await biz.post('/services', body);
       m.close();

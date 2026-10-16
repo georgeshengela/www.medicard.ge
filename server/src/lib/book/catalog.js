@@ -495,6 +495,8 @@ export function servicePublic(row) {
     online: Boolean(row.online),
     active: Boolean(row.active),
     sortOrder: Number(row.sortOrder ?? 0),
+    /** 1 = a normal visit; 2+ = a group class — that many clients may book the same start with the same trainer. */
+    seats: Math.max(1, Math.round(Number(row.seats)) || 1),
   };
 }
 

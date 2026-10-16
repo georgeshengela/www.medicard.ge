@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { buildAnalytics, periodFor, resourceUtilisation, workingMinutes } from './analytics.js';
+import { buildAnalytics, periodFor, resourceUtilisation, uniqueBlocks, workingMinutes } from './analytics.js';
 import { tbilisiInstant } from './time.js';
 
 const hours = { 1: [{ from: '10:00', to: '18:00' }], 2: [{ from: '10:00', to: '18:00' }], 3: [{ from: '10:00', to: '18:00' }], 4: [], 5: [], 6: [], 0: [] };
@@ -108,5 +108,26 @@ describe('MEDIBOOK analytics — rooms and equipment', () => {
     const off = resourceUtilisation({ resources: resources.slice(0, 1), appointments, businessHours: hours, timeOff: [{ staffId: null, startsAt: at('2026-10-20', 0), endsAt: at('2026-10-21', 0) }, { staffId: 'nino', startsAt: at('2026-10-19', 0), endsAt: at('2026-10-20', 0) }], from, to, now });
     assert.equal(off[0].workingMinutes, 720);
     assert.equal(buildAnalytics({ appointments, resources, business: { hours }, from, to, now }).resources.length, 2);
+  });
+});
+
+describe('MEDIBOOK analytics — group classes', () => {
+  it('a class counts every attendee as a booking but one block of the trainer\'s time and one unit of the room', () => {
+    const cls = { id: 'cls1', serviceId: 'yoga', staffId: 'nino', startsAt: at('2026-10-19', 18 - 1), endsAt: at('2026-10-19', 18), seats: 15, resourceIds: ['hall'], status: 'OPEN' };
+    const attendee = (id, status) => ({ ...appt(id, 'nino', '2026-10-19', 17, 60, status, { price: 20, serviceId: 'yoga', serviceName: 'იოგა' }), classId: 'cls1', resourceIds: [] });
+    const appointments = [attendee('y1', 'COMPLETED'), attendee('y2', 'COMPLETED'), attendee('y3', 'NO_SHOW'), attendee('y4', 'CANCELLED')];
+    const hall = { id: 'hall', name: 'დარბაზი', kind: 'ROOM', capacity: 1, active: true };
+    const r = buildAnalytics({ appointments, staff: [nino], business: { hours }, resources: [hall], classes: [cls], from, to, now });
+    assert.equal(r.totals.bookings, 3);
+    assert.equal(r.totals.completed, 2);
+    assert.equal(r.totals.noShow, 1);
+    const u = r.utilisation.find((x) => x.staffId === 'nino');
+    assert.equal(u.bookedMinutes, 60);
+    assert.equal(u.appointments, 3);
+    assert.equal(r.topServices[0].count, 3);
+    const room = r.resources.find((x) => x.resourceId === 'hall');
+    assert.equal(room.bookedMinutes, 60);
+    assert.equal(room.appointments, 1);
+    assert.deepEqual(uniqueBlocks([{ id: 1, classId: 'c' }, { id: 2, classId: 'c' }, { id: 3 }, { id: 4, classId: 'd' }]).map((x) => x.id), [1, 3, 4]);
   });
 });

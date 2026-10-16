@@ -10,6 +10,7 @@ import { prisma } from '../prisma.js';
 import { bookError, dayRanges, newId } from './catalog.js';
 import { businessRow } from './store.js';
 import { addDaysYmd, tbilisiInstant, tbilisiYmd, weekdayOfYmd } from './time.js';
+import { classBlocks } from './availability.js';
 
 const sql = Prisma.sql;
 const join = Prisma.join;
@@ -69,13 +70,15 @@ export async function listResources(businessId, { all = false, now = new Date() 
   const date = tbilisiYmd(now);
   const dayStart = tbilisiInstant(date, 0);
   const dayEnd = tbilisiInstant(addDaysYmd(date, 1), 0);
-  const [rows, links, today, business] = await Promise.all([
+  const [rows, links, today, classesToday, business] = await Promise.all([
     db.$queryRaw`SELECT * FROM "BookResource" WHERE "businessId" = ${businessId} ${all ? Prisma.empty : sql`AND active`} ORDER BY "sortOrder", name`,
     db.$queryRaw`SELECT l."resourceId", s.id, s.name, s."nameKa", s."group" FROM "BookServiceResource" l JOIN "BookService" s ON s.id = l."serviceId" WHERE l."businessId" = ${businessId} AND s.active ORDER BY s."group" NULLS LAST, s."sortOrder", s.name`,
     db.$queryRaw`SELECT id, status, "startsAt", "endsAt", "resourceIds" FROM "BookAppointment" WHERE "businessId" = ${businessId} AND status <> 'CANCELLED' AND "endsAt" > ${dayStart} AND "startsAt" < ${dayEnd} AND "resourceIds" <> '[]'::jsonb`,
+    // A group class holds its room once, whatever the number of attendees.
+    db.$queryRaw`SELECT id, "staffId", status, "startsAt", "endsAt", "resourceIds" FROM "BookClass" WHERE "businessId" = ${businessId} AND status = 'OPEN' AND "endsAt" > ${dayStart} AND "startsAt" < ${dayEnd} AND "resourceIds" <> '[]'::jsonb`,
     businessRow(businessId, db),
   ]);
-  const load = new Map(dayLoad({ resources: rows, appointments: today, businessHours: business?.hours, date }).map((x) => [x.id, x]));
+  const load = new Map(dayLoad({ resources: rows, appointments: [...today, ...classBlocks(classesToday)], businessHours: business?.hours, date }).map((x) => [x.id, x]));
   return rows.map((r) => ({
     ...resourcePublic(r),
     services: links.filter((l) => l.resourceId === r.id).map((l) => ({ id: l.id, name: l.nameKa && l.nameKa.trim() ? l.nameKa : l.name, group: l.group ?? null })),

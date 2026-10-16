@@ -136,16 +136,20 @@ export default function BookWhenStep() {
     void Haptics.selectionAsync().catch(() => undefined);
     setSlot(sl);
   };
+  // A group class: every time is a class with seats; the seats travel to the summary.
+  const isClass = (service?.seats ?? 1) > 1;
+  const seatParams = (sl: BookSlot) => (sl.seats && sl.seats > 1 ? { seats: String(sl.seats), seatsLeft: String(sl.seatsLeft ?? sl.seats) } : {});
+  const seatsLeftText = (sl: BookSlot) => (sl.seats && sl.seats > 1 ? tx(`${sl.seatsLeft ?? sl.seats} ადგილი დარჩა`, `${sl.seatsLeft ?? sl.seats} ${sl.seatsLeft === 1 ? 'seat' : 'seats'} left`) : null);
   const takeEarliest = () => {
     if (!earliest) return;
     void Haptics.selectionAsync().catch(() => undefined);
     if (earliest.date !== date) setDate(earliest.date);
     setSlot(earliest.slot);
-    go('confirm', { date: earliest.date, startsAt: earliest.slot.startsAt, time: earliest.slot.time, pick: staffId || (earliest.slot.staffIds.length === 1 ? earliest.slot.staffIds[0] : '') });
+    go('confirm', { date: earliest.date, startsAt: earliest.slot.startsAt, time: earliest.slot.time, pick: staffId || (earliest.slot.staffIds.length === 1 ? earliest.slot.staffIds[0] : ''), ...seatParams(earliest.slot) });
   };
   const next = () => {
     if (!slot || !date) return;
-    go('confirm', { date, startsAt: slot.startsAt, time: slot.time, pick: staffId || (slot.staffIds.length === 1 ? slot.staffIds[0] : '') });
+    go('confirm', { date, startsAt: slot.startsAt, time: slot.time, pick: staffId || (slot.staffIds.length === 1 ? slot.staffIds[0] : ''), ...seatParams(slot) });
   };
   // The waiting list keeps the chosen services and person; the day travels along when one is open.
   const openWaitlist = (forDay: string | null) => {
@@ -183,8 +187,8 @@ export default function BookWhenStep() {
               <Pressable accessibilityRole="button" onPress={takeEarliest} style={[s.earliest, { backgroundColor: c.surface, borderColor: ink }]}>
                 <View style={[s.zap, { borderColor: ink }]}><Zap size={16} color={ink} strokeWidth={2.2} /></View>
                 <View style={{ flex: 1 }}>
-                  <Text style={[hubText.cardTitle, { color: c.text100 }]}>{tx('ყველაზე ახლო თავისუფალი დრო', 'Earliest free time')}</Text>
-                  <Text style={[hubText.caption, { color: c.text200 }]}>{dayLabel(earliest.date)} · {earliest.slot.time}</Text>
+                  <Text style={[hubText.cardTitle, { color: c.text100 }]}>{isClass ? tx('ყველაზე ახლო კლასი', 'Earliest class') : tx('ყველაზე ახლო თავისუფალი დრო', 'Earliest free time')}</Text>
+                  <Text style={[hubText.caption, { color: c.text200 }]}>{[`${dayLabel(earliest.date)} · ${earliest.slot.time}`, seatsLeftText(earliest.slot)].filter(Boolean).join(' · ')}</Text>
                 </View>
                 <Text style={[hubText.small, { color: ink, fontFamily: 'NotoSansGeorgian_600SemiBold' }]}>{tx('ავიღოთ', 'Take it')}</Text>
               </Pressable>
@@ -245,7 +249,7 @@ export default function BookWhenStep() {
               <View style={{ marginTop: HUB.sectionGap }}>
                 <View style={{ flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 10 }}>
                   <Text style={[hubText.sectionTitle, { color: c.text100 }]}>{dayLabel(date)}</Text>
-                  <Text style={[hubText.caption, { color: c.text300 }]}>{slots ? tx(`${slots.slots.length} თავისუფალი დრო · ${durationLabel(bundle.durationMin)}`, `${slots.slots.length} free · ${durationLabel(bundle.durationMin)}`) : ''}</Text>
+                  <Text style={[hubText.caption, { color: c.text300 }]}>{slots ? (isClass ? tx(`${slots.slots.length} კლასი · ${durationLabel(bundle.durationMin)}`, `${slots.slots.length} ${slots.slots.length === 1 ? 'class' : 'classes'} · ${durationLabel(bundle.durationMin)}`) : tx(`${slots.slots.length} თავისუფალი დრო · ${durationLabel(bundle.durationMin)}`, `${slots.slots.length} free · ${durationLabel(bundle.durationMin)}`)) : ''}</Text>
                 </View>
                 {!slots ? (
                   <RecordsPageSkeleton />
@@ -255,7 +259,8 @@ export default function BookWhenStep() {
                       {slots.reason === 'closed' ? tx('ამ დღეს დახურულია.', 'Closed on this day.')
                         : slots.reason === 'horizon' ? tx('ასე შორს ჯერ არ იწერენ.', 'Bookings do not open that far ahead yet.')
                           : slots.reason === 'error' ? tx('დროები ვერ ჩაიტვირთა. სცადე ხელახლა.', 'Times could not load. Please try again.')
-                            : tx('ამ დღეს თავისუფალი დრო აღარ დარჩა — აირჩიე სხვა დღე ზემოთ.', 'No free time left on this day — pick another day above.')}
+                            : isClass ? tx('ამ დღეს კლასი არ არის ან ადგილები შეივსო — აირჩიე სხვა დღე ზემოთ.', 'No class on this day or the seats are taken — pick another day above.')
+                              : tx('ამ დღეს თავისუფალი დრო აღარ დარჩა — აირჩიე სხვა დღე ზემოთ.', 'No free time left on this day — pick another day above.')}
                     </Text>
                     {slots.reason !== 'error' && slots.reason !== 'horizon' ? waitCard(date, false) : null}
                   </FlatCard>
@@ -265,9 +270,11 @@ export default function BookWhenStep() {
                     <View style={s.grid}>
                       {g.items.map((sl) => {
                         const on = slot?.startsAt === sl.startsAt;
+                        const seatsText = seatsLeftText(sl);
                         return (
-                          <Pressable key={sl.startsAt} accessibilityRole="button" accessibilityState={{ selected: on }} accessibilityLabel={tx(`${sl.time}, თავისუფალია`, `${sl.time}, free`)} onPress={() => pickSlot(sl)} style={[s.slot, { backgroundColor: on ? ink : c.surface, borderColor: on ? ink : c.bg300 }]}>
+                          <Pressable key={sl.startsAt} accessibilityRole="button" accessibilityState={{ selected: on }} accessibilityLabel={seatsText ? `${sl.time}, ${seatsText}` : tx(`${sl.time}, თავისუფალია`, `${sl.time}, free`)} onPress={() => pickSlot(sl)} style={[s.slot, { backgroundColor: on ? ink : c.surface, borderColor: on ? ink : c.bg300 }]}>
                             <Text style={[hubText.value, { color: on ? '#fff' : c.text100, fontSize: 15 }]}>{sl.time}</Text>
+                            {seatsText ? <Text style={[hubText.small, { color: on ? 'rgba(255,255,255,0.85)' : (sl.seatsLeft ?? 0) <= 3 ? c.warning : c.text300, fontSize: 11 }]}>{seatsText}</Text> : null}
                           </Pressable>
                         );
                       })}
@@ -288,7 +295,7 @@ export default function BookWhenStep() {
       {b && service ? (
         <View style={[s.footer, { paddingBottom: insets.bottom + 12, backgroundColor: c.bg100, borderTopColor: c.bg200 }]}>
           <Text style={[hubText.caption, { color: slot ? c.text100 : c.text300, textAlign: 'center', marginBottom: 8 }]}>
-            {slot && date ? `${dayLabel(date)} · ${slot.time} · ${bundleLine(bundle)}` : tx('აირჩიე დღე და დრო', 'Pick a day and a time')}
+            {slot && date ? [`${dayLabel(date)} · ${slot.time} · ${bundleLine(bundle)}`, seatsLeftText(slot)].filter(Boolean).join(' · ') : isClass ? tx('აირჩიე დღე და კლასი', 'Pick a day and a class') : tx('აირჩიე დღე და დრო', 'Pick a day and a time')}
           </Text>
           <Button label={tx('გაგრძელება', 'Continue')} size="lg" onPress={next} disabled={!slot} />
         </View>

@@ -22,7 +22,13 @@ import { moduleInk } from '@/theme/moduleBrand';
  */
 export type BookStep = 'service' | 'who' | 'when' | 'confirm';
 /** `serviceIds` is a comma list — a visit may hold several services (haircut + colour), booked as one block of time. */
-export type FlowParams = { id: string; serviceId?: string; serviceIds?: string; staffId?: string; date?: string; startsAt?: string; time?: string; pick?: string };
+export type FlowParams = { id: string; serviceId?: string; serviceIds?: string; staffId?: string; date?: string; startsAt?: string; time?: string; pick?: string; seats?: string; seatsLeft?: string };
+
+/** „ჯგუფური · 15 ადგილი“ for a class service, nothing for a normal visit. */
+export function seatsLine(service: Pick<BookService, 'seats'>): string | null {
+  const n = Number(service.seats ?? 1);
+  return n > 1 ? tx(`ჯგუფური · ${n} ადგილი`, `Group · ${n} seats`) : null;
+}
 
 /** What the chosen services add up to: the block of time, the total, the names. */
 export type ServiceBundle = { ids: string[]; names: string[]; durationMin: number; price: number | null; priceTo: number | null; currency: string };
@@ -185,7 +191,7 @@ export function ServiceRow({ service, on, first, discount, onPress }: { service:
       <View style={[s.check, { borderColor: on ? ink : c.bg300 }]}>{on ? <Check size={14} color={ink} strokeWidth={3} /> : null}</View>
       <View style={{ flex: 1, gap: 2 }}>
         <Text style={[hubText.cardTitle, { color: c.text100 }]}>{service.name}</Text>
-        <Text style={[hubText.caption, { color: c.text200 }]}>{[durationLabel(service.durationMin), service.description].filter(Boolean).join(' · ')}</Text>
+        <Text style={[hubText.caption, { color: c.text200 }]}>{[durationLabel(service.durationMin), seatsLine(service), service.description].filter(Boolean).join(' · ')}</Text>
         {discount ? <Text style={[hubText.small, { color: ink, fontFamily: 'NotoSansGeorgian_600SemiBold' }]}>{discountLabel(discount)} · {discount.title}</Text> : null}
       </View>
       <Text style={[hubText.value, { color: c.text100 }]}>{priceLabel(service.price, service.priceTo, service.currency)}</Text>
