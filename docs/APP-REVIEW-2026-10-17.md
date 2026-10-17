@@ -1,12 +1,12 @@
-# App Review — MEDICARD AI 1.26.0 (41) — MEDIBOOK — copy & paste
+# App Review — MEDICARD AI 1.26.2 (42) — MEDIBOOK — copy & paste
 
-Build 41 = `expo.version` 1.0.0.26.0, uploaded to App Store Connect on 2026-10-17 (TestFlight only). The owner tests
+Build 42 = `expo.version` 1.0.0.26.2 (calm velvet; build 41 = 1.26.0 is superseded — never submit it), uploaded to App Store Connect on 2026-10-17 (TestFlight only). The owner tests
 it on the phone first and submits by hand. New and review-worthy in this build: **MEDIBOOK** (catalogue + map +
 online booking). Also new: the velvet launch screen and the location purpose text that names the MEDIBOOK map.
 Background audio (MEDISLEEP) must be explained again, as in every submission since 2026-10-13.
 
 ---------------------------------------------------------------------------------------------------
-## STEP 1 — owner: check build 41 in TestFlight (what the reviewer will see)
+## STEP 1 — owner: check build 42 in TestFlight (what the reviewer will see)
 
 Sign out, then sign in with the **App Review phone number and code** (the ones in App Review Information →
 Sign-In Information). Only that account and team @medicard.ge accounts see the demo place.
@@ -20,7 +20,7 @@ Sign-In Information). Only that account and team @medicard.ge accounts see the d
 Then sign back in with your own account. If any step fails, stop and fix it before submitting.
 
 ---------------------------------------------------------------------------------------------------
-## STEP 2 — App Store Connect → MEDICARD AI → Distribution → iOS App → **+** → version **1.26.0**
+## STEP 2 — App Store Connect → MEDICARD AI → Distribution → iOS App → **+** → version **1.26.2**
 
 1. **What's New in This Version** — paste:
 
@@ -29,13 +29,13 @@ MEDIBOOK — find dental clinics, salons, spas and clinics near you on a map and
 A new launch screen and smaller fixes.
 ```
 
-2. **Build** → **+** → build **41** (1.26.0).
+2. **Build** → **+** → build **42** (1.26.2).
 3. **App Review Information**:
    - Sign-In Information: keep the App Review phone number + code as they are.
    - **Notes** — replace everything with the block in STEP 3.
    - **Attachment** — the MEDISLEEP screen recording from a physical iPhone (docs/APP-REVIEW-2026-10-13.md
      STEP 1). If the attachment did not carry over to the new version, upload it again (the 2026-10-13
-     recording is fine, or record a fresh one on build 41).
+     recording is fine, or record a fresh one on build 42).
 4. **Save**. Do STEP 4 before Add for Review.
 
 ---------------------------------------------------------------------------------------------------
@@ -82,7 +82,7 @@ are already declared for App Functionality; check once that they are.
 ---------------------------------------------------------------------------------------------------
 ## STEP 5 — submit
 
-Distribution → 1.26.0 → **Add for Review** → **Submit to App Review**.
+Distribution → 1.26.2 → **Add for Review** → **Submit to App Review**.
 
 ---------------------------------------------------------------------------------------------------
 ## Reference (already done — nothing to do)
