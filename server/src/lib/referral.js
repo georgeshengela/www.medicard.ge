@@ -337,11 +337,16 @@ export async function referralSummary(userId, { db = prisma, now = new Date(), w
     db.$queryRaw`SELECT r.status, r."createdAt", u."fullName" FROM "Referral" r JOIN "User" u ON u.id = r."inviteeId"
       WHERE r."inviterId" = ${userId} AND r.status <> 'REJECTED' ORDER BY r."createdAt" DESC`,
     db.rewardLedger.aggregate({ where: { userId, sourceType: 'REFERRAL', sourceId: { startsWith: 'inviter:' } }, _sum: { amount: true } }),
-    db.$queryRaw`SELECT r.status, u."fullName" FROM "Referral" r JOIN "User" u ON u.id = r."inviterId" WHERE r."inviteeId" = ${userId}`,
+    db.$queryRaw`SELECT r.id, r.status, r."createdAt", u."fullName" FROM "Referral" r JOIN "User" u ON u.id = r."inviterId" WHERE r."inviteeId" = ${userId}`,
     db.$queryRaw`SELECT "createdAt" FROM "User" WHERE id = ${userId}`,
   ]);
   // An influencer's code (medicard.ge/promo) counts as „who invited you“ too: one per account, never changed.
-  const [byInfluencer] = mine ? [] : await db.$queryRaw`SELECT i."displayName" FROM "InfluencerReferral" r JOIN "Influencer" i ON i.id = r."influencerId" WHERE r."userId" = ${userId}`.catch(() => []);
+  const [byInfluencer] = mine ? [] : await db.$queryRaw`SELECT r.id, r.code, r."createdAt", i."displayName", i.status, i."photoKey" FROM "InfluencerReferral" r JOIN "Influencer" i ON i.id = r."influencerId" WHERE r."userId" = ${userId}`.catch(() => []);
+  // The Medi coins the new user got for the code (friend: both sides; influencer: the invitee only).
+  const claimId = mine?.id ?? byInfluencer?.id ?? null;
+  const gotCoins = claimId
+    ? await db.rewardLedger.aggregate({ where: { userId, sourceType: 'REFERRAL', sourceId: `invitee:${claimId}` }, _sum: { amount: true } }).then((r) => r?._sum?.amount ?? 0).catch(() => 0)
+    : 0;
   const canClaim = !mine && !byInfluencer && Boolean(me) && now.getTime() - new Date(me.createdAt).getTime() <= CLAIM_WINDOW_DAYS * DAY;
   const invited = invitees.length;
   const rewarded = invitees.filter((r) => r.status === 'REWARDED').length;
@@ -350,6 +355,16 @@ export async function referralSummary(userId, { db = prisma, now = new Date(), w
   const monthRemaining = Math.max(0, MONTHLY_INVITES - invitedThisMonth);
   // Influencer codes have their own (shorter, admin-set) window; the app says „you can still enter it later, within N days“.
   const influencerWindowDays = await loadInfluencerConfig({ db }).then((c) => c.entryWindowDays).catch(() => null);
+  const createdAt = me ? new Date(me.createdAt).getTime() : null;
+  const invitedBy = mine
+    ? { status: mine.status, name: inviteeLabel(mine.fullName, friend), kind: 'friend', at: new Date(mine.createdAt).toISOString(), coins: gotCoins }
+    : byInfluencer
+      ? {
+        status: 'REWARDED', name: byInfluencer.displayName, kind: 'influencer', at: new Date(byInfluencer.createdAt).toISOString(), coins: gotCoins,
+        // Public photo of an approved influencer (the same one the /i/CODE page shows).
+        photoPath: byInfluencer.status === 'ACTIVE' && byInfluencer.photoKey ? `/api/promo/public/photo/${encodeURIComponent(byInfluencer.code)}` : null,
+      }
+      : null;
   return {
     code,
     link: code ? inviteLink(code) : null,
@@ -357,6 +372,9 @@ export async function referralSummary(userId, { db = prisma, now = new Date(), w
     coinsPerSide: REFERRAL_COINS,
     claimWindowDays: CLAIM_WINDOW_DAYS,
     influencerWindowDays,
+    // Last moment a code can still be entered: influencer codes (admin window) and friends' codes (14 days).
+    enterUntil: createdAt != null && influencerWindowDays ? new Date(createdAt + influencerWindowDays * DAY).toISOString() : null,
+    friendUntil: createdAt != null ? new Date(createdAt + CLAIM_WINDOW_DAYS * DAY).toISOString() : null,
     invited,
     pending: invited - rewarded,
     rewarded,
@@ -370,7 +388,7 @@ export async function referralSummary(userId, { db = prisma, now = new Date(), w
     monthlyCap: MONTHLY_INVITES,
     invitedThisMonth,
     monthRemaining,
-    invitedBy: mine ? { status: mine.status, name: inviteeLabel(mine.fullName, friend), kind: 'friend' } : byInfluencer ? { status: 'REWARDED', name: byInfluencer.displayName, kind: 'influencer' } : null,
+    invitedBy,
     canClaim,
   };
 }
