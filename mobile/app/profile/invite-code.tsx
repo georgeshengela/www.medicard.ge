@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { useFocusEffect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { ChevronLeft, CircleAlert, Coins, Info, KeyRound, Share2, ShieldCheck, type LucideIcon } from 'lucide-react-native';
+import { ChevronLeft, CircleAlert, Coins, KeyRound, Share2, ShieldCheck, type LucideIcon } from 'lucide-react-native';
 import { InviteTicket, type TicketInviter } from '@/components/referral/InviteTicket';
 import { KeyboardFormShell } from '@/components/ui/KeyboardFormShell';
 import { VelvetButton } from '@/components/velvet/VelvetButton';
@@ -51,10 +51,8 @@ function Fact({ palette: p, icon: Icon, title, body }: { palette: VelvetPalette;
  * state: six code wells with the coin reward and the time left; who invited you once a code is in (photo of an
  * approved influencer, date, coins); a quiet „ვადა გავიდა“ when the window closed. Under it, in plain words: where
  * codes come from, that a code is entered once, what you get, and what the inviter sees. Influencer codes need a
- * verified phone: the server rules a code out (window, own code, device) before asking, the phone page opens with
- * the reason and the typed code goes in by itself on the way back. An influencer code after its window (owner
- * 2026-10-17) is a calm note with the account's own date, and the page says so before typing. Prefilled from an
- * invite link when there is one.
+ * verified phone: the velvet phone page opens with the reason, and the typed code goes in by itself on the way back.
+ * Prefilled from an invite link when there is one.
  */
 export default function InviteCodeScreen() {
   const router = useRouter();
@@ -63,7 +61,6 @@ export default function InviteCodeScreen() {
   const params = useLocalSearchParams<{ code?: string }>();
   const [code, setCode] = useState(normalizeReferralCode(params.code) ?? '');
   const [error, setError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
   const { user } = useAuth();
   const retryAfterPhone = useRef(false);
   const [busy, setBusy] = useState(false);
@@ -100,8 +97,6 @@ export default function InviteCodeScreen() {
   const influencerDays = daysLeft(s?.enterUntil);
   const friendDays = daysLeft(s?.friendUntil);
   const windowDays = s?.influencerWindowDays ?? 7;
-  // Between the influencer window (7 days) and the friend window (14): only a friend's code still counts.
-  const influencerClosed = mode === 'ask' && influencerDays != null && influencerDays <= 0 && friendDays != null && friendDays > 0;
 
   let footnote: string | null = null;
   if (mode === 'invited') {
@@ -112,10 +107,8 @@ export default function InviteCodeScreen() {
     footnote = tx(`კოდის შეყვანა შეგიძლია კიდევ ${dayText(influencerDays)}`, `You can enter a code for ${dayText(influencerDays)} more`);
   } else if (influencerDays === 1) {
     footnote = tx('დღეს ბოლო დღეა კოდის შესაყვანად', 'Today is the last day to enter a code');
-  } else if (friendDays === 1) {
-    footnote = tx('დღეს ბოლო დღეა მეგობრის კოდის შესაყვანად', 'Today is the last day for a friend’s code');
   } else if (friendDays != null && friendDays > 0) {
-    footnote = tx(`მეგობრის კოდის შეყვანა შეგიძლია კიდევ ${dayText(friendDays)}`, `You can enter a friend’s code for ${dayText(friendDays)} more`);
+    footnote = tx(`ინფლუენსერის კოდის ვადა გავიდა; მეგობრის კოდს კიდევ ${dayText(friendDays)} შეიყვან`, `Influencer codes have closed; a friend’s code still works for ${dayText(friendDays)}`);
   } else {
     footnote = tx('კოდი ერთხელ შეიყვანება და მერე აღარ იცვლება', 'A code can be entered once and never changes');
   }
@@ -141,12 +134,7 @@ export default function InviteCodeScreen() {
         retryAfterPhone.current = true;
         offerPhoneVerification(router, ka.referral.enterPhone);
       } else if (e instanceof ApiError && e.status === 409) {
-        // An influencer code after its window is not a mistake: say why, with the account's date, and what still works.
-        if (e.code === 'REFERRAL_TOO_LATE' && e.details?.kind === 'influencer') {
-          setNotice(friendDays != null && friendDays > 0
-            ? `${e.message} ${tx(`მეგობრის კოდი ჯერ კიდევ მოქმედებს — ${dayText(friendDays)} დარჩა.`, `A friend’s code still works — ${dayText(friendDays)} left.`)}`
-            : e.message);
-        } else setError(e.message);
+        setError(e.message);
         if (e.code === 'REFERRAL_ALREADY_CLAIMED' || e.code === 'REFERRAL_TOO_LATE') void clearPendingReferralCode();
       } else setError(authErrorMessage(e));
     } finally {
@@ -175,8 +163,6 @@ export default function InviteCodeScreen() {
       ? tx('ამ ანგარიშზე მოწვევის კოდი უკვე შეყვანილია — ერთი ანგარიში, ერთი კოდი.', 'An invite code is already on this account — one account, one code.')
       : mode === 'late'
         ? tx('ამ ანგარიშზე კოდის შეყვანის ვადა გავიდა. ახალ ანგარიშებს რეგისტრაციის შემდეგ ვეკითხებით.', 'The time to enter a code on this account has passed. New accounts are asked right after sign-up.')
-        : influencerClosed
-          ? tx(`ინფლუენსერის კოდების ვადა ${onDate(s?.enterUntil)} ამოიწურა — ახლა მეგობრის კოდი მოქმედებს: შეიყვანე და მაშინვე მიიღებ ${coins} Medi მონეტას.`, `Influencer codes closed on ${onDate(s?.enterUntil)} — a friend’s code still works: enter it and get ${coins} Medi Coins right away.`)
         : tx(`შეიყვანე 6-ნიშნა კოდი, რომელიც ინფლუენსერმა ან მეგობარმა გაგიზიარა — მაშინვე მიიღებ ${coins} Medi მონეტას.`, `Enter the 6-character code an influencer or a friend shared with you — you get ${coins} Medi Coins right away.`);
 
   const header = (
@@ -202,9 +188,7 @@ export default function InviteCodeScreen() {
         { icon: Coins, title: tx('მონეტები საფულეშია', 'Coins are in your wallet'), body: tx('Medi მონეტები MEDIQUEST-ის მაღაზიაში გამოიყენე. ფულადი ღირებულება არ აქვს.', 'Use Medi Coins in the MEDIQUEST store. They have no cash value.') },
       ]
       : [
-        influencerClosed
-          ? { icon: Share2, title: tx('მეგობარი გაგიზიარებს', 'A friend shares it'), body: tx(`მესიჯით ან ბმულით. ინფლუენსერის კოდი რეგისტრაციიდან ${windowDays} დღეში მოქმედებს.`, `In a message or a link. An influencer’s code works within ${windowDays} days of signing up.`) }
-          : { icon: Share2, title: tx('კოდს გაგიზიარებენ', 'Someone shares a code'), body: tx('ინფლუენსერი სთორიში, პოსტში ან ბმულით medicard.ge/i/…, მეგობარი — მესიჯით.', 'An influencer in a story, a post or a medicard.ge/i/… link; a friend in a message.') },
+        { icon: Share2, title: tx('კოდს გაგიზიარებენ', 'Someone shares a code'), body: tx('ინფლუენსერი სთორიში, პოსტში ან ბმულით medicard.ge/i/…, მეგობარი — მესიჯით.', 'An influencer in a story, a post or a medicard.ge/i/… link; a friend in a message.') },
         { icon: KeyRound, title: tx('ერთხელ შეიყვან', 'You enter it once'), body: tx('ერთ ანგარიშზე ერთი კოდი — მერე აღარ იცვლება.', 'One code per account — it never changes afterwards.') },
         { icon: Coins, title: tx(`მიიღებ ${coins} Medi მონეტას`, `You get ${coins} Medi Coins`), body: tx('მაშინვე, MEDIQUEST-ის საფულეში. ფულადი ღირებულება არ აქვს.', 'Right away, in your MEDIQUEST wallet. They have no cash value.') },
         { icon: ShieldCheck, title: tx('სახელი დაცულია', 'Your name stays private'), body: tx('ინფლუენსერი მხოლოდ რაოდენობას ხედავს; მეგობარი — სახელს და გვარის პირველ ასოს.', 'An influencer only sees a count; a friend sees your first name and last initial.') },
@@ -240,7 +224,6 @@ export default function InviteCodeScreen() {
           onChangeCode={(next) => {
             setCode(next);
             setError(null);
-            setNotice(null);
           }}
           onSubmit={() => void submit()}
           error={error}
@@ -253,12 +236,6 @@ export default function InviteCodeScreen() {
           <View accessibilityLiveRegion="polite" style={{ flexDirection: 'row', gap: 8, alignItems: 'flex-start', marginTop: 14, paddingHorizontal: 4 }}>
             <CircleAlert size={17} color={p.danger} strokeWidth={2.2} style={{ marginTop: 2 }} />
             <Text style={{ flex: 1, fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 14, lineHeight: 20, color: p.danger }}>{error}</Text>
-          </View>
-        ) : null}
-        {notice ? (
-          <View accessibilityLiveRegion="polite" style={{ flexDirection: 'row', gap: 12, alignItems: 'flex-start', marginTop: 18, padding: 16, borderRadius: 20, backgroundColor: p.surface, boxShadow: velvetField(p) }}>
-            <Info size={19} color={p.pulse} strokeWidth={2.1} style={{ marginTop: 1 }} />
-            <Text style={{ flex: 1, fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 14, lineHeight: 21, color: p.text }}>{notice}</Text>
           </View>
         ) : null}
       </View>
