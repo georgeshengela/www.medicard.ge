@@ -32,7 +32,7 @@ export function AuthMethodCard({ icon: Icon, iconBg, iconColor, label, onPress, 
               paddingHorizontal: 14,
               paddingVertical: 14,
               borderRadius: 22,
-              backgroundColor: p.surface,
+              backgroundColor: p.raised,
               boxShadow: velvetLift(p),
               opacity: disabled ? 0.5 : 1,
             }

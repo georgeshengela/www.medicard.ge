@@ -327,7 +327,7 @@ function ProfileSummary({
           accessibilityLabel={tx('უკან', 'Back')}
           onPress={onDone}
           hitSlop={10}
-          style={{ width: 42, height: 42, borderRadius: 21, alignItems: 'center', justifyContent: 'center', backgroundColor: p.surface, boxShadow: velvetLift(p) }}
+          style={{ width: 42, height: 42, borderRadius: 21, alignItems: 'center', justifyContent: 'center', backgroundColor: p.raised, boxShadow: velvetLift(p) }}
         >
           <ChevronLeft size={22} color={p.ink} strokeWidth={2.2} />
         </Pressable>
@@ -358,7 +358,7 @@ function SummaryGroup({ palette: p, title, rows, onEdit }: { palette: VelvetPale
   return (
     <View style={{ marginTop: 30 }}>
       <Text style={{ marginBottom: 12, marginLeft: 4, fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 16, lineHeight: 22, color: p.text }}>{title}</Text>
-      <View style={{ borderRadius: 24, backgroundColor: p.surface, boxShadow: velvetLift(p), paddingHorizontal: 16 }}>
+      <View style={{ borderRadius: 24, backgroundColor: p.raised, boxShadow: velvetLift(p), paddingHorizontal: 16 }}>
         {rows.map((row, i) => (
           <Pressable
             key={row.key}
@@ -410,7 +410,7 @@ function CompletionDisc({ palette: p, done, total }: { palette: VelvetPalette; d
   return (
     <View
       accessibilityLabel={tx(`შევსებულია ${done} / ${total}`, `${done} of ${total} filled in`)}
-      style={{ width: DISC, height: DISC, borderRadius: DISC / 2, alignItems: 'center', justifyContent: 'center', backgroundColor: p.surface, boxShadow: velvetRaised(p) }}
+      style={{ width: DISC, height: DISC, borderRadius: DISC / 2, alignItems: 'center', justifyContent: 'center', backgroundColor: p.raised, boxShadow: velvetRaised(p) }}
     >
       <Svg width={RING} height={RING} style={{ position: 'absolute' }}>
         <Circle cx={RING / 2} cy={RING / 2} r={r} stroke={p.shade} strokeOpacity={0.55} strokeWidth={STROKE} fill="none" />

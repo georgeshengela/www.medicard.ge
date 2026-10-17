@@ -73,7 +73,7 @@ export function VelvetThemeToggle({ dark, onToggle, palette: p, accessibilityLab
               width: KNOB,
               height: KNOB,
               borderRadius: KNOB / 2,
-              backgroundColor: p.surface,
+              backgroundColor: p.raised,
               boxShadow: velvetKnob(p),
             },
             knobStyle,
