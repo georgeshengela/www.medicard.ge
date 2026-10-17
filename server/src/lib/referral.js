@@ -9,6 +9,7 @@ import { getUserLanguages, langOf } from './i18n.js';
 import { DEFAULT_SOCIAL_NAME } from './socialAuth.js';
 import { hasVerifiedPhone, PHONE_REQUIRED_CODE } from './phoneGate.js';
 import { CLAIM_ERRORS, influencerClaimDecision, insertInfluencerReferral, loadConfig as loadInfluencerConfig, resolveInfluencerCode } from './influencer/store.js';
+import { influencerTooLateText } from './influencer/rules.js';
 
 /**
  * Referral with Medi coins (Phase 3.4, simplified by the owner 2026-10-05).
@@ -161,16 +162,34 @@ async function priorClaims(db, inviteeId, deviceHash) {
 /**
  * „ვინ მოგიწვია?“ with an influencer's code (medicard.ge/promo). Needs a verified phone (real money is at stake);
  * the registration waits out the hold before it is paid to the influencer. The new user gets the same Medi coins
- * as with a friend's code (no cash value).
+ * as with a friend's code (no cash value). Everything that rules the code out (window, own code, a code already in,
+ * this device, age) is answered before the phone step: nobody verifies a phone for a code that can't count.
  */
 async function claimInfluencerCode({ invitee, influencer, installId, ip, lang }, { db, now }) {
   const en = langOf(lang) === 'en';
   const config = await loadInfluencerConfig({ db });
   const fail = (key) => {
+    if (key === 'TOO_LATE') {
+      return {
+        ok: false,
+        code: 'REFERRAL_TOO_LATE',
+        error: influencerTooLateText(en ? 'en' : 'ka', config.entryWindowDays, invitee.createdAt),
+        kind: 'influencer',
+        windowDays: config.entryWindowDays,
+        accountCreatedAt: new Date(invitee.createdAt).toISOString(),
+      };
+    }
     const text = CLAIM_ERRORS[key] || CLAIM_ERRORS.INVITER_INACTIVE;
     const pick = en ? text.en : text.ka;
     return { ok: false, code: `REFERRAL_${key}`, error: typeof pick === 'function' ? pick(config.entryWindowDays) : pick };
   };
+  const deviceHash = deviceHashOf(installId);
+  if (!deviceHash) return { ok: false, code: 'REFERRAL_DEVICE_REQUIRED', error: (en ? REFERRAL_ERRORS_EN : REFERRAL_ERRORS).DEVICE_REQUIRED };
+  const networkHash = networkHashOf(ip);
+  const featureOn = db !== prisma || await isFeatureEnabled('influencers');
+  const prior = await priorClaims(db, invitee.id, deviceHash);
+  const reason = influencerClaimDecision({ invitee, influencer, config, now, alreadyClaimed: prior.claimed, deviceUsed: prior.device, featureOn });
+  if (reason) return fail(reason);
   if (!hasVerifiedPhone(invitee)) {
     return {
       ok: false,
@@ -181,13 +200,6 @@ async function claimInfluencerCode({ invitee, influencer, installId, ip, lang },
         : 'კოდის შესაყვანად ჯერ დაადასტურე ტელეფონის ნომერი: პროფილი → შესვლის გზები → ტელეფონი.',
     };
   }
-  const deviceHash = deviceHashOf(installId);
-  if (!deviceHash) return { ok: false, code: 'REFERRAL_DEVICE_REQUIRED', error: (en ? REFERRAL_ERRORS_EN : REFERRAL_ERRORS).DEVICE_REQUIRED };
-  const networkHash = networkHashOf(ip);
-  const featureOn = db !== prisma || await isFeatureEnabled('influencers');
-  const prior = await priorClaims(db, invitee.id, deviceHash);
-  const reason = influencerClaimDecision({ invitee, influencer, config, now, alreadyClaimed: prior.claimed, deviceUsed: prior.device, featureOn });
-  if (reason) return fail(reason);
   const coins = config.inviteeCoins > 0 && await referralRewardsOn(db) ? config.inviteeCoins : 0;
   const result = await db.$transaction(async (tx) => {
     await lockClaim(tx, invitee.id, deviceHash);

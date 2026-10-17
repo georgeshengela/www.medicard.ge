@@ -50,7 +50,15 @@ referralRouter.post(
   asyncHandler(async (req, res) => {
     const body = claimSchema.parse(req.body ?? {});
     const result = await claimReferral({ invitee: req.user, code: body.code, installId: body.installId, ip: clientIp(req), lang: req.lang });
-    if (!result.ok) return res.status(result.httpStatus || 409).json({ error: result.error, code: result.code, ...(result.feature ? { feature: result.feature } : {}) });
+    if (!result.ok) {
+      return res.status(result.httpStatus || 409).json({
+        error: result.error,
+        code: result.code,
+        ...(result.feature ? { feature: result.feature } : {}),
+        // An influencer code after its window: the app explains it calmly with the account's own date.
+        ...(result.kind ? { kind: result.kind, windowDays: result.windowDays, accountCreatedAt: result.accountCreatedAt } : {}),
+      });
+    }
     return res.status(201).json(result);
   }),
 );
