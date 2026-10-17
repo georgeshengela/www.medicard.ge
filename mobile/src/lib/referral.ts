@@ -47,7 +47,20 @@ export type ReferralSummary = {
   coinsEarned: number;
   monthRemaining: number;
   invitees?: ReferralInvitee[];
-  invitedBy: { status: string; name?: string; kind?: 'friend' | 'influencer' } | null;
+  invitedBy: {
+    status: string;
+    name?: string;
+    kind?: 'friend' | 'influencer';
+    /** When the code was entered (server 2026-10-17+). */
+    at?: string;
+    /** Medi coins this account got for the code. */
+    coins?: number;
+    /** Public photo of an approved influencer, relative to the API. */
+    photoPath?: string | null;
+  } | null;
+  /** Last moment an influencer code / a friend's code can be entered (server 2026-10-17+). */
+  enterUntil?: string | null;
+  friendUntil?: string | null;
   canClaim: boolean;
 };
 
