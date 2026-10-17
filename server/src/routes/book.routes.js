@@ -19,11 +19,17 @@ import * as waitlist from '../lib/book/waitlist.js';
 import { viewerLoyalty } from '../lib/book/loyalty.js';
 import { publicSiblings } from '../lib/book/branches.js';
 import { tbilisiYmd } from '../lib/book/time.js';
+import { canSeeBookReviewDemo, isBookReviewDemo } from '../lib/book/reviewDemo.js';
 
 export const bookRouter = Router();
 
 const lang = (req) => (req.lang === 'en' ? 'en' : 'ka');
 const num = (v) => (v === undefined || v === null || v === '' ? null : Number(v));
+/** The App Review demo place is listed and bookable only for the review and team accounts. */
+const showDemo = (req) => canSeeBookReviewDemo(req.user);
+function refuseDemoFor(req, businessId) {
+  if (isBookReviewDemo(businessId) && !showDemo(req)) throw bookError(404, 'ბიზნესი ვერ მოიძებნა.', 'BUSINESS_NOT_FOUND', 'Business not found.');
+}
 
 /** A session when one is sent; anonymous otherwise (catalogue reads mark favourites for signed-in people). */
 function optionalAuth(req, res, next) {
@@ -53,24 +59,24 @@ bookRouter.get('/businesses', optionalAuth, asyncHandler(async (req, res) => {
   const limit = Math.min(200, Math.max(1, Number(req.query.limit) || 40));
   const userId = req.user?.id ?? null;
   if (Number.isFinite(lat) && Number.isFinite(lng)) {
-    const businesses = await store.nearbyBusinesses({ lat, lng, radiusKm: num(req.query.radiusKm) ?? 5, category, q, limit, lang: lang(req), userId, onlyBookable: req.query.bookable === '1' });
+    const businesses = await store.nearbyBusinesses({ lat, lng, radiusKm: num(req.query.radiusKm) ?? 5, category, q, limit, lang: lang(req), userId, onlyBookable: req.query.bookable === '1', showDemo: showDemo(req) });
     return res.json({ businesses, mode: 'nearby' });
   }
   const origin = Number.isFinite(num(req.query.originLat)) && Number.isFinite(num(req.query.originLng)) ? { lat: num(req.query.originLat), lng: num(req.query.originLng) } : null;
-  const businesses = await store.searchBusinesses({ q, category, city: req.query.city ? String(req.query.city).slice(0, 60) : null, limit, lang: lang(req), userId, origin });
+  const businesses = await store.searchBusinesses({ q, category, city: req.query.city ? String(req.query.city).slice(0, 60) : null, limit, lang: lang(req), userId, origin, showDemo: showDemo(req) });
   return res.json({ businesses, mode: 'search' });
 }));
 
-bookRouter.get('/map', asyncHandler(async (req, res) => {
+bookRouter.get('/map', optionalAuth, asyncHandler(async (req, res) => {
   const box = { minLat: num(req.query.minLat), maxLat: num(req.query.maxLat), minLng: num(req.query.minLng), maxLng: num(req.query.maxLng) };
   if (Object.values(box).some((v) => !Number.isFinite(v))) return res.status(400).json({ error: t(req, 'რუკის საზღვრები არასწორია.', 'Invalid map bounds.') });
-  const pins = await store.mapPins({ ...box, category: req.query.category ? String(req.query.category).toUpperCase() : null, q: String(req.query.q ?? '').slice(0, 80), limit: Number(req.query.limit) || 500 });
+  const pins = await store.mapPins({ ...box, category: req.query.category ? String(req.query.category).toUpperCase() : null, q: String(req.query.q ?? '').slice(0, 80), limit: Number(req.query.limit) || 500, showDemo: showDemo(req) });
   res.set('Cache-Control', 'no-store');
   res.json({ pins });
 }));
 
 bookRouter.get('/businesses/:id', optionalAuth, asyncHandler(async (req, res) => {
-  const business = await store.businessDetail(req.params.id, { lang: lang(req), userId: req.user?.id ?? null });
+  const business = await store.businessDetail(req.params.id, { lang: lang(req), userId: req.user?.id ?? null, showDemo: showDemo(req) });
   if (!business) return res.status(404).json({ error: t(req, 'ბიზნესი ვერ მოიძებნა.', 'Business not found.') });
   store.recordEvent(business.id, 'VIEW', req.user?.id ?? clientIp(req)).catch(() => undefined);
   // The viewer's own bonus and live memberships at this place (signed-in app users only).
@@ -118,6 +124,7 @@ const createBody = z.object({
 
 bookRouter.post('/appointments', requireVerifiedPhone, asyncHandler(async (req, res) => {
   const body = createBody.parse(req.body ?? {});
+  refuseDemoFor(req, body.businessId);
   const platform = String(req.headers['x-medicard-platform'] ?? '');
   if (!body.serviceId && !body.serviceIds?.length) throw bookError(400, 'აირჩიე სერვისი.', 'SERVICE_REQUIRED', 'Pick a service.');
   const row = await bookings.createAppointment({
@@ -175,6 +182,7 @@ const waitBody = z.object({
 
 bookRouter.post('/waitlist', requireVerifiedPhone, asyncHandler(async (req, res) => {
   const body = waitBody.parse(req.body ?? {});
+  refuseDemoFor(req, body.businessId);
   if (!body.serviceId && !body.serviceIds?.length) throw bookError(400, 'აირჩიე სერვისი.', 'SERVICE_REQUIRED', 'Pick a service.');
   const platform = String(req.headers['x-medicard-platform'] ?? '');
   const { row, created } = await waitlist.join({ businessId: body.businessId, user: req.user, serviceId: body.serviceId, serviceIds: body.serviceIds, staffId: body.staffId ?? null, fromDate: body.fromDate ?? null, toDate: body.toDate ?? null, dayParts: body.dayParts ?? [], note: body.note ?? null, source: platform === 'web' ? 'WEB' : 'APP' });
@@ -195,7 +203,7 @@ bookRouter.delete('/waitlist/:id', asyncHandler(async (req, res) => {
 bookRouter.get('/favorites', asyncHandler(async (req, res) => {
   const origin = Number.isFinite(num(req.query.lat)) && Number.isFinite(num(req.query.lng)) ? { lat: num(req.query.lat), lng: num(req.query.lng) } : null;
   res.set('Cache-Control', 'no-store');
-  res.json({ businesses: await store.favoritesOf(req.user.id, { lang: lang(req), origin }) });
+  res.json({ businesses: await store.favoritesOf(req.user.id, { lang: lang(req), origin, showDemo: showDemo(req) }) });
 }));
 
 bookRouter.put('/favorites/:businessId', asyncHandler(async (req, res) => {

@@ -351,6 +351,10 @@ export function bboxAround({ lat, lng }, radiusKm) {
 export const GEORGIA_BBOX = Object.freeze({ minLat: 41.0, maxLat: 43.6, minLng: 39.9, maxLng: 46.8 });
 export const TBILISI_CENTER = Object.freeze({ lat: 41.7151, lng: 44.8271 });
 
+/** The App Review demo place (reviewDemo.js): kept out of every public list, shown only to review / team accounts. */
+export const BOOK_REVIEW_DEMO_ID = 'bk-app-review-demo';
+export const BOOK_REVIEW_DEMO_SLUG = 'medicard-demo-studio';
+
 /** Towns the crawler covers; also the Georgian names the app shows for a provider's English city. */
 export const CITY_TABLE = Object.freeze([
   ['Tbilisi', 'თბილისი', 41.7151, 44.8271], ['Batumi', 'ბათუმი', 41.6168, 41.6367], ['Kutaisi', 'ქუთაისი', 42.2679, 42.718], ['Rustavi', 'რუსთავი', 41.5495, 44.993],

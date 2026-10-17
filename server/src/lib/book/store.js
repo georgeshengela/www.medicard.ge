@@ -7,12 +7,15 @@ import { Prisma } from '@prisma/client';
 import { createHash } from 'node:crypto';
 import { prisma } from '../prisma.js';
 import {
-  CATEGORY_IDS, bboxAround, bookError, businessCard, discountPublic, distanceKm, guessCategory, imageUrl, inGeorgia, newId, normalizeHours,
+  BOOK_REVIEW_DEMO_ID, CATEGORY_IDS, bboxAround, bookError, businessCard, discountPublic, distanceKm, guessCategory, imageUrl, inGeorgia, newId, normalizeHours,
   normalizeInstagram, normalizePhone, normalizeSettings, normalizeWebsite, servicePublic, slugFor, staffPublic,
 } from './catalog.js';
 
-const VISIBLE = Prisma.sql`b.status IN ('LISTED', 'CLAIMED')`;
 const sql = Prisma.sql;
+/** Public lists: listed and claimed places, never the App Review demo place. */
+const VISIBLE = sql`b.status IN ('LISTED', 'CLAIMED') AND b.id <> ${BOOK_REVIEW_DEMO_ID}`;
+/** `showDemo` (routes: reviewDemo.js canSeeBookReviewDemo) adds the demo place for the review and team accounts. */
+const visibleFor = (showDemo) => (showDemo ? sql`b.status IN ('LISTED', 'CLAIMED')` : VISIBLE);
 const join = Prisma.join;
 const empty = Prisma.empty;
 
@@ -42,14 +45,14 @@ function toCards(rows, { lang, origin, now, userId }) {
 // ——— catalogue reads ———
 
 /** Businesses around a point, nearest first. Pre-filtered by bbox on the index, then measured. */
-export async function nearbyBusinesses({ lat, lng, radiusKm = 5, category = null, q = '', limit = 40, lang = 'ka', userId = null, now = new Date(), onlyBookable = false }, db = prisma) {
+export async function nearbyBusinesses({ lat, lng, radiusKm = 5, category = null, q = '', limit = 40, lang = 'ka', userId = null, now = new Date(), onlyBookable = false, showDemo = false }, db = prisma) {
   const origin = { lat: Number(lat), lng: Number(lng) };
   if (!inGeorgia(origin.lat, origin.lng)) return [];
   const r = Math.min(50, Math.max(0.5, Number(radiusKm) || 5));
   const box = bboxAround(origin, r);
   const rows = await db.$queryRaw`SELECT b.*, ${ONLINE_SERVICES}, ${FROM_PRICE}, ${favoriteCol(userId)}
     FROM "BookBusiness" b ${favoriteJoin(userId)}
-    WHERE ${VISIBLE} AND b.lat BETWEEN ${box.minLat} AND ${box.maxLat} AND b.lng BETWEEN ${box.minLng} AND ${box.maxLng}
+    WHERE ${visibleFor(showDemo)} AND b.lat BETWEEN ${box.minLat} AND ${box.maxLat} AND b.lng BETWEEN ${box.minLng} AND ${box.maxLng}
       ${categoryClause(category)} ${searchClause(q)} ${onlyBookable ? sql`AND b.status = 'CLAIMED'` : empty}
     ORDER BY (b.status = 'CLAIMED') DESC, b."ratingCount" DESC LIMIT 600`;
   const cards = toCards(rows, { lang, origin, now, userId })
@@ -59,21 +62,21 @@ export async function nearbyBusinesses({ lat, lng, radiusKm = 5, category = null
 }
 
 /** Text search anywhere (no radius): claimed first, then the best rated, then by name. */
-export async function searchBusinesses({ q = '', category = null, city = null, limit = 40, lang = 'ka', userId = null, origin = null, now = new Date() }, db = prisma) {
+export async function searchBusinesses({ q = '', category = null, city = null, limit = 40, lang = 'ka', userId = null, origin = null, now = new Date(), showDemo = false }, db = prisma) {
   const cityClause = city ? sql`AND (b.city ILIKE ${`%${city}%`})` : empty;
   const rows = await db.$queryRaw`SELECT b.*, ${ONLINE_SERVICES}, ${FROM_PRICE}, ${favoriteCol(userId)}
     FROM "BookBusiness" b ${favoriteJoin(userId)}
-    WHERE ${VISIBLE} ${categoryClause(category)} ${searchClause(q)} ${cityClause}
+    WHERE ${visibleFor(showDemo)} ${categoryClause(category)} ${searchClause(q)} ${cityClause}
     ORDER BY (b.status = 'CLAIMED') DESC, b."ratingCount" DESC, b."viewCount" DESC, b.name ASC
     LIMIT ${Math.min(200, Math.max(1, Number(limit) || 40))}`;
   return toCards(rows, { lang, origin, now, userId });
 }
 
 /** Light pins for the map viewport. */
-export async function mapPins({ minLat, maxLat, minLng, maxLng, category = null, q = '', limit = 500 }, db = prisma) {
+export async function mapPins({ minLat, maxLat, minLng, maxLng, category = null, q = '', limit = 500, showDemo = false }, db = prisma) {
   const rows = await db.$queryRaw`SELECT b.id, b.slug, b.name, b."nameKa", b.category, b.lat, b.lng, b.status, b."ratingAvg", b."ratingCount", b.hours
     FROM "BookBusiness" b
-    WHERE ${VISIBLE} AND b.lat BETWEEN ${Number(minLat)} AND ${Number(maxLat)} AND b.lng BETWEEN ${Number(minLng)} AND ${Number(maxLng)}
+    WHERE ${visibleFor(showDemo)} AND b.lat BETWEEN ${Number(minLat)} AND ${Number(maxLat)} AND b.lng BETWEEN ${Number(minLng)} AND ${Number(maxLng)}
       ${categoryClause(category)} ${searchClause(q)}
     ORDER BY (b.status = 'CLAIMED') DESC, b."ratingCount" DESC LIMIT ${Math.min(2000, Math.max(1, Number(limit) || 500))}`;
   return rows.map((r) => ({
@@ -102,9 +105,9 @@ export async function requireBusiness(idOrSlug, db = prisma) {
 }
 
 /** Everything the public business page shows. */
-export async function businessDetail(idOrSlug, { lang = 'ka', userId = null, now = new Date(), includeHidden = false } = {}, db = prisma) {
+export async function businessDetail(idOrSlug, { lang = 'ka', userId = null, now = new Date(), includeHidden = false, showDemo = false } = {}, db = prisma) {
   const row = await businessRow(idOrSlug, db);
-  if (!row || (!includeHidden && !['LISTED', 'CLAIMED'].includes(row.status))) return null;
+  if (!row || (!includeHidden && (!['LISTED', 'CLAIMED'].includes(row.status) || (row.id === BOOK_REVIEW_DEMO_ID && !showDemo)))) return null;
   const [services, staff, discounts, reviews, images, fav] = await Promise.all([
     db.$queryRaw`SELECT * FROM "BookService" WHERE "businessId" = ${row.id} AND active ORDER BY "sortOrder", name`,
     db.$queryRaw`SELECT * FROM "BookStaff" WHERE "businessId" = ${row.id} AND active ORDER BY "sortOrder", name`,
@@ -160,9 +163,9 @@ export async function setFavorite(userId, businessId, on, db = prisma) {
   else await db.$executeRaw`DELETE FROM "BookFavorite" WHERE "userId" = ${userId} AND "businessId" = ${businessId}`;
 }
 
-export async function favoritesOf(userId, { lang = 'ka', origin = null, now = new Date() } = {}, db = prisma) {
+export async function favoritesOf(userId, { lang = 'ka', origin = null, now = new Date(), showDemo = false } = {}, db = prisma) {
   const rows = await db.$queryRaw`SELECT b.*, ${ONLINE_SERVICES}, ${FROM_PRICE}, TRUE AS favorite FROM "BookFavorite" f JOIN "BookBusiness" b ON b.id = f."businessId"
-    WHERE f."userId" = ${userId} AND ${VISIBLE} ORDER BY f."createdAt" DESC LIMIT 100`;
+    WHERE f."userId" = ${userId} AND ${visibleFor(showDemo)} ORDER BY f."createdAt" DESC LIMIT 100`;
   return toCards(rows, { lang, origin, now, userId });
 }
 
