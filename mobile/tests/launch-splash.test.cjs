@@ -8,16 +8,13 @@ const path = require('node:path');
 
 const root = path.join(__dirname, '..');
 const read = (p) => fs.readFileSync(path.join(root, p), 'utf8');
+// Plain TS modules without imports: Node strips the types (the same values Metro bundles).
+const material = require('../src/theme/velvetMaterial.ts');
+const art = require('../src/components/launch/launchArt.ts');
 
-function velvet(mode, key) {
-  const src = read('src/theme/velvet.ts');
-  const block = new RegExp(`\\n\\s{2}${mode}: \\{([\\s\\S]*?)\\n\\s{2}\\}`).exec(src.slice(src.indexOf('export const VELVET')));
-  return new RegExp(`\\b${key}: '(#[0-9A-Fa-f]{6})'`).exec(block[1])[1];
-}
-
-function constant(name) {
-  return Number(new RegExp(`export const ${name} = (\\d+);`).exec(read('src/components/launch/launchArt.ts'))[1]);
-}
+/** The shipped depth's colours (VELVET in the app may be a dev preview depth; the splash must match the shipped one). */
+const velvet = (mode, key) => material.velvetPalettes(material.VELVET_DEPTH)[mode][key];
+const constant = (name) => art[name];
 
 function pngSize(file) {
   const buf = fs.readFileSync(path.join(root, file));

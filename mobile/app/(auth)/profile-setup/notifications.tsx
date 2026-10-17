@@ -115,7 +115,7 @@ export default function ProfileSetupNotificationsScreen() {
             padding: 16,
             flexDirection: 'row',
             gap: 12,
-            backgroundColor: p.surface,
+            backgroundColor: p.raised,
             boxShadow: velvetRaised(p),
           }}
         >

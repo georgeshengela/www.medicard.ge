@@ -3,7 +3,7 @@
     "name": "MEDICARD AI",
     "slug": "medicard-ge",
     "scheme": "medicard",
-    "version": "1.0.0.26.1",
+    "version": "1.0.0.26.2",
     "assetBundlePatterns": [
       "assets/**"
     ],
@@ -106,12 +106,12 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#E6EFED",
+          "backgroundColor": "#EEF3F2",
           "image": "./assets/splash/launch-light.png",
           "imageWidth": 320,
           "resizeMode": "contain",
           "dark": {
-            "backgroundColor": "#132A34",
+            "backgroundColor": "#0D1B23",
             "image": "./assets/splash/launch-dark.png"
           }
         }

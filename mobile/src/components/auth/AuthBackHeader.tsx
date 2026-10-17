@@ -32,7 +32,7 @@ export function AuthBackHeader({ title, subtitle, palette: p, onBack, aside }: P
           hitSlop={12}
           style={
             p
-              ? { width: 42, height: 42, borderRadius: 21, alignItems: 'center', justifyContent: 'center', backgroundColor: p.surface, boxShadow: velvetLift(p) }
+              ? { width: 42, height: 42, borderRadius: 21, alignItems: 'center', justifyContent: 'center', backgroundColor: p.raised, boxShadow: velvetLift(p) }
               : { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center', marginLeft: -4 }
           }
         >

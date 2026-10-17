@@ -157,12 +157,12 @@ export function HeartbeatDisc({ palette: p, dark, disc, width, reduceMotion, lin
 
       <Animated.View
         style={[
-          { width: disc, height: disc, borderRadius: disc / 2, backgroundColor: p.surface, boxShadow: velvetRaised(p) },
+          { width: disc, height: disc, borderRadius: disc / 2, backgroundColor: p.raised, boxShadow: velvetRaised(p) },
           discStyle,
         ]}
       >
         <LinearGradient
-          colors={[p.discTop, p.surface]}
+          colors={[p.discTop, p.raised]}
           locations={[0, 0.55]}
           start={{ x: 0.21, y: 0.09 }}
           end={{ x: 0.79, y: 0.91 }}
@@ -176,7 +176,7 @@ export function HeartbeatDisc({ palette: p, dark, disc, width, reduceMotion, lin
             width: well,
             height: well,
             borderRadius: well / 2,
-            backgroundColor: p.surface,
+            backgroundColor: p.raised,
             boxShadow: velvetWell(p),
             alignItems: 'center',
             justifyContent: 'center',

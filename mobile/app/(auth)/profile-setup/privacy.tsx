@@ -37,7 +37,7 @@ function PolicySection({ section, open, onToggle, palette: p }: { section: Secti
   const { n, title } = splitTitle(section.title);
 
   return (
-    <View style={[styles.card, { backgroundColor: p.surface, boxShadow: velvetLift(p) }]}>
+    <View style={[styles.card, { backgroundColor: p.raised, boxShadow: velvetLift(p) }]}>
       <Pressable
         accessibilityRole="button"
         accessibilityState={{ expanded: open }}
@@ -164,7 +164,7 @@ export default function ProfileSetupPrivacyScreen() {
         <Text style={[styles.dateText, { color: p.inkOff }]}>{ka.profileSetup.privacyEffective(policy.effectiveDate)}</Text>
 
         {/* The one thing to know */}
-        <View style={[styles.highlight, { backgroundColor: p.surface, boxShadow: velvetLift(p) }]}>
+        <View style={[styles.highlight, { backgroundColor: p.raised, boxShadow: velvetLift(p) }]}>
           <View style={[styles.heroTile, { backgroundColor: p.field, boxShadow: velvetField(p) }]}>
             <ShieldCheck size={24} color={p.pulse} strokeWidth={2.1} />
           </View>

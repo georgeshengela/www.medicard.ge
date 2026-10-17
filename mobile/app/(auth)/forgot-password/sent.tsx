@@ -33,7 +33,7 @@ export default function ForgotPasswordSent() {
             width: DISC,
             height: DISC,
             borderRadius: DISC / 2,
-            backgroundColor: p.surface,
+            backgroundColor: p.raised,
             boxShadow: velvetRaised(p),
             alignItems: 'center',
             justifyContent: 'center',

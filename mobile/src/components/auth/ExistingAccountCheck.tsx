@@ -44,7 +44,7 @@ export function ExistingAccountCheck({
   return (
     <View style={{ flex: 1, backgroundColor: p.surface, paddingTop: insets.top + 24, paddingHorizontal: 20, paddingBottom: Math.max(insets.bottom, 16) + 4 }}>
       <View style={{ flex: 1, justifyContent: 'center' }}>
-        <View style={{ width: 72, height: 72, borderRadius: 36, alignItems: 'center', justifyContent: 'center', backgroundColor: p.surface, boxShadow: velvetRaised(p) }}>
+        <View style={{ width: 72, height: 72, borderRadius: 36, alignItems: 'center', justifyContent: 'center', backgroundColor: p.raised, boxShadow: velvetRaised(p) }}>
           <View style={{ width: 50, height: 50, borderRadius: 25, alignItems: 'center', justifyContent: 'center', backgroundColor: p.field, boxShadow: velvetField(p) }}>
             <UserRoundCheck size={24} color={p.pulse} strokeWidth={2} />
           </View>

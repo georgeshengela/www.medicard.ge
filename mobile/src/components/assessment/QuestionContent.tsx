@@ -205,7 +205,7 @@ function GenderTiles({ palette: p, value, onPick }: { palette: VelvetPalette; va
                 borderRadius: 28,
                 alignItems: 'center',
                 gap: 14,
-                backgroundColor: on ? p.field : p.surface,
+                backgroundColor: on ? p.field : p.raised,
                 boxShadow: on ? `${velvetField(p)}, 0px 0px 0px 2px ${p.pulse}` : velvetLift(p),
               }}
             >
@@ -267,7 +267,7 @@ function GenderTiles({ palette: p, value, onPick }: { palette: VelvetPalette; va
           justifyContent: 'space-between',
           paddingHorizontal: 18,
           borderRadius: 20,
-          backgroundColor: otherOn ? p.field : p.surface,
+          backgroundColor: otherOn ? p.field : p.raised,
           boxShadow: otherOn ? `${velvetField(p)}, 0px 0px 0px 1.5px ${p.pulse}` : velvetLift(p),
         }}
       >
@@ -294,7 +294,7 @@ function BloodGuide({ palette: p }: { palette: VelvetPalette }) {
   const help = ka.assessment.bloodTypeHelp;
   const small = { fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 13, lineHeight: 20, color: p.ink2 } as const;
   return (
-    <View style={{ marginTop: 22, borderRadius: 22, padding: 16, gap: 14, backgroundColor: p.surface, boxShadow: velvetLift(p) }}>
+    <View style={{ marginTop: 22, borderRadius: 22, padding: 16, gap: 14, backgroundColor: p.raised, boxShadow: velvetLift(p) }}>
       <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 16, lineHeight: 22, color: p.text }}>{help.title}</Text>
       <Text style={small}>{help.intro}</Text>
       <View style={{ flexDirection: 'row', gap: 8 }}>
