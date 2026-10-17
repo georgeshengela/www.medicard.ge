@@ -1,7 +1,7 @@
 import { ModuleHeader } from '@/components/brand/ModuleHeader';
 import { tx } from '@/i18n/locale';
 import React, { useCallback, useEffect, useState } from 'react';
-import { Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
+import { Alert, Pressable, RefreshControl, ScrollView, Text, View } from 'react-native';
 import Animated, { FadeInDown } from 'react-native-reanimated';
 import { useRouter } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -58,7 +58,12 @@ export default function QuestAchievementsScreen() {
     void trackQuestEvent('achievement_claim_tapped', item.key || item.id);
     const result = await claim(item.id);
     setClaimingId(null);
-    if (!result || !result.claimed) return;
+    if (!result) {
+      // A failed claim used to end the spinner with nothing else; the server pays each achievement once.
+      Alert.alert(tx('ჯილდოს მიღება ვერ დადასტურდა. სცადე ხელახლა.', 'We couldn’t confirm your reward. Try again.'));
+      return;
+    }
+    if (!result.claimed) return;
     void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
     setFloatReward(`+${result.reward.coinsAwarded} · +${result.reward.xpAwarded} ${questText.xp}`);
     setTimeout(() => setFloatReward(null), reduce ? 500 : 1400);

@@ -77,7 +77,7 @@ export function AssistantForm({ schema, values, onChange, disabled = false, choi
     return <View key={key} style={{ gap: 8 }}>
       <Text style={{ color: C.text100, fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 13 }}>{assistantFieldLabels[key] || key}{required ? '' : tx(' · სურვილისამებრ', ' · optional')}</Text>
       {key === 'frequency' && field.type === 'array' ? <TimeChoices value={values[key]} disabled={disabled} onChange={value => set(key, value)} />
-      : options ? <Options options={options.map(value => ({ value, label: refs?.find(r => r.value === value)?.label || assistantDisplay(value) }))} selected={values[key]} multiple={multiple} disabled={disabled} onSelect={option => {
+      : options ? <Options options={options.map(value => ({ value, label: refs?.find(r => r.value === value)?.label || assistantDisplay(value, key) }))} selected={values[key]} multiple={multiple} disabled={disabled} onSelect={option => {
           if (multiple) { const current = Array.isArray(values[key]) ? values[key] as unknown[] : []; set(key, current.includes(option) ? current.filter(v => v !== option) : [...current, option]); }
           else if (key === 'speciesId') { const next: Record<string, unknown> = { ...values, speciesId: option }; delete next.breedId; onChange(next); }
           else if (key === 'petId') { const next = { ...values, petId: option }; delete (next as Record<string, unknown>).productId; onChange(next); }

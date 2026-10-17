@@ -66,7 +66,7 @@ test('closing Medi mid-answer holds the question for the same account, after the
   assert.match(cleanup[1], /abort\.current\?\.abort\(\);\s*if \(asking\.current && owner === localAccountId\(\)\) holdMediDraft\(owner, asking\.current\);/);
   const send = between('async function send(', 'async function afterSaved(');
   assert.match(send, /working\.current = true; generation\.current\+\+;\s*asking\.current = value; clearMediDraft\(\);/, 'set when the question leaves; a send clears the held one');
-  assert.match(send, /finally \{ working\.current = false; asking\.current = null;/, 'a settled question (answered, failed, refused) is not held');
+  assert.match(send, /finally \{ if \(generation\.current === n\) \{ working\.current = false; asking\.current = null;/, 'a settled question (answered, failed, refused) is not held');
   assert.match(src, /^onLocalAccountChange\(\(\) => clearMediDraft\(\)\);$/m, 'sign-out or another account drops it');
 });
 
@@ -80,4 +80,32 @@ test('opening Medi again puts the held question back in the composer only', () =
   const handoff = readFileSync(join(__dirname, '..', 'src', 'lib', 'mediHandoff.ts'), 'utf8');
   assert.doesNotMatch(handoff, /from ['"][^'"]*(storage|api|async-storage|secure-store|localAccount)[^'"]*['"]/i, 'memory only: no storage, no network');
   assert.doesNotMatch(handoff, /\b(setPreference|AsyncStorage|SecureStore|fetch\()/, 'memory only: no storage, no network');
+});
+
+// 2026-10-13 audit: while Medi answered the send button was a disabled spinner (no Stop), and „ახალი
+// საუბარი“ / opening another conversation silently did nothing until the answer came.
+test('Stop while Medi plans or answers: aborts like closing, frees the composer, the question comes back', () => {
+  const stop = between('function stopAsking(', 'async function afterSaved(');
+  assert.match(stop, /busy !== 'plan' && busy !== 'answer' && busy !== 'deep'/, 'only a plan or an answer stops, never a save');
+  assert.match(stop, /generation\.current\+\+; abort\.current\?\.abort\(\);/, 'the request is aborted and a late result ignored');
+  assert.match(stop, /working\.current = false; asking\.current = null;/, 'the composer is free at once');
+  assert.match(stop, /setText\(current => \(current\.trim\(\) \? current : question\)\)/, 'her question goes back in the composer');
+  assert.match(src, /onStop=\{busy === 'plan' \|\| busy === 'answer' \|\| busy === 'deep' \? /);
+  const composer = readFileSync(join(__dirname, '..', 'src', 'components', 'medi', 'MediComposer.tsx'), 'utf8');
+  assert.match(composer, /accessibilityLabel=\{tx\('შეჩერება', 'Stop'\)\} onPress=\{onStop\}/);
+  const reset = between('function resetConversation(', 'const goBack');
+  assert.ok(reset.indexOf('stopAsking();') < reset.indexOf('if (working.current'), 'New stops first');
+  const open = between('const openConversation', 'const onListLayout');
+  assert.ok(open.indexOf('stopAsking()') < open.indexOf('router.replace('), 'opening another conversation stops first');
+});
+
+// 2026-10-13 audit: an append finishing after „ახალი საუბარი“ wrote the old thread id back (new turns went to
+// the old thread), and two queued appends both copied an old consultation's turns.
+test('each append writes into the thread it was made in; an old consultation is copied once', () => {
+  const persist = between('const persist = ', 'const scrollToEnd');
+  assert.match(persist, /const target = thread\.current;/, 'bound when queued, never read again after a reset');
+  assert.match(persist, /const copy = target\.copy;\s*target\.copy = null;/, 'only the first append carries the copy');
+  assert.match(persist, /target\.id = r\.sessionId/);
+  assert.doesNotMatch(src, /conversation\.current|copyOnFirstSave/);
+  assert.match(between('function resetConversation(', 'const goBack'), /thread\.current = \{ copy: null \};/, 'a reset starts a new thread object');
 });

@@ -209,7 +209,10 @@ export default function Home() {
   // the question typed in; nothing is sent until the person presses send.
   const askChips = isHrefAvailable(mediRoute({ mode: 'doctor' }), features);
   // Women's Home keeps today's food inside „შენი დღე“ (under steps and water) when that block shows.
-  const foodInDay = layout === 'women' && nutritionOn && (stepsOn || waterOn);
+  // The admin hiding „შენი დღე“ brings MEDIFOOD back as its own section; hiding MEDIFOOD hides it inside too.
+  const adminHidden = remoteHome?.hidden ?? [];
+  const foodInDay =
+    layout === 'women' && nutritionOn && (stepsOn || waterOn) && !adminHidden.includes('dayPair') && !adminHidden.includes('nutritionLite');
 
   const today = todayYmd();
   const doses = useMemo(

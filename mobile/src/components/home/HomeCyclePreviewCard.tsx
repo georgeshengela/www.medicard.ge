@@ -7,6 +7,7 @@ import { todayKey } from '@/components/cycle/CycleCalendar';
 import { WEEKDAYS_KA } from '@/constants/cycle';
 import { useFigmaChat } from '@/constants/figmaChatLayout';
 import { ka } from '@/i18n/ka';
+import { tx } from '@/i18n/locale';
 import { useCycleColors } from '@/theme/cycle';
 import { useThemeColors } from '@/theme/colors';
 import { MetricCardSkeleton } from '@/components/ui/Skeleton';
@@ -223,6 +224,10 @@ export function HomeCyclePreviewCard({ onPress }: Props) {
   const offline = privacyLocked === false && view.data?.reachable === false;
   const ready =
     !user?.id || privacyLocked === true || (privacyLocked === false && (view.data !== undefined || view.isError));
+  // A failed read with nothing cached is not „set up your cycle“ (she may have years of logs): a quiet
+  // line and a tap to try again, like the women's Home hero.
+  const failed = privacyLocked === false && !bundle && view.isError;
+  const failedText = tx('ციკლის მონაცემები ახლა ვერ ჩაიტვირთა.', "Couldn't load your cycle right now.");
   const today = cycleToday(bundle, todayKey());
 
   const cycleLen = bundle ? usedCycleLength(bundle) : 28;
@@ -289,12 +294,14 @@ export function HomeCyclePreviewCard({ onPress }: Props) {
       <TouchableOpacity
         accessibilityRole="button"
         accessibilityLabel={
-          hideLengthChrome
-            ? `${title}. ${ka.cycle.postpartumReturnGathering}. ${ka.cycle.postpartumReturnLearning}`
-            : title
+          failed
+            ? `${title}. ${failedText} ${ka.common.retry}`
+            : hideLengthChrome
+              ? `${title}. ${ka.cycle.postpartumReturnGathering}. ${ka.cycle.postpartumReturnLearning}`
+              : title
         }
         activeOpacity={0.92}
-        onPress={onPress}
+        onPress={failed ? () => void view.refetch() : onPress}
       >
         <View
           pointerEvents="none"
@@ -308,6 +315,31 @@ export function HomeCyclePreviewCard({ onPress }: Props) {
         >
           {!ready ? (
             <MetricCardSkeleton />
+          ) : failed ? (
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+              <View
+                style={{
+                  width: 64,
+                  height: 64,
+                  borderRadius: 999,
+                  backgroundColor: roseFill,
+                  borderWidth: 1,
+                  borderColor: roseLine,
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                }}
+              >
+                <CalendarHeart size={24} color={c.period} strokeWidth={2} />
+              </View>
+              <View style={{ flex: 1, gap: 2 }}>
+                <Text style={{ fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 14, lineHeight: 20, color: c.ink }}>
+                  {failedText}
+                </Text>
+                <Text style={{ fontFamily: 'NotoSansGeorgian_600SemiBold', fontSize: 13, lineHeight: 18, color: c.period }}>
+                  {ka.common.retry}
+                </Text>
+              </View>
+            </View>
           ) : setupNeeded || !bundle ? (
             <View
               style={{ flexDirection: 'row', alignItems: 'center', gap: 12 }}

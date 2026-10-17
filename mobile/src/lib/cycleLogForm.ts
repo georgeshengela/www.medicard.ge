@@ -136,6 +136,16 @@ function stableJson(value: unknown): string {
   return JSON.stringify(value ?? null);
 }
 
+/**
+ * A quick-log / day-sheet save that would send exactly what is stored (nothing picked on an empty day,
+ * or every pick undone) writes nothing: no empty row, no Health write, no `cycle_log_saved` event.
+ * „დღეს დაიწყო“ (`markStart`) always saves — it is an answer of its own.
+ */
+export function cycleSaveIsNoop(form: CycleLogForm, base: CycleLogForm, markStart?: boolean): boolean {
+  if (markStart) return false;
+  return stableJson(cycleLogBodyFromForm(form)) === stableJson(cycleLogBodyFromForm(base));
+}
+
 /** Which account, day and cached-view version the open form was filled from. */
 export type CycleDayFill = { key: string; stamp: number };
 

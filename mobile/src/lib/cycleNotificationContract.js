@@ -19,6 +19,20 @@ export const LATE_NOTIFY_ELIGIBLE = false;
 export const PERIOD_LATE_AFTER_DAYS = 2;
 
 /**
+ * The daily-log (and TTC BBT) nudge is planned for today and the next 6 days, so it still comes on a day
+ * she does not open the app (planned for today only, it fired only after a morning open before 09:00).
+ * Days already logged are skipped; every foreground / save re-plans the week.
+ */
+export const DAILY_NUDGE_DAYS = 7;
+
+/**
+ * Bleeding logged today means this period came: reminders for it are dropped. A forecast whose next start
+ * is still within this many days of a bleeding day is the forecast from before the bleed (the server never
+ * puts the next start fewer than 21 days after a period's first day), so its reminders go too.
+ */
+const STALE_FORECAST_DAYS = 10;
+
+/**
  * Variable cycles (server `predictions.nextPeriodRange`, brief §9 item 12): „მალე“ counts from the window's
  * first day, „გვიანდება“ from its last day + PERIOD_LATE_AFTER_DAYS (owner decision 2026-10-04: 2 days).
  * Without a window both use the single estimate, as before.
@@ -116,6 +130,8 @@ export const CYCLE_SUPPRESSION = Object.freeze({
   /** Fewer than 3 completed cycles: no fertile / ovulation reminder yet. */
   FERTILITY_LEARNING: 'FERTILITY_LEARNING',
   DUPLICATE: 'DUPLICATE',
+  /** A daily-log / BBT nudge for a day she already logged. */
+  ALREADY_LOGGED: 'ALREADY_LOGGED',
   COOLDOWN: 'COOLDOWN',
   NOT_ELIGIBLE: 'NOT_ELIGIBLE',
   QUIET_HOURS: 'QUIET_HOURS',
@@ -251,6 +267,27 @@ function bleedLoggedSince(logs, fromDate) {
   return (logs || []).some((row) => row.date >= fromDate && isBleedFlow(row.flow));
 }
 
+/** Today and the next `DAILY_NUDGE_DAYS - 1` civil days. */
+function nudgeDays(today) {
+  return Array.from({ length: DAILY_NUDGE_DAYS }, (_, i) => addDaysUtc(today, i));
+}
+
+function hasBbtOn(logs, date) {
+  return (logs || []).some((row) => row.date === date && row.bbt != null);
+}
+
+/**
+ * Bleeding is logged today: a period reminder is moot when it is for today (or earlier), or when the
+ * forecast it comes from still predates this bleed. A fresh forecast — the next period weeks ahead — keeps
+ * its soon / start / late reminders, so logging the period never silences the next one.
+ */
+function todayBleedSuppresses(candidate, live) {
+  if (!inLoggedBleed(live.logs, live.today)) return false;
+  if (candidate.eventDate && candidate.eventDate <= live.today) return true;
+  const nextStart = live.nextPeriodStart || live.nextPeriodRange?.from || null;
+  return !nextStart || nextStart <= addDaysUtc(live.today, STALE_FORECAST_DAYS);
+}
+
 /**
  * Structured Cycle facts for Brain / local scheduler.
  * notifyEligible false means "represent, do not send".
@@ -370,24 +407,27 @@ export function buildCycleCandidates({
   }
 
   if (mode === 'TRY_TO_CONCEIVE' && prefs.bbt && fertilityOk) {
-    const hasBbtToday = (logs || []).some((row) => row.date === today && row.bbt != null);
-    if (!hasBbtToday) {
+    for (const day of nudgeDays(today)) {
+      if (hasBbtOn(logs, day)) continue;
       push({
         type: 'bbt',
-        eventDate: today,
+        eventDate: day,
         revalidationKey: 'today',
         class: 'calendar',
       });
     }
   }
 
-  if (prefs.dailyLog && !hasLogOn(logs, today)) {
-    push({
-      type: 'log_nudge',
-      eventDate: today,
-      revalidationKey: 'today',
-      class: 'local_reminder',
-    });
+  if (prefs.dailyLog) {
+    for (const day of nudgeDays(today)) {
+      if (hasLogOn(logs, day)) continue;
+      push({
+        type: 'log_nudge',
+        eventDate: day,
+        revalidationKey: 'today',
+        class: 'local_reminder',
+      });
+    }
   }
 
   if (lateStatus?.status === 'late' && mode !== 'PERIMENOPAUSE' && mode !== 'POSTPARTUM' && forecastAllowed !== false) {
@@ -468,15 +508,26 @@ export function revalidateCycleCandidate(candidate, live = {}) {
   if (live.typeEnabled && live.typeEnabled[type] === false) {
     return { ok: false, reason: CYCLE_SUPPRESSION.USER_DISABLED };
   }
-  if (inLoggedBleed(live.logs, live.today) && PREDICTION_CYCLE_TYPES.includes(type)) {
+  if (PREDICTION_CYCLE_TYPES.includes(type) && todayBleedSuppresses(candidate, live)) {
     return { ok: false, reason: CYCLE_SUPPRESSION.PERIOD_STARTED };
   }
   if (type === 'period_late' && live.nextPeriodStart && bleedLoggedSince(live.logs, periodReminderAnchors(live.nextPeriodStart, live.nextPeriodRange).bleedFrom)) {
     return { ok: false, reason: CYCLE_SUPPRESSION.PERIOD_STARTED };
   }
-  const expected = expectedEventDate(type, live);
-  if (expected && candidate.eventDate && expected !== candidate.eventDate) {
-    return { ok: false, reason: CYCLE_SUPPRESSION.STALE_PREDICTION };
+  if (type === 'bbt' || type === 'log_nudge') {
+    // A nudge belongs to one of the planned days (today … today + 6); a day she already logged needs none.
+    const day = candidate.eventDate;
+    if (day && live.today && (day < live.today || day > addDaysUtc(live.today, DAILY_NUDGE_DAYS - 1))) {
+      return { ok: false, reason: CYCLE_SUPPRESSION.STALE_PREDICTION };
+    }
+    if (day && (type === 'bbt' ? hasBbtOn(live.logs, day) : hasLogOn(live.logs, day))) {
+      return { ok: false, reason: CYCLE_SUPPRESSION.ALREADY_LOGGED };
+    }
+  } else {
+    const expected = expectedEventDate(type, live);
+    if (expected && candidate.eventDate && expected !== candidate.eventDate) {
+      return { ok: false, reason: CYCLE_SUPPRESSION.STALE_PREDICTION };
+    }
   }
   if (candidate.candidateId && live.sentCandidateIds?.includes(candidate.candidateId)) {
     return { ok: false, reason: CYCLE_SUPPRESSION.DUPLICATE };

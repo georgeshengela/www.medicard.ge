@@ -35,7 +35,8 @@ describe('release crash regressions', () => {
     const text = src('src/store/AuthContext.tsx');
     const signOut = text.slice(text.indexOf('signOut: async () => {'), text.indexOf('deleteAccount: async () => {'));
     assert.match(signOut, /cancelAllReminders/);
-    assert.match(signOut, /unregisterPushFromServer/);
+    // The DELETE goes in the background with the leaving session's token; sign-out never waits on it.
+    assert.match(signOut, /unregisterPushInBackground/);
   });
 
   it('chat markdown only opens http(s) hrefs', () => {

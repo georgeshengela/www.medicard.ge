@@ -8,6 +8,7 @@ import { ProfileSetupShell } from '@/components/profile/ProfileSetupShell';
 import { ka } from '@/i18n/ka';
 import { requestNotificationPermission, registerPushTokenWithServer, setPushOptedIn } from '@/lib/notifications';
 import { markPrimerAsked, primerCopy } from '@/lib/permissionPrimer';
+import { previewPushCopy } from '@/lib/pushCopy';
 import type { HealthProfile } from '@/lib/api';
 import { reportError } from '@/lib/errorReporter';
 import { withExtraAnswers } from '@/lib/onboarding';
@@ -79,6 +80,8 @@ export default function ProfileSetupNotificationsScreen() {
   };
 
   const copy = primerCopy('notifications');
+  // A real medication reminder (its own push template), never an alert the app does not send (App Review).
+  const sample = previewPushCopy('medication');
 
   return (
     <ProfileSetupShell
@@ -122,12 +125,12 @@ export default function ProfileSetupNotificationsScreen() {
           <View style={{ flex: 1, gap: 3 }}>
             <View style={{ flexDirection: 'row', justifyContent: 'space-between', gap: 8 }}>
               <Text style={{ flexShrink: 1, fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 13, lineHeight: 18, color: p.text }}>
-                {ka.profileSetup.notificationsPreviewTitle}
+                {sample.title}
               </Text>
               <Text style={{ fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 11, lineHeight: 18, color: p.inkOff }}>{tx('ახლა', 'now')}</Text>
             </View>
             <Text style={{ fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 13, lineHeight: 19, color: p.ink2 }}>
-              {ka.profileSetup.notificationsPreviewBody}
+              {sample.body}
             </Text>
             <Text style={{ marginTop: 4, fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 13, lineHeight: 18, color: p.ink }}>
               {ka.profileSetup.notificationsPreviewAction}

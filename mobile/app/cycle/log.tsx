@@ -24,6 +24,9 @@ import {
   cycleNavHeader,
 } from '@/components/cycle/CycleUI';
 import { ka } from '@/i18n/ka';
+import { tx } from '@/i18n/locale';
+import { todayKey } from '@/components/cycle/CycleCalendar';
+import { cycleToday } from '@/lib/cycleCanonical';
 import { getCycleReminderPrefs } from '@/lib/cycleReminderPrefs';
 import { syncCycleReminders } from '@/lib/cycleReminders';
 import { trackCycleLogSaved } from '@/lib/funnel';
@@ -80,15 +83,17 @@ function CycleLogScreen() {
   /** True only once the day's existing log was read — saving before that would overwrite it with blanks. */
   const [hydrated, setHydrated] = useState(false);
 
-  useLayoutEffect(() => {
-    navigation.setOptions(cycleNavHeader(c, ka.cycle.logToday));
-  }, [navigation, c]);
-
   // The day's log comes from the shared cached cycle view. The form fills once, from an answer that is
   // not being refreshed (a fresh cache hit at once, otherwise the re-read) — never from a stale copy
   // that a refresh could still change, so saving cannot overwrite the day with old values.
   const viewQuery = useCycleView(user?.id);
   const viewData = viewQuery.data;
+  // „Log today“ / „Today’s log“ only for today; a past day reads as that day's log.
+  const isToday = date === cycleToday(viewData?.display ?? null, todayKey());
+
+  useLayoutEffect(() => {
+    navigation.setOptions(cycleNavHeader(c, isToday ? ka.cycle.logToday : tx('დღის აღრიცხვა', 'Log this day')));
+  }, [navigation, c, isToday]);
   const viewIdle = viewQuery.fetchStatus === 'idle';
   const viewError = viewQuery.error;
   /** Where the BBT wheel starts (local, inside the cycle screens only — never fills the form by itself). */
@@ -250,6 +255,7 @@ function CycleLogScreen() {
 
         <CycleLogTabs
           date={date}
+          isToday={isToday}
           mode={mode}
           form={form}
           onChange={patchForm}

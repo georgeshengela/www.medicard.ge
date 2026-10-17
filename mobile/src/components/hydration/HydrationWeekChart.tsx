@@ -1,85 +1,109 @@
-import { brandHex } from '@/theme/brandTone';
-import React, { useState } from 'react';
-import { LayoutChangeEvent, Text, View } from 'react-native';
-import Svg, { Path } from 'react-native-svg';
+import React from 'react';
+import { Text, View } from 'react-native';
 import { useFigmaHydration } from '@/constants/figmaHydrationLayout';
 import { ka } from '@/i18n/ka';
+import { formatLiters } from '@/lib/hydration';
 
 type Props = {
-  values?: number[];
-  compareValues?: number[];
-  height?: number;
+  /** Day totals in ml, Monday first (`useHydration().weekTotals`). */
+  values: number[];
+  goalMl: number;
+  /** Index of today in `values`; later days are still ahead and draw no bar. */
+  todayIndex: number;
 };
 
-/** Figma 9017:209858 — assets/figma/hydration/violin-a.svg (286×190) */
-const FIGMA_VIOLIN_A =
-  'M0 95C15.0311 95 37.4326 64.9159 57.5945 64.9159C77.7558 64.9156 73.802 48.9892 85.4107 49.0841C97.3091 49.1817 101.714 59.5327 113.613 59.5327C125.511 59.5312 129.748 19 141.792 19C153.836 19.0003 158.835 39.5835 169.619 39.5841C180.403 39.5841 186.553 25.3341 197.81 25.3341C209.068 25.3345 212.834 48.7664 226.332 48.7664C239.83 48.7679 256.421 95 286 95C256.421 95 239.83 141.232 226.332 141.234C212.834 141.234 209.068 164.666 197.81 164.666C186.553 164.666 180.403 150.416 169.619 150.416C158.835 150.417 153.836 171 141.792 171C129.748 171 125.511 130.469 113.613 130.467C101.714 130.467 97.3091 140.818 85.4107 140.916C73.802 141.011 77.7558 125.084 57.5945 125.084C37.4326 125.084 15.0311 95 0 95Z';
+const PLOT_H = 168;
+/** Room above the tallest bar for its value label. */
+const HEADROOM = 18;
 
-/** Figma 9017:209860 — assets/figma/hydration/violin-b.svg (286×190) */
-const FIGMA_VIOLIN_B =
-  'M286 95C267.588 95 165.959 96.6373 140.141 115.317C118.151 131.228 115.445 171 94.9522 171C74.4591 171 70.942 105.959 61.6862 105.959C48.2626 105.96 52.198 148.05 33.2468 148.05C15.6375 148.049 24.4084 95 0 95C24.4084 95 15.6375 41.951 33.2468 41.9498C52.198 41.9498 48.2626 84.0402 61.6862 84.0411C70.942 84.0411 74.4591 19 94.9522 19C115.445 19.0002 118.151 58.7723 140.141 74.6826C165.959 93.3627 267.588 95 286 95Z';
-
-const PLOT_W = 286;
-const PLOT_H = 190;
-const TICKS = [70, 60, 50, 40, 30, 20, 10] as const;
-const Y_W = 24;
-
-/** Figma 9017:209643 — two overlapping teal violins, Y 10–70, Mon–Sun. */
-export function HydrationWeekChart({ height = 220 }: Props) {
+/**
+ * „1კ“ on the water screen: this week's real day totals as bars, Monday to Sunday, with the daily goal
+ * as a line. It used to draw two fixed Figma violins whatever was logged (2026-10-13 audit).
+ * A bar at or over the goal is solid, a shorter one paler; days still ahead show only the track.
+ */
+export function HydrationWeekChart({ values, goalMl, todayIndex }: Props) {
   const T = useFigmaHydration();
-  const [width, setWidth] = useState(0);
-  const labels = ka.hydration.weekdayMon;
+  const days = ka.hydration.weekdayMon.map((label, i) => ({
+    label,
+    ml: Math.max(0, Math.round(values[i] ?? 0)),
+    ahead: i > todayIndex,
+    today: i === todayIndex,
+  }));
+
+  if (days.every((day) => day.ml === 0)) {
+    return (
+      <View style={{ minHeight: 120, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 24 }}>
+        <Text style={{ textAlign: 'center', fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 14, lineHeight: 21, color: T.textSecondary }}>
+          {ka.hydration.noWeekData}
+        </Text>
+      </View>
+    );
+  }
+
+  const top = Math.max(goalMl, ...days.map((day) => day.ml)) || 1;
+  const barArea = PLOT_H - HEADROOM;
+  const goalBottom = goalMl > 0 ? (goalMl / top) * barArea : null;
 
   return (
-    <View style={{ height }} onLayout={(e: LayoutChangeEvent) => setWidth(e.nativeEvent.layout.width)}>
-      <View style={{ flexDirection: 'row', height: PLOT_H }}>
-        <View style={{ width: Y_W, height: PLOT_H, justifyContent: 'space-between' }}>
-          {TICKS.map((tick) => (
-            <Text
-              key={tick}
-              style={{
-                fontFamily: 'NotoSansGeorgian_400Regular',
-                fontSize: 12,
-                lineHeight: 16,
-                color: T.textSecondary,
-                textAlign: 'right',
-              }}
+    <View>
+      <View style={{ height: PLOT_H, flexDirection: 'row' }}>
+        {goalBottom != null ? (
+          <View pointerEvents="none" style={{ position: 'absolute', left: 0, right: 0, bottom: goalBottom, height: 1, backgroundColor: T.borderStrong }} />
+        ) : null}
+        {days.map((day) => {
+          const filled = !day.ahead && day.ml > 0;
+          const met = goalMl > 0 && day.ml >= goalMl;
+          return (
+            <View
+              key={day.label}
+              accessible
+              accessibilityLabel={day.ahead ? day.label : `${day.label}: ${formatLiters(day.ml)}`}
+              style={{ flex: 1, alignItems: 'center', justifyContent: 'flex-end', gap: 4 }}
             >
-              {tick}
-            </Text>
-          ))}
-        </View>
-        <View style={{ flex: 1, marginLeft: 8, height: PLOT_H }}>
-          <View style={{ position: 'absolute', left: 0, right: 0, top: 8, bottom: 8, justifyContent: 'space-between' }}>
-            {TICKS.map((tick) => (
-              <View key={tick} style={{ height: 1, backgroundColor: T.border }} />
-            ))}
-          </View>
-          {width > 0 ? (
-            <Svg width="100%" height={PLOT_H} viewBox={`0 0 ${PLOT_W} ${PLOT_H}`}>
-              <Path d={FIGMA_VIOLIN_B} fill={brandHex('#14B8A6')} fillOpacity={0.6} />
-              <Path d={FIGMA_VIOLIN_A} fill={brandHex('#14B8A6')} fillOpacity={0.6} />
-            </Svg>
-          ) : null}
-        </View>
+              {filled ? (
+                <Text numberOfLines={1} style={{ fontFamily: 'NotoSansGeorgian_500Medium', fontSize: 11, lineHeight: 14, color: T.textSecondary }}>
+                  {formatLiters(day.ml)}
+                </Text>
+              ) : null}
+              <View
+                style={{
+                  width: '58%',
+                  maxWidth: 28,
+                  height: filled ? Math.max(6, (day.ml / top) * barArea) : 4,
+                  borderRadius: 8,
+                  backgroundColor: filled ? T.brand : T.border,
+                  opacity: filled && !met ? 0.55 : 1,
+                }}
+              />
+            </View>
+          );
+        })}
       </View>
-      <View style={{ flexDirection: 'row', paddingLeft: Y_W + 8, height: 16, marginTop: 6 }}>
-        {labels.map((label) => (
+      <View style={{ flexDirection: 'row', marginTop: 8 }}>
+        {days.map((day) => (
           <Text
-            key={label}
+            key={day.label}
             style={{
               flex: 1,
               textAlign: 'center',
-              fontFamily: 'NotoSansGeorgian_400Regular',
+              fontFamily: day.today ? 'NotoSansGeorgian_700Bold' : 'NotoSansGeorgian_400Regular',
               fontSize: 12,
               lineHeight: 16,
-              color: T.textSecondary,
+              color: day.today ? T.textPrimary : T.textSecondary,
             }}
           >
-            {label}
+            {day.label}
           </Text>
         ))}
       </View>
+      {goalBottom != null ? (
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 10 }}>
+          <View style={{ width: 14, height: 1, backgroundColor: T.borderStrong }} />
+          <Text style={{ fontFamily: 'NotoSansGeorgian_400Regular', fontSize: 12, lineHeight: 16, color: T.textTertiary }}>
+            {ka.hydration.target(formatLiters(goalMl))}
+          </Text>
+        </View>
+      ) : null}
     </View>
   );
 }

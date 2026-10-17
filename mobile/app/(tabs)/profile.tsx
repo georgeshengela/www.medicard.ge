@@ -49,6 +49,8 @@ import { nameInitials, realFullName } from '@/lib/displayName';
 import { newQuestionsAfterUpdate, profileCompletion } from '@/lib/profileCompletion';
 import { openAppSystemSettings } from '@/lib/appPermissions';
 import {
+  getPushOptedInStored,
+  getRememberedOsNotificationGrant,
   isNotificationsEnabled,
   requestNotificationPermission,
   registerPushTokenWithServer,
@@ -106,8 +108,11 @@ export default function Profile() {
   }, [refresh]);
 
   const openNotificationSettings = async () => {
-    const alreadyOn = await isNotificationsEnabled();
-    if (alreadyOn) {
+    const stored = await getPushOptedInStored();
+    const alreadyOn = stored === '1' || (stored === null && (await getRememberedOsNotificationGrant()));
+    // Push switched off on purpose in „ნებართვები“ ('0'): the row only opens the screen. It never opts
+    // push back in behind her back — the push switch there does that.
+    if (alreadyOn || stored === '0') {
       router.push('/profile/notifications');
       return;
     }

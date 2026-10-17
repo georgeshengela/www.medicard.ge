@@ -9,6 +9,9 @@ const LEGACY_UNSCOPED = [
   'medicard.meds.doseLogs',
   'medicard.skincare-routines',
   'medicard.symptom-check-history',
+  // Device-wide steps goal copies (until 2026-10-13): the account sync uploaded them into the next account.
+  'medicard.steps.goal.v1',
+  'medicard.steps.goal.history',
 ] as const;
 
 let accountId: string | null = null;

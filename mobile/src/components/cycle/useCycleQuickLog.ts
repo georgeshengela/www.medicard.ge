@@ -10,6 +10,7 @@ import { sameLogForm } from '@/lib/cycleDayFacts';
 import { expectationsFromBundle, type CycleExpectation } from '@/lib/cycleExpectations';
 import { cyclePresentationModeKnown } from '@/lib/cycleHistoryCopy';
 import { isBleedFlow, persistCycleLog } from '@/lib/cycleLogSave';
+import { cycleSaveIsNoop } from '@/lib/cycleLogForm';
 import { cycleModeCapabilities } from '@/lib/cycleModes';
 import { periodStartFromSave } from '@/lib/cycleFunnelEvents';
 import { trackCycleLogSaved, trackCyclePeriodStarted } from '@/lib/funnel';
@@ -91,6 +92,9 @@ export function useCycleQuickLog({
   const save = useCallback(
     async (markStart?: boolean): Promise<boolean> => {
       if (!active || !hydrated || saving || !userId) return false;
+      // Nothing changed (an empty day saved empty, or „ყველაფერი რიგზეა“ on a day with no symptoms):
+      // the sheet just closes — no empty row, no funnel event.
+      if (cycleSaveIsNoop(form, base, markStart)) return true;
       const ticket = saveTask.begin();
       if (!ticket) return false;
       setSaving(true);

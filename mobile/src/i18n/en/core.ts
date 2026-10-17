@@ -53,8 +53,6 @@ export const enCore: Pick<Strings, 'app' | 'common' | 'auth' | 'assessment' | 'o
     forgotPasswordEmailHint: 'Enter your email — we’ll send you a 6-digit code.',
     forgotPasswordViaEmail: 'By email',
     forgotPasswordViaSms: 'By SMS',
-    forgotPasswordVia2fa: 'With 2FA',
-    forgotPasswordComingSoon: 'This is coming soon.',
     forgotPasswordSend: 'Send code',
     forgotPasswordSentTitle: 'Code sent',
     forgotPasswordSentBody: 'In a few minutes you’ll get an email with a 6-digit code. Enter it in the app to change your password.',

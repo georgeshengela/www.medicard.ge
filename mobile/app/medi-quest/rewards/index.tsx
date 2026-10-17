@@ -70,7 +70,12 @@ export default function RewardsStoreScreen() {
   const data = devCatalog ?? query.data ?? null;
   const loading = !devActive && !data && query.fetchStatus !== 'idle';
   const failed = !devActive && !data && query.isError;
-  const { refetch } = query;
+  const { refetch, dataUpdatedAt } = query;
+
+  // A fresh catalog carries the server balance: it wins over the hint published earlier in this session.
+  useEffect(() => {
+    if (dataUpdatedAt) setLiveCoins(null);
+  }, [dataUpdatedAt]);
 
   useEffect(() => {
     void trackQuestEvent('rewards_store_opened');

@@ -26,6 +26,12 @@ describe('keysForWrite', () => {
     assert.deepEqual(keysForWrite('POST', '/api/ai/query'), ['records']);
     assert.deepEqual(keysForWrite('POST', '/api/ai-consent'), []);
   });
+  it('a Medi save refreshes what it can change; her plan and review never do', () => {
+    const keys = keysForWrite('POST', '/api/assistant/execute');
+    for (const key of ['medications', 'visits', 'cycle', 'nutrition', 'pets', 'home', 'profile', 'quest']) assert.ok(keys.includes(key), key);
+    assert.ok(!keys.includes('health'), 'never the Health keys (device sync loop)');
+    for (const path of ['/api/assistant/plan', '/api/assistant/prepare', '/api/assistant/transcribe', '/api/assistant/speak']) assert.deepEqual(keysForWrite('POST', path), [], path);
+  });
   it('every cycle write refreshes the cycle screens and Home', () => {
     const writes: Array<[string, string]> = [
       ['PUT', '/api/cycle/logs/2026-10-03'], // day log, journal notes ride on it

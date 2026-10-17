@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { cycleDayFormStep, cycleLogBodyFromForm, EMPTY_CYCLE_LOG, formFromCycleLog, rebaseCycleForm, sexualActivityForSave } from './cycleLogForm.ts';
+import { cycleDayFormStep, cycleLogBodyFromForm, cycleSaveIsNoop, EMPTY_CYCLE_LOG, formFromCycleLog, rebaseCycleForm, sexualActivityForSave } from './cycleLogForm.ts';
 import type { CycleLog } from './api.ts';
 
 const day = (patch: Partial<CycleLog>): CycleLog =>
@@ -84,4 +84,22 @@ test('CYC-09: a background refresh keeps her edits and takes every untouched fie
   assert.deepEqual(rebaseCycleForm(oldBase, oldBase, newBase), newBase);
   // Her own change to a field the refresh also changed wins.
   assert.equal(rebaseCycleForm({ ...oldBase, flow: 'light' }, oldBase, newBase).flow, 'light');
+});
+
+test('a save that changes nothing is a no-op: no empty row, no funnel event', () => {
+  // Empty day, nothing picked (or „ყველაფერი რიგზეა“ on a day with no symptoms).
+  assert.equal(cycleSaveIsNoop({ ...EMPTY_CYCLE_LOG }, { ...EMPTY_CYCLE_LOG }), true);
+  // Picked and un-picked again.
+  assert.equal(cycleSaveIsNoop({ ...EMPTY_CYCLE_LOG, moods: [] }, EMPTY_CYCLE_LOG), true);
+  // A stored day saved unchanged.
+  const stored = formFromCycleLog(day({ flow: 'light', moods: ['calm'], sexualActivity: false }));
+  assert.equal(cycleSaveIsNoop({ ...stored }, stored), true);
+  // Any real change saves — including clearing what was stored.
+  assert.equal(cycleSaveIsNoop({ ...EMPTY_CYCLE_LOG, moods: ['calm'] }, EMPTY_CYCLE_LOG), false);
+  assert.equal(cycleSaveIsNoop({ ...stored, moods: [] }, stored), false);
+  assert.equal(cycleSaveIsNoop({ ...stored, notes: ' note ' }, stored), false);
+  // Whitespace-only notes send nothing new.
+  assert.equal(cycleSaveIsNoop({ ...EMPTY_CYCLE_LOG, notes: '   ' }, EMPTY_CYCLE_LOG), true);
+  // „დღეს დაიწყო“ always saves.
+  assert.equal(cycleSaveIsNoop({ ...EMPTY_CYCLE_LOG }, EMPTY_CYCLE_LOG, true), false);
 });

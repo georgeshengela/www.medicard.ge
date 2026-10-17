@@ -6,7 +6,11 @@ import { ka } from '@/i18n/ka';
 import { hydrationLevel } from '@/lib/hydration';
 import type { StepChartPeriod } from '@/types/stepsMetrics';
 
-const PERIODS: StepChartPeriod[] = ['1d', '1w', '1m', '1y', 'all'];
+/**
+ * Only periods drawn from real logs: day (glass), week (bars), month (calendar). Year and „all“ showed a
+ * fixed Figma shape whatever was logged, so they are gone until they have real charts.
+ */
+export const HYDRATION_PERIODS: readonly StepChartPeriod[] = ['1d', '1w', '1m'];
 
 export function HydrationAppBar({
   onBack,
@@ -97,7 +101,7 @@ export function HydrationPeriodTabs({
         padding: 4,
       }}
     >
-      {PERIODS.map((period) => {
+      {HYDRATION_PERIODS.map((period) => {
         const active = period === value;
         return (
           <Pressable

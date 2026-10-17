@@ -1,5 +1,6 @@
 import { localAccountId } from './localAccount';
 import { tx } from '../i18n/locale.js';
+import { MOOD_OPTIONS, PHYSICAL_SYMPTOMS } from '../constants/cycle.ts';
 
 export type AssistantScope = 'human' | 'pet';
 export type AssistantAction = { tool: string; args: Record<string, unknown> };
@@ -96,8 +97,14 @@ const assistantValueLabelsEn: Record<string, string> = {
 };
 export const assistantFieldLabels: Record<string, string> = tx(assistantFieldLabelsKa, assistantFieldLabelsEn);
 export const assistantValueLabels: Record<string, string> = tx(assistantValueLabelsKa, assistantValueLabelsEn);
-export function assistantDisplay(value: unknown): string {
-  if (Array.isArray(value)) return value.map(assistantDisplay).join(', ');
-  if (value && typeof value === 'object') return Object.entries(value).map(([k, v]) => `${assistantFieldLabels[k] || k}: ${assistantDisplay(v)}`).join('\n');
-  return assistantValueLabels[String(value)] || String(value ?? '');
+/** Cycle symptoms and moods are registry ids („back_pain“): show the words the cycle log uses. */
+const cycleValueLabels = new Map<string, Map<string, string>>([
+  ['symptoms', new Map(PHYSICAL_SYMPTOMS.map(option => [option.id, option.label]))],
+  ['moods', new Map(MOOD_OPTIONS.map(option => [option.id, option.label]))],
+]);
+/** A value in words; `key` is the field it belongs to (cycle symptoms and moods have their own labels). */
+export function assistantDisplay(value: unknown, key?: string): string {
+  if (Array.isArray(value)) return value.map(item => assistantDisplay(item, key)).join(', ');
+  if (value && typeof value === 'object') return Object.entries(value).map(([k, v]) => `${assistantFieldLabels[k] || k}: ${assistantDisplay(v, k)}`).join('\n');
+  return (key ? cycleValueLabels.get(key)?.get(String(value)) : undefined) || assistantValueLabels[String(value)] || String(value ?? '');
 }

@@ -24,6 +24,7 @@ import { CycleDeviationsCard } from '@/components/cycle/CycleDeviationsCard';
 import { CyclePeriodToast, periodToastTitle } from '@/components/cycle/CyclePeriodToast';
 import { CycleAlertsBanner } from '@/components/cycle/CycleAlertsBanner';
 import { CycleQuickLogSheet } from '@/components/cycle/CycleQuickLogSheet';
+import { MODAL_HANDOFF_MS } from '@/components/ui/appModal';
 import { CyclePmsHeatmap } from '@/components/cycle/CyclePmsHeatmap';
 import { trackingCopy } from '@/lib/cycleTrackingCopy';
 import { CycleOnboarding, type CycleRhythmAnswer } from '@/components/cycle/CycleOnboarding';
@@ -248,6 +249,14 @@ export default function CycleHome() {
   };
   const [ttcConflictOpen, setTtcConflictOpen] = useState(false);
   const [classifyBleed, setClassifyBleed] = useState<{ date: string; classified: boolean } | null>(null);
+  /** The day sheet closes first; the classify sheet opens after the hand-off (never a Modal over a Modal). */
+  const classifyTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(
+    () => () => {
+      if (classifyTimer.current) clearTimeout(classifyTimer.current);
+    },
+    [],
+  );
   const [ttcQuery, setTtcQuery] = useState(() => emptyTtcQueryState());
   const ttcGen = useRef(0);
   const [pregnancyQuery, setPregnancyQuery] = useState(() => emptyPregnancyQueryState());
@@ -785,6 +794,9 @@ export default function CycleHome() {
       if (periodStartTone(bundle?.profile.mode).haptic === 'selection') Haptics.selectionAsync().catch(() => undefined);
       else Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
       showView(result.view);
+      // One toast at a time: an older one's Undo must never act on this tap (as on Home).
+      setSexToast(null);
+      setEndToast(null);
       setPeriodToast({ date: today, undo });
     } catch (err) {
       setError(err instanceof Error ? err.message : ka.common.error);
@@ -852,6 +864,7 @@ export default function CycleHome() {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => undefined);
       handleSaved(result.view);
       setPeriodToast(null);
+      setEndToast(null);
       setSexToast(before);
     } catch (err) {
       setError(err instanceof Error ? err.message : ka.common.error);
@@ -1680,7 +1693,14 @@ export default function CycleHome() {
             router.push({ pathname: '/cycle/log', params: { date } } as never);
           }}
           postpartum={postpartumQuery.data as CyclePostpartumPayload | null}
-          onClassifyEpisode={(date, classified) => setClassifyBleed({ date, classified })}
+          onClassifyEpisode={(date, classified) => {
+            setDaySheetOpen(false);
+            if (classifyTimer.current) clearTimeout(classifyTimer.current);
+            classifyTimer.current = setTimeout(() => {
+              classifyTimer.current = null;
+              setClassifyBleed({ date, classified });
+            }, MODAL_HANDOFF_MS);
+          }}
         />
       ) : null}
 

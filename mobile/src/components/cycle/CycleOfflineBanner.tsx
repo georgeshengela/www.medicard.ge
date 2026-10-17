@@ -3,6 +3,7 @@ import React, { useState } from 'react';
 import { Text, View } from 'react-native';
 import { CycleExplainSheet } from '@/components/cycle/CycleExplainSheet';
 import { ka } from '@/i18n/ka';
+import { formatCycleDateKa } from '@/lib/cycleCivilDateKa';
 import {
   formatCycleCachedAtKa,
   type CycleAttentionItem,
@@ -42,7 +43,7 @@ export function CycleOfflineBanner({ view, today, onRetry, onDiscard }: Props) {
   const status = statusLabel(view.syncState, view.pendingCount);
   if (!showStale && !status && attention.length === 0) return null;
   const when = formatCycleCachedAtKa(view.cachedAt, today);
-  const dates = [...new Set(attention.map((item) => item.date).filter(Boolean))].join(', ');
+  const dates = [...new Set(attention.map((item) => item.date).filter(Boolean))].map((d) => formatCycleDateKa(d)).join(', ');
 
   const confirmDiscard = (item: CycleAttentionItem) => setDiscarding(item);
 
