@@ -20,7 +20,7 @@
       "bundleIdentifier": "ge.medicard.app",
       "usesAppleSignIn": true,
       "version": "1.11.30",
-      "buildNumber": "40",
+      "buildNumber": "41",
       "infoPlist": {
         "CFBundleDisplayName": "MEDICARD AI",
         "NSCameraUsageDescription": "MEDICARD AI uses the camera to scan meals, food labels and barcodes for your food diary, to photograph lab results, X-rays, skin and pets, for your profile photo, MEDICOACH progress photos and trainer certificate, to read QR codes, and to find virtual gifts in MEDIRUN.",
