@@ -3,7 +3,7 @@
     "name": "MEDICARD AI",
     "slug": "medicard-ge",
     "scheme": "medicard",
-    "version": "1.0.0.25.19",
+    "version": "1.0.0.26.0",
     "assetBundlePatterns": [
       "assets/**"
     ],
@@ -20,14 +20,14 @@
       "bundleIdentifier": "ge.medicard.app",
       "usesAppleSignIn": true,
       "version": "1.11.30",
-      "buildNumber": "39",
+      "buildNumber": "40",
       "infoPlist": {
         "CFBundleDisplayName": "MEDICARD AI",
         "NSCameraUsageDescription": "MEDICARD AI uses the camera to scan meals, food labels and barcodes for your food diary, to photograph lab results, X-rays, skin and pets, for your profile photo, MEDICOACH progress photos and trainer certificate, to read QR codes, and to find virtual gifts in MEDIRUN.",
         "NSPhotoLibraryUsageDescription": "MEDICARD AI needs access to your photos to upload the meal photos, medical documents, pet photos, profile photo, MEDICOACH progress photos, trainer certificate and women's space post photos that you choose.",
         "NSMicrophoneUsageDescription": "The microphone is used only when you choose to, for the voice assistant and voice analysis.",
         "NSFaceIDUsageDescription": "MEDICARD AI uses Face ID to protect your account and cycle data.",
-        "NSLocationWhenInUseUsageDescription": "MEDICARD AI uses your location for your city and weather, and in MEDIRUN to record the route you walk and find gifts nearby. A MEDIRUN session you start keeps recording your route after the screen locks (a blue indicator shows at the top) until you tap Pause or Finish.",
+        "NSLocationWhenInUseUsageDescription": "MEDICARD AI uses your location for your city and weather, to show places near you on the MEDIBOOK map, and in MEDIRUN to record the route you walk and find gifts nearby. A MEDIRUN session you start keeps recording your route after the screen locks (a blue indicator shows at the top) until you tap Pause or Finish.",
         "NSCalendarsUsageDescription": "Calendar access is needed to add the entries you choose to your calendar.",
         "NSCalendarsFullAccessUsageDescription": "Calendar access is needed to add the entries you choose to your calendar.",
         "UIBackgroundModes": [
@@ -106,10 +106,14 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#14B8A6",
-          "image": "./assets/splash-icon.png",
-          "imageWidth": 260,
-          "resizeMode": "contain"
+          "backgroundColor": "#E6EFED",
+          "image": "./assets/splash/launch-light.png",
+          "imageWidth": 320,
+          "resizeMode": "contain",
+          "dark": {
+            "backgroundColor": "#132A34",
+            "image": "./assets/splash/launch-dark.png"
+          }
         }
       ],
       [
@@ -167,7 +171,7 @@
       [
         "expo-location",
         {
-          "locationWhenInUsePermission": "MEDICARD AI uses your location for your city and weather, and in MEDIRUN to record the route you walk and find gifts nearby. A MEDIRUN session you start keeps recording your route after the screen locks (a blue indicator shows at the top) until you tap Pause or Finish.",
+          "locationWhenInUsePermission": "MEDICARD AI uses your location for your city and weather, to show places near you on the MEDIBOOK map, and in MEDIRUN to record the route you walk and find gifts nearby. A MEDIRUN session you start keeps recording your route after the screen locks (a blue indicator shows at the top) until you tap Pause or Finish.",
           "locationAlwaysAndWhenInUsePermission": "MEDICARD AI uses your location in the background only during a MEDIRUN session you started, to record your route while the screen is locked. Outside a session no location is collected in the background.",
           "locationAlwaysPermission": "MEDICARD AI uses your location in the background only during a MEDIRUN session you started, to record your route while the screen is locked. Outside a session no location is collected in the background.",
           "motionUsagePermission": "MEDICARD AI uses the motion sensors to show a virtual gift in the right place in the camera view in MEDIRUN.",

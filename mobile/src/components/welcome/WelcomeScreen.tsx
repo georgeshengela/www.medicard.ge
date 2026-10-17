@@ -13,7 +13,7 @@ import Animated, {
   type SharedValue,
 } from 'react-native-reanimated';
 import { OnboardingDevLauncher } from '@/components/dev/OnboardingDevLauncher';
-import { MedicardLogoMark } from '@/components/ui/MedicardLogoMark';
+import { SPLASH_DISC } from '@/components/launch/launchArt';
 import { VelvetButton } from '@/components/velvet/VelvetButton';
 import { VelvetSegment } from '@/components/velvet/VelvetSegment';
 import { VelvetThemeToggle } from '@/components/velvet/VelvetThemeToggle';
@@ -30,16 +30,13 @@ import {
   takePendingRoute,
   type AppLang,
 } from '@/i18n/locale';
+import { claimLaunchHandoff } from '@/lib/launchHandoff';
 import { setWelcomeCompleted } from '@/lib/onboardingPrefs';
 import { onStoreBundle, restartIntoFreshUpdate } from '@/lib/otaUpdates';
 import { useTheme } from '@/store/ThemeContext';
 import { useVelvet } from '@/theme/velvet';
 
 const SIGN_IN = '/(auth)/sign-in';
-
-/** The native launch screen (app.json expo-splash-screen): brand teal, the white mark at 260 pt of a 512 px image whose mark spans 400 px. */
-const SPLASH_TEAL = '#14B8A6';
-const SPLASH_MARK = (260 * 400) / 512;
 
 /** Hero layout: the disc and the wordmark under it, centred a little low. */
 const HERO_TOP = 48;
@@ -49,19 +46,19 @@ const WORDMARK_LINE = 44;
 const SIGN_IN_DISC_CENTER = 16 + 46;
 const SIGN_IN_DISC = 92;
 
-/** Intro timeline (ms): the splash folds into the disc, the line and the first beat, then the page arrives. */
+/**
+ * Intro timeline (ms): the native splash's disc (launchArt SPLASH_DISC, centred) rises to the page's size,
+ * the line draws in and the first beat lands, then the disc glides up and the page arrives.
+ */
 const T = {
-  fold: [150, 820],
-  markOut: [680, 920],
-  tealOut: [760, 1000],
-  rise: [450, 1000],
-  line: [1000, 1350],
-  firstPulse: 1000,
-  glide: [1750, 2350],
-  wordmark: [2050, 2400],
-  controls: [2150, 2230, 2310, 2390],
+  rise: [120, 620],
+  line: [200, 520],
+  firstPulse: 200,
+  glide: [950, 1550],
+  wordmark: [1250, 1600],
+  controls: [1350, 1430, 1510, 1590],
   controlLength: 360,
-  end: 2800,
+  end: 2000,
 } as const;
 
 const span = (c: number, a: number, b: number) => {
@@ -109,10 +106,10 @@ const LANGS = [
 
 /**
  * Welcome (owner 2026-10-11, „C · გულისცემა“ + „ლამაზი გადასვლა“). With `intro` (the launch route) the
- * first frame repeats the native launch screen, then folds into the page as one movement: the teal
- * closes into the disc's well and the white mark becomes the brand mark while the velvet disc rises,
- * the heartbeat line draws in and the first pulse beats, the disc glides up to its place and the page
- * arrives around it. „Get started“ plays it out: the disc shrinks into sign-in's header disc, the rest
+ * first frame is the native launch screen itself — since train 1.0.0.26 that is this velvet disc, centred
+ * (owner 2026-10-17) — and the screen claims the launch from `LaunchCurtain`. One movement follows: the
+ * disc rises to its size, the heartbeat line draws in and the first pulse beats, the disc glides up to
+ * its place and the page arrives around it. „Get started“ plays it out: the disc shrinks into sign-in's header disc, the rest
  * fades, and sign-in fades in with its disc on the same spot.
  */
 export function WelcomeScreen({ intro = false }: { intro?: boolean }) {
@@ -140,7 +137,11 @@ export function WelcomeScreen({ intro = false }: { intro?: boolean }) {
   }, []);
   const playing = intro && motion !== 'off';
   const [settled, setSettled] = useState(!intro);
-  const [splashBar, setSplashBar] = useState(intro);
+
+  // The launch is ours: the curtain over the app steps aside, this screen's first frame is the splash.
+  useEffect(() => {
+    if (intro) claimLaunchHandoff();
+  }, [intro]);
 
   const clock = useSharedValue(intro ? 0 : T.end);
   const exit = useSharedValue(0);
@@ -148,23 +149,17 @@ export function WelcomeScreen({ intro = false }: { intro?: boolean }) {
     if (!intro || motion === 'pending') return undefined;
     if (motion === 'off') {
       clock.value = T.end;
-      setSplashBar(false);
       setSettled(true);
       return undefined;
     }
     clock.value = withTiming(T.end, { duration: T.end, easing: Easing.linear });
-    const bar = setTimeout(() => setSplashBar(false), T.tealOut[0]);
     const done = setTimeout(() => setSettled(true), T.end - 300);
-    return () => {
-      clearTimeout(bar);
-      clearTimeout(done);
-    };
+    return () => clearTimeout(done);
   }, [intro, motion, clock]);
 
   const disc = Math.round(Math.min(200, width * 0.52));
-  const logo = Math.round(disc * 0.38);
-  const well = Math.round(disc * 0.69);
-  const radius = Math.hypot(width, height);
+  /** The native splash's disc, as a scale of this layout's disc. */
+  const splashScale = SPLASH_DISC / disc;
 
   // Where the disc's centre ends up on this layout, measured from the hero box.
   const discCenter = useSharedValue(height / 2);
@@ -186,7 +181,7 @@ export function WelcomeScreen({ intro = false }: { intro?: boolean }) {
     return {
       transform: [
         { translateY: start * (1 - glide) + (signInCenter - discCenter.value) * out },
-        { scale: (0.92 + 0.08 * rise) * (1 + (signInScale - 1) * out) },
+        { scale: (splashScale + (1 - splashScale) * rise) * (1 + (signInScale - 1) * out) },
       ],
     };
   });
@@ -194,21 +189,6 @@ export function WelcomeScreen({ intro = false }: { intro?: boolean }) {
     const a = easeOut(span(clock.value, T.wordmark[0], T.wordmark[1]));
     return { opacity: a * (1 - exit.value), transform: [{ translateY: (1 - a) * 14 + exit.value * 10 }] };
   });
-  const tealStyle = useAnimatedStyle(() => {
-    const fold = ease(span(clock.value, T.fold[0], T.fold[1]));
-    return {
-      opacity: 1 - span(clock.value, T.tealOut[0], T.tealOut[1]),
-      transform: [{ scale: 1 + (well / (radius * 2) - 1) * fold }],
-    };
-  });
-  const markStyle = useAnimatedStyle(() => {
-    const fold = ease(span(clock.value, T.fold[0], T.fold[1]));
-    return {
-      opacity: 1 - span(clock.value, T.markOut[0], T.markOut[1]),
-      transform: [{ scale: 1 + (logo / SPLASH_MARK - 1) * fold }],
-    };
-  });
-
   const leave = useCallback(
     (then: () => void) => {
       if (motion === 'off') {
@@ -250,7 +230,7 @@ export function WelcomeScreen({ intro = false }: { intro?: boolean }) {
 
   return (
     <View style={{ flex: 1, backgroundColor: p.surface, paddingTop: insets.top }}>
-      <StatusBar style={splashBar || dark ? 'light' : 'dark'} />
+      <StatusBar style={dark ? 'light' : 'dark'} />
       {/* centred a little low, so the wordmark sits near the controls rather than mid-screen */}
       <View
         onLayout={(e) => onHeroLayout(e.nativeEvent.layout.y, e.nativeEvent.layout.height)}
@@ -318,36 +298,6 @@ export function WelcomeScreen({ intro = false }: { intro?: boolean }) {
           </Pressable>
         </Arrive>
       </View>
-
-      {intro && motion !== 'off' ? (
-        <>
-          {/* the native launch screen, closing into the disc's well */}
-          <Animated.View
-            pointerEvents="none"
-            style={[
-              {
-                position: 'absolute',
-                left: width / 2 - radius,
-                top: height / 2 - radius,
-                width: radius * 2,
-                height: radius * 2,
-                borderRadius: radius,
-                backgroundColor: SPLASH_TEAL,
-              },
-              tealStyle,
-            ]}
-          />
-          <Animated.View
-            pointerEvents="none"
-            style={[
-              { position: 'absolute', left: width / 2 - SPLASH_MARK / 2, top: height / 2 - SPLASH_MARK / 2, width: SPLASH_MARK, height: SPLASH_MARK },
-              markStyle,
-            ]}
-          >
-            <MedicardLogoMark size={SPLASH_MARK} tone="inverse" />
-          </Animated.View>
-        </>
-      ) : null}
 
       {/* DEV only (renders null in production): QA shortcuts, kept clear of the hero. */}
       <View pointerEvents="box-none" style={{ position: 'absolute', top: insets.top + 4, left: 0, right: 0 }}>

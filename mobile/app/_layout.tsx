@@ -26,7 +26,8 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { queryClient } from '@/lib/queryClient';
 import { installErrorReporting, reportError, setErrorRoute } from '@/lib/errorReporter';
-import * as SplashScreen from 'expo-splash-screen';
+import { hideLaunchScreen } from '@/lib/launchHandoff';
+import { LaunchCurtain } from '@/components/launch/LaunchCurtain';
 import type { NotificationResponse } from 'expo-notifications';
 import { Notifications } from '@/lib/expoNotifications';
 import { enableFreeze, enableScreens } from 'react-native-screens';
@@ -92,8 +93,6 @@ holdOtaReloadWhile(() => isSleepAudioBusy() || sleepSession() !== null);
 enableScreens(true);
 enableFreeze(true);
 
-SplashScreen.preventAutoHideAsync().catch(() => undefined);
-
 /** A tap waiting for sign-in longer than this is stale; open Home as usual instead. */
 const NOTIFICATION_ROUTE_TTL_MS = 10 * 60 * 1000;
 
@@ -111,7 +110,6 @@ function AuthGate({ children }: { children: React.ReactNode }) {
     typeof __DEV__ !== 'undefined' &&
     __DEV__ &&
     (Array.isArray(params.preview) ? params.preview[0] : params.preview) === '1';
-  const splashHidden = useRef(false);
   const [gate, setGate] = useState<{ kind: 'ok' } | { kind: 'maintenance' | 'update'; message: string }>({
     kind: 'ok',
   });
@@ -145,12 +143,10 @@ function AuthGate({ children }: { children: React.ReactNode }) {
   }, [user?.id]);
 
   useEffect(() => {
-    if (!ready || gate.kind !== 'ok') return;
-
-    if (!splashHidden.current) {
-      splashHidden.current = true;
-      SplashScreen.hideAsync().catch(() => undefined);
-    }
+    if (!ready) return;
+    // Also for the maintenance / update gate: its message must not stay under the native splash.
+    hideLaunchScreen();
+    if (gate.kind !== 'ok') return;
     if (sessionRestoreError && !user) return;
 
     const inAuthGroup = segments[0] === '(auth)';
@@ -511,6 +507,8 @@ function AppShell() {
           <AiSharingConsentHost />
         </View>
       </AuthGate>
+      {/* the native splash's own frame, beating once and opening into the app */}
+      <LaunchCurtain />
     </>
   );
 }
@@ -521,7 +519,7 @@ function AppShell() {
  */
 export function ErrorBoundary({ error, retry }: ErrorBoundaryProps) {
   useEffect(() => {
-    SplashScreen.hideAsync().catch(() => undefined);
+    hideLaunchScreen({ now: true });
     console.error('[Medicard] screen error:', error);
     reportError('render', error, { fatal: true });
     try {

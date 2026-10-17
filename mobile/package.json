@@ -104,6 +104,7 @@
     "test:engage": "node --experimental-strip-types --test src/lib/mediNotificationBrain.test.ts",
     "test:book": "node --experimental-strip-types --test src/lib/book/bookFormat.test.ts",
     "icons:generate": "node scripts/generate-app-icons.mjs",
+    "splash:generate": "node scripts/generate-launch-art.mjs",
     "store:screenshots": "node scripts/generate-app-store-bundle.mjs",
     "store:screenshots:capture": "node scripts/generate-app-store-bundle.mjs --capture",
     "test:coach": "node --experimental-strip-types --test src/lib/coach.test.ts src/lib/home/homeSectionOrder.test.ts",

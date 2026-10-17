@@ -12,6 +12,7 @@ import Animated, {
   useSharedValue,
   withDelay,
   withRepeat,
+  withSequence,
   withTiming,
   type SharedValue,
 } from 'react-native-reanimated';
@@ -28,6 +29,12 @@ const SPEED = 270;
 const GAP = 120;
 const RIPPLE_S = 1.5;
 
+/** Pulse speed in pt/s and the distance along the line at which the pulse reaches the disc (the launch curtain times its beat on them). */
+export const PULSE_SPEED = SPEED;
+export function pulseHitDistance(width: number, disc: number): number {
+  return ecgTrace(width, disc).hit;
+}
+
 type DiscProps = {
   palette: VelvetPalette;
   dark: boolean;
@@ -42,6 +49,8 @@ type DiscProps = {
   ripple?: boolean;
   /** Milliseconds before the first pulse sets off (the welcome intro waits for the disc to rise). */
   startDelay?: number;
+  /** Where along the line the first pulse starts (pt); the launch curtain starts it just short of the disc. */
+  firstFrom?: number;
 };
 
 /**
@@ -49,7 +58,7 @@ type DiscProps = {
  * pulse of light running along it. When the pulse reaches the disc it beats twice (lub-dub), the logo
  * lights up and a ring spreads out. Everything runs on the UI thread from one clock.
  */
-export function HeartbeatDisc({ palette: p, dark, disc, width, reduceMotion, lineOpacity, ripple = true, startDelay = 0 }: DiscProps) {
+export function HeartbeatDisc({ palette: p, dark, disc, width, reduceMotion, lineOpacity, ripple = true, startDelay = 0, firstFrom = 0 }: DiscProps) {
   const well = Math.round(disc * 0.69);
   const logo = Math.round(disc * 0.38);
   const halo = Math.round(logo * 1.9);
@@ -65,10 +74,17 @@ export function HeartbeatDisc({ palette: p, dark, disc, width, reduceMotion, lin
       s.value = hit - 1;
       return undefined;
     }
-    s.value = 0;
-    s.value = withDelay(startDelay, withRepeat(withTiming(period, { duration: (period / SPEED) * 1000, easing: Easing.linear }), -1, false));
+    const loop = withRepeat(withTiming(period, { duration: (period / SPEED) * 1000, easing: Easing.linear }), -1, false);
+    const from = Math.min(Math.max(0, firstFrom), period - 1);
+    s.value = from;
+    s.value = withDelay(
+      startDelay,
+      from > 0
+        ? withSequence(withTiming(period, { duration: ((period - from) / SPEED) * 1000, easing: Easing.linear }), withTiming(0, { duration: 0 }), loop)
+        : loop,
+    );
     return () => cancelAnimation(s);
-  }, [reduceMotion, period, hit, s, startDelay]);
+  }, [reduceMotion, period, hit, s, startDelay, firstFrom]);
 
   const dash = useAnimatedProps(() => ({ strokeDashoffset: SEG - s.value }));
   const lineStyle = useAnimatedStyle(() => ({ opacity: lineOpacity ? lineOpacity.value : 1 }));
