@@ -2,7 +2,7 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   DEFAULT_CONFIG, amountForRange, bankForIban, customCodeProblem, formatGel, normalizeEnteredCode, normalizeIban,
-  influencerTooLateText, normalizePhone, normalizeSocial, phoneKey, rateForPosition, tierFor, validateConfig, validatePayoutDetails,
+  normalizePhone, normalizeSocial, phoneKey, rateForPosition, tierFor, validateConfig, validatePayoutDetails,
 } from './rules.js';
 import { CODE_ALPHABET } from '../referral.js';
 import { AUTO_ALPHABET } from './rules.js';
@@ -53,19 +53,6 @@ describe('admin settings validation', () => {
     assert.ok(validateConfig({ tiers: [{ from: 0, rate: 25 }, { from: 0, rate: 30 }] }).error);
     assert.ok(validateConfig({ tiers: [{ from: 0, rate: 0 }] }).error);
     assert.ok(validateConfig({ holdDays: 400 }).error);
-  });
-});
-
-describe('too late for an influencer code', () => {
-  it('names the window and the account\'s own day in Tbilisi time', () => {
-    assert.equal(
-      influencerTooLateText('ka', 7, '2026-10-05T22:38:00Z'),
-      'ეს ინფლუენსერის კოდია — ის რეგისტრაციიდან 7 დღეში შეიყვანება, შენი ანგარიში კი 6 ოქტომბერს შეიქმნა.',
-    );
-    assert.equal(
-      influencerTooLateText('en', 7, '2026-10-05T12:00:00Z'),
-      'This is an influencer code — it can be entered within 7 days of signing up, and your account was created on October 5.',
-    );
   });
 });
 

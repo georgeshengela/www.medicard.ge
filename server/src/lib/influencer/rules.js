@@ -406,20 +406,5 @@ export function passwordProblem(raw) {
   return null;
 }
 
-const MONTHS_KA_DAT = ['იანვარს', 'თებერვალს', 'მარტს', 'აპრილს', 'მაისს', 'ივნისს', 'ივლისს', 'აგვისტოს', 'სექტემბერს', 'ოქტომბერს', 'ნოემბერს', 'დეკემბერს'];
-const MONTHS_EN = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
-
-/**
- * An influencer code typed after the entry window, said plainly with the account's own sign-up day (Tbilisi time,
- * UTC+4): an account that existed before the code was not brought by the influencer (owner 2026-10-17).
- */
-export function influencerTooLateText(lang, windowDays, accountCreatedAt) {
-  const d = new Date(new Date(accountCreatedAt).getTime() + 4 * 3_600_000);
-  const day = d.getUTCDate();
-  return lang === 'en'
-    ? `This is an influencer code — it can be entered within ${windowDays} days of signing up, and your account was created on ${MONTHS_EN[d.getUTCMonth()]} ${day}.`
-    : `ეს ინფლუენსერის კოდია — ის რეგისტრაციიდან ${windowDays} დღეში შეიყვანება, შენი ანგარიში კი ${day} ${MONTHS_KA_DAT[d.getUTCMonth()]} შეიქმნა.`;
-}
-
 /** Program terms version — bump when the rules text in the portal changes. */
 export const TERMS_VERSION = '2026-10-16';
