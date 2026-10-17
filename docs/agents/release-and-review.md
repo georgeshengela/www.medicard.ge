@@ -93,3 +93,7 @@ Branch `build/train-22` = origin/main 1.0.0.21.46 + `build/train-22-rating` (exp
 ## Background audio (2.5.4, build 37 rejected 2026-10-13)
 
 `UIBackgroundModes` `audio` (pinned in `plugins/withMedirunBackground.js`) exists only for MEDISLEEP sleep sounds. App Review rejects it when the reviewer cannot hear audio after leaving the app — they do not hunt for the feature. Every submission must carry the steps (Home → MEDISLEEP → „Sounds for sleep“ → Rain → Home Screen) in App Review Information → Notes **and** a screen recording from a physical device as the Attachment. Never answer by removing the mode: the sounds would stop when the phone locks. Texts: `docs/APP-REVIEW-2026-10-13.md`.
+
+## Train 25 OTAs (2026-10-17)
+
+Train 25 (1.25.0) is live on the App Store (~100 phones on 2026-10-17, the owner's included; train 21 still has most). Main carries MEDIBOOK from 1.0.0.25.5, a new review-worthy module that ships only with the next store build — so **never OTA main to runtime 1.0.0.25**. Train-25 OTAs build on branch `ota/1.0.0.25.20` (= the published 25.4 + the „ვინ მოგიწვია?“ influencer screens + the polish pass, no MEDIBOOK; production 7e9a66d9, preview 56e85df6) with cherry-picked JS fixes. With the worktree's own `npm ci` the fingerprint guard passes normally (no bypass). Train 21 keeps its own branch (`ota/1.0.0.21.58`).
