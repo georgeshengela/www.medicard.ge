@@ -65,7 +65,7 @@ export function VelvetSegment<T extends string>({ value, options, onChange, pale
               width: thumbW,
               height: H - BORDER * 2 - INSET * 2,
               borderRadius: 22,
-              backgroundColor: p.surface,
+              backgroundColor: p.raised,
               boxShadow: velvetKnob(p),
             },
             thumbStyle,

@@ -23,7 +23,7 @@ export function AiPrivacySummary({ manifest, tone = 'app', hideTitle = false, pa
   const [policyOpen, setPolicyOpen] = useState(false);
   const ink = p ? p.text : tone === 'onboarding' ? '#111827' : colors.text100;
   const body = p ? p.ink2 : tone === 'onboarding' ? '#4B5563' : colors.text200;
-  const card = p ? p.surface : tone === 'onboarding' ? '#FFFFFF' : colors.surface;
+  const card = p ? p.raised : tone === 'onboarding' ? '#FFFFFF' : colors.surface;
   const border = tone === 'onboarding' ? '#E5E7EB' : colors.bg300;
   const accent = p ? p.ink : brandHex('#0F766E');
   const cardStyle = p ? { backgroundColor: card, boxShadow: velvetLift(p) } : { backgroundColor: card, borderWidth: 1, borderColor: border };

@@ -82,7 +82,7 @@ export const AuthPhoneField = forwardRef<TextInput, Props>(function AuthPhoneFie
           importantForAccessibility="no-hide-descendants"
           style={
             p
-              ? { height: 42, flexDirection: 'row', alignItems: 'center', gap: 8, flexShrink: 0, paddingHorizontal: 12, borderRadius: 14, backgroundColor: p.surface, boxShadow: velvetLift(p) }
+              ? { height: 42, flexDirection: 'row', alignItems: 'center', gap: 8, flexShrink: 0, paddingHorizontal: 12, borderRadius: 14, backgroundColor: p.raised, boxShadow: velvetLift(p) }
               : {
                   flexDirection: 'row',
                   alignItems: 'center',

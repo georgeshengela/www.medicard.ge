@@ -3,12 +3,11 @@ import { Image, Platform, Pressable, Text, TextInput, View, useWindowDimensions 
 import { CalendarClock, CircleCheck, Gift } from 'lucide-react-native';
 import { COIN_ART } from '@/constants/appArt';
 import { tx } from '@/i18n/locale';
-import { velvetField, velvetLift, type VelvetPalette } from '@/theme/velvet';
+import { velvetCard, velvetField, velvetLift, type VelvetPalette } from '@/theme/velvet';
 
 const CODE_LENGTH = 6;
 
 /** The ticket's own depth: a little more than a button, far less than the welcome disc (velvet „ზომიერად“). */
-const ticketShadow = (p: VelvetPalette) => `10px 12px 24px ${p.shade}, -8px -8px 18px ${p.light}`;
 
 export type TicketInviter = { name: string; kind: 'friend' | 'influencer'; at?: string | null; coins?: number; photoUri?: string | null };
 
@@ -30,7 +29,7 @@ type Props = {
 
 function CoinChip({ palette: p, label }: { palette: VelvetPalette; label: string }) {
   return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingLeft: 6, paddingRight: 11, height: 30, borderRadius: 15, backgroundColor: p.surface, boxShadow: velvetLift(p) }}>
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, paddingLeft: 6, paddingRight: 11, height: 30, borderRadius: 15, backgroundColor: p.raised, boxShadow: velvetLift(p) }}>
       <Image source={COIN_ART} style={{ width: 20, height: 20 }} resizeMode="contain" accessibilityIgnoresInvertColors />
       <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 13, color: p.ink }}>{label}</Text>
     </View>
@@ -59,7 +58,7 @@ export function InviteTicket({ palette: p, mode, code, onChangeCode, onSubmit, e
   const top =
     mode === 'invited' && inviter ? (
       <View style={{ flexDirection: 'row', alignItems: 'center', gap: 14 }}>
-        <View style={{ width: 58, height: 58, borderRadius: 29, padding: 3, backgroundColor: p.surface, boxShadow: velvetLift(p) }}>
+        <View style={{ width: 58, height: 58, borderRadius: 29, padding: 3, backgroundColor: p.raised, boxShadow: velvetLift(p) }}>
           {inviter.photoUri ? (
             <Image source={{ uri: inviter.photoUri }} style={{ width: 52, height: 52, borderRadius: 26 }} accessibilityIgnoresInvertColors />
           ) : (
@@ -110,7 +109,7 @@ export function InviteTicket({ palette: p, mode, code, onChangeCode, onSubmit, e
         </View>
         {late ? (
           <View pointerEvents="none" style={{ position: 'absolute', left: 0, right: 0, top: 0, bottom: 0, alignItems: 'center', justifyContent: 'center' }}>
-            <View style={{ transform: [{ rotate: '-7deg' }], paddingHorizontal: 16, paddingVertical: 6, borderRadius: 10, borderWidth: 2, borderColor: p.inkOff, backgroundColor: p.surface }}>
+            <View style={{ transform: [{ rotate: '-7deg' }], paddingHorizontal: 16, paddingVertical: 6, borderRadius: 10, borderWidth: 2, borderColor: p.inkOff, backgroundColor: p.raised }}>
               <Text style={{ fontFamily: 'NotoSansGeorgian_700Bold', fontSize: 15, letterSpacing: 0.5, color: p.ink2 }}>{tx('ვადა გავიდა', 'Expired')}</Text>
             </View>
           </View>
@@ -140,7 +139,7 @@ export function InviteTicket({ palette: p, mode, code, onChangeCode, onSubmit, e
     );
 
   return (
-    <View style={{ borderRadius: 26, backgroundColor: p.surface, boxShadow: ticketShadow(p) }}>
+    <View style={{ borderRadius: 26, backgroundColor: p.raised, boxShadow: velvetCard(p) }}>
       <View style={{ paddingHorizontal: 20, paddingTop: 18, paddingBottom: 20, gap: 18 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
           <View style={{ width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center', backgroundColor: p.field, boxShadow: velvetField(p) }}>

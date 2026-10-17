@@ -155,7 +155,7 @@ export default function InviteCodeScreen() {
         accessibilityLabel={tx('უკან', 'Back')}
         onPress={leave}
         hitSlop={10}
-        style={{ width: 42, height: 42, borderRadius: 21, alignItems: 'center', justifyContent: 'center', backgroundColor: p.surface, boxShadow: velvetLift(p) }}
+        style={{ width: 42, height: 42, borderRadius: 21, alignItems: 'center', justifyContent: 'center', backgroundColor: p.raised, boxShadow: velvetLift(p) }}
       >
         <ChevronLeft size={22} color={p.ink} strokeWidth={2.2} />
       </Pressable>

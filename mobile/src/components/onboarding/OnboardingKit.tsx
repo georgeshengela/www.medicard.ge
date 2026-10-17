@@ -7,7 +7,7 @@ import { KeyboardFormShell } from '@/components/ui/KeyboardFormShell';
 import { VelvetButton } from '@/components/velvet/VelvetButton';
 import { VelvetNotice } from '@/components/velvet/VelvetNotice';
 import { tx } from '@/i18n/locale';
-import { velvetField, velvetLift, type VelvetPalette } from '@/theme/velvet';
+import { velvetField, velvetLift, velvetPill, type VelvetPalette } from '@/theme/velvet';
 
 /**
  * Registration and „დაასრულე პროფილი“ in the sign-in's velvet, kept moderate (owner 2026-10-11:
@@ -28,7 +28,7 @@ function chosenShadow(p: VelvetPalette) {
 
 /** Light resting lift for small pills (lighter than `velvetLift`, which is button-sized). */
 function pillLift(p: VelvetPalette) {
-  return `-2px -2px 5px ${p.light}, 2px 3px 7px ${p.shade}`;
+  return velvetPill(p);
 }
 
 /** Back disc · progress grooves · „გამოტოვება“. */
@@ -56,7 +56,7 @@ export function StepHeader({
           accessibilityLabel={tx('უკან', 'Back')}
           onPress={onBack}
           hitSlop={10}
-          style={{ width: 42, height: 42, borderRadius: 21, alignItems: 'center', justifyContent: 'center', backgroundColor: p.surface, boxShadow: velvetLift(p) }}
+          style={{ width: 42, height: 42, borderRadius: 21, alignItems: 'center', justifyContent: 'center', backgroundColor: p.raised, boxShadow: velvetLift(p) }}
         >
           <ChevronLeft size={22} color={p.ink} strokeWidth={2.2} />
         </Pressable>
@@ -208,7 +208,7 @@ export function ChoiceList({
               paddingHorizontal: 16,
               paddingVertical: 13,
               borderRadius: 20,
-              backgroundColor: on ? p.field : p.surface,
+              backgroundColor: on ? p.field : p.raised,
               boxShadow: on ? chosenShadow(p) : velvetLift(p),
             }}
           >
@@ -263,7 +263,7 @@ export function ChipGroup({
               gap: 6,
               paddingHorizontal: on ? 13 : 16,
               borderRadius: 21,
-              backgroundColor: on ? p.field : p.surface,
+              backgroundColor: on ? p.field : p.raised,
               boxShadow: on ? chosenShadow(p) : pillLift(p),
             }}
           >
@@ -319,7 +319,7 @@ export function TileGrid({
                   borderRadius: 22,
                   alignItems: 'center',
                   justifyContent: 'center',
-                  backgroundColor: on ? p.field : p.surface,
+                  backgroundColor: on ? p.field : p.raised,
                   boxShadow: on ? chosenShadow(p) : velvetLift(p),
                 }}
               >

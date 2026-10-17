@@ -285,7 +285,7 @@ function SentToCard({ pretty, onChange, palette: p }: { pretty: string; onChange
         gap: 12,
         padding: 14,
         borderRadius: 20,
-        backgroundColor: p.surface,
+        backgroundColor: p.raised,
         boxShadow: velvetLift(p),
       }}
     >
@@ -349,7 +349,7 @@ function ProblemCard({
             gap: 8,
             minHeight: 46,
             borderRadius: 23,
-            backgroundColor: p.surface,
+            backgroundColor: p.raised,
             boxShadow: velvetLift(p),
           }}
         >

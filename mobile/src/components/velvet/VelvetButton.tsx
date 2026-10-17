@@ -3,7 +3,7 @@ import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import type { LucideIcon } from 'lucide-react-native';
 import Animated, { useAnimatedStyle, useSharedValue, withTiming } from 'react-native-reanimated';
-import { velvetField, velvetLift, type VelvetPalette } from '@/theme/velvet';
+import { velvetCta, velvetField, velvetLift, type VelvetPalette } from '@/theme/velvet';
 
 const H = 56;
 
@@ -56,8 +56,8 @@ export function VelvetButton({ label, onPress, palette: p, busy = false, disable
           {
             flex: 1,
             borderRadius: H / 2,
-            backgroundColor: p.surface,
-            boxShadow: lit ? `-4px -4px 10px ${p.light}, 6px 9px 18px ${p.ctaShade}` : disabled ? velvetField(p) : velvetLift(p),
+            backgroundColor: p.raised,
+            boxShadow: lit ? velvetCta(p) : disabled ? velvetField(p) : velvetLift(p),
           },
           pressStyle,
         ]}
