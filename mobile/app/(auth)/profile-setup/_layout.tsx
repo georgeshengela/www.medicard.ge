@@ -30,6 +30,7 @@ export default function ProfileSetupLayout() {
       <Stack.Screen name="privacy" />
       <Stack.Screen name="notifications" />
       <Stack.Screen name="home-layout" />
+      <Stack.Screen name="invited-by" options={{ headerShown: false }} />
       <Stack.Screen name="ai-privacy" />
       <Stack.Screen name="location" />
       <Stack.Screen name="analyzing" />

@@ -12,7 +12,7 @@ export default function InviteLink() {
     const normalized = normalizeReferralCode(code);
     void savePendingReferralCode(normalized).finally(() => {
       if (!user) router.replace('/' as never);
-      else router.replace((normalized ? `/profile/invite-code?code=${normalized}` : '/profile/invite') as never);
+      else router.replace((normalized ? `/profile/invite-code?code=${normalized}` : '/profile/invite-code') as never);
     });
   }, [code, router, user]);
   return null;
