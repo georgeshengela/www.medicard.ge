@@ -6,6 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CalendarClock, Check, ChevronDown, ChevronUp, Gift, MapPin, RefreshCw, Sparkles, Store } from 'lucide-react-native';
 import { appLang, tx } from '@/i18n/locale';
 import { isPhoneRequiredError, offerPhoneVerification } from '@/lib/phoneGate';
+import { MODAL_HANDOFF_MS } from '@/components/ui/appModal';
 import { ModuleHeader } from '@/components/brand/ModuleHeader';
 import { Bone } from '@/components/ui/Skeleton';
 import {
@@ -157,7 +158,8 @@ export default function RewardDetailScreen() {
       if (isPhoneRequiredError(err)) {
         setConfirm(false);
         idemRef.current = newIdempotencyKey();
-        offerPhoneVerification(router);
+        // The confirm sheet closes first; the phone page opens once it is gone.
+        setTimeout(() => offerPhoneVerification(router), MODAL_HANDOFF_MS);
         return;
       }
       const code = err instanceof ApiError && err.code ? err.code : 'REWARD_REDEMPTION_CONFLICT';

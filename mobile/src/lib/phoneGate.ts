@@ -1,10 +1,8 @@
-import { Alert } from 'react-native';
-import { ka } from '@/i18n/ka';
-
 /**
  * Phone verification gate (2026-09-27). The server answers 403 PHONE_VERIFICATION_REQUIRED on
- * the women's space (join / post / comment) and reward redemption. The app then offers the
- * one-screen verification instead of showing an error.
+ * the women's space (join / post / comment), reward redemption, influencer codes, bookings and
+ * trainer profiles. The app then opens the velvet verification page with the caller's reason
+ * instead of showing an error (owner 2026-10-17: no native alert in front of it).
  */
 export const PHONE_REQUIRED_CODE = 'PHONE_VERIFICATION_REQUIRED';
 
@@ -18,9 +16,7 @@ export function hasVerifiedPhone(user: { phone?: string | null } | null | undefi
 
 type Pushable = { push: (href: never) => void };
 
+/** Only from a press (the person asked for the thing that needs a phone): `/profile/verify-phone` says why and comes back. */
 export function offerPhoneVerification(router: Pushable, reason?: string) {
-  Alert.alert(ka.phoneVerify.gateTitle, reason ?? ka.phoneVerify.gateBody, [
-    { text: ka.common.cancel, style: 'cancel' },
-    { text: ka.phoneVerify.gateCta, onPress: () => router.push('/profile/verify-phone' as never) },
-  ]);
+  router.push((reason ? { pathname: '/profile/verify-phone', params: { reason } } : '/profile/verify-phone') as never);
 }
