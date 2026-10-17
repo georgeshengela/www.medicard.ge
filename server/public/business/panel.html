@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="ka">
+<html lang="ka" data-theme-default="light">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
@@ -13,12 +13,12 @@
   <link rel="preload" href="/fonts/firago/FiraGO-Bold.woff2" as="font" type="font/woff2" crossorigin />
   <link rel="preload" href="/fonts/firago/FiraGO-ExtraBold.woff2" as="font" type="font/woff2" crossorigin />
   <script>
-    // Apply the theme before first paint (no flash). Same key as /app so one choice follows the person.
+    // Apply the theme before first paint (no flash). Same key as /app so one choice follows the person, but the
+    // panel is light until that person picks dark — a dark device alone never darkens it (data-theme-default).
     (function () {
-      var t = 'system';
-      try { t = localStorage.getItem('medicard.web.theme') || 'system'; } catch (e) {}
-      var dark = t === 'dark' || (t === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
-      document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+      var t = 'light';
+      try { t = localStorage.getItem('medicard.web.theme') || 'light'; } catch (e) {}
+      document.documentElement.dataset.theme = t === 'dark' ? 'dark' : 'light';
     })();
     // The public page (/business) holds the sign-in box: a signed-out visit goes there before the app loads
     // (the panel root to the page itself, a deeper path onto the box). main.js renderLanding() does the same

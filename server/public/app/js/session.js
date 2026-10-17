@@ -118,11 +118,16 @@ export function needsOnboarding() {
 
 /* ── Theme ─────────────────────────────────────────── */
 const THEME_KEY = 'medicard.web.theme';
-export function getThemePref() { try { return localStorage.getItem(THEME_KEY) || 'system'; } catch { return 'system'; } }
-export function applyTheme(pref = getThemePref()) {
-  try { localStorage.setItem(THEME_KEY, pref); } catch { /* ignore */ }
-  const dark = pref === 'dark' || (pref === 'system' && matchMedia('(prefers-color-scheme: dark)').matches);
+// A page may pin its look with <html data-theme-default="light"> (the business panel): it stays light until
+// the person picks dark themselves, and „system“ there means that default, not the device's dark mode.
+const PAGE_THEME = document.documentElement.dataset.themeDefault;
+export function getThemePref() { try { return localStorage.getItem(THEME_KEY) || PAGE_THEME || 'system'; } catch { return PAGE_THEME || 'system'; } }
+// Only a real choice is saved: a page that just applies the saved look must not write its own default.
+export function applyTheme(pref) {
+  if (pref) { try { localStorage.setItem(THEME_KEY, pref); } catch { /* ignore */ } }
+  const p = pref || getThemePref();
+  const dark = p === 'dark' || (p === 'system' && !PAGE_THEME && matchMedia('(prefers-color-scheme: dark)').matches);
   document.documentElement.dataset.theme = dark ? 'dark' : 'light';
   document.querySelector('meta[name=theme-color]')?.setAttribute('content', dark ? '#030712' : '#f5f7f7');
 }
-matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', () => { if (getThemePref() === 'system') applyTheme('system'); });
+matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', () => { if (getThemePref() === 'system' && !PAGE_THEME) applyTheme(); });
